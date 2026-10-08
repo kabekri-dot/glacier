@@ -1,0 +1,2017 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway. Do not build on this file.
+  Question: what should the Glacier sidebar look like?
+  Plan: four structurally different sidebar layouts (glacier button → Layout, or ?variant=A|B|C|D),
+  next to a fake course page. Everything is in memory; reload resets it (and replays the first sync).
+  URL flags for screenshots: ?settings  ?cheat  ?nosync  ?theme=<key>
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PROTOTYPE – Glacier sidebar layouts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shantell+Sans:wght,INFL@300..800,0..100&family=Patrick+Hand&family=Kalam:wght@300;400;700&family=Caveat:wght@400..700&family=Architects+Daughter&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.4 system-ui, sans-serif; background: #ddd; }
+  #stage { display: flex; height: 100vh; }
+
+  /* ---------- fake course website (left) ---------- */
+  #course { flex: 1; display: flex; flex-direction: column; background: #fff; color: #222; min-width: 0; }
+  #urlbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; background: #e8e8ea; border-bottom: 1px solid #ccc; }
+  #urlbar .url { flex: 1; background: #fff; border-radius: 14px; padding: 4px 12px; color: #555; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #urlbar select { font: inherit; font-size: 12px; }
+  #lesson { overflow: auto; padding: 40px 56px 120px; max-width: 760px; }
+  #lesson h1 { font-size: 30px; margin: 0 0 16px; }
+  #lesson p { font-size: 16px; line-height: 1.6; color: #333; }
+  #lesson .site { font-weight: 700; color: #b5562a; letter-spacing: .02em; margin-bottom: 24px; }
+
+  /* ---------- resize handle ---------- */
+  #resizer { width: 7px; margin: 0 -3px; flex: none; cursor: col-resize; z-index: 40; position: relative; }
+  #resizer::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 1px; background: rgba(0,0,0,.2); transition: background .15s, width .15s, left .15s; }
+  #resizer:hover::after, body.resizing #resizer::after { background: #2a87b0; width: 3px; left: 2px; }
+  body.resizing { cursor: col-resize; user-select: none; }
+
+  /* ---------- Glacier panel (right) ---------- */
+  .glacier {
+    --lh: 24px; --mono: 12px;
+    width: 380px; flex: none; height: 100vh; position: relative; overflow: visible;
+    background: var(--paper); color: var(--ink);
+    font: 13px/1.4 system-ui, sans-serif;
+  }
+  .glacier button, .glacier input, .glacier select { font: inherit; color: inherit; }
+
+  /* The panel is a row: the settings column (when open) on the left, the notebook takes what's left and reflows. */
+  .shell { display: flex; height: 100%; min-height: 0; overflow: hidden; }
+  .main { flex: 1 1 0; min-width: 0; position: relative; display: flex; flex-direction: column; container-type: inline-size; transition: flex-basis .25s; }
+  .v { display: flex; flex-direction: column; height: 100%; min-height: 0; position: relative; }
+  @container (max-width: 250px) {
+    .bar .meta, .bar .words { display: none; }
+    .sheet { padding-left: 12px !important; padding-right: 12px; }
+  }
+
+  .sheet {
+    flex: 1; overflow: auto; min-height: 0;
+    padding: var(--lh) 18px var(--lh) var(--pad-left, 18px);
+    background-image: var(--pattern); background-size: var(--pattern-size, auto);
+    background-repeat: var(--pattern-repeat, repeat); background-position: var(--pattern-pos, 0 0);
+    background-attachment: var(--pattern-attach, local);
+    font-family: var(--font); font-weight: var(--fw); font-size: var(--fs); line-height: var(--lh);
+    font-variation-settings: "INFL" 25;
+  }
+  .sheet .title { font-size: 1.5em; line-height: calc(var(--lh) * 2); margin: 0; font-weight: inherit; }
+  .sheet ul { margin: 0 0 var(--lh); padding-left: 1.1em; }
+  .sheet h2 { margin: 0; font-weight: inherit; font-size: 1.25em; line-height: var(--lh); }
+  .sheet code { font-family: "JetBrains Mono", Consolas, monospace; font-size: var(--mono); background: rgba(127,127,127,.15); padding: 1px 3px; border-radius: 3px; }
+  a.link { color: var(--accent); text-decoration: none; border-bottom: 1px dashed currentColor; cursor: pointer; }
+  a.missing { color: var(--missing); border-bottom: 1px dotted currentColor; cursor: pointer; }
+
+  /* ---------- live-preview writing surface ---------- */
+  .blocks { min-height: 45vh; padding-bottom: calc(var(--lh) * 2 + 84px);   /* room below the last line, clear of the paper picture */ cursor: text; }
+  .blk { min-height: var(--lh); white-space: pre-wrap; overflow-wrap: break-word; }
+  .blk.h1, .blk-ed.h1 { font-size: 1.6em; line-height: calc(var(--lh) * 2); font-weight: bolder; }
+  .blk.h2, .blk-ed.h2 { font-size: 1.3em; line-height: calc(var(--lh) * 2); font-weight: bolder; }
+  .blk.h3, .blk-ed.h3 { font-size: 1.12em; line-height: var(--lh); font-weight: bolder; }
+  .blk.li { position: relative; }
+  .blk .bullet { position: absolute; margin-left: -.9em; color: var(--muted); }
+  pre.blk { margin: 0; font-family: "JetBrains Mono", Consolas, monospace; font-size: var(--mono); line-height: var(--lh);
+            background: rgba(127,127,127,.12); padding: 0 8px; border-radius: 3px; overflow-x: auto; scrollbar-width: none; white-space: pre; }   /* no scrollbar: it would add height and break the line grid */
+  .blk-ed {
+    display: block; margin: 0 0 0 -4px; padding: 0 4px; width: calc(100% + 8px);
+    border: 0; outline: 0; resize: none; overflow: hidden; border-radius: 4px;
+    background: rgba(127,127,127,.08); color: inherit; font: inherit; line-height: var(--lh);
+    font-variation-settings: "INFL" 25;
+  }
+  .blk-ed.code { font-family: "JetBrains Mono", Consolas, monospace; font-size: var(--mono); white-space: pre; overflow-x: auto; padding: 0 8px; background: rgba(127,127,127,.16); }
+  .blk-ed::placeholder { color: var(--muted); font-style: italic; opacity: .7; }
+
+  .ed-wrap { position: relative; }
+  /* "+" at the left of the line you're on: opens the insert menu (headings, lists, sketch…) */
+  .ed-plus { position: absolute; left: -17px; top: calc((var(--lh) - 16px) / 2); width: 16px; height: 16px; padding: 0; z-index: 2;
+             border: 1px solid var(--line); border-radius: 50%; background: var(--paper); color: var(--muted); cursor: pointer;
+             font: 13px/13px system-ui, sans-serif; display: grid; place-items: center; transition: transform .12s, color .12s; }
+  .ed-plus:hover { color: var(--accent); border-color: var(--accent); transform: scale(1.15); }
+  .slash { position: absolute; top: 100%; left: 0; z-index: 12; width: min(270px, 100%); margin-top: 4px; padding: 5px;
+           background: var(--paper); color: var(--ink); border: 1px solid var(--line); border-radius: 10px;
+           box-shadow: 0 8px 26px rgba(0,0,0,.2); font: 13px/1.3 system-ui, sans-serif; }
+  .slash .hd { padding: 4px 8px 6px; font-size: 11px; color: var(--muted); }
+  .slash a { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; cursor: pointer; }
+  .slash a.hi { background: rgba(127,127,127,.16); }
+  .slash a span { flex: 1; }
+  .slash code { font: 11.5px "JetBrains Mono", Consolas, monospace; color: var(--accent); background: rgba(127,127,127,.12); padding: 1px 5px; border-radius: 4px; }
+
+  /* ---------- sketch blocks (v2 preview) ---------- */
+  .sk { position: relative; margin: 0; border: 1.5px dashed var(--line); border-radius: 10px; background: color-mix(in srgb, var(--paper) 70%, transparent); font: 12px/1.3 system-ui, sans-serif; white-space: normal; }
+  .sk:hover { border-color: var(--muted); }
+  .sk.on { border: 1.5px solid var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent); }
+  .sk-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 5px; background: var(--chrome); border-bottom: 1px solid var(--line); border-radius: 9px 9px 0 0; }
+  .sk-tool { width: 32px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); color: var(--ink); cursor: grab; display: grid; place-items: center; }
+  .sk-tool:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .sk-tool:active { cursor: grabbing; }
+  .sk-tool svg { width: 20px; height: 20px; }
+  .sk-sep { width: 1px; height: 22px; background: var(--line); margin: 0 3px; }
+  .sk-col { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--paper); box-shadow: 0 0 0 1px var(--line); cursor: pointer; padding: 0; }
+  .sk-col.on { box-shadow: 0 0 0 2px var(--accent); }
+  .sk-del { margin-left: auto; border: 0; background: none; color: var(--muted); cursor: pointer; padding: 4px 6px; border-radius: 6px; }
+  .sk-del:hover { background: rgba(127,127,127,.15); color: var(--missing); }
+  .sk-canvas { display: block; width: 100%; height: auto; touch-action: none; color: var(--ink); }
+  .sk-canvas.drop { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  .sk-cap { display: flex; justify-content: space-between; gap: 8px; padding: 3px 9px 5px; color: var(--muted); font-size: 11px; }
+  .sk-cap span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sk-hint { position: absolute; left: 0; right: 0; bottom: 40%; text-align: center; color: var(--muted); pointer-events: none; font-size: 12px; }
+  .sk-text-in { position: absolute; z-index: 5; padding: 1px 4px; border: 1px solid var(--accent); border-radius: 4px; background: var(--paper); color: var(--ink); outline: 0; }
+  .sk-resize { position: absolute; left: 50%; bottom: -6px; width: 34px; height: 10px; margin-left: -17px; border-radius: 5px; background: var(--line); cursor: ns-resize; opacity: 0; }
+  .sk.on .sk-resize, .sk:hover .sk-resize { opacity: 1; }
+
+  /* ---------- bars and small parts ---------- */
+  .bar { display: flex; align-items: center; gap: 6px; padding: 7px 10px; background: var(--chrome); border-bottom: 1px solid var(--line); flex: none; min-width: 0; }
+  .bar.bottom { border-bottom: 0; border-top: 1px solid var(--line); }
+  .grow { flex: 1; min-width: 0; }
+  .ellip { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .btn { background: none; border: 1px solid transparent; padding: 3px 8px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .btn:hover { background: rgba(127,127,127,.18); }
+  .meta { font: 12px system-ui, sans-serif; color: var(--muted); }
+  .meta a { color: var(--muted); }
+  .muted { color: var(--muted); }
+  .input { width: 100%; min-width: 0; padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); outline: 0; }
+  .input:focus { border-color: var(--accent); }
+
+  .sync { background: none; border: 0; padding: 2px 4px; cursor: pointer; font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .sync i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .sync-synced i { background: #4a9a5c; } .sync-syncing i { background: #d0a020; animation: pulse 1s infinite; }
+  .sync-offline i { background: #9a9a9a; } .sync-conflict i { background: #c0392b; }
+  .sync-conflict { color: #c0392b; }
+  @keyframes pulse { 50% { opacity: .3; } }
+
+  .banner { margin: 8px 10px 0; padding: 8px 10px; border: 1px dashed var(--muted); border-radius: 6px; background: var(--chrome); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex: none; }
+  .banner .btn { border-color: var(--line); }
+
+  .tree { padding: 4px 6px 16px; }
+  .tree .section { font: 600 11px system-ui; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 12px 8px 4px; }
+  .tree details > summary { cursor: pointer; padding: 4px 8px; font-weight: 600; list-style: none; }
+  .tree details > summary::before { content: "▸ "; color: var(--muted); }
+  .tree details[open] > summary::before { content: "▾ "; }
+  .tree a { display: block; padding: 3px 8px 3px 22px; border-radius: 5px; cursor: pointer; color: inherit; text-decoration: none; }
+  .tree a:hover { background: rgba(127,127,127,.12); }
+  .tree a.cur { background: rgba(127,127,127,.22); }
+  .tree .concepts a { padding-left: 8px; }
+
+  .results a { display: block; padding: 6px 10px; border-radius: 6px; cursor: pointer; color: inherit; text-decoration: none; }
+  .results a:hover, .results a.hi { background: rgba(127,127,127,.15); }
+  .results .snip { display: block; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .results mark { background: rgba(240,200,60,.45); color: inherit; }
+
+  /* A: drawer */
+  .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.25); z-index: 5; }
+  .drawer { position: absolute; top: 0; bottom: 0; left: 0; width: min(300px, 85%); background: var(--chrome); z-index: 6; display: flex; flex-direction: column; box-shadow: 4px 0 16px rgba(0,0,0,.2); }
+  .drawer .scroll { flex: 1; overflow: auto; }
+  .backfoot { flex: none; border-top: 1px solid var(--line); background: var(--chrome); max-height: 40%; overflow: auto; }
+  .backfoot summary { padding: 7px 12px; cursor: pointer; color: var(--muted); }
+  .backfoot a { display: block; padding: 3px 12px 3px 24px; cursor: pointer; color: var(--accent); }
+  /* B: tabs */
+  .tabs { display: flex; align-items: center; border-top: 1px solid var(--line); background: var(--chrome); flex: none; padding-right: 64px; }
+  .tabs button { flex: 1; background: none; border: 0; padding: 10px 0 9px; cursor: pointer; color: var(--muted); border-top: 2px solid transparent; }
+  .tabs button.on { color: var(--ink); border-top-color: var(--accent); }
+  .inline-back { border-top: 1px dashed var(--muted); padding-top: calc(var(--lh) - 1px); color: var(--muted); }
+  /* C: breadcrumb + palette */
+  .crumbs { font-size: 12.5px; }
+  .crumbs a { cursor: pointer; color: var(--muted); }
+  .crumbs a:hover { color: var(--ink); }
+  .crumbs b { font-weight: 600; }
+  .chips { margin: 0 0 var(--lh); font: 12px/var(--lh) system-ui; color: var(--muted); }
+  .chips a { display: inline-block; margin: 0 4px 4px 0; padding: 0 8px; border-radius: 10px; background: rgba(127,127,127,.15); color: var(--ink); cursor: pointer; }
+  .palette-wrap { position: absolute; inset: 0; background: rgba(0,0,0,.25); z-index: 5; padding: 50px 14px; }
+  .palette { background: var(--chrome); border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,.3); padding: 8px; }
+  .kbd { font: 11px system-ui; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: var(--muted); }
+  /* D: split */
+  .split-top { height: var(--split-h, 42%); min-height: 70px; display: flex; flex-direction: column; background: var(--chrome); flex: none; }
+  /* drag this bar to make the list taller or shorter */
+  .split-handle { flex: none; height: 9px; cursor: ns-resize; background: var(--chrome); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); display: grid; place-items: center; touch-action: none; }
+  .split-handle::after { content: ""; width: 36px; height: 3px; border-radius: 2px; background: var(--muted); opacity: .5; }
+  .split-handle:hover::after, body.resizing .split-handle::after { background: var(--accent); opacity: 1; }
+  .split-top .scroll { flex: 1; overflow: auto; }
+  .split-bottom { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .back-small { font: 12px/1.6 system-ui; color: var(--muted); }
+
+  /* ---------- shortcuts panel: docked to the left of the sidebar like settings; folds into a slim tab ---------- */
+  .g-cheat { position: absolute; top: 0; bottom: 0; right: 100%; width: 230px; overflow: auto; z-index: 49;
+             background: #f7fbfe; color: #1d3446; border-left: 1px solid #d3e3ee; border-radius: 14px 0 0 14px;
+             box-shadow: -10px 0 30px rgba(20,60,90,.18); font: 12.5px/1.35 system-ui, sans-serif; animation: g-slide .3s cubic-bezier(.2,.9,.3,1.05); }
+  .glacier.with-settings .g-cheat { right: calc(100% + 260px); }
+  /* "inside" = the browser does NOT let Glacier draw next to the sidebar: both panels then open INSIDE it, over the note */
+  .glacier.inside .g-side, .glacier.inside .g-cheat { right: 0; width: 100%; border-radius: 0; border-left: 0; box-shadow: none; }
+  .glacier.inside .g-cheat { z-index: 51; }
+  .glacier.inside .g-hero, .glacier.inside .g-cheat-hd { border-radius: 0; }
+  .glacier.inside .g-cheat.folded { right: auto; left: 0; width: 24px; height: 130px; border-radius: 0 10px 10px 0; z-index: 16; box-shadow: 3px 2px 10px rgba(20,60,90,.25); }
+  .glacier.inside .g-cheat.folded:hover { width: 28px; }
+  .glacier.inside .g-cheat.folded span { font-size: 11.5px; }
+  .g-cheat-hd { position: sticky; top: 0; z-index: 1; height: 56px; overflow: hidden; border-radius: 14px 0 0 0; }
+  .g-cheat-hd svg { display: block; width: 100%; height: 100%; }
+  .g-cheat-hd b { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font: 600 16px "Shantell Sans", sans-serif; color: #fff; text-shadow: 0 2px 6px rgba(15,50,80,.6); }
+  .g-cheat-hd .acts { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: flex; gap: 4px; }
+  .g-cheat-hd .acts button { width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgba(255,255,255,.85); color: #1d3446; cursor: pointer; font-size: 12px; }
+  .g-cheat-hd .acts button:hover { background: #fff; }
+  .g-cheat-body { padding: 2px 14px 16px; }
+  .cheat-grp { margin: 12px 0 6px; font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: #7c93a6; }
+  .cheat-rows { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; }
+  .cheat-rows code { font: 11.5px "JetBrains Mono", Consolas, monospace; color: #1f6d91; background: #e7f2f9; padding: 2px 6px; border-radius: 5px; justify-self: start; white-space: pre; }
+  .cheat-rows span { color: #4d6578; }
+  /* folded: a slim vertical tab against the sidebar's edge — click to open again */
+  .g-cheat.folded { top: 96px; bottom: auto; width: 32px; height: 150px; padding: 0; border: 0; border-radius: 10px 0 0 10px; cursor: pointer; overflow: hidden;
+                    display: grid; place-items: center; background: linear-gradient(#3b9cc6, #1f6d91); color: #fff; box-shadow: -4px 2px 12px rgba(20,60,90,.25); transition: width .15s; }
+  .g-cheat.folded:hover { width: 38px; }
+  .g-cheat.folded span { writing-mode: vertical-rl; transform: rotate(180deg); font: 600 12.5px system-ui, sans-serif; letter-spacing: .04em; white-space: nowrap; }
+
+  /* E: index tabs */
+  .e-wrap { flex-direction: row; }
+  .e-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .e-tabs { width: 30px; flex: none; display: flex; flex-direction: column; gap: 5px; padding: 58px 0 80px; background: var(--chrome); border-left: 1px solid var(--line); }
+  .e-tab { width: 28px; margin-left: -4px; padding: 12px 0; border: 0; border-radius: 0 9px 9px 0; background: var(--tab); color: #2b2a27; cursor: pointer;
+           box-shadow: 1px 1px 3px rgba(0,0,0,.12); font: 11.5px/1 system-ui, sans-serif; transition: margin .15s, width .15s; }
+  .e-tab span { writing-mode: vertical-rl; display: inline-block; max-height: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .e-tab:hover { margin-left: -8px; width: 32px; }
+  .e-tab.here { font-weight: 700; }
+  .e-tab.on { margin-left: -10px; width: 34px; box-shadow: -2px 0 0 var(--accent) inset, 1px 1px 3px rgba(0,0,0,.15); }
+  .e-search { --tab: var(--paper); display: grid; place-items: center; color: var(--ink); padding: 8px 0; }
+  .e-search svg { width: 16px; height: 16px; }
+  .e-sheet { position: absolute; top: 0; bottom: 0; right: 30px; width: min(270px, 86%); z-index: 6; background: var(--chrome); display: flex; flex-direction: column; box-shadow: -6px 0 18px rgba(0,0,0,.18); }
+  .e-list { flex: 1; overflow: auto; }
+
+  /* F: home */
+  .f-home { font: 13px/1.4 system-ui, sans-serif; }
+  .f-hi { font: 600 22px/1.3 var(--font); margin: 2px 0 12px; }
+  .f-search { margin-bottom: 6px; padding: 9px 12px; border-radius: 10px; }
+  .f-h { margin: 16px 0 6px; font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .f-card { display: block; width: 100%; text-align: left; padding: 10px 12px; margin-bottom: 7px; border-radius: 11px; cursor: pointer; color: var(--ink);
+            background: color-mix(in srgb, var(--paper) 70%, var(--chrome)); border: 1px solid var(--line); box-shadow: 0 1px 2px rgba(0,0,0,.05); text-decoration: none; transition: transform .12s, box-shadow .12s; }
+  .f-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+  .f-card b { display: block; font: 600 15px/1.3 var(--font); }
+  .f-card small { display: block; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .f-new { border-style: dashed; color: var(--accent); }
+  .f-new b { color: var(--accent); }
+  .f-course { border: 1px solid var(--line); border-radius: 11px; margin-bottom: 7px; overflow: hidden; background: color-mix(in srgb, var(--paper) 70%, var(--chrome)); }
+  .f-course > button { display: flex; align-items: baseline; gap: 8px; width: 100%; padding: 10px 12px; border: 0; background: none; cursor: pointer; text-align: left; }
+  .f-course > button b { font: 600 14px var(--font); } .f-course > button small { color: var(--muted); flex: 1; } .f-course > button span { color: var(--muted); }
+  .f-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .f-chips a { padding: 4px 11px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--ink); cursor: pointer; }
+  .f-chips a.add { background: none; border: 1px dashed var(--line); color: var(--muted); }
+  .f-back { font-weight: 600; color: var(--accent); }
+
+  /* G: note tabs */
+  .g-tabs { display: flex; align-items: flex-end; gap: 2px; padding: 6px 6px 0; background: var(--chrome); border-bottom: 1px solid var(--line); overflow-x: auto; flex: none; }
+  .g-tab { display: flex; align-items: center; gap: 4px; max-width: 150px; min-width: 60px; padding: 6px 6px 6px 10px; border-radius: 9px 9px 0 0; cursor: pointer;
+           color: var(--muted); font-size: 12.5px; border: 1px solid transparent; border-bottom: 0; }
+  .g-tab span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .g-tab:hover { background: color-mix(in srgb, var(--paper) 50%, transparent); }
+  .g-tab.on { background: var(--paper); color: var(--ink); font-weight: 600; border-color: var(--line); margin-bottom: -1px; padding-bottom: 7px; }
+  .g-x { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0 3px; border-radius: 4px; font-size: 14px; line-height: 1; }
+  .g-x:hover { background: rgba(127,127,127,.2); color: var(--ink); }
+  .g-add { margin: 0 0 5px 4px; width: 26px; height: 26px; flex: none; border-radius: 7px; border: 1px solid var(--line); background: var(--paper); cursor: pointer; font-size: 16px; color: var(--muted); }
+  .g-add:hover, .g-add.on { color: var(--accent); border-color: var(--accent); }
+  .g-meta { background: var(--paper); border-bottom: 0; padding-bottom: 0; }
+  .g-picker { position: absolute; top: 44px; left: 8px; right: 8px; max-height: 70%; z-index: 7; display: flex; flex-direction: column; background: var(--chrome);
+              border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 30px rgba(0,0,0,.2); padding: 8px 8px 0; }
+  .g-picker-list { flex: 1; overflow: auto; margin-top: 4px; }
+
+  /* H: zen */
+  .h-sheet { padding-top: calc(var(--lh) + 40px); }
+  .h-pill { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 7; max-width: calc(100% - 40px); display: flex; align-items: center; gap: 8px;
+            padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line); cursor: pointer; color: var(--ink);
+            background: color-mix(in srgb, var(--paper) 85%, transparent); backdrop-filter: blur(6px); box-shadow: 0 3px 12px rgba(0,0,0,.1); }
+  .h-pill b { font: 600 13.5px system-ui, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .h-pill span { color: var(--muted); font-size: 11px; }
+  .h-pill:hover, .h-pill.on { border-color: var(--accent); }
+  .h-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: #4a9a5c; }
+  .h-dot.sync-syncing { background: #d0a020; } .h-dot.sync-offline { background: #9a9a9a; } .h-dot.sync-conflict { background: #c0392b; }
+  .h-menu { position: absolute; top: 50px; left: 50%; transform: translateX(-50%); width: min(300px, calc(100% - 24px)); max-height: 72%; overflow: auto; z-index: 8;
+            background: var(--chrome); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 14px 34px rgba(0,0,0,.2); padding: 10px; font-size: 13px; }
+  .h-sec { padding: 8px 4px 2px; } .h-sec-t { margin: 10px 4px 4px; font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .h-tree .tree { padding: 0; } .h-row { display: flex; gap: 6px; padding: 8px 4px 2px; } .h-row .btn { border-color: var(--line); }
+  .h-links { position: absolute; left: 12px; bottom: 16px; z-index: 7; display: flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 999px;
+             border: 1px solid var(--line); background: var(--paper); color: var(--muted); cursor: pointer; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .h-links svg { width: 15px; height: 15px; } .h-links.on, .h-links:hover { color: var(--accent); border-color: var(--accent); }
+  .h-links-list { position: absolute; left: 12px; bottom: 52px; z-index: 8; width: min(240px, calc(100% - 24px)); background: var(--chrome); border: 1px solid var(--line); border-radius: 12px; padding: 4px 10px 10px; box-shadow: 0 10px 26px rgba(0,0,0,.18); }
+  .h-links-list a { display: block; padding: 4px 4px; color: var(--accent); cursor: pointer; }
+
+  /* I: icon rail */
+  .i-wrap { flex-direction: row; }
+  .i-rail { width: 42px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0 74px; background: var(--chrome); border-right: 1px solid var(--line); }
+  .i-btn { position: relative; width: 32px; height: 32px; border: 0; border-radius: 9px; background: none; color: var(--muted); cursor: pointer; display: grid; place-items: center; }
+  .i-btn svg { width: 19px; height: 19px; }
+  .i-btn:hover { background: rgba(127,127,127,.15); color: var(--ink); }
+  .i-btn.on { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+  .i-btn em { position: absolute; top: 2px; right: 1px; min-width: 14px; height: 14px; border-radius: 7px; background: var(--accent); color: var(--paper); font: 700 9px/14px system-ui; font-style: normal; }
+  .i-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .i-panel { position: absolute; top: 0; bottom: 0; left: 42px; width: min(260px, calc(100% - 60px)); z-index: 6; background: var(--chrome); display: flex; flex-direction: column; box-shadow: 6px 0 18px rgba(0,0,0,.16); }
+  .i-body { flex: 1; overflow: auto; }
+
+  /* J: course path */
+  .j-top { flex: none; padding: 10px 12px 8px; background: var(--chrome); border-bottom: 1px solid var(--line); }
+  .j-head { display: flex; align-items: baseline; gap: 8px; } .j-head b { font: 600 13px system-ui; flex: 1; min-width: 0; } .j-head small { color: var(--muted); white-space: nowrap; }
+  .j-path { display: flex; align-items: flex-start; overflow-x: auto; padding: 10px 2px 4px; }
+  .j-stop { flex: none; width: 58px; display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: none; cursor: pointer; color: var(--muted); padding: 0; }
+  .j-stop i { width: 14px; height: 14px; border-radius: 50%; background: var(--paper); border: 2.5px solid var(--accent); font: 700 10px/9px system-ui; font-style: normal; color: var(--accent); }
+  .j-stop span { font-size: 10.5px; line-height: 1.2; width: 100%; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; text-align: center; }
+  .j-stop.on i { background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .j-stop.on span { color: var(--ink); font-weight: 600; }
+  .j-stop.new i { border-style: dashed; }
+  .j-stop:hover span { color: var(--ink); }
+  .j-line { flex: none; width: 14px; height: 2.5px; margin-top: 6px; background: var(--accent); opacity: .5; }
+  .j-line.dash { background: none; border-top: 2.5px dashed var(--accent); height: 0; }
+  .j-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; font-size: 12px; }
+  .j-chips a { padding: 2px 9px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 13%, transparent); color: var(--ink); cursor: pointer; }
+  .j-chips a.missing { background: none; border: 1px dotted var(--missing); color: var(--missing); }
+
+  /* layout picker: groups, favourites, stars */
+  .g-lgroup { margin-bottom: 16px; }
+  .g-lgroup-t { font: 600 13px/1.3 system-ui, sans-serif; color: #1d3446; display: flex; align-items: baseline; gap: 6px; }
+  .g-lgroup-t small { font-weight: 400; color: #7c93a6; font-size: 11px; }
+  .g-lgroup-h { font-size: 11.5px; color: #7c93a6; margin: 2px 0 8px; }
+  .g-lgroup.fav { padding: 10px; margin: 0 -4px 16px; border-radius: 12px; background: #fff8e6; border: 1px solid #f1dfae; }
+  .g-favs { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; margin-top: 8px; }
+  .g-lay.compact b { font-size: 11px; margin-top: 4px; }
+  .g-lay em { display: block; font-style: normal; font-size: 10.5px; color: #2a87b0; margin-top: 2px; line-height: 1.25; }
+  .g-star { position: absolute; top: 4px; left: 5px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
+            background: rgba(255,255,255,.9); color: #b9c7d2; font-size: 13px; line-height: 1; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.15); transition: transform .12s; }
+  .g-star:hover { transform: scale(1.15); color: #e6b84a; }
+  .g-star.on { color: #e6a91f; }
+  .g-lhint { font-size: 12px; color: #7c93a6; margin-bottom: 12px; padding: 8px 10px; border: 1px dashed #d3e3ee; border-radius: 9px; }
+  /* keep toggles on layout cards */
+  .g-keep { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 999px; border: 1px solid #cfe2ee; background: #fff; color: #4d6578; font-size: 11px; cursor: pointer; }
+  .g-keep.on { background: #fff4d6; border-color: #e6b84a; color: #8a6210; font-weight: 600; }
+  .g-kept { margin-top: 12px; padding: 8px 10px; border-radius: 9px; background: #fff8e6; color: #6b5414; font-size: 12px; }
+
+  /* ---------- toast + first sync ---------- */
+  .toast { position: absolute; left: 12px; bottom: calc(var(--fab-bottom) + 6px); z-index: 25; max-width: calc(100% - 90px);
+           background: #1d3446; color: #fff; padding: 8px 12px; border-radius: 10px; box-shadow: 0 6px 18px rgba(0,0,0,.25); font-size: 12.5px; animation: t-in .25s ease-out; }
+  @keyframes t-in { from { transform: translateY(8px); opacity: 0; } }
+  .fs { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px;
+        background: color-mix(in srgb, var(--paper) 92%, transparent); backdrop-filter: blur(3px); }
+  .fs-card { width: min(320px, 100%); background: #fbfdff; color: #1d3446; border-radius: 16px; overflow: hidden; box-shadow: 0 14px 40px rgba(20,60,90,.25); font: 13px/1.4 system-ui, sans-serif; }
+  .fs-art { height: 96px; } .fs-art svg { display: block; width: 100%; height: 100%; }
+  .fs-body { padding: 14px 18px 18px; }
+  .fs-body h3 { margin: 0; font: 600 19px "Shantell Sans", sans-serif; font-variation-settings: "INFL" 35; }
+  .fs-body p { margin: 2px 0 12px; color: #6c8295; }
+  .fs-body code { font: 12px "JetBrains Mono", monospace; color: #1f6d91; }
+  .fs-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+  .fs-steps li { display: grid; grid-template-columns: 20px 1fr auto; align-items: center; gap: 8px; color: #9db1c1; }
+  .fs-steps li.done, .fs-steps li.active { color: #1d3446; }
+  .fs-steps i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #c9dce8; display: grid; place-items: center; font: 700 10px system-ui; font-style: normal; }
+  .fs-steps li.done i { background: #2a87b0; border-color: #2a87b0; color: #fff; }
+  .fs-steps li.active i { border-color: #2a87b0; border-right-color: transparent; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .fs-steps small { color: #6c8295; font-variant-numeric: tabular-nums; }
+  .fs-bar { grid-column: 2 / 4; height: 6px; border-radius: 3px; background: #e3eef5; overflow: hidden; }
+  .fs-bar b { display: block; height: 100%; background: linear-gradient(90deg, #6fb6dc, #2a87b0); transition: width .18s; }
+
+  /* ---------- glacier button ---------- */
+  .glacier { --fab-bottom: 16px; }
+  .glacier[data-variant="A"], .glacier[data-variant="C"] { --fab-bottom: 58px; }
+  .glacier[data-variant="B"] { --fab-bottom: 6px; }
+  .g-fab { position: absolute; right: 14px; bottom: var(--fab-bottom); z-index: 15;
+           width: 48px; height: 48px; padding: 0; border: 2px solid #fff; border-radius: 50%; cursor: pointer; background: none;
+           box-shadow: 0 4px 14px rgba(15,50,80,.35); transition: transform .18s, box-shadow .18s; }
+  .g-fab:hover { transform: scale(1.08) rotate(-6deg); box-shadow: 0 6px 20px rgba(15,50,80,.45); }
+  .g-fab.open { transform: rotate(-12deg) scale(.92); box-shadow: 0 0 0 3px #2a87b0, 0 4px 14px rgba(15,50,80,.35); }
+  .g-fab svg { display: block; width: 100%; height: 100%; border-radius: 50%; }
+
+  /* ---------- settings panel ----------
+     Opens OUTSIDE the notebook, to the left of the sidebar, over the web page — the notebook keeps its size.
+     (In the real extension this is drawn on the page by a content script, right next to the sidebar.) */
+  .g-side { position: absolute; top: 0; bottom: 0; right: 100%; width: 260px; overflow: auto; z-index: 50;
+            background: #f7fbfe; color: #1d3446; border-left: 1px solid #d3e3ee; border-radius: 14px 0 0 14px;
+            box-shadow: -10px 0 30px rgba(20,60,90,.22); font: 13px/1.4 system-ui, sans-serif; }
+  .anim.g-side { animation: g-slide .3s cubic-bezier(.2,.9,.3,1.05); }
+  @keyframes g-slide { from { transform: translateX(40px); opacity: 0; } }
+  .g-hero { border-radius: 14px 0 0 0; }
+  .g-hero { position: sticky; top: 0; z-index: 4; height: 96px; overflow: hidden; box-shadow: 0 2px 8px rgba(20,60,90,.12); }   /* stays on top while you scroll the settings */
+  .g-hero svg { display: block; width: 100%; height: 100%; }
+  .g-hero h2 { position: absolute; left: 14px; top: 11px; margin: 0; font: 600 22px/1 "Shantell Sans", sans-serif; color: #fff;
+               font-variation-settings: "INFL" 40; text-shadow: 0 2px 8px rgba(15,50,80,.55); }
+  .g-hero h2 small { display: block; font: 10.5px system-ui; letter-spacing: .1em; text-transform: uppercase; margin-top: 4px; }
+  .g-close { position: absolute; top: 9px; right: 9px; width: 26px; height: 26px; border-radius: 50%; border: 0; cursor: pointer;
+             background: rgba(255,255,255,.85); color: #1d3446; font-size: 13px; line-height: 26px; }
+  .g-close:hover { background: #fff; }
+
+  .g-sec { border-bottom: 1px solid #e3edf4; }
+  .g-sec-hd { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; border: 0; background: none; cursor: pointer; text-align: left; color: #1d3446; }
+  .g-sec-hd:hover { background: #eef6fb; }
+  .g-sec-hd::before { content: ""; width: 4px; height: 4px; flex: none; background: #2a87b0; box-shadow: 4px 0 #8cc4e3, 0 4px #8cc4e3, 4px 4px #d4ebf7; margin: 0 4px 4px 0; }
+  .g-sec-hd b { font: 600 14.5px "Shantell Sans", sans-serif; }
+  .g-sec-hd small { margin-left: auto; color: #7c93a6; font-size: 11.5px; max-width: 45%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .g-sec-hd .chev { color: #7c93a6; transition: transform .2s; font-size: 11px; }
+  .g-sec.open .chev { transform: rotate(90deg); }
+  .g-sec-body { padding: 2px 14px 14px; }
+
+  .g-seg { display: flex; background: #e7f1f8; border-radius: 9px; padding: 3px; gap: 2px; margin-bottom: 12px; }
+  .g-seg button { flex: 1; border: 0; background: none; padding: 5px 4px; border-radius: 7px; cursor: pointer; color: #4d6578; font-size: 12.5px; }
+  .g-seg button.on { background: #fff; color: #1d3446; font-weight: 600; box-shadow: 0 1px 3px rgba(20,60,90,.15); }
+
+  .g-themes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .g-swatch { border: 0; padding: 0; background: none; cursor: pointer; text-align: left; color: inherit; min-width: 0; }
+  .g-swatch .pv { height: 62px; border-radius: 9px; padding: 5px 9px; position: relative; overflow: hidden; line-height: 22px;
+                  box-shadow: 0 1px 3px rgba(0,0,0,.18), inset 0 0 0 1px rgba(0,0,0,.06); transition: transform .15s, box-shadow .15s; }
+  .g-swatch .pv b { font-weight: inherit; font-size: 20px; position: relative; z-index: 1; }
+  .g-swatch .pv-art { position: absolute; left: 0; right: 0; bottom: 0; height: 58%; }
+  .g-swatch .pv-art svg { display: block; width: 100%; height: 100%; }
+  .g-swatch:hover .pv { transform: translateY(-2px); }
+  .g-swatch.on .pv { box-shadow: 0 0 0 2px #2a87b0, 0 5px 14px rgba(42,135,176,.35); }
+  .g-swatch .n { display: block; margin-top: 5px; font-size: 12px; }
+  .g-swatch.on .n { font-weight: 600; color: #2a87b0; }
+
+  .g-fonts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .g-chip { border: 1px solid #cfe2ee; background: #fff; border-radius: 999px; padding: 3px 12px; cursor: pointer; font-size: 15px; color: #1d3446; }
+  .g-chip:hover { background: #eef6fb; }
+  .g-chip.on { background: #2a87b0; border-color: #2a87b0; color: #fff; }
+
+  .g-size { display: flex; align-items: center; gap: 10px; }
+  .g-size input { flex: 1; accent-color: #2a87b0; }
+  .g-size .a1 { font-size: 12px; } .g-size .a2 { font-size: 20px; }
+  .g-size-val { display: flex; justify-content: space-between; margin-top: 6px; color: #7c93a6; font-size: 12px; }
+  .g-link { border: 0; background: none; color: #2a87b0; cursor: pointer; padding: 0; font-size: 12px; }
+
+  .g-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .g-switch { width: 38px; height: 22px; border-radius: 11px; border: 0; background: #c9dce8; position: relative; cursor: pointer; transition: background .2s; flex: none; }
+  .g-switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: left .2s; }
+  .g-switch.on { background: #2a87b0; } .g-switch.on::after { left: 19px; }
+
+  .g-layouts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .g-lay { border: 0; background: none; padding: 0; cursor: pointer; color: #1d3446; text-align: left; min-width: 0; }
+  .g-lay-pv { position: relative; border-radius: 9px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.16), inset 0 0 0 1px rgba(0,0,0,.05); transition: transform .15s, box-shadow .15s; }
+  .g-lay-pv svg { display: block; width: 100%; aspect-ratio: 3 / 3.4; }
+  .g-lay:hover .g-lay-pv { transform: translateY(-2px); }
+  .g-lay.on .g-lay-pv { box-shadow: 0 0 0 2px #2a87b0, 0 5px 14px rgba(42,135,176,.3); }
+  .g-lay .check { position: absolute; top: 5px; right: 5px; width: 18px; height: 18px; border-radius: 50%; background: #2a87b0; color: #fff; font: 700 11px/18px system-ui; text-align: center; font-style: normal; }
+  .g-lay b { display: block; margin-top: 6px; font-size: 12.5px; }
+  .g-lay small { display: block; color: #7c93a6; font-size: 11px; }
+  .g-lay.on b { color: #2a87b0; }
+
+  .g-field { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: #fff; border: 1px solid #d8e7f0; border-radius: 9px; padding: 8px 11px; margin-bottom: 8px; min-width: 0; }
+  .g-field span { color: #7c93a6; font-size: 12px; }
+  .g-field code { font: 11.5px "JetBrains Mono", monospace; color: #1d3446; overflow: hidden; text-overflow: ellipsis; }
+  .g-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 4px; }
+  .g-act { border: 0; border-radius: 9px; padding: 8px 4px; cursor: pointer; background: #e3f0f7; color: #1d3446; font-weight: 600; font-size: 12px; }
+  .g-act:hover { background: #d3e8f4; }
+  .g-act.primary { background: #2a87b0; color: #fff; }
+  .g-act.primary:hover { background: #237497; }
+  .g-act.wide { grid-column: 1 / -1; background: none; color: #2a87b0; font-weight: 500; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <section id="course">
+    <div id="urlbar">
+      <span class="url" id="url"></span>
+      <select id="page-pick" title="Pretend you navigate to another lesson"></select>
+    </div>
+    <div id="lesson"></div>
+  </section>
+  <div id="resizer" title="Drag to resize"></div>
+  <aside class="glacier" id="panel"></aside>
+</div>
+
+<script>
+/* ===================== mock data (in memory only) ===================== */
+const TOP = "The Odin Project – Foundations";
+const KHAN = "Khan – Algebra 1";
+
+const notes = {
+  "Flexbox basics": { type: "lesson", course: TOP, source: "theodinproject.com/lessons/foundations-introduction-to-flexbox", updated: 2, body:
+`A flex container lays its children out along the [[Main axis]]. By default that's a row, left to right. The other direction is the [[Cross axis]].
+
+![[Flexbox basics – sketch 1.svg]]
+
+## Things to remember
+- \`flex: 1\` is shorthand for grow, shrink, basis → see [[flex-grow]]
+- margins don't collapse inside flex — unlike the [[Box model]]
+- ? why does \`flex-basis\` beat \`width\`
+
+### Example
+\`\`\`
+.container {
+  display: flex;
+  gap: 1rem;
+}
+\`\`\`
+
+In my own words: the **parent** decides the direction, the **children** decide how much space they want.` },
+  "Growing and shrinking": { type: "lesson", course: TOP, source: "theodinproject.com/lessons/foundations-growing-and-shrinking", updated: 60, body:
+`Today: [[flex-grow]] and flex-shrink. Shrink only kicks in when there isn't enough room along the [[Main axis]].
+
+- \`flex-shrink: 0\` = "never squish me"` },
+  "Introduction (TOP Foundations)": { type: "lesson", course: TOP, source: "theodinproject.com/lessons/foundations-introduction", updated: 3000, body:
+`Starting the Foundations path. Plan: a lesson note per lesson, and a concept note for every new idea. First one: [[Box model]].` },
+  "Intro to variables": { type: "lesson", course: KHAN, source: "khanacademy.org/math/algebra/intro-variables", updated: 400, body:
+`A letter that stands for a number we don't know yet → [[Variables]].
+
+Funny: same word as variables in JavaScript, almost the same idea.` },
+  "Introduction (Khan Algebra)": { type: "lesson", course: KHAN, source: "khanacademy.org/math/algebra/introduction", updated: 5000, body:
+`Refreshing algebra so the JS maths stops scaring me.` },
+  "Main axis": { type: "concept", updated: 5, body:
+`The direction a flex container lays out its children. Set with \`flex-direction\`.
+
+Opposite: [[Cross axis]].` },
+  "Box model": { type: "concept", updated: 2900, body:
+`Every element is a box: content → padding → border → margin.
+
+\`box-sizing: border-box\` makes width include padding and border. Use it everywhere.` },
+  "flex-grow": { type: "concept", updated: 55, body:
+`How much of the **leftover** space along the [[Main axis]] an item takes. \`flex-grow: 1\` on every item → equal shares.` },
+  "Variables": { type: "concept", updated: 390, body:
+`A name that stands for a value. Algebra: an unknown number. JS: a named box holding a value — not the same box as the [[Box model]] :)` },
+};
+
+const pages = [
+  { url: "theodinproject.com/lessons/foundations-introduction-to-flexbox", site: "THE ODIN PROJECT", title: "Introduction to Flexbox", suggest: "Flexbox basics",
+    text: ["Flexbox is a way to arrange items into rows or columns. These items will flex (i.e. grow or shrink) based on some simple rules that you can define.",
+           "A flex container is any element that has display: flex on it. A flex item is any element that lives directly inside of a flex container.",
+           "Somewhat confusingly, any element can be both a flex container and a flex item."] },
+  { url: "theodinproject.com/lessons/foundations-axes", site: "THE ODIN PROJECT", title: "Axes", suggest: "Axes",
+    text: ["The most confusing thing about flexbox is that it can work either horizontally or vertically, and the rules change a bit depending on which direction you are working with.",
+           "The default direction for a flex container is horizontal, or row, but you can change the direction to vertical, or column."] },
+  { url: "khanacademy.org/math/algebra/intro-variables", site: "KHAN ACADEMY", title: "Intro to variables", suggest: "Intro to variables",
+    text: ["A variable is a symbol, usually a letter, that represents a value that can change or that we don't know yet.",
+           "In this video we'll look at why mathematicians use letters like x and y."] },
+];
+
+/* ===================== pixel art ===================== */
+// Every scene = smooth background (sky, sun, water, sand) + a layer of hand-placed pixels (ice, trees, rock…).
+let uid = 0;
+function Px() {
+  const g = new Map();
+  return {
+    set(x, y, c) { if (x >= 0 && y >= 0 && c) g.set(y * 1000 + x, c); },
+    has(x, y) { return g.has(y * 1000 + x); },
+    each(fn) { g.forEach((c, k) => fn(k % 1000, Math.floor(k / 1000), c)); },
+    rects(W, H) {                       // merge horizontal runs of one colour into a single <rect>
+      let out = "";
+      for (let y = 0; y < H; y++) {
+        let run = null;
+        const flush = () => { if (run) out += `<rect x="${run.x}" y="${y}" width="${run.w}" height="1" fill="${run.c}"/>`; run = null; };
+        for (let x = 0; x < W; x++) {
+          const c = g.get(y * 1000 + x);
+          if (run && run.c === c) run.w++; else { flush(); if (c) run = { x, w: 1, c }; }
+        }
+        flush();
+      }
+      return out;
+    },
+  };
+}
+// Pixel reflection in water: mirrored, every other row only — the classic pixel-art shimmer.
+function reflect(px, base, H) {
+  const r = Px();
+  px.each((x, y, c) => { if (y < base) { const ry = 2 * base - 1 - y; if (ry < H && (ry - base) % 2 === 0) r.set(x, ry, c); } });
+  return r;
+}
+const JIT = [0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 2, 1, 0];
+const pxLayer = (px, W, H, extra = "") => `<g shape-rendering="crispEdges" ${extra}>${px.rects(W, H)}</g>`;
+const lin = (id, stops, vertical = true) => `<linearGradient id="${id}" x1="0" y1="0" x2="${vertical ? 0 : 1}" y2="${vertical ? 1 : 0}">${stops.map(([o, c, a = 1]) => `<stop offset="${o}" stop-color="${c}" stop-opacity="${a}"/>`).join("")}</linearGradient>`;
+const glow = (id, c) => `<radialGradient id="${id}"><stop offset="0" stop-color="${c}"/><stop offset=".35" stop-color="${c}" stop-opacity=".85"/><stop offset="1" stop-color="${c}" stop-opacity="0"/></radialGradient>`;
+
+function mountains(px, W, base, peaks, pal) {
+  for (let x = 0; x < W; x++) {
+    let top = Infinity, p = null;
+    for (const q of peaks) {
+      const dx = Math.abs(x - q.x), t = q.top + Math.round(dx * (q.s || 1)) + (dx > 1 ? JIT[(x * 7 + q.x) % JIT.length] : 0);   // q.s = steepness
+      if (t < top) { top = t; p = q; }
+    }
+    for (let y = Math.max(0, top); y < base; y++) {
+      const d = y - top, lit = x <= p.x, f = d / Math.max(1, base - top), tone = f < .34 ? 0 : f < .67 ? 1 : 2;
+      const snowDepth = pal.snow ? 2 + JIT[(x * 5 + 3) % JIT.length] : 0;
+      let c;
+      if (d < snowDepth && y < base - 4) c = lit ? pal.snow : pal.snowS;
+      else if (lit && d >= 3 && (x + y) % 7 === 0) c = pal.streakL;
+      else if (!lit && d >= 3 && (x - y + 700) % 6 === 0) c = pal.streakS;
+      else c = (lit ? pal.lit : pal.shade)[tone];
+      px.set(x, y, c);
+    }
+  }
+}
+
+// Scenes work at any width: features (peaks, trees, boats, cacti…) are placed every so many pixels with
+// seeded variation, so a wider picture shows MORE landscape instead of a stretched one.
+const rnd = i => { const s = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return s - Math.floor(s); };
+const sunX = W => Math.min(W * .82, 96);
+// smooth 1-D value noise: gentle, irregular ups and downs (used for ranges and dunes)
+const noise = (x, seed, scale) => { const i = Math.floor(x / scale), f = x / scale - i, a = rnd(i + seed * 101), b = rnd(i + 1 + seed * 101), t = f * f * (3 - 2 * f); return a + (b - a) * t; };
+const scenes = {
+  glacier(W, H) {
+    const id = "s" + (++uid), base = Math.round(H * .68), px = Px(), far = Px();
+    const pal = { snow: "#ffffff", snowS: "#d0e6f5", lit: ["#eaf6fd", "#d8edf9", "#c5e2f4"], shade: ["#acd3eb", "#96c5e3", "#80b6da"], streakL: "#bcdcf0", streakS: "#6ea6cf" };
+    if (W <= 20) mountains(px, W, base, [{ x: Math.round(W * .38), top: Math.round(H * .14) }, { x: Math.round(W * .76), top: Math.round(H * .36) }], pal);
+    else {
+      // 1. a hazy far range behind, from smooth noise (no two stretches alike)
+      let prev = 0;
+      for (let x = 0; x < W; x++) {
+        const farH = t => H * (.16 + .3 * noise(t, 3, 11) + .1 * noise(t, 7, 3)), want = Math.round(farH(x));
+        const top = x ? Math.max(prev - 1, Math.min(prev + 1, want)) : want;     // at most 1 pixel per column: soft ridges
+        const lit = farH(x + 2) <= farH(x - 2);      // shade by the smooth slope, not per column
+        for (let y = top; y < base; y++) far.set(x, y, y - top < 1 ? "#eef5fa" : lit ? "#dce9f2" : "#cddeeb");
+        prev = top;
+      }
+      // 2. the near peaks: uneven spacing, height AND steepness vary per peak, some gaps left open
+      const peaks = [];
+      for (let i = 0, x = 7; x < W + 14; i++, x += 12 + Math.round(rnd(i) * 22)) {
+        if (rnd(i + 300) < .18) continue;
+        peaks.push({ x, top: Math.round(H * (.1 + rnd(i + 50) * .34)), s: .7 + rnd(i + 120) * .9 });
+      }
+      mountains(px, W, base, peaks, pal);
+      // 3. glacier tongues: flat ice shelves reaching the water, ending in a blue ice cliff
+      for (let i = 0, x = 22 + Math.round(rnd(5) * 20); x < W; i++, x += 60 + Math.round(rnd(i + 200) * 90)) {
+        const w = 12 + Math.round(rnd(i + 210) * 16), top = base - 3 - Math.round(rnd(i + 220) * 2);
+        for (let xx = x; xx < x + w; xx++) for (let y = top; y < base; y++)
+          px.set(xx, y, y === top ? "#ffffff" : y === top + 1 ? "#e3f1fa" : (xx - x) % 3 === 0 ? "#79abd2" : "#a3cce8");
+      }
+    }
+    for (let x = 0; x < W; x++) if (px.has(x, base - 1) && x % 4 !== 1) px.set(x, base, "#e6f4fc");     // foam at the shore
+    // 4. icebergs in a few different shapes and sizes
+    const bergs = [["..W..", ".WWS.", "WWWSS"], ["W...", "WW..", "WWWS"], [".WW", "WWS"], ["...W.", "..WWS", ".WWWS", "WWWSS"], ["WWS"]];
+    for (let i = 0, x = 7; x < W; i++, x += 18 + Math.round(rnd(i + 9) * 40)) {
+      const b = bergs[Math.floor(rnd(i + 400) * bergs.length)], y = base + 2 + Math.round(rnd(i + 3) * (H - base - 3));
+      b.forEach((row, r) => [...row].forEach((ch, c) => px.set(x + c, y - b.length + 1 + r, { W: "#ffffff", S: "#cfe6f5" }[ch])));
+    }
+    const refl = reflect(px, base, H);
+    return { W, H, body: `<defs>${lin(id + "s", [[0, "#86bde2"], [.7, "#d9eef9"], [1, "#fbf1e2"]])}${glow(id + "g", "#fff6d6")}${lin(id + "w", [[0, "#5fa2cd"], [1, "#1f527d"]])}</defs>
+      <rect width="${W}" height="${H}" fill="url(#${id}s)"/><circle cx="${sunX(W)}" cy="${H * .24}" r="${H * .24}" fill="url(#${id}g)"/>
+      ${pxLayer(far, W, H)}
+      <rect y="${base}" width="${W}" height="${H - base}" fill="url(#${id}w)"/>${pxLayer(refl, W, H, 'opacity=".2"')}${pxLayer(px, W, H)}` };
+  },
+  forest(W, H) {
+    const id = "s" + (++uid), ground = Math.round(H * .78), px = Px();
+    const pine = (x0, baseY, h, light, dark, trunk) => {
+      for (let r = 0; r < h - 1; r++) {
+        const half = Math.min(4, Math.floor(r / 3) + (r % 3)), y = baseY - h + 1 + r;
+        for (let x = x0 - half; x <= x0 + half; x++) px.set(x, y, x <= x0 ? light : dark);
+      }
+      px.set(x0, baseY, trunk);
+    };
+    for (let i = 0, x = 2; x < W + 4; i++, x += 4 + Math.round(rnd(i) * 4)) pine(x, ground - 2, 5 + Math.round(rnd(i + 30) * 3), "#9cc79a", "#83b383", "#8a6a4a");
+    for (let i = 0, x = 5; x < W + 4; i++, x += 8 + Math.round(rnd(i + 70) * 8)) pine(x, ground + 1, 8 + Math.round(rnd(i + 90) * 3), "#4f8f4c", "#3a723c", "#6b4a2f");
+    for (let x = 1; x < W; x += 5) px.set(x, H - 2, x % 3 ? "#f4d35e" : "#ffffff");
+    const hills = Array.from({ length: Math.ceil(W / 40) + 1 }, (_, i) => `<ellipse cx="${i * 40 + 10}" cy="${ground + 2}" rx="${28 + rnd(i) * 14}" ry="${H * (.18 + rnd(i + 4) * .1)}" fill="${i % 2 ? "#a9cf9c" : "#b6d6aa"}"/>`).join("");
+    return { W, H, body: `<defs>${lin(id + "s", [[0, "#bfe1da"], [1, "#f1f6e4"]])}${glow(id + "g", "#fff7d9")}${lin(id + "m", [[0, "#8dbb7c"], [1, "#5f9152"]])}</defs>
+      <rect width="${W}" height="${H}" fill="url(#${id}s)"/><circle cx="${sunX(W)}" cy="${H * .22}" r="${H * .22}" fill="url(#${id}g)"/>
+      ${hills}<rect y="${ground}" width="${W}" height="${H - ground}" fill="url(#${id}m)"/>${pxLayer(px, W, H)}` };
+  },
+  ocean(W, H) {
+    const id = "s" + (++uid), hz = Math.round(H * .45), px = Px(), sx = Math.round(sunX(W));
+    for (let y = hz + 2; y < H; y += 3) for (let x = 0; x < W; x++) { const k = (x * 3 + y * 5) % 17; if (k === 0) { px.set(x, y, "#d9f0f8"); px.set(x + 1, y, "#d9f0f8"); } else if (k === 9) px.set(x, y, "#8fcbe3"); }
+    for (let y = hz + 1; y < H; y += 2) { const w = 1 + ((y * 3) % 3); for (let i = -w; i <= w; i++) px.set(sx + i, y, "#fff3c4"); }
+    const boat = (bx, by) => ["....W....", "....WS...", "...WWSS..", "..WWWSSS.", "....M....", "HHHHHHHHH", ".hhhhhhh."].forEach((row, r) =>
+      [...row].forEach((ch, c) => px.set(bx - 4 + c, by - 6 + r, { W: "#ffffff", S: "#dce9f1", M: "#6b4f3a", H: "#c0583a", h: "#8e3f22" }[ch])));
+    for (let i = 0, x = Math.max(6, Math.round(W * .22)); x < W; i++, x += 70 + Math.round(rnd(i) * 60)) boat(x, hz + 3 + Math.round(rnd(i + 8) * 2));
+    for (let i = 0, x = Math.round(W * .42); x < W; i++, x += 18 + Math.round(rnd(i + 20) * 30)) {   // gulls
+      const y = Math.round(H * (.08 + rnd(i + 40) * .14)); px.set(x, y, "#5b6b78"); px.set(x + 1, y + 1, "#5b6b78"); px.set(x + 2, y, "#5b6b78");
+    }
+    return { W, H, body: `<defs>${lin(id + "s", [[0, "#9fd2ec"], [1, "#eaf6fb"]])}${glow(id + "g", "#fff4cf")}${lin(id + "w", [[0, "#4aa3c7"], [1, "#16577d"]])}</defs>
+      <rect width="${W}" height="${H}" fill="url(#${id}s)"/><circle cx="${sx}" cy="${H * .2}" r="${H * .26}" fill="url(#${id}g)"/>
+      <rect y="${hz}" width="${W}" height="${H - hz}" fill="url(#${id}w)"/>${pxLayer(px, W, H)}` };
+  },
+  desert(W, H) {
+    const id = "s" + (++uid), px = Px(), far = Px();
+    // 1. distant mesas (flat-topped rocks with stepped sides), irregularly spaced
+    if (W > 30) for (let i = 0, x = 6 + Math.round(rnd(77) * 20); x < W; i++, x += 34 + Math.round(rnd(i + 30) * 70)) {
+      const w = 6 + Math.round(rnd(i + 31) * 16), top = Math.round(H * (.36 + rnd(i + 32) * .14)), foot = Math.round(H * .72);
+      for (let xx = x - 3; xx <= x + w + 3; xx++) {
+        const t = top + (xx < x ? (x - xx) * 2 : xx > x + w ? (xx - x - w) * 2 : 0);
+        for (let y = t; y < foot; y++) far.set(xx, y, y === t && xx >= x && xx <= x + w ? "#efcfaa" : xx < x + w * .4 ? "#e2b48c" : "#d4a17a");
+      }
+    }
+    // 2. dunes from layered noise, so no two stretches repeat
+    const back = x => H * .6 + 4.4 * (noise(x, 11, 16) - .5) + 1.4 * Math.sin(x / 5.3 + noise(x, 12, 30) * 6);
+    const front = x => H * .8 + 3.2 * (noise(x, 21, 11) - .5) + .9 * Math.sin(x / 3.7 + noise(x, 22, 25) * 6);
+    const dune = (fn, lit, shade, ripple) => {
+      for (let x = 0; x < W; x++) {
+        const h = Math.round(fn(x)), isLit = fn(x + 1.5) - fn(x - 1.5) <= 0, wob = Math.floor(noise(x, 5, 6) * 3);   // shade by the smooth slope: no stripes
+        for (let y = h; y < H; y++) px.set(x, y, ripple && y > h + 1 && (x * 2 + y + wob) % 11 === 0 ? ripple : isLit ? lit : shade);
+      }
+    };
+    dune(back, "#ebc48c", "#d6a66a");
+    // 3. a small camel caravan on the far dune ridge (only where there's room)
+    const camel = [".......C.", "..CC..CC.", ".CCCCCC..", "CCCCCCC..", ".C.C.C.C.", ".C.C.C.C."];
+    for (const cx of [150, 430, 610]) if (cx + 30 < W) for (let k = 0; k < 3; k++) {
+      const x0 = cx + k * 11, y0 = Math.round(back(x0 + 4)) - camel.length;
+      camel.forEach((row, r) => [...row].forEach((ch, c) => ch === "C" && px.set(x0 + c, y0 + r, "#9a6a45")));
+    }
+    dune(front, "#f3d39d", "#deb173", "#d9a865");
+    // 4. plants and rocks: tall saguaros, round barrel cacti, dry bushes, stones — mixed at random gaps
+    const saguaro = h => ["...G...", ".G.G...", ".G.G.G.", ".GGG.G.", "...GGG.", ...Array(h - 5).fill("...G...")];
+    const kinds = {
+      saguaro: i => saguaro(6 + Math.round(rnd(i + 95) * 3)),
+      barrel: () => [".GG.", "GGGG", "GGGG"],
+      bush: () => ["B.B.B", ".BBB."],
+      rock: () => [".RR.", "RRRR"],
+    };
+    const colors = { G: ["#5c9a55", "#467f43"], B: ["#a88a5a", "#8d7046"], R: ["#b9a08a", "#9c8370"] };
+    for (let i = 0, x = Math.round(Math.min(W * .78, 24)); x < W + 4; i++, x += 14 + Math.round(rnd(i + 90) * 46)) {
+      const r = rnd(i + 91), kind = r < .34 ? "saguaro" : r < .56 ? "barrel" : r < .8 ? "bush" : "rock";
+      const spr = kinds[kind](i), base = Math.round(front(x + 2));
+      spr.forEach((row, ry) => [...row].forEach((ch, c) => ch !== "." && px.set(x + c, base - spr.length + ry + 1, colors[ch][c < row.length / 2 ? 0 : 1])));
+    }
+    const sx = Math.min(W * .3, 40);
+    return { W, H, body: `<defs>${lin(id + "s", [[0, "#f3c48a"], [.75, "#fbe6c8"], [1, "#fdf0dc"]])}${glow(id + "g", "#fff1c4")}</defs>
+      <rect width="${W}" height="${H}" fill="url(#${id}s)"/><circle cx="${sx}" cy="${H * .32}" r="${H * .3}" fill="url(#${id}g)"/><circle cx="${sx}" cy="${H * .32}" r="${H * .1}" fill="#fff7dc"/>
+      ${pxLayer(far, W, H, 'opacity=".75"')}${pxLayer(px, W, H)}` };
+  },
+  volcano(W, H) {
+    const id = "s" + (++uid), base = Math.round(H * .86), px = Px(), crater = Math.round(H * .3);
+    const cones = [];
+    for (let i = 0, x = Math.round(Math.min(W * .45, 40)); x < W + 20; i++, x += 90 + Math.round(rnd(i) * 70)) cones.push({ x, crater: i ? crater + 3 + Math.round(rnd(i + 3) * 3) : crater, lava: i % 2 === 0 });
+    const hills = [];
+    for (let i = 0, x = 8; x < W; i++, x += 24 + Math.round(rnd(i + 60) * 20)) hills.push({ x, top: Math.round(H * (.55 + rnd(i + 80) * .12)) });
+    mountains(px, W, base, hills, { snow: null, lit: ["#9a8a84", "#8b7b75", "#7d6e68"], shade: ["#76665f", "#6a5b55", "#5f514b"], streakL: "#a59690", streakS: "#55473f" });
+    for (const c of cones) {
+      for (let x = c.x - 30; x <= c.x + 30; x++) {
+        const dx = Math.abs(x - c.x), top = dx <= 2 ? c.crater : c.crater + (dx - 2) + JIT[(x * 5 + 40) % JIT.length];
+        for (let y = top; y < base; y++) {
+          const f = (y - top) / Math.max(1, base - top), tone = f < .4 ? 0 : 1, lit = x <= c.x;
+          px.set(x, y, (lit ? ["#7c6862", "#6a5853"] : ["#54453f", "#463a35"])[tone]);
+        }
+        if (dx <= 2) px.set(x, c.crater, c.lava ? (dx === 0 ? "#ffd27a" : "#ff8a1f") : "#3b302c");
+      }
+      if (c.lava) for (let k = 0; c.crater + 1 + k < base; k++) { const x = c.x + 2 + Math.floor(k * .55); px.set(x, c.crater + 1 + k, k % 3 === 0 ? "#ffb347" : "#ff6a00"); if (k % 2) px.set(x + 1, c.crater + 1 + k, "#c2410c"); }
+    }
+    const smoke = cones.filter(c => c.lava).map(c => `<circle cx="${c.x + 2}" cy="${c.crater - H * .12}" r="${H * .1}"/><circle cx="${c.x + 8}" cy="${c.crater - H * .24}" r="${H * .13}"/><circle cx="${c.x + 16}" cy="${c.crater - H * .3}" r="${H * .11}"/>`).join("");
+    const glows = cones.filter(c => c.lava).map(c => `<circle cx="${c.x}" cy="${c.crater}" r="${H * .22}" fill="url(#${id}g)" opacity=".55"/>`).join("");
+    return { W, H, body: `<defs>${lin(id + "s", [[0, "#e4d6cf"], [1, "#f8f0e8"]])}${glow(id + "g", "#ff9a3c")}<filter id="${id}b"><feGaussianBlur stdDeviation="${H * .05}"/></filter>${lin(id + "d", [[0, "#5b4a44"], [1, "#3b302c"]])}</defs>
+      <rect width="${W}" height="${H}" fill="url(#${id}s)"/>
+      <g filter="url(#${id}b)" fill="#b4a6a1" opacity=".75">${smoke}</g>${glows}
+      <rect y="${base}" width="${W}" height="${H - base}" fill="url(#${id}d)"/>${pxLayer(px, W, H)}` };
+  },
+  aurora(W, H) {
+    const id = "s" + (++uid), base = Math.round(H * .74), px = Px();
+    for (let i = 0; i < Math.round(W * .5); i++) px.set(Math.floor(rnd(i) * W), Math.floor(rnd(i + 500) * H * .5), i % 3 ? "#a9b8d6" : "#eef4ff");
+    const peaks = [];
+    for (let i = 0, x = 6; x < W + 10; i++, x += 16 + Math.round(rnd(i + 7) * 16)) peaks.push({ x, top: Math.round(H * (.3 + rnd(i + 70) * .22)) });
+    mountains(px, W, base, peaks, { snow: "#a9bdd8", snowS: "#7d91b0", lit: ["#26344f", "#1f2c45", "#1a263c"], shade: ["#18233a", "#141e33", "#111a2d"], streakL: "#2c3b58", streakS: "#0f1729" });
+    const refl = reflect(px, base, H);
+    const wave = (y, amp, step) => { let d = `M0 ${y}`; for (let x = 0; x < W + step; x += step) d += ` Q ${x + step / 2} ${y + (Math.floor(x / step) % 2 ? amp : -amp)} ${x + step} ${y}`; return d; };
+    const band = (y, amp, op) => `<path d="${wave(y, amp, 24)}" stroke="url(#${id}a)" stroke-width="${H * .12}" fill="none" opacity="${op}"/>`;
+    return { W, H, body: `<defs>${lin(id + "s", [[0, "#0b1324"], [1, "#1d2d48"]])}<linearGradient id="${id}a" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="72" y2="0" spreadMethod="reflect"><stop offset="0" stop-color="#5cf2b0"/><stop offset=".5" stop-color="#4cc3e0"/><stop offset="1" stop-color="#a07cf0"/></linearGradient>${lin(id + "l", [[0, "#122039"], [1, "#070d1a"]])}<filter id="${id}b"><feGaussianBlur stdDeviation="${H * .04}"/></filter></defs>
+      <rect width="${W}" height="${H}" fill="url(#${id}s)"/>
+      <g filter="url(#${id}b)">${band(H * .25, H * .1, .55)}${band(H * .38, H * .07, .35)}</g>
+      <rect y="${base}" width="${W}" height="${H - base}" fill="url(#${id}l)"/>
+      ${pxLayer(refl, W, H, 'opacity=".35"')}${pxLayer(px, W, H)}` };
+  },
+};
+const svgOf = (a, attrs = "") => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${a.W} ${a.H}" preserveAspectRatio="xMidYMax slice" ${attrs}>${a.body}</svg>`;
+const svgUrl = svg => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+// A nature theme's picture on the paper: a long, faint panorama along the bottom edge, left to right.
+// It has a fixed height, so a wider notebook shows MORE of the landscape rather than a bigger picture.
+// It fades out towards the top, and the note leaves room below the last line, so text stays clear.
+const STRIP_W = 640, STRIP_H = 24, STRIP_PX = 3;          // 3 screen pixels per art pixel
+const strip = (name, opacity) => { const a = scenes[name](STRIP_W, STRIP_H); return `<svg xmlns="http://www.w3.org/2000/svg" width="${STRIP_W * STRIP_PX}" height="${STRIP_H * STRIP_PX}" viewBox="0 0 ${STRIP_W} ${STRIP_H}">
+  <defs><linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".55" stop-color="#fff"/></linearGradient>
+  <mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="${STRIP_W}" height="${STRIP_H}"><rect width="${STRIP_W}" height="${STRIP_H}" fill="url(#fade)"/></mask></defs>
+  <g mask="url(#m)" opacity="${opacity}">${a.body}</g></svg>`; };
+
+const GLACIER_ICON = (() => {
+  const a = scenes.glacier(16, 16);
+  return `<svg viewBox="0 0 16 16" aria-hidden="true"><defs><clipPath id="gi"><circle cx="8" cy="8" r="8"/></clipPath></defs><g clip-path="url(#gi)">${svgOf(a, 'width="16" height="16"')}</g></svg>`;
+})();
+
+/* ===================== themes + fonts ===================== */
+const ruled = (rgba, lh = "var(--lh)") => `repeating-linear-gradient(to bottom, transparent 0 calc(${lh} - 1px), ${rgba} calc(${lh} - 1px) ${lh})`;
+function nature(name, scene, font, v, lines, tint) {
+  return { name, group: "nature", scene, font, v: { ...v,
+    pattern: `${svgUrl(strip(scene, scene === "aurora" ? .4 : .3))}, linear-gradient(to bottom, ${tint}, transparent 140px), ${ruled(lines)}`,
+    "pattern-size": `auto ${STRIP_H * STRIP_PX}px, auto, auto`, "pattern-repeat": "no-repeat, no-repeat, repeat",
+    "pattern-pos": "left bottom, 0 0, 0 var(--line-shift)", "pattern-attach": "scroll, local, local" } };
+}
+const themes = {
+  glacier: nature("Glacier", "glacier", "shantell", { paper: "#f5f9fc", chrome: "#e6f0f6", ink: "#1d3446", muted: "#7c93a6", accent: "#2a87b0", missing: "#c8553d", line: "#d3e3ee" }, "rgba(120,175,210,.2)", "rgba(170,210,235,.35)"),
+  forest:  nature("Forest", "forest", "patrick", { paper: "#f5f8f0", chrome: "#e7eedf", ink: "#22301f", muted: "#7b8a72", accent: "#3f7d3a", missing: "#b5523b", line: "#d5dfc9" }, "rgba(100,140,90,.18)", "rgba(190,220,180,.35)"),
+  ocean:   nature("Ocean", "ocean", "shantell", { paper: "#f3f8fa", chrome: "#e1edf2", ink: "#12344a", muted: "#6f8c9c", accent: "#0e7c9a", missing: "#c4513b", line: "#cfe2ea" }, "rgba(90,150,180,.18)", "rgba(160,215,235,.35)"),
+  desert:  nature("Desert", "desert", "caveat", { paper: "#fbf5ea", chrome: "#f3e8d4", ink: "#3d2c1c", muted: "#9a8467", accent: "#c0702a", missing: "#a83a2a", line: "#ead8bb" }, "rgba(190,150,90,.2)", "rgba(245,205,150,.35)"),
+  volcano: nature("Volcano", "volcano", "kalamLight", { paper: "#f8f3ef", chrome: "#efe4dd", ink: "#2c2220", muted: "#8f7b74", accent: "#c2410c", missing: "#9f1d1d", line: "#e5d3c9" }, "rgba(150,110,95,.17)", "rgba(240,190,160,.3)"),
+  aurora:  nature("Aurora", "aurora", "shantell", { paper: "#18202e", chrome: "#121926", ink: "#e4ecf5", muted: "#8796ab", accent: "#7fe0c0", missing: "#f49a8a", line: "#2a3446" }, "rgba(140,170,220,.12)", "rgba(90,200,170,.12)"),
+
+  blank:     { name: "Blank Page", group: "classic", font: "shantell", v: { paper: "#fbf9f4", chrome: "#f1eee6", ink: "#2b2a27", muted: "#8a857a", accent: "#3b5b8c", missing: "#b4473a", line: "#e2ddd0", pattern: "none" } },
+  school:    { name: "School Notebook", group: "classic", font: "patrick", v: { paper: "#ffffff", chrome: "#f3f5f9", ink: "#1f2f5c", muted: "#7d879c", accent: "#c0392b", missing: "#c0392b", line: "#dde2ec", "pad-left": "52px",
+               pattern: `linear-gradient(90deg, transparent 39px, rgba(214,80,80,.5) 39px 40px, transparent 40px), ${ruled("rgba(90,130,200,.3)")}`, "pattern-pos": "0 0, 0 var(--line-shift)" } },
+  chalk:     { name: "Chalkboard", group: "classic", font: "kalam", v: { paper: "#2f3b36", chrome: "#27312d", ink: "#e9ece4", muted: "#9aa79f", accent: "#f2e3a0", missing: "#f0a08a", line: "#44514b", pattern: "none" } },
+  moleskine: { name: "Moleskine", group: "classic", font: "kalamLight", v: { paper: "#f4ecd8", chrome: "#ebe1c9", ink: "#1e1b16", muted: "#8c7f66", accent: "#7a1f2b", missing: "#a0522d", line: "#dccfae", pattern: ruled("rgba(120,100,60,.13)"), "pattern-pos": "0 var(--line-shift)" } },
+  engineer:  { name: "Engineer", group: "classic", font: "architects", v: { paper: "#eef5e6", chrome: "#e2ecd8", ink: "#3a3d38", muted: "#7f8a78", accent: "#d0661c", missing: "#b23c1e", line: "#cddcc0",
+               pattern: "linear-gradient(rgba(70,140,70,.35) 1px, transparent 1px), linear-gradient(90deg, rgba(70,140,70,.35) 1px, transparent 1px), linear-gradient(rgba(70,140,70,.15) 1px, transparent 1px), linear-gradient(90deg, rgba(70,140,70,.15) 1px, transparent 1px)",
+               "pattern-size": "calc(var(--lh) * 5) calc(var(--lh) * 5), calc(var(--lh) * 5) calc(var(--lh) * 5), var(--lh) var(--lh), var(--lh) var(--lh)", "pattern-pos": "0 var(--line-shift)" } },
+};
+const THEME_VARS = ["paper", "chrome", "ink", "muted", "accent", "missing", "line", "pattern", "pattern-size", "pattern-repeat", "pattern-pos", "pattern-attach", "pad-left"];
+const fonts = {
+  shantell:   { name: "Shantell Sans",       family: '"Shantell Sans", sans-serif', fw: 400, fs: 15 },
+  patrick:    { name: "Patrick Hand",        family: '"Patrick Hand", cursive', fw: 400, fs: 18 },
+  kalam:      { name: "Kalam",               family: '"Kalam", cursive', fw: 400, fs: 16 },
+  kalamLight: { name: "Kalam Light",         family: '"Kalam", cursive', fw: 300, fs: 16 },
+  caveat:     { name: "Caveat",              family: '"Caveat", cursive', fw: 400, fs: 21 },
+  architects: { name: "Architects Daughter", family: '"Architects Daughter", cursive', fw: 400, fs: 14.5 },
+};
+const pickableFonts = Object.keys(fonts).filter(k => k !== "kalam");
+
+const variants = { A: "Drawer", B: "Bottom tabs", C: "Breadcrumb", D: "Split", E: "Index tabs", F: "Home", G: "Note tabs", H: "Zen", I: "Icon rail", J: "Course path" };
+const variantInfo = { A: "Note fills the panel", B: "Tabs at the bottom", C: "Path on top, Ctrl K", D: "List always visible", E: "Binder tabs on the edge", F: "Start page with cards", G: "Open notes as tabs", H: "Just the page + one pill", I: "Icons on the left edge", J: "Lessons as a path" };
+
+/* ===================== state ===================== */
+const params = new URLSearchParams(location.search);
+const state = {
+  variant: variants[params.get("variant")] ? params.get("variant") : "A",
+  theme: themes[params.get("theme")] ? params.get("theme") : "glacier", fontOverride: "", textScale: 1,
+  page: 0, current: "Flexbox basics",
+  blocks: [], active: null,
+  lastCourse: TOP, sync: 0,
+  drawer: false, tab: "note", view: "note", palette: false, query: "", filter: "", hi: 0,
+  inside: params.has("inside"),   // prototype switch: true = the browser does NOT let Glacier draw outside the sidebar
+  settings: params.has("settings"), settingsAnim: false,
+  sections: { paper: !params.has("layouts"), writing: !params.has("layouts"), shortcuts: false, layout: params.has("layouts"), repo: false, proto: !params.has("layouts") },
+  themeGroup: null,
+  cheat: { on: true, collapsed: !params.has("cheat") },   // starts as a slim tab on the sidebar edge
+  firstSync: null, toast: null,
+  etab: null, home: false, fcourse: null, tabs: [], gpicker: false, hmenu: false, hlinks: false, rail: null,   // E–J layouts
+  splitPx: null,     // Split layout: height of the list, set by dragging the handle
+  keep: new Set(params.has("layouts") ? ["H", "A", "J"] : []),                                                                                              // layouts you marked "keep"
+};
+const syncStates = [
+  ["synced", "Synced · 2 min ago"], ["syncing", "Syncing…"],
+  ["offline", "Offline · saved locally"], ["conflict", "1 conflict copy"],
+];
+
+/* ===================== helpers ===================== */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const attr = esc;
+const cur = () => notes[state.current];
+const backlinks = t => Object.keys(notes).filter(k => k !== t && notes[k].body.includes(`[[${t}]]`));
+const courses = () => [...new Set(Object.values(notes).filter(n => n.type === "lesson").map(n => n.course))];
+const lessonsOf = c => Object.keys(notes).filter(k => notes[k].course === c).sort();
+const concepts = () => Object.keys(notes).filter(k => notes[k].type === "concept").sort((a, b) => a.localeCompare(b));
+const noteForPage = () => Object.keys(notes).find(k => notes[k].source === pages[state.page].url);
+const shortCourse = c => c === TOP ? "TOP Foundations" : c === KHAN ? "Khan Algebra" : c;
+const words = () => (cur().body.match(/\S+/g) || []).length;
+
+function metaHtml(n = cur()) {
+  if (n.type === "lesson") return `<span class="meta">${esc(n.course)} · <a href="#" onclick="return false">source ↗</a></span>`;
+  return `<span class="meta">Concept</span>`;
+}
+function syncHtml(dotOnly = false) {
+  const [k, label] = syncStates[state.sync];
+  return `<button class="sync sync-${k}" data-action="cycle-sync" title="${label} (click to fake another state)"><i></i>${dotOnly ? "" : label}</button>`;
+}
+function bannerHtml() {
+  if (noteForPage()) return "";
+  return `<div class="banner"><span class="grow">No note for this page yet.</span><button class="btn" data-action="new-lesson">+ Lesson note</button></div>`;
+}
+function treeHtml(filter = "") {
+  const f = filter.toLowerCase(); const match = t => !f || t.toLowerCase().includes(f);
+  let h = `<div class="tree"><div class="section">Courses</div>`;
+  for (const c of courses()) {
+    const ls = lessonsOf(c).filter(match);
+    if (!ls.length) continue;
+    h += `<details open><summary>${esc(c)}</summary>${ls.map(t => `<a class="${t === state.current ? "cur" : ""}" data-open="${attr(t)}">${esc(t)}</a>`).join("")}</details>`;
+  }
+  const cs = concepts().filter(match);
+  h += `<div class="section">Concepts</div><div class="concepts">${cs.map(t => `<a class="${t === state.current ? "cur" : ""}" data-open="${attr(t)}">${esc(t)}</a>`).join("") || `<span class="muted" style="padding:0 8px">none</span>`}</div></div>`;
+  return h;
+}
+function searchHits(q) {
+  q = q.trim().toLowerCase(); if (!q) return [];
+  return Object.keys(notes).filter(t => (t + " " + notes[t].body).toLowerCase().includes(q))
+    .sort((a, b) => (b.toLowerCase().includes(q)) - (a.toLowerCase().includes(q)));
+}
+function resultsHtml(q, withCreate = false) {
+  const hits = searchHits(q);
+  const mark = s => esc(s).replace(new RegExp(esc(q.trim()).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "ig"), m => `<mark>${m}</mark>`);
+  let h = `<div class="results">`;
+  hits.forEach((t, i) => {
+    const b = notes[t].body.replace(/\n/g, " "); const at = b.toLowerCase().indexOf(q.trim().toLowerCase());
+    const snip = at >= 0 ? "…" + b.slice(Math.max(0, at - 20), at + 60) : b.slice(0, 70);
+    h += `<a class="${withCreate && i === state.hi ? "hi" : ""}" data-open="${attr(t)}">${mark(t)}<span class="snip">${mark(snip)}</span></a>`;
+  });
+  if (withCreate && q.trim() && !notes[q.trim()]) h += `<a class="${state.hi === hits.length ? "hi" : ""}" data-open="${attr(q.trim())}">+ Create concept “${esc(q.trim())}”</a>`;
+  if (!hits.length && !withCreate && q.trim()) h += `<div class="muted" style="padding:8px 10px">Nothing found.</div>`;
+  return h + `</div>`;
+}
+
+/* ===================== live-preview editor ===================== */
+function toBlocks(body) {
+  const lines = body.split("\n"), out = [];
+  for (let k = 0; k < lines.length; k++) {
+    if (lines[k].startsWith("```")) {
+      let j = k + 1;
+      while (j < lines.length && !lines[j].startsWith("```")) j++;
+      out.push(lines.slice(k, j + 1).join("\n")); k = j;
+    } else out.push(lines[k]);
+  }
+  return out;
+}
+const isCode = raw => raw.startsWith("```");
+function inlineR(text, base) {
+  const re = /`([^`]+)`|\*\*(.+?)\*\*|\[\[([^\]]+)\]\]/g;
+  let out = "", pos = 0, m;
+  while ((m = re.exec(text))) {
+    if (m.index > pos) out += `<span data-r="${base + pos}">${esc(text.slice(pos, m.index))}</span>`;
+    if (m[1] !== undefined) out += `<code data-r="${base + m.index + 1}">${esc(m[1])}</code>`;
+    else if (m[2] !== undefined) out += `<b data-r="${base + m.index + 2}">${esc(m[2])}</b>`;
+    else out += `<a class="${notes[m[3]] ? "link" : "missing"}" data-open="${attr(m[3])}" data-r="${base + m.index + 2}">${esc(m[3])}</a>`;
+    pos = m.index + m[0].length;
+  }
+  if (pos < text.length) out += `<span data-r="${base + pos}">${esc(text.slice(pos))}</span>`;
+  return out;
+}
+function renderBlock(raw, i) {
+  if (isSketch(raw)) return sketchHtml(raw, i);
+  let m;
+  if (isCode(raw)) {
+    const lines = raw.split("\n");
+    const closed = lines.length > 1 && lines[lines.length - 1].startsWith("```");
+    const inner = lines.slice(1, closed ? -1 : undefined).join("\n");
+    return `<pre class="blk" data-i="${i}"><span data-r="${lines[0].length + 1}">${esc(inner)}</span></pre>`;
+  }
+  if ((m = raw.match(/^(#{1,3}) (.*)$/))) return `<div class="blk h${m[1].length}" data-i="${i}">${inlineR(m[2], m[1].length + 1)}</div>`;
+  if ((m = raw.match(/^(\s*)- (.*)$/))) return `<div class="blk li" data-i="${i}" style="padding-left:${1.1 + m[1].length * .6}em"><span class="bullet">•</span>${inlineR(m[2], m[1].length + 2)}</div>`;
+  return `<div class="blk" data-i="${i}">${inlineR(raw, 0)}</div>`;
+}
+function edClass(raw) {
+  if (isCode(raw)) return "code";
+  const m = raw.match(/^(#{1,3}) /);
+  return m ? "h" + m[1].length : "";
+}
+function blocksHtml() {
+  return state.blocks.map((raw, i) => i === state.active
+    ? `<div class="ed-wrap"><button class="ed-plus" title="Insert: heading, list, link, code, sketch…">+</button><textarea id="blk-ed" class="blk-ed ${edClass(raw)}" rows="1" spellcheck="false" placeholder="Type / for commands — or click + on the left">${esc(raw)}</textarea><div class="slash" id="slash" hidden></div></div>`
+    : renderBlock(raw, i)).join("");
+}
+const commands = [
+  { label: "Heading 1",      syntax: "# ",        insert: "# " },
+  { label: "Heading 2",      syntax: "## ",       insert: "## " },
+  { label: "Heading 3",      syntax: "### ",      insert: "### " },
+  { label: "Bullet list",    syntax: "- ",        insert: "- " },
+  { label: "Link to a note", syntax: "[[Title]]", insert: "[[]]", caret: 2 },
+  { label: "Bold",           syntax: "**text**",  insert: "****", caret: 2 },
+  { label: "Inline code",    syntax: "`code`",    insert: "``", caret: 1 },
+  { label: "Code block",     syntax: "```",       insert: "```\n\n```", caret: 4 },
+  { label: "Sketch (shapes)", syntax: "![[….svg]]", sketch: true },
+];
+const slash = { items: [], hi: 0 };
+function updateSlash(ed) {
+  const box = document.getElementById("slash");
+  const m = ed.value.match(/^\/([\w ]*)$/);
+  const q = m ? m[1].toLowerCase() : null;
+  slash.items = q === null ? [] : commands.filter(c => c.label.toLowerCase().includes(q));
+  slash.hi = Math.min(slash.hi, Math.max(0, slash.items.length - 1));
+  if (!box) return;
+  box.hidden = !slash.items.length;
+  box.innerHTML = `<div class="hd">Insert · the Markdown is shown on the right</div>` +
+    slash.items.map((c, k) => `<a class="${k === slash.hi ? "hi" : ""}" data-cmd="${k}"><span>${c.label}</span><code>${esc(c.syntax)}</code></a>`).join("");
+}
+function applyCommand(c) {
+  if (c.sketch) {                         // a new drawing area, then keep writing on the line below
+    const i = state.active, name = newSketch();
+    state.blocks.splice(i, 1, `![[${name}]]`, "");
+    slash.items = []; saveBlocks(); activate(i + 1, 0); sk.name = name; sk.sel = null; refreshBlocks();
+    return;
+  }
+  const i = state.active;
+  state.blocks[i] = c.insert;
+  slash.items = []; slash.hi = 0;
+  saveBlocks(); activate(i, c.caret ?? c.insert.length);
+}
+const bodyHtml = () => `<div class="blocks" id="blocks">${blocksHtml()}</div>`;
+function saveBlocks() { cur().body = state.blocks.join("\n"); cur().updated = 0; }
+function loadBlocks() { state.blocks = toBlocks(cur().body); state.active = state.blocks.length - 1; }
+function activate(i, caret) {
+  state.active = i;
+  slash.items = []; slash.hi = 0;
+  const box = document.getElementById("blocks");
+  if (!box) return;
+  box.innerHTML = blocksHtml(); snapToGrid();
+  const ed = document.getElementById("blk-ed");
+  if (!ed) return;
+  growEd(ed);
+  ed.focus();
+  const p = caret == null ? ed.value.length : Math.min(caret, ed.value.length);
+  ed.setSelectionRange(p, p);
+}
+function growEd(ed) { ed.style.height = "auto"; ed.style.height = ed.scrollHeight + "px"; }
+function rawOffsetFromPoint(x, y) {
+  let node, off;
+  if (document.caretPositionFromPoint) { const p = document.caretPositionFromPoint(x, y); if (p) { node = p.offsetNode; off = p.offset; } }
+  else if (document.caretRangeFromPoint) { const r = document.caretRangeFromPoint(x, y); if (r) { node = r.startContainer; off = r.startOffset; } }
+  if (!node || node.nodeType !== 3) return null;
+  const host = node.parentElement.closest("[data-r]");
+  return host ? +host.dataset.r + off : null;
+}
+function onEditorKey(e) {
+  const ed = e.target, i = state.active, raw = ed.value, pos = ed.selectionStart;
+  if (slash.items.length) {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      slash.hi = (slash.hi + (e.key === "ArrowDown" ? 1 : -1) + slash.items.length) % slash.items.length;
+      return updateSlash(ed);
+    }
+    if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); return applyCommand(slash.items[slash.hi]); }
+    if (e.key === "Escape") { e.preventDefault(); slash.items = []; document.getElementById("slash").hidden = true; return; }
+  }
+  if (e.key === "Enter" && !e.shiftKey && !isCode(raw)) {
+    e.preventDefault();
+    const before = raw.slice(0, pos), after = raw.slice(ed.selectionEnd);
+    const list = before.match(/^(\s*- )/);
+    if (list && before === list[1] && !after) { state.blocks[i] = ""; saveBlocks(); return activate(i, 0); }
+    const prefix = list ? list[1] : "";
+    state.blocks.splice(i, 1, before, prefix + after);
+    saveBlocks(); return activate(i + 1, prefix.length);
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a" && ed.selectionStart === 0 && ed.selectionEnd === raw.length) {
+    e.preventDefault(); return selectWholeNote();     // second Ctrl+A: the whole note
+  }
+  if (e.key === "Backspace" && pos === 0 && ed.selectionEnd === 0 && i > 0) {
+    e.preventDefault();
+    const prev = state.blocks[i - 1];
+    if (isCode(prev)) return activate(i - 1, null);
+    state.blocks.splice(i - 1, 2, prev + raw);
+    saveBlocks(); return activate(i - 1, prev.length);
+  }
+  if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !e.shiftKey) {
+    const up = e.key === "ArrowUp", before = pos;
+    requestAnimationFrame(() => {
+      const now = ed.selectionStart;
+      const stuck = now === before
+        || (up && now === 0 && !raw.slice(0, before).includes("\n"))
+        || (!up && now === raw.length && !raw.slice(before).includes("\n"));
+      if (!stuck) return;
+      if (up && i > 0) activate(i - 1, null);
+      if (!up && i < state.blocks.length - 1) activate(i + 1, 0);
+    });
+  }
+  if (e.key === "Escape") activate(null);
+}
+function onEditorInput(ed) {
+  const i = state.active, raw = ed.value;
+  if (!isCode(raw) && raw.includes("\n")) {
+    const parts = raw.split("\n");
+    state.blocks.splice(i, 1, ...parts);
+    saveBlocks(); return activate(i + parts.length - 1, parts[parts.length - 1].length);
+  }
+  state.blocks[i] = raw;
+  ed.className = "blk-ed " + edClass(raw);
+  saveBlocks(); growEd(ed);
+  updateSlash(ed);
+}
+
+/* ===================== shortcuts card ===================== */
+const shortcutGroups = [
+  ["At the start of a line", [["/", "command menu"], ["# ", "big heading"], ["## ", "heading"], ["### ", "small heading"], ["- ", "bullet point"], ["```", "code block"], ["/sketch", "drawing area"]]],
+  ["Anywhere in a line", [["[[Title]]", "link to a note"], ["**text**", "bold"], ["`code`", "inline code"]]],
+  ["Keys", [["Enter", "new line, continues a list"], ["Backspace", "at line start: join lines"], ["↑ ↓", "move between lines"], ["Esc", "stop editing"], ["Ctrl A ×2", "select the whole note"], ["Ctrl C", "copy — keeps the Markdown"], ["Ctrl K", "find a note"]]],
+];
+// Docked to the left of the sidebar like settings (outside the notebook). Folded, it's a slim tab on the edge.
+function cheatHtml() {
+  const c = state.cheat;
+  if (!c.on) return "";
+  if (c.collapsed) return `<button class="g-cheat folded" data-action="cheat-collapse" title="Open the Markdown shortcuts"><span>M↓ Shortcuts</span></button>`;
+  return `<aside class="g-cheat">
+    <div class="g-cheat-hd">${svgOf(scenes.glacier(96, 22))}<b>M↓ Shortcuts</b>
+      <span class="acts"><button data-action="cheat-collapse" title="Fold into a tab">⟩</button><button data-action="cheat-off" title="Hide (turn it back on in settings)">✕</button></span></div>
+    <div class="g-cheat-body">${shortcutGroups.map(([t, rows]) => `<div class="cheat-grp">${t}</div>
+      <div class="cheat-rows">${rows.map(([k, d]) => `<code>${esc(k)}</code><span>${d}</span>`).join("")}</div>`).join("")}</div>
+  </aside>`;
+}
+
+/* ===================== first sync + toast ===================== */
+function firstSyncHtml() {
+  const f = state.firstSync;
+  if (!f) return "";
+  const total = Object.keys(notes).length;
+  const st = k => k < f.step ? "done" : k === f.step ? "active" : "";
+  const icon = k => k < f.step ? "✓" : "";
+  return `<div class="fs"><div class="fs-card">
+    <div class="fs-art">${svgOf(scenes.glacier(96, 30))}</div>
+    <div class="fs-body"><h3>Setting up Glacier</h3><p>First sync with <code>kabek/glacier-notes</code></p>
+      <ol class="fs-steps">
+        <li class="${st(1)}"><i>${icon(1)}</i><span>Connecting to GitHub</span><small></small></li>
+        <li class="${st(2)}"><i>${icon(2)}</i><span>Downloading notes</span><small>${f.n} / ${total}</small>
+          <div class="fs-bar"><b style="width:${Math.round(f.n / total * 100)}%"></b></div></li>
+        <li class="${st(3)}"><i>${icon(3)}</i><span>Linking notes together</span><small></small></li>
+        <li class="${st(4)}"><i>${icon(4)}</i><span>Ready to write</span><small></small></li>
+      </ol></div></div></div>`;
+}
+const wait = ms => new Promise(r => setTimeout(r, ms));
+async function runFirstSync() {
+  const total = Object.keys(notes).length;
+  state.sync = 1; state.firstSync = { step: 1, n: 0 }; renderAll();
+  await wait(800); state.firstSync.step = 2; renderAll();
+  for (let n = 1; n <= total; n++) { await wait(170); state.firstSync.n = n; renderAll(); }
+  await wait(250); state.firstSync.step = 3; renderAll();
+  await wait(650); state.firstSync.step = 4; renderAll();
+  await wait(500); state.firstSync = null; state.sync = 0;
+  showToast(`✓ All ${total} notes are here · synced just now`);
+  open(state.current);
+}
+let toastTimer;
+function showToast(msg) {
+  state.toast = msg; renderAll();
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { state.toast = null; renderAll(); }, 3200);
+}
+async function syncNow() {
+  state.sync = 1; renderAll();
+  await wait(1100); state.sync = 0;
+  showToast("✓ Up to date · nothing new on GitHub");
+}
+
+/* ===================== settings column ===================== */
+function layoutPreview(k) {
+  const v = themes[state.theme].v, ink = v.muted, acc = v.accent;
+  const L = (y, n, x = 7, w = 46) => Array.from({ length: n }, (_, j) => `<rect x="${x}" y="${y + j * 6}" width="${w - (j % 3) * 8}" height="2.6" rx="1.3" fill="${ink}" opacity=".45"/>`).join("");
+  const bar = (y, h = 9) => `<rect x="0" y="${y}" width="60" height="${h}" fill="${v.chrome}"/><rect x="0" y="${y + (y ? 0 : h - .6)}" width="60" height=".6" fill="${v.line}"/>`;
+  const fab = (y) => `<circle cx="52" cy="${y}" r="4" fill="#7fb6d9" stroke="#fff" stroke-width="1"/>`;
+  const shapes = {
+    A: bar(0) + `<rect x="3" y="3" width="5" height="3" rx="1" fill="${acc}"/><rect x="11" y="3" width="24" height="3" rx="1.5" fill="${v.ink}" opacity=".6"/>` + L(15, 9) + bar(59, 9) + fab(53),
+    B: L(8, 9) + bar(58, 10) + [0, 1, 2].map(j => `<rect x="${5 + j * 13}" y="62" width="9" height="2.4" rx="1.2" fill="${j ? ink : acc}"/>`).join("") + `<rect x="5" y="58" width="9" height="1" fill="${acc}"/>` + fab(63),
+    C: bar(0) + `<rect x="4" y="3.2" width="30" height="2.4" rx="1.2" fill="${ink}" opacity=".7"/>` + [0, 1].map(j => `<rect x="${7 + j * 16}" y="13" width="13" height="5" rx="2.5" fill="${v.chrome}"/>`).join("") + L(23, 6) + bar(59, 9) + fab(53),
+    D: `<rect width="60" height="28" fill="${v.chrome}"/>` + `<rect x="4" y="3" width="40" height="5" rx="2" fill="${v.paper}"/>` + L(11, 3, 9, 32) + `<rect y="28" width="60" height="1.2" fill="${v.line}"/>` + L(35, 5) + fab(63),
+    E: bar(0) + L(15, 8, 6, 40) + ["#f0b98d", "#9fd4c4", "#c9b2e6", "#f4d98a"].map((c, j) => `<rect x="${j === 0 ? 50 : 52}" y="${12 + j * 11}" width="${j === 0 ? 10 : 8}" height="9" rx="2" fill="${c}"/>`).join("") + fab(63),
+    F: `<text x="15" y="9" font-size="5.5" font-weight="700" fill="${v.ink}">Good evening</text><rect x="5" y="12" width="50" height="6" rx="3" fill="${v.chrome}" stroke="${v.line}" stroke-width=".6"/>` +
+       [22, 33, 44].map(y => `<rect x="5" y="${y}" width="50" height="9" rx="2.5" fill="${v.chrome}" stroke="${v.line}" stroke-width=".6"/><rect x="8" y="${y + 2.5}" width="24" height="2" rx="1" fill="${v.ink}" opacity=".6"/><rect x="8" y="${y + 5.6}" width="36" height="1.4" rx=".7" fill="${ink}" opacity=".5"/>`).join("") +
+       [0, 1, 2].map(j => `<rect x="${5 + j * 16}" y="57" width="14" height="5" rx="2.5" fill="${acc}" opacity=".3"/>`).join(""),
+    G: `<rect width="60" height="10" fill="${v.chrome}"/>` + [0, 1, 2].map(j => `<rect x="${3 + j * 17}" y="3" width="16" height="7" rx="1.5" fill="${j ? v.chrome : v.paper}" stroke="${v.line}" stroke-width=".5"/>`).join("") + `<text x="55" y="9" font-size="7" fill="${ink}">+</text>` + L(16, 9) + fab(63),
+    H: `<rect x="14" y="3" width="32" height="7" rx="3.5" fill="${v.paper}" stroke="${v.line}" stroke-width=".7"/><circle cx="18.5" cy="6.5" r="1.4" fill="#4a9a5c"/><rect x="22" y="5.5" width="18" height="2" rx="1" fill="${v.ink}" opacity=".6"/>` + L(16, 8, 7, 46) + `<rect x="4" y="60" width="11" height="5" rx="2.5" fill="${v.paper}" stroke="${v.line}" stroke-width=".6"/>` + fab(63),
+    I: `<rect width="11" height="68" fill="${v.chrome}"/>` + [0, 1, 2, 3].map(j => `<rect x="3" y="${5 + j * 9}" width="5" height="5" rx="1.5" fill="${j ? ink : acc}" opacity="${j ? .55 : 1}"/>`).join("") + `<rect x="11" y="0" width="49" height="9" fill="${v.chrome}" opacity=".6"/>` + L(15, 8, 16, 38) + fab(63),
+    J: `<rect width="60" height="22" fill="${v.chrome}"/><rect x="8" y="9.4" width="44" height="1.2" fill="${acc}" opacity=".5"/>` + [0, 1, 2, 3].map(j => `<circle cx="${8 + j * 14.6}" cy="10" r="2.6" fill="${j === 2 ? acc : v.paper}" stroke="${acc}" stroke-width="1.2"/>`).join("") +
+       [0, 1].map(j => `<rect x="${5 + j * 15}" y="15" width="13" height="4" rx="2" fill="${acc}" opacity=".3"/>`).join("") + L(28, 6) + fab(63),
+  };
+  return `<svg viewBox="0 0 60 68" style="background:${v.paper}">${shapes[k]}</svg>`;
+}
+/* ----- layout picker: ten layouts grouped by how you like to work, favourites on top ----- */
+const layoutGroups = [
+  { title: "Focus on writing", hint: "The page gets the whole panel. Everything else opens when you ask for it.", keys: ["H", "A"] },
+  { title: "Always know where you are", hint: "Your place in the notebook or the course stays in sight.", keys: ["J", "C", "F"] },
+  { title: "Notebook in view", hint: "Your notes stay one glance away while you write.", keys: ["D", "E", "I"] },
+  { title: "Familiar app style", hint: "Patterns you know from your phone and your browser.", keys: ["B", "G"] },
+];
+const layoutBest = {
+  H: "deep focus while watching a lesson", A: "writing, with the notebook one click away",
+  J: "following a course lesson by lesson", C: "keyboard users: Ctrl K jumps anywhere", F: "starting a session where you left off",
+  D: "jumping between many notes", E: "several courses at the same time", I: "quick tools without clutter",
+  B: "a phone-like feel", G: "comparing a few notes side by side in time",
+};
+function layoutCard(k, compact = false) {
+  const on = k === state.variant, fav = state.keep.has(k);
+  return `<div class="g-lay ${on ? "on" : ""} ${compact ? "compact" : ""}" data-pick-layout="${k}" role="button" tabindex="0" title="${attr(variantInfo[k])}">
+    <div class="g-lay-pv">${layoutPreview(k)}${on ? `<i class="check">✓</i>` : ""}
+      <span class="g-star ${fav ? "on" : ""}" data-keep="${k}" title="${fav ? "Remove from favourites" : "Add to favourites"}">${fav ? "★" : "☆"}</span></div>
+    <b>${variants[k]}</b>${compact ? "" : `<small>${variantInfo[k]}</small><em>Best for ${layoutBest[k]}</em>`}</div>`;
+}
+function layoutPicker() {
+  const favs = [...state.keep];
+  return `${favs.length ? `<div class="g-lgroup fav"><div class="g-lgroup-t">★ Your favourites <small>one click to switch</small></div>
+      <div class="g-favs">${favs.map(k => layoutCard(k, true)).join("")}</div></div>` : `<div class="g-lhint">Tip: tap ☆ on a layout to pin it here as a favourite.</div>`}
+    ${layoutGroups.map(g => `<div class="g-lgroup"><div class="g-lgroup-t">${g.title}</div><div class="g-lgroup-h">${g.hint}</div>
+      <div class="g-layouts">${g.keys.map(k => layoutCard(k)).join("")}</div></div>`).join("")}`;
+}
+
+function section(key, title, summary, body) {
+  const open = state.sections[key];
+  return `<div class="g-sec ${open ? "open" : ""}"><button class="g-sec-hd" data-action="sec" data-sec="${key}"><b>${title}</b><small>${esc(summary)}</small><span class="chev">▶</span></button>
+    ${open ? `<div class="g-sec-body">${body}</div>` : ""}</div>`;
+}
+function settingsHtml() {
+  const t = themes[state.theme];
+  const group = state.themeGroup || t.group;
+  const swatch = ([k, th]) => {
+    const f = fonts[th.font], v = th.v;
+    const bg = th.scene ? `background:${v.paper};` : `background-color:${v.paper};background-image:${v.pattern.replace(/"/g, "'").replace(/var\(--lh\)/g, "22px")};background-size:${(v["pattern-size"] || "auto").replace(/var\(--lh\)/g, "22px")};`;
+    return `<button class="g-swatch ${k === state.theme ? "on" : ""}" data-pick-theme="${k}">
+      <div class="pv" style="${bg}color:${v.ink};font-family:${f.family.replace(/"/g, "'")};font-weight:${f.fw}"><b>Aa</b>
+        ${th.scene ? `<div class="pv-art">${svgOf(scenes[th.scene](40, 16))}</div>` : ""}</div>
+      <span class="n">${th.name}</span></button>`;
+  };
+  const chip = (k, label, fam, fw) => `<button class="g-chip ${state.fontOverride === k ? "on" : ""}" data-pick-font="${k}" style="font-family:${fam.replace(/"/g, "'")};font-weight:${fw}">${label}</button>`;
+  const seg = (action, opts, current) => `<div class="g-seg">${opts.map(([k, label]) => `<button class="${k === current ? "on" : ""}" data-action="${action}" data-val="${k}">${label}</button>`).join("")}</div>`;
+  const fontName = state.fontOverride ? fonts[state.fontOverride].name : fonts[t.font].name;
+  const pct = Math.round(state.textScale * 100);
+
+  return `<aside class="g-side ${state.settingsAnim ? "anim" : ""}">
+    <div class="g-hero">${svgOf(scenes.glacier(96, 30))}<h2>Glacier<small>settings</small></h2>
+      <button class="g-close" data-action="settings-close" title="Close (Esc)">✕</button></div>
+
+    ${section("paper", "Paper", t.name, `
+      ${seg("theme-group", [["nature", "Nature"], ["classic", "Classics"]], group)}
+      <div class="g-themes">${Object.entries(themes).filter(([, th]) => th.group === group).map(swatch).join("")}</div>`)}
+
+    ${section("writing", "Writing", `${fontName} · ${pct}%`, `
+      <div class="g-fonts">${chip("", "Theme default", fonts[t.font].family, fonts[t.font].fw)}${pickableFonts.map(k => chip(k, fonts[k].name, fonts[k].family, fonts[k].fw)).join("")}</div>
+      <div style="height:14px"></div>
+      <div class="g-size"><span class="a1">A</span><input type="range" id="ts" min="0.85" max="1.5" step="0.05" value="${state.textScale}" aria-label="Text size"><span class="a2">A</span></div>
+      <div class="g-size-val"><span>Text size <b id="ts-val">${pct}%</b></span><button class="g-link" data-action="ts-reset">Reset</button></div>`)}
+
+    ${section("shortcuts", "Shortcuts panel", state.cheat.on ? (state.cheat.collapsed ? "folded" : "open") : "hidden", `
+      <div class="g-row"><span>Show the Markdown shortcuts</span><button class="g-switch ${state.cheat.on ? "on" : ""}" data-action="cheat-toggle" aria-label="Show shortcuts"></button></div>
+      <div style="font-size:12px;color:#7c93a6">Opens next to the sidebar, like settings. Fold it with ⟩ into a slim tab on the edge; click the tab to open it again.</div>`)}
+
+    ${section("layout", "Layout", `${variants[state.variant]}${state.keep.size ? ` · ★ ${state.keep.size}` : ""}`, layoutPicker())}
+
+    ${section("repo", "Notes repo", syncStates[state.sync][1], `
+      <div class="g-field"><span>Repo</span><code>kabek/glacier-notes</code></div>
+      <div class="g-field"><span>Token</span><code>github_pat_••••</code></div>
+      <div class="g-field"><span>Status</span>${syncHtml()}</div>
+      <div class="g-actions">
+        <button class="g-act primary" data-action="sync-now">Sync now</button><button class="g-act">Export</button><button class="g-act">Import</button>
+        <button class="g-act wide" data-action="first-sync">↻ Replay the first sync</button>
+      </div>`)}
+
+    ${section("proto", "Prototype", state.inside ? "panels inside" : "panels beside", `
+      <div class="g-row"><span>Browser lets Glacier draw <b>next to</b> the sidebar</span><button class="g-switch ${state.inside ? "" : "on"}" data-action="inside" aria-label="Panels beside the sidebar"></button></div>
+      <div style="font-size:12px;color:#7c93a6">Switch off to see what happens without that permission: settings and shortcuts then open <b>inside</b> the sidebar, over your note.</div>`)}
+  </aside>`;
+}
+
+/* ===================== variants ===================== */
+// A — Drawer: the note fills the panel; the notebook slides in from the left.
+function VariantA() {
+  const bl = backlinks(state.current);
+  return `<div class="v">
+    <div class="bar">
+      <button class="btn" data-action="drawer" title="Notebook (Ctrl K to search)">☰</button>
+      <div class="grow ellip"><b>${esc(state.current)}</b><br>${metaHtml()}</div>
+    </div>
+    ${bannerHtml()}
+    <div class="sheet">${bodyHtml()}</div>
+    <details class="backfoot"><summary>Linked from ${bl.length}</summary>${bl.map(t => `<a data-open="${attr(t)}">${esc(t)}</a>`).join("") || `<div class="muted" style="padding:4px 24px">Nothing links here yet.</div>`}</details>
+    <div class="bar bottom">${syncHtml()}<span class="grow"></span><span class="meta words">${words()} words</span><span style="width:56px"></span></div>
+    ${state.drawer ? `<div class="scrim" data-action="drawer"></div>
+    <div class="drawer">
+      <div class="bar"><input class="input" id="q" placeholder="Search notes…" value="${attr(state.query)}"></div>
+      <div class="scroll">${state.query.trim() ? resultsHtml(state.query) : treeHtml()}</div>
+      <div class="bar bottom"><button class="btn" data-action="new-lesson">+ Lesson note</button><span class="grow"></span><button class="btn" data-action="new-concept">+ Concept</button></div>
+    </div>` : ""}
+  </div>`;
+}
+// B — Bottom tabs.
+function VariantB() {
+  const tab = state.tab; let main = "";
+  if (tab === "note") {
+    const bl = backlinks(state.current);
+    main = `<div class="bar"><div class="grow ellip">${metaHtml()}</div>${syncHtml(true)}</div>
+      ${bannerHtml()}
+      <div class="sheet"><h1 class="title">${esc(state.current)}</h1>${bodyHtml()}
+        <div class="inline-back">linked from: ${bl.map(t => `<a class="link" data-open="${attr(t)}">${esc(t)}</a>`).join(", ") || "nothing yet"}</div>
+      </div>`;
+  } else if (tab === "notebook") {
+    main = `<div class="bar"><b class="grow">Notebook</b><button class="btn" data-action="new-concept">+ Concept</button></div>
+      ${bannerHtml()}<div style="flex:1;overflow:auto">${treeHtml()}</div>`;
+  } else {
+    main = `<div class="bar"><input class="input" id="q" placeholder="Search titles and text…" value="${attr(state.query)}"></div>
+      <div style="flex:1;overflow:auto;padding:4px">${state.query.trim() ? resultsHtml(state.query) : `<div class="muted" style="padding:10px">Type to search all notes.</div>`}</div>`;
+  }
+  const t = (k, label) => `<button class="${tab === k ? "on" : ""}" data-tab="${k}">${label}</button>`;
+  return `<div class="v">${main}
+    <div class="tabs">${t("note", "Note")}${t("notebook", "Notebook")}${t("search", "Search")}</div></div>`;
+}
+// C — Breadcrumb + command palette.
+function VariantC() {
+  const n = cur(); let main;
+  const crumbs = [`<a data-action="crumb" data-to="index">Notebook</a>`];
+  if (state.view === "note") {
+    if (n.type === "lesson") crumbs.push(`<a data-action="crumb" data-to="course" data-course="${attr(n.course)}">${esc(shortCourse(n.course))}</a>`);
+    else crumbs.push(`<a data-action="crumb" data-to="index">Concepts</a>`);
+    crumbs.push(`<b>${esc(state.current)}</b>`);
+    const bl = backlinks(state.current);
+    main = `<div class="sheet"><h1 class="title">${esc(state.current)}</h1>
+      <div class="chips">${bl.length ? "← " + bl.map(t => `<a data-open="${attr(t)}">${esc(t)}</a>`).join("") : "no backlinks yet"}</div>
+      ${bodyHtml()}</div>`;
+  } else if (state.view === "course") {
+    crumbs.push(`<b>${esc(shortCourse(state.course))}</b>`);
+    main = `<div class="sheet"><h1 class="title">${esc(state.course)}</h1><ul>${lessonsOf(state.course).map(t => `<li><a class="link" data-open="${attr(t)}">${esc(t)}</a></li>`).join("")}</ul></div>`;
+  } else {
+    main = `<div class="sheet"><h1 class="title">Notebook</h1>
+      <h2>Courses</h2><ul>${courses().map(c => `<li><a class="link" data-action="crumb" data-to="course" data-course="${attr(c)}">${esc(c)}</a> <span class="muted">(${lessonsOf(c).length})</span></li>`).join("")}</ul>
+      <h2>Concepts</h2><ul>${concepts().map(t => `<li><a class="link" data-open="${attr(t)}">${esc(t)}</a></li>`).join("")}</ul></div>`;
+  }
+  return `<div class="v">
+    <div class="bar"><div class="crumbs grow ellip">${crumbs.join(" › ")}</div>
+      <button class="btn" data-action="palette" title="Search or jump (Ctrl+K)">Find <span class="kbd">Ctrl K</span></button></div>
+    ${bannerHtml()}
+    ${main}
+    <div class="bar bottom">${syncHtml()}<span class="grow"></span>${state.view === "note" ? `<span class="meta words">${words()} words</span>` : `<button class="btn" data-action="new-concept">+ Concept</button>`}<span style="width:56px"></span></div>
+    ${state.palette ? `<div class="palette-wrap" data-action="palette-close"><div class="palette">
+      <input class="input" id="pq" placeholder="Jump to a note, or type a new title…" value="${attr(state.query)}">
+      ${state.query.trim() ? resultsHtml(state.query, true) : `<div class="results">${Object.keys(notes).sort((a, b) => notes[a].updated - notes[b].updated).slice(0, 5).map((t, i) => `<a class="${i === state.hi ? "hi" : ""}" data-open="${attr(t)}">${esc(t)}<span class="snip">recent</span></a>`).join("")}</div>`}
+    </div></div>` : ""}
+  </div>`;
+}
+// D — Split.
+function VariantD() {
+  const bl = backlinks(state.current);
+  return `<div class="v">
+    <div class="split-top" ${state.splitPx ? `style="--split-h:${state.splitPx}px"` : ""}>
+      <div class="bar"><input class="input" id="filter" placeholder="Filter notes…" value="${attr(state.filter)}">${syncHtml(true)}</div>
+      <div class="scroll">${treeHtml(state.filter)}</div>
+      <div class="bar bottom" style="padding:4px 10px"><button class="btn" data-action="new-lesson">+ Lesson</button><button class="btn" data-action="new-concept">+ Concept</button></div>
+    </div>
+    <div class="split-handle" data-split-handle title="Drag to resize the list"></div>
+    ${bannerHtml()}
+    <div class="split-bottom">
+      <div class="bar"><div class="grow ellip"><b>${esc(state.current)}</b> &nbsp;${metaHtml()}</div></div>
+      <div class="sheet">${bodyHtml()}
+        <div class="back-small">Linked from: ${bl.map(t => `<a class="link" data-open="${attr(t)}">${esc(t)}</a>`).join(" · ") || "nothing yet"}</div>
+      </div>
+    </div>
+  </div>`;
+}
+/* ===================== six more layouts (E–J) ===================== */
+const ICON = {
+  book: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h9a3 3 0 0 1 3 3v11H7a3 3 0 0 1-3-3z"/><path d="M4 14a3 3 0 0 1 3-3h9"/></svg>`,
+  search: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5"/><path d="M12.5 12.5 17 17"/></svg>`,
+  link: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 12l4-4"/><path d="M9 5.5l1.5-1.5a3.5 3.5 0 0 1 5 5L14 10.5"/><path d="M11 14.5 9.5 16a3.5 3.5 0 0 1-5-5L6 9.5"/></svg>`,
+  clock: `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l3 2"/></svg>`,
+};
+const recentNotes = (n = 5) => Object.keys(notes).sort((a, b) => notes[a].updated - notes[b].updated).slice(0, n);
+const outgoing = t => [...new Set([...(notes[t].body.matchAll(/\[\[([^\]]+)\]\]/g))].map(m => m[1]).filter(x => !x.endsWith(".svg")))];
+const snippet = t => esc(notes[t].body.replace(/!\[\[[^\]]*\]\]/g, "").replace(/[#*`\[\]]/g, "").replace(/\s+/g, " ").trim().slice(0, 70)) || "<i>empty</i>";
+const backlinksLine = (cls = "back-small") => { const bl = backlinks(state.current); return `<div class="${cls}">Linked from: ${bl.map(t => `<a class="link" data-open="${attr(t)}">${esc(t)}</a>`).join(" · ") || "nothing yet"}</div>`; };
+const searchOrHint = () => state.query.trim() ? resultsHtml(state.query) : "";
+
+// E — Index tabs: coloured divider tabs stick out of the right edge, like a real ring binder.
+function VariantE() {
+  const groups = [...courses().map(c => ({ key: c, label: shortCourse(c) })), { key: "concepts", label: "Concepts" }];
+  const colors = ["#f0b98d", "#9fd4c4", "#c9b2e6", "#f4d98a", "#a9cbea"];
+  const here = cur().type === "lesson" ? cur().course : "concepts", open = state.etab;
+  let sheet = "";
+  if (open) {
+    const isSearch = open === "search", title = isSearch ? "Search" : open === "concepts" ? "Concepts" : open;
+    const list = isSearch ? (searchOrHint() || `<div class="muted" style="padding:10px">Type to search all notes.</div>`)
+      : `<div class="tree">${(open === "concepts" ? concepts() : lessonsOf(open)).map(t => `<a class="${t === state.current ? "cur" : ""}" data-open="${attr(t)}">${esc(t)}</a>`).join("")}</div>`;
+    sheet = `<div class="e-sheet"><div class="bar"><b class="grow ellip">${esc(title)}</b><button class="btn" data-action="etab" data-val="">✕</button></div>
+      ${isSearch ? `<div style="padding:8px"><input class="input" id="q" placeholder="Search all notes…" value="${attr(state.query)}"></div>` : ""}
+      <div class="e-list">${list}</div>
+      ${isSearch ? "" : `<div class="bar bottom"><button class="btn" data-action="${open === "concepts" ? "new-concept" : "new-lesson"}">+ New ${open === "concepts" ? "concept" : "lesson note"}</button></div>`}</div>`;
+  }
+  return `<div class="v e-wrap">
+    <div class="e-main">
+      <div class="bar"><div class="grow ellip"><b>${esc(state.current)}</b><br>${metaHtml()}</div>${syncHtml(true)}</div>
+      ${bannerHtml()}
+      <div class="sheet">${bodyHtml()}${backlinksLine()}</div>
+    </div>
+    <nav class="e-tabs">
+      ${groups.map((g, i) => `<button class="e-tab ${open === g.key ? "on" : ""} ${here === g.key ? "here" : ""}" data-action="etab" data-val="${attr(g.key)}" style="--tab:${colors[i % colors.length]}" title="${attr(g.key)}"><span>${esc(g.label)}</span></button>`).join("")}
+      <button class="e-tab e-search ${open === "search" ? "on" : ""}" data-action="etab" data-val="search" title="Search (Ctrl K)">${ICON.search}</button>
+    </nav>
+    ${sheet}
+  </div>`;
+}
+
+// F — Home: a friendly start page with big cards; a note opens full-panel with "← Home".
+function VariantF() {
+  if (state.home) {
+    const here = noteForPage(), hour = new Date().getHours();
+    const hi = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+    const card = (t, sub) => `<a class="f-card" data-open="${attr(t)}"><b>${esc(t)}</b><small>${sub || (notes[t].type === "lesson" ? esc(shortCourse(notes[t].course)) : "Concept")} · ${snippet(t)}</small></a>`;
+    const courseBlock = c => `<div class="f-course ${state.fcourse === c ? "open" : ""}">
+        <button data-action="fcourse" data-val="${attr(c)}"><b>${esc(shortCourse(c))}</b><small>${lessonsOf(c).length} lesson notes</small><span>${state.fcourse === c ? "▾" : "▸"}</span></button>
+        ${state.fcourse === c ? `<div class="tree">${lessonsOf(c).map(t => `<a data-open="${attr(t)}">${esc(t)}</a>`).join("")}</div>` : ""}</div>`;
+    return `<div class="v"><div class="sheet f-home">
+      <div class="f-hi">${hi}</div>
+      <input class="input f-search" id="q" placeholder="Search your notes…   Ctrl K" value="${attr(state.query)}">
+      ${state.query.trim() ? resultsHtml(state.query) : `
+        <div class="f-h">On this page</div>
+        ${here ? card(here, "Your note for this lesson") : `<button class="f-card f-new" data-action="new-lesson"><b>+ Start a note for “${esc(pages[state.page].title)}”</b><small>${esc(shortCourse(state.lastCourse))}</small></button>`}
+        <div class="f-h">Continue writing</div>${recentNotes(3).map(t => card(t)).join("")}
+        <div class="f-h">Courses</div>${courses().map(courseBlock).join("")}
+        <div class="f-h">Concepts</div><div class="f-chips">${concepts().map(t => `<a data-open="${attr(t)}">${esc(t)}</a>`).join("")}<a class="add" data-action="new-concept">+ new concept</a></div>`}
+    </div></div>`;
+  }
+  return `<div class="v">
+    <div class="bar"><button class="btn f-back" data-action="home">← Home</button><div class="grow"></div>${syncHtml(true)}</div>
+    ${bannerHtml()}
+    <div class="sheet"><h1 class="title">${esc(state.current)}</h1><div class="meta" style="margin:-6px 0 var(--lh)">${metaHtml().replace(/<\/?span[^>]*>/g, "")}</div>${bodyHtml()}${backlinksLine()}</div>
+  </div>`;
+}
+
+// G — Note tabs: notes you open stay as tabs on top, like browser tabs; + opens any note.
+function VariantG() {
+  if (!state.tabs.includes(state.current)) state.tabs.push(state.current);
+  if (state.tabs.length > 6) state.tabs = state.tabs.slice(-6);
+  const picker = state.gpicker ? `<div class="g-picker">
+      <input class="input" id="q" placeholder="Open a note…" value="${attr(state.query)}">
+      <div class="g-picker-list">${state.query.trim() ? resultsHtml(state.query) : treeHtml()}</div>
+      <div class="bar bottom"><button class="btn" data-action="new-lesson">+ Lesson note</button><span class="grow"></span><button class="btn" data-action="new-concept">+ Concept</button></div>
+    </div>` : "";
+  return `<div class="v">
+    <div class="g-tabs">${state.tabs.map(t => `<div class="g-tab ${t === state.current ? "on" : ""}" data-open="${attr(t)}" title="${attr(t)}"><span>${esc(t)}</span><button class="g-x" data-close-tab="${attr(t)}" title="Close tab">×</button></div>`).join("")}
+      <button class="g-add ${state.gpicker ? "on" : ""}" data-action="gpicker" title="Open a note (Ctrl K)">+</button></div>
+    <div class="bar g-meta"><div class="grow ellip">${metaHtml()}</div>${syncHtml(true)}</div>
+    ${bannerHtml()}
+    <div class="sheet">${bodyHtml()}${backlinksLine()}</div>
+    ${picker}
+  </div>`;
+}
+
+// H — Zen: only the page. One small pill on top holds everything (title, sync, search, notebook).
+function VariantH() {
+  const [k] = syncStates[state.sync], bl = backlinks(state.current);
+  const menu = state.hmenu ? `<div class="h-menu">
+      <input class="input" id="q" placeholder="Search or jump to a note…" value="${attr(state.query)}">
+      ${state.query.trim() ? resultsHtml(state.query) : `
+        <div class="h-sec">${metaHtml()}</div>
+        <div class="h-sec-t">Recent</div><div class="results">${recentNotes(4).map(t => `<a data-open="${attr(t)}">${esc(t)}</a>`).join("")}</div>
+        <div class="h-sec-t">Notebook</div><div class="h-tree">${treeHtml()}</div>
+        <div class="h-row"><button class="btn" data-action="new-lesson">+ Lesson note</button><button class="btn" data-action="new-concept">+ Concept</button></div>`}
+    </div>` : "";
+  return `<div class="v">
+    <div class="sheet h-sheet">${bannerHtml()}${bodyHtml()}</div>
+    <button class="h-pill ${state.hmenu ? "on" : ""}" data-action="hmenu"><i class="h-dot sync-${k}"></i><b>${esc(state.current)}</b><span>▾</span></button>
+    ${menu}
+    <button class="h-links ${state.hlinks ? "on" : ""}" data-action="hlinks">${ICON.link}<span>${bl.length}</span></button>
+    ${state.hlinks ? `<div class="h-links-list"><div class="h-sec-t">Linked from</div>${bl.map(t => `<a data-open="${attr(t)}">${esc(t)}</a>`).join("") || `<div class="muted">Nothing links here yet.</div>`}</div>` : ""}
+  </div>`;
+}
+
+// I — Icon rail: a thin strip of icons on the left; each opens its own panel next to it.
+function VariantI() {
+  const items = [["notebook", ICON.book, "Notebook"], ["search", ICON.search, "Search"], ["links", ICON.link, "Linked from"], ["recent", ICON.clock, "Recent"]];
+  let panelHtml = "";
+  if (state.rail) {
+    const body = {
+      notebook: () => treeHtml() + `<div class="h-row"><button class="btn" data-action="new-lesson">+ Lesson</button><button class="btn" data-action="new-concept">+ Concept</button></div>`,
+      search: () => `<div style="padding:8px"><input class="input" id="q" placeholder="Search all notes…" value="${attr(state.query)}"></div>${searchOrHint()}`,
+      links: () => `<div class="results">${backlinks(state.current).map(t => `<a data-open="${attr(t)}">${esc(t)}<span class="snip">${snippet(t)}</span></a>`).join("") || `<div class="muted" style="padding:10px">Nothing links here yet.</div>`}</div>`,
+      recent: () => `<div class="results">${recentNotes(6).map(t => `<a data-open="${attr(t)}">${esc(t)}<span class="snip">${snippet(t)}</span></a>`).join("")}</div>`,
+    }[state.rail]();
+    panelHtml = `<div class="i-panel"><div class="bar"><b class="grow">${items.find(x => x[0] === state.rail)[2]}</b><button class="btn" data-action="rail" data-val="">✕</button></div><div class="i-body">${body}</div></div>`;
+  }
+  return `<div class="v i-wrap">
+    <nav class="i-rail">${items.map(([key, icon, label]) => `<button class="i-btn ${state.rail === key ? "on" : ""}" data-action="rail" data-val="${key}" title="${label}">${icon}${key === "links" ? `<em>${backlinks(state.current).length}</em>` : ""}</button>`).join("")}
+      <span class="grow"></span>${syncHtml(true)}</nav>
+    <div class="i-main">
+      <div class="bar"><div class="grow ellip"><b>${esc(state.current)}</b><br>${metaHtml()}</div></div>
+      ${bannerHtml()}
+      <div class="sheet">${bodyHtml()}</div>
+    </div>
+    ${panelHtml}
+  </div>`;
+}
+
+// J — Course path: your lessons as a path of stops on top, so you always see where you are in the course.
+function VariantJ() {
+  const n = cur();
+  let path;
+  if (n.type === "lesson") {
+    const ls = lessonsOf(n.course), idx = ls.indexOf(state.current);
+    path = `<div class="j-head"><b class="ellip">${esc(n.course)}</b><small>lesson ${idx + 1} of ${ls.length}</small></div>
+      <div class="j-path">${ls.map(t => `<button class="j-stop ${t === state.current ? "on" : ""}" data-open="${attr(t)}" title="${attr(t)}"><i></i><span>${esc(t)}</span></button>`).join('<span class="j-line"></span>')}
+        ${noteForPage() ? "" : `<span class="j-line dash"></span><button class="j-stop new" data-action="new-lesson" title="Start a note for this page"><i>+</i><span>this page</span></button>`}</div>`;
+  } else {
+    path = `<div class="j-head"><b>Concept</b><small>used in ${backlinks(state.current).length} notes</small></div>`;
+  }
+  const rel = [...new Set([...outgoing(state.current), ...backlinks(state.current)])];
+  return `<div class="v">
+    <div class="j-top">${path}
+      <div class="j-chips">${rel.map(t => `<a class="${notes[t] ? "" : "missing"}" data-open="${attr(t)}">${esc(t)}</a>`).join("") || `<span class="muted">no connected notes yet</span>`}</div>
+    </div>
+    <div class="bar"><div class="grow ellip"><b>${esc(state.current)}</b></div>${syncHtml(true)}<button class="btn" data-action="palette" title="Find a note (Ctrl K)">${ICON.search}</button></div>
+    ${bannerHtml()}
+    <div class="sheet">${bodyHtml()}</div>
+    ${paletteHtml()}
+  </div>`;
+}
+function paletteHtml() {
+  if (!state.palette) return "";
+  return `<div class="palette-wrap" data-action="palette-close"><div class="palette">
+    <input class="input" id="pq" placeholder="Jump to a note, or type a new title…" value="${attr(state.query)}">
+    ${state.query.trim() ? resultsHtml(state.query, true) : `<div class="results">${recentNotes(5).map((t, i) => `<a class="${i === state.hi ? "hi" : ""}" data-open="${attr(t)}">${esc(t)}<span class="snip">recent</span></a>`).join("")}</div>`}
+  </div></div>`;
+}
+
+const render = { A: VariantA, B: VariantB, C: VariantC, D: VariantD, E: VariantE, F: VariantF, G: VariantG, H: VariantH, I: VariantI, J: VariantJ };
+
+/* ===================== rendering ===================== */
+const panel = document.getElementById("panel");
+
+function applyTheme() {
+  const t = themes[state.theme], s = state.textScale;
+  for (const p of THEME_VARS) panel.style.removeProperty("--" + p);
+  for (const [k, v] of Object.entries(t.v)) panel.style.setProperty("--" + k, v);
+  const f = fonts[state.fontOverride || t.font];
+  panel.style.setProperty("--font", f.family);
+  panel.style.setProperty("--fw", f.fw);
+  panel.style.setProperty("--fs", (f.fs * s).toFixed(1) + "px");
+  const lh = Math.round(24 * s), fs = f.fs * s;
+  panel.style.setProperty("--lh", lh + "px");     // line spacing grows with the text, so ruled lines still fit
+  panel.style.setProperty("--mono", (12 * s).toFixed(1) + "px");
+  // Move the ruled lines up so the writing SITS on them, like on paper: the line goes just under the
+  // letters' baseline instead of at the very bottom of each row (where the text seemed to float above it).
+  const baseline = (lh - fs) / 2 + .78 * fs;
+  panel.style.setProperty("--line-shift", Math.round(baseline + 2 - (lh - 1)) + "px");
+  panel.classList.toggle("inside", state.inside);
+}
+
+// Keep the line grid intact below drawings: a sketch block's height isn't a whole number of rows,
+// so pad it to the next full row — otherwise every line after it slips off the ruling.
+function snapToGrid() {
+  if (typeof getComputedStyle !== "function") return;
+  const lh = parseFloat(getComputedStyle(panel).getPropertyValue("--lh")) || 24;
+  panel.querySelectorAll(".sk").forEach(el => {
+    el.style.marginBottom = "0px";
+    const h = el.getBoundingClientRect().height;
+    el.style.marginBottom = (Math.ceil(h / lh) * lh - h + lh) + "px";
+  });
+}
+
+function renderAll() {
+  const active = document.activeElement;
+  const focusId = active && panel.contains(active) ? active.id : null;
+  const sel = focusId && "selectionStart" in active ? [active.selectionStart, active.selectionEnd] : null;
+  const side = panel.querySelector(".g-side");
+  const sideScroll = side ? side.scrollTop : 0;
+
+  applyTheme();
+  panel.dataset.variant = state.variant;
+  panel.classList.toggle("with-settings", state.settings);
+  panel.innerHTML = `${state.settings ? settingsHtml() : ""}${cheatHtml()}<div class="shell">
+    <div class="main">
+      ${render[state.variant]()}
+      ${state.toast ? `<div class="toast">${esc(state.toast)}</div>` : ""}
+      <button class="g-fab ${state.settings ? "open" : ""}" data-action="settings" title="Glacier settings">${GLACIER_ICON}</button>
+      ${firstSyncHtml()}
+    </div></div>`;
+  state.settingsAnim = false;
+  if (state.settings) panel.querySelector(".g-side").scrollTop = sideScroll;
+  snapToGrid();
+
+  const ed = document.getElementById("blk-ed");
+  if (ed) growEd(ed);
+  if (focusId) {
+    const el = document.getElementById(focusId);
+    if (el) { el.focus(); if (sel && el.setSelectionRange) el.setSelectionRange(...sel); }
+  }
+}
+
+function renderCourse() {
+  const p = pages[state.page];
+  document.getElementById("url").textContent = "https://www." + p.url;
+  document.getElementById("lesson").innerHTML =
+    `<div class="site">${p.site}</div><h1>${esc(p.title)}</h1>${p.text.map(t => `<p>${esc(t)}</p>`).join("")}`;
+}
+
+/* ===================== actions ===================== */
+// put the cursor in the search box of whichever panel just opened
+function focusQ() { const q = document.getElementById("q"); if (q) q.focus(); }
+
+function open(title) {
+  if (!notes[title]) notes[title] = { type: "concept", updated: 0, body: "" };
+  state.current = title;
+  state.drawer = false; state.palette = false; state.query = ""; state.hi = 0;
+  state.tab = "note"; state.view = "note";
+  state.etab = null; state.home = false; state.gpicker = false; state.hmenu = false; state.hlinks = false; state.rail = null;
+  loadBlocks();
+  renderAll();
+  if (!state.firstSync) activate(state.active, null);
+}
+function newLesson() {
+  const p = pages[state.page];
+  let title = p.suggest;
+  if (notes[title]) title = `${title} (${shortCourse(state.lastCourse)})`;
+  notes[title] = { type: "lesson", course: state.lastCourse, source: p.url, updated: 0, body: "" };
+  open(title);
+}
+function newConcept() {
+  let i = 1; while (notes["Untitled concept " + i]) i++;
+  open("Untitled concept " + i);
+}
+
+// "+" button: open the insert menu on this line if it's empty, otherwise on a new line below it.
+function plusInsert() {
+  const i = state.active;
+  if (i == null) return;
+  if (state.blocks[i].trim() !== "") { state.blocks.splice(i + 1, 0, ""); saveBlocks(); activate(i + 1, 0); }
+  const ed = document.getElementById("blk-ed");
+  ed.value = "/"; state.blocks[state.active] = "/"; ed.setSelectionRange(1, 1); ed.focus();
+  updateSlash(ed);
+}
+
+panel.addEventListener("mousedown", e => {
+  if (e.target.closest(".ed-plus")) { e.preventDefault(); return plusInsert(); }
+  const cmd = e.target.closest("[data-cmd]");
+  if (cmd) { e.preventDefault(); return applyCommand(slash.items[+cmd.dataset.cmd]); }
+  // Note text is NOT switched into editing on press any more: the browser can then drag-select across
+  // several paragraphs. A plain click (press + release without dragging) starts editing — see mouseup.
+});
+panel.addEventListener("mouseup", e => {
+  if (e.button !== 0 || e.target.closest("[data-open], .sk, .ed-plus, [data-cmd], #blk-ed, .slash")) return;
+  const sel = window.getSelection && getSelection();
+  if (sel && !sel.isCollapsed && panel.contains(sel.anchorNode)) return;   // you selected text: leave it, so you can copy it
+  const b = e.target.closest(".blk[data-i]");
+  if (b) { sk.name = null; return activate(+b.dataset.i, rawOffsetFromPoint(e.clientX, e.clientY)); }
+  if (e.target.matches(".blocks, .sheet") && document.getElementById("blocks")) activate(state.blocks.length - 1, null);
+});
+
+/* ----- selecting and copying several paragraphs ----- */
+// Ctrl+A once selects the line you're on; Ctrl+A again selects the whole note (not the whole web page).
+function selectWholeNote() {
+  activate(null);                                     // show every line rendered, so it can all be selected
+  const box = document.getElementById("blocks");
+  if (!box) return;
+  const r = document.createRange(); r.selectNodeContents(box);
+  const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+}
+// Map a point in the rendered note back to [block index, offset in that block's raw Markdown].
+function rawPos(node, offset, atEnd) {
+  const el = node.nodeType === 3 ? node.parentElement : node;
+  const blk = el.closest && el.closest("[data-i]");
+  if (!blk) return null;
+  const i = +blk.dataset.i, raw = state.blocks[i], host = node.nodeType === 3 && el.closest("[data-r]");
+  if (isSketch(raw) || isCode(raw) || !host) return [i, atEnd ? raw.length : 0];
+  return [i, Math.min(raw.length, +host.dataset.r + offset)];
+}
+// Copying keeps the Markdown (headings, lists, [[links]], code), so it pastes back into a note — or Obsidian — intact.
+document.addEventListener("copy", e => {
+  const sel = getSelection();
+  if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+  const box = document.getElementById("blocks"), r = sel.getRangeAt(0);
+  if (!box || !box.contains(r.commonAncestorContainer) && r.commonAncestorContainer !== box) return;
+  let a = rawPos(r.startContainer, r.startOffset, false), b = rawPos(r.endContainer, r.endOffset, true);
+  if (r.startContainer === box || !a) a = [0, 0];
+  if (r.endContainer === box || !b) { const last = state.blocks.length - 1; b = [last, state.blocks[last].length]; }
+  const lines = state.blocks.slice(a[0], b[0] + 1);
+  if (lines.length === 1) lines[0] = lines[0].slice(a[1], b[1]);
+  else { lines[0] = lines[0].slice(a[1]); lines[lines.length - 1] = lines[lines.length - 1].slice(0, b[1]); }
+  const div = document.createElement("div"); div.appendChild(r.cloneContents());
+  e.clipboardData.setData("text/plain", lines.join("\n"));
+  e.clipboardData.setData("text/html", div.innerHTML);
+  e.preventDefault();
+  showToast(`Copied ${lines.length} line${lines.length > 1 ? "s" : ""} as Markdown`);
+});
+
+panel.addEventListener("click", e => {
+  const kp = e.target.closest("[data-keep]");                       // ☆ Keep on a layout card
+  if (kp) { const k = kp.dataset.keep; state.keep.has(k) ? state.keep.delete(k) : state.keep.add(k); return renderAll(); }
+  const ct = e.target.closest("[data-close-tab]");                 // × on a note tab (layout G)
+  if (ct) { const t = ct.dataset.closeTab; state.tabs = state.tabs.filter(x => x !== t); if (t === state.current && state.tabs.length) return open(state.tabs[state.tabs.length - 1]); return renderAll(); }
+  const o = e.target.closest("[data-open]");
+  if (o) { e.preventDefault(); return open(o.dataset.open); }
+  const tab = e.target.closest("[data-tab]");
+  if (tab) { state.tab = tab.dataset.tab; return renderAll(); }
+  const th = e.target.closest("[data-pick-theme]");
+  if (th) { state.theme = th.dataset.pickTheme; return renderAll(); }
+  const fo = e.target.closest("[data-pick-font]");
+  if (fo) { state.fontOverride = fo.dataset.pickFont; return renderAll(); }
+  const la = e.target.closest("[data-pick-layout]");
+  if (la) return setVariant(la.dataset.pickLayout);
+  const a = e.target.closest("[data-action]");
+  if (!a) return;
+  switch (a.dataset.action) {
+    case "cycle-sync": state.sync = (state.sync + 1) % syncStates.length; break;
+    case "sync-now": return syncNow();
+    case "first-sync": return runFirstSync();
+    case "drawer": state.drawer = !state.drawer; state.query = ""; break;
+    case "new-lesson": return newLesson();
+    case "new-concept": return newConcept();
+    case "crumb": state.view = a.dataset.to; state.course = a.dataset.course; break;
+    case "palette": state.palette = true; state.query = ""; state.hi = 0; renderAll(); document.getElementById("pq").focus(); return;
+    case "palette-close": if (e.target !== a) return; state.palette = false; break;
+    case "etab": state.etab = a.dataset.val && state.etab !== a.dataset.val ? a.dataset.val : null; state.query = ""; renderAll(); return focusQ();
+    case "home": state.home = true; state.query = ""; break;
+    case "fcourse": state.fcourse = state.fcourse === a.dataset.val ? null : a.dataset.val; break;
+    case "gpicker": state.gpicker = !state.gpicker; state.query = ""; renderAll(); return focusQ();
+    case "hmenu": state.hmenu = !state.hmenu; state.hlinks = false; state.query = ""; renderAll(); return focusQ();
+    case "hlinks": state.hlinks = !state.hlinks; state.hmenu = false; break;
+    case "rail": state.rail = a.dataset.val && state.rail !== a.dataset.val ? a.dataset.val : null; state.query = ""; renderAll(); return focusQ();
+    case "settings": state.settings = !state.settings; state.settingsAnim = state.settings; if (state.inside && state.settings) state.cheat.collapsed = true; break;
+    case "inside": state.inside = !state.inside; break;
+    case "settings-close": state.settings = false; break;
+    case "sec": state.sections[a.dataset.sec] = !state.sections[a.dataset.sec]; break;
+    case "theme-group": state.themeGroup = a.dataset.val; break;
+    case "ts-reset": state.textScale = 1; break;
+    case "cheat-toggle": state.cheat.on = !state.cheat.on; state.cheat.collapsed = false; break;
+    case "cheat-collapse": state.cheat.collapsed = !state.cheat.collapsed; if (state.inside && !state.cheat.collapsed) state.settings = false; break;
+    case "cheat-off": state.cheat.on = false; break;
+  }
+  renderAll();
+});
+
+panel.addEventListener("keydown", e => { if (e.target.id === "blk-ed") onEditorKey(e); });
+
+panel.addEventListener("input", e => {
+  const t = e.target;
+  if (t.id === "blk-ed") return onEditorInput(t);
+  if (t.id === "ts") {                      // live text size without re-rendering (so the slider keeps dragging)
+    state.textScale = +t.value; applyTheme(); snapToGrid();
+    document.getElementById("ts-val").textContent = Math.round(state.textScale * 100) + "%";
+    const ed = document.getElementById("blk-ed"); if (ed) growEd(ed);
+    return;
+  }
+  if (t.id === "q" || t.id === "pq") { state.query = t.value; state.hi = 0; return renderAll(); }
+  if (t.id === "filter") { state.filter = t.value; return renderAll(); }
+});
+panel.addEventListener("change", e => { if (e.target.id === "ts") renderAll(); });
+
+function setVariant(v) {
+  state.variant = v; state.drawer = false; state.palette = false; state.query = "";
+  state.etab = null; state.home = false; state.gpicker = false; state.hmenu = false; state.hlinks = false; state.rail = null;
+  const url = new URL(location.href); url.searchParams.set("variant", v);
+  history.replaceState(null, "", url);
+  renderAll();
+}
+
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {   // "find a note" in every layout
+    e.preventDefault(); e.stopPropagation();
+    state.query = ""; state.hi = 0;
+    if (state.variant === "A") state.drawer = true;
+    if (state.variant === "B") state.tab = "search";
+    if (state.variant === "C" || state.variant === "J") state.palette = true;
+    if (state.variant === "E") state.etab = "search";
+    if (state.variant === "F") state.home = true;
+    if (state.variant === "G") state.gpicker = true;
+    if (state.variant === "H") state.hmenu = true;
+    if (state.variant === "I") state.rail = "search";
+    renderAll(); document.getElementById({ C: "pq", J: "pq", D: "filter" }[state.variant] || "q").focus(); return;
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a" && !(e.target.closest && e.target.closest("input, textarea")) && document.getElementById("blocks")) {
+    e.preventDefault(); return selectWholeNote();     // Ctrl+A outside a text box: the whole note, not the whole web page
+  }
+  if (e.key === "Escape" && e.target.id !== "blk-ed") { state.settings = false; state.palette = false; state.drawer = false; state.etab = null; state.gpicker = false; state.hmenu = false; state.hlinks = false; state.rail = null; return renderAll(); }
+  if (state.palette && e.target.id === "pq") {
+    const items = panel.querySelectorAll(".palette .results a");
+    if (e.key === "ArrowDown") { e.preventDefault(); state.hi = Math.min(items.length - 1, state.hi + 1); return renderAll(); }
+    if (e.key === "ArrowUp") { e.preventDefault(); state.hi = Math.max(0, state.hi - 1); return renderAll(); }
+    if (e.key === "Enter" && items[state.hi]) return open(items[state.hi].dataset.open);
+  }
+}, true);
+
+/* ===================== sketch blocks (v2 preview) ===================== */
+// A sketch sits in a note as one line: ![[<note> – sketch <n>.svg]]. Its shapes live in `sketches`
+// (in the real app: as JSON inside the .svg file's <metadata>, next to the note).
+const SK_W = 600;                                   // canvas width in drawing units; it scales to the panel
+const sketches = {
+  "Flexbox basics – sketch 1.svg": { h: 240, next: 20, shapes: [
+    { id: 9, type: "text", x: 48, y: 30, w: 0, h: 0, text: "display: flex", color: "ink" },
+    { id: 1, type: "rect", x: 40, y: 40, w: 420, h: 120, color: "ink" },
+    { id: 2, type: "square", x: 64, y: 68, w: 64, h: 64, color: "accent" },
+    { id: 3, type: "square", x: 150, y: 68, w: 64, h: 64, color: "accent" },
+    { id: 4, type: "square", x: 236, y: 68, w: 64, h: 64, color: "accent" },
+    { id: 5, type: "arrow", x: 40, y: 190, w: 420, h: 0, color: "red" },
+    { id: 6, type: "text", x: 190, y: 224, w: 0, h: 0, text: "main axis", color: "red" },
+    { id: 7, type: "arrow", x: 500, y: 40, w: 0, h: 120, color: "green" },
+    { id: 8, type: "text", x: 514, y: 108, w: 0, h: 0, text: "cross", color: "green" },
+  ] },
+};
+const SK_COLORS = { ink: "var(--ink)", accent: "var(--accent)", red: "#d1495b", green: "#2e9e6a", yellow: "#e0a526" };
+const SK_TOOLS = [
+  ["circle", `<circle cx="10" cy="10" r="7"/>`],
+  ["triangle", `<polygon points="10,3 17,17 3,17"/>`],
+  ["rect", `<rect x="2" y="5" width="16" height="10" rx="1.5"/>`],
+  ["square", `<rect x="4" y="4" width="12" height="12" rx="1.5"/>`],
+  ["arrow", `<line x1="3" y1="10" x2="16" y2="10"/><polyline points="12,6 16,10 12,14"/>`],
+  ["line", `<line x1="3" y1="15" x2="17" y2="5"/>`],
+  ["text", `<text x="10" y="15" text-anchor="middle" font-size="13" fill="currentColor" stroke="none" font-family="serif">T</text>`],
+];
+const SK_DEFAULT = { circle: [80, 80], triangle: [90, 80], rect: [130, 76], square: [80, 80], arrow: [140, 0], line: [140, 0], text: [0, 0] };
+const sk = { name: null, sel: null, color: "ink", drag: null };
+
+const isSketch = raw => /^!\[\[(.+\.svg)\]\]$/.test(raw.trim());
+const sketchName = raw => raw.trim().slice(3, -2);
+const isLineish = s => s.type === "arrow" || s.type === "line";
+
+function shapeSvg(s) {
+  const c = SK_COLORS[s.color] || s.color, st = `stroke="${c}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"`;
+  const fill = `fill="${c}" fill-opacity=".07"`, x2 = s.x + s.w, y2 = s.y + s.h;
+  let el = "";
+  switch (s.type) {
+    case "rect": case "square": el = `<rect x="${Math.min(s.x, x2)}" y="${Math.min(s.y, y2)}" width="${Math.abs(s.w)}" height="${Math.abs(s.h)}" rx="6" ${st} ${fill}/>`; break;
+    case "circle": el = `<ellipse cx="${s.x + s.w / 2}" cy="${s.y + s.h / 2}" rx="${Math.abs(s.w / 2)}" ry="${Math.abs(s.h / 2)}" ${st} ${fill}/>`; break;
+    case "triangle": el = `<polygon points="${s.x + s.w / 2},${s.y} ${x2},${y2} ${s.x},${y2}" ${st} ${fill}/>`; break;
+    case "line": case "arrow": {
+      const a = Math.atan2(s.h, s.w), L = 14;
+      const head = s.type === "arrow" ? `<polyline points="${x2 - L * Math.cos(a - .45)},${y2 - L * Math.sin(a - .45)} ${x2},${y2} ${x2 - L * Math.cos(a + .45)},${y2 - L * Math.sin(a + .45)}" fill="none" ${st}/>` : "";
+      el = `<line x1="${s.x}" y1="${s.y}" x2="${x2}" y2="${y2}" stroke="transparent" stroke-width="16"/><line x1="${s.x}" y1="${s.y}" x2="${x2}" y2="${y2}" ${st}/>${head}`; break;
+    }
+    case "text": el = `<text x="${s.x}" y="${s.y}" fill="${c}" style="font-family:var(--font);font-size:22px">${esc(s.text || "")}</text>`; break;
+  }
+  return `<g data-shape="${s.id}" style="cursor:move">${el}</g>`;
+}
+function bbox(s) {
+  if (s.type === "text") { const w = Math.max(30, (s.text || "").length * 11); return { x: s.x - 4, y: s.y - 20, w: w + 8, h: 28 }; }
+  return { x: Math.min(s.x, s.x + s.w) - 6, y: Math.min(s.y, s.y + s.h) - 6, w: Math.abs(s.w) + 12, h: Math.abs(s.h) + 12 };
+}
+function sketchInner(name) {
+  const d = sketches[name];
+  let h = d.shapes.map(shapeSvg).join("");
+  const s = sk.name === name && d.shapes.find(z => z.id === sk.sel);
+  if (s) {
+    const b = bbox(s), hd = (x, y, k) => `<rect data-handle="${k}" x="${x - 7}" y="${y - 7}" width="14" height="14" rx="3" fill="#fff" stroke="var(--accent)" stroke-width="2" style="cursor:nwse-resize"/>`;
+    h += `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="none" stroke="var(--accent)" stroke-dasharray="5 4" stroke-width="1.5" pointer-events="none"/>`;
+    if (isLineish(s)) h += hd(s.x, s.y, "p1") + hd(s.x + s.w, s.y + s.h, "p2");
+    else if (s.type !== "text") h += hd(s.x + s.w, s.y + s.h, "br");
+  }
+  return h;
+}
+function sketchHtml(raw, i) {
+  const name = sketchName(raw), d = sketches[name];
+  if (!d) return `<div class="blk" data-i="${i}"><span data-r="0" class="muted">${esc(raw)} (missing file)</span></div>`;
+  const on = sk.name === name;
+  const tools = on ? `<div class="sk-tools">
+      ${SK_TOOLS.map(([t, icon]) => `<button class="sk-tool" draggable="true" data-sk-tool="${t}" title="Drag a ${t} onto the sketch (or click)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${icon}</svg></button>`).join("")}
+      <span class="sk-sep"></span>
+      ${Object.entries(SK_COLORS).map(([k, c]) => `<button class="sk-col ${sk.color === k ? "on" : ""}" data-sk-color="${k}" style="background:${c}" title="${k}"></button>`).join("")}
+      <button class="sk-del" data-sk-del title="Delete the selected shape (Del)">✕ shape</button>
+    </div>` : "";
+  return `<div class="sk ${on ? "on" : ""}" data-sk="${attr(name)}" data-i="${i}">
+    ${tools}
+    <svg class="sk-canvas" data-sk-svg="${attr(name)}" viewBox="0 0 ${SK_W} ${d.h}">${sketchInner(name)}</svg>
+    ${on && !d.shapes.length ? `<div class="sk-hint">Drag a shape from the bar above into here</div>` : ""}
+    <div class="sk-cap"><span>✎ ${on ? "drag to move · corner to resize · double-click text" : "click to draw"}</span><span>${esc(name)}</span></div>
+    ${on ? `<div class="sk-resize" data-sk-resize title="Drag to make the sketch taller or shorter"></div>` : ""}
+  </div>`;
+}
+const skSvg = name => panel.querySelector(`[data-sk-svg="${CSS.escape(name)}"]`);
+const refreshBlocks = () => { const box = document.getElementById("blocks"); if (box) { box.innerHTML = blocksHtml(); snapToGrid(); } };
+function redrawSketch(name) {
+  const svg = skSvg(name);
+  if (svg) { svg.setAttribute("viewBox", `0 0 ${SK_W} ${sketches[name].h}`); svg.innerHTML = sketchInner(name); snapToGrid(); }
+}
+function focusSketch(name, sel = null) {
+  sk.name = name; sk.sel = sel;
+  state.active = null;            // stop text editing while drawing
+  refreshBlocks();
+}
+function toSvgPoint(svg, cx, cy) {
+  const p = svg.createSVGPoint(); p.x = cx; p.y = cy;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+function addShape(name, type, x, y) {
+  const d = sketches[name], [w, h] = SK_DEFAULT[type];
+  const s = { id: d.next++, type, color: sk.color, x: Math.round(x - w / 2), y: Math.round(y - h / 2), w, h };
+  if (type === "text") { s.x = Math.round(x - 20); s.y = Math.round(y + 8); s.text = "Text"; }
+  d.shapes.push(s);
+  sk.name = name; sk.sel = s.id;
+  refreshBlocks();
+  if (type === "text") editText(name, s.id);
+  return s;
+}
+function newSketch() {
+  let n = 1; while (sketches[`${state.current} – sketch ${n}.svg`]) n++;
+  const name = `${state.current} – sketch ${n}.svg`;
+  sketches[name] = { h: 240, next: 1, shapes: [] };
+  return name;
+}
+function editText(name, id) {
+  const s = sketches[name].shapes.find(z => z.id === id), svg = skSvg(name);
+  if (!s || !svg || !svg.closest) return;
+  const wrap = svg.closest(".sk");
+  if (!wrap) return;
+  const r = svg.getBoundingClientRect(), k = r.width / SK_W, wr = wrap.getBoundingClientRect();
+  const inp = document.createElement("input");
+  inp.className = "sk-text-in"; inp.value = s.text || "";
+  inp.style.left = (r.left - wr.left + s.x * k - 4) + "px"; inp.style.top = (r.top - wr.top + (s.y - 24) * k) + "px";
+  inp.style.font = `${Math.max(12, 22 * k)}px var(--font)`;
+  wrap.appendChild(inp); inp.focus(); inp.select();
+  const done = () => { s.text = inp.value.trim() || "Text"; inp.remove(); redrawSketch(name); };
+  inp.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Enter" || e.key === "Escape") { e.preventDefault(); inp.blur(); } });
+  inp.addEventListener("blur", done, { once: true });
+}
+function deleteSelectedShape() {
+  if (!sk.name || sk.sel == null) return;
+  const d = sketches[sk.name]; d.shapes = d.shapes.filter(z => z.id !== sk.sel); sk.sel = null;
+  refreshBlocks();
+}
+
+// --- pointer: select, move, resize, line endpoints, sketch height ---
+panel.addEventListener("pointerdown", e => {
+  // pressing anywhere outside the sketch you are drawing in lets go of it (done on press, not click: the
+  // click that follows a press on a sketch lands after the sketch re-rendered and would look like "outside")
+  if (sk.name && !e.target.closest(".sk, .g-side, .g-cheat")) { sk.name = null; sk.sel = null; if (!e.target.closest(".blk")) refreshBlocks(); }
+  const rz = e.target.closest("[data-sk-resize]");
+  if (rz) {
+    e.preventDefault();
+    const name = rz.closest(".sk").dataset.sk, d = sketches[name], y0 = e.clientY, h0 = d.h, k = SK_W / skSvg(name).getBoundingClientRect().width;
+    sk.drag = ev => { d.h = Math.max(120, Math.min(900, Math.round(h0 + (ev.clientY - y0) * k))); redrawSketch(name); };
+    return;
+  }
+  const svg = e.target.closest(".sk-canvas");
+  if (!svg) return;
+  e.preventDefault();
+  const name = svg.dataset.skSvg, d = sketches[name], p0 = toSvgPoint(svg, e.clientX, e.clientY);
+  const handle = e.target.closest("[data-handle]"), g = e.target.closest("[data-shape]");
+  if (sk.name !== name) return focusSketch(name, g ? +g.dataset.shape : null);
+  if (handle) {
+    const s = d.shapes.find(z => z.id === sk.sel), o = { ...s };
+    sk.drag = ev => {
+      const p = toSvgPoint(skSvg(name), ev.clientX, ev.clientY);
+      if (handle.dataset.handle === "p1") { s.x = Math.round(p.x); s.y = Math.round(p.y); s.w = o.x + o.w - s.x; s.h = o.y + o.h - s.y; }
+      else if (handle.dataset.handle === "p2") { s.w = Math.round(p.x - s.x); s.h = Math.round(p.y - s.y); }
+      else {
+        s.w = Math.max(16, Math.round(p.x - s.x)); s.h = Math.max(16, Math.round(p.y - s.y));
+        if (s.type === "square" || s.type === "circle") s.w = s.h = Math.max(s.w, s.h);
+      }
+      redrawSketch(name);
+    };
+    return;
+  }
+  if (g) {
+    const s = d.shapes.find(z => z.id === +g.dataset.shape), o = { x: s.x, y: s.y };
+    sk.sel = s.id; redrawSketch(name);
+    sk.drag = ev => {
+      const p = toSvgPoint(skSvg(name), ev.clientX, ev.clientY);
+      s.x = Math.round(o.x + p.x - p0.x); s.y = Math.round(o.y + p.y - p0.y); redrawSketch(name);
+    };
+    return;
+  }
+  sk.sel = null; redrawSketch(name);
+});
+window.addEventListener("pointermove", e => { if (sk.drag) sk.drag(e); });
+window.addEventListener("pointerup", () => { sk.drag = null; });
+panel.addEventListener("dblclick", e => {
+  const g = e.target.closest("[data-shape]"), svg = e.target.closest(".sk-canvas");
+  if (!g || !svg) return;
+  const s = sketches[svg.dataset.skSvg].shapes.find(z => z.id === +g.dataset.shape);
+  if (s && s.type === "text") editText(svg.dataset.skSvg, s.id);
+});
+// --- palette: drag a shape onto the canvas, or click it to drop it in the middle ---
+panel.addEventListener("dragstart", e => {
+  const t = e.target.closest && e.target.closest("[data-sk-tool]");
+  if (t) { e.dataTransfer.setData("text/x-glacier-shape", t.dataset.skTool); e.dataTransfer.effectAllowed = "copy"; }
+});
+panel.addEventListener("dragover", e => {
+  const svg = e.target.closest && e.target.closest(".sk-canvas");
+  if (svg && [...e.dataTransfer.types].includes("text/x-glacier-shape")) { e.preventDefault(); svg.classList.add("drop"); }
+});
+panel.addEventListener("dragleave", e => { const svg = e.target.closest && e.target.closest(".sk-canvas"); if (svg) svg.classList.remove("drop"); });
+panel.addEventListener("drop", e => {
+  const svg = e.target.closest && e.target.closest(".sk-canvas"), type = e.dataTransfer.getData("text/x-glacier-shape");
+  if (!svg || !type) return;
+  e.preventDefault();
+  const p = toSvgPoint(svg, e.clientX, e.clientY);
+  addShape(svg.dataset.skSvg, type, p.x, p.y);
+});
+panel.addEventListener("click", e => {
+  const t = e.target.closest("[data-sk-tool]");
+  if (t) { e.stopPropagation(); const name = t.closest(".sk").dataset.sk; addShape(name, t.dataset.skTool, SK_W / 2, sketches[name].h / 2); return; }
+  const c = e.target.closest("[data-sk-color]");
+  if (c) {
+    e.stopPropagation(); sk.color = c.dataset.skColor;
+    const s = sk.name && sketches[sk.name].shapes.find(z => z.id === sk.sel); if (s) s.color = sk.color;
+    refreshBlocks(); return;
+  }
+  if (e.target.closest("[data-sk-del]")) { e.stopPropagation(); deleteSelectedShape(); return; }
+}, true);
+document.addEventListener("keydown", e => {
+  if (!sk.name || (e.target.closest && e.target.closest("input, textarea"))) return;
+  if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); deleteSelectedShape(); }
+  if (e.key === "Escape") { sk.name = null; sk.sel = null; refreshBlocks(); }
+});
+
+/* Split layout: drag the handle between the list and the note */
+panel.addEventListener("pointerdown", e => {
+  const h = e.target.closest("[data-split-handle]");
+  if (!h) return;
+  e.preventDefault(); h.setPointerCapture(e.pointerId); document.body.classList.add("resizing");
+  const top = panel.querySelector(".split-top"), y0 = e.clientY, h0 = top.getBoundingClientRect().height;
+  const max = panel.querySelector(".v").getBoundingClientRect().height - 140;
+  const move = ev => { state.splitPx = Math.round(Math.max(70, Math.min(max, h0 + ev.clientY - y0))); top.style.setProperty("--split-h", state.splitPx + "px"); };
+  const up = () => { document.body.classList.remove("resizing"); h.removeEventListener("pointermove", move); h.removeEventListener("pointerup", up); };
+  h.addEventListener("pointermove", move); h.addEventListener("pointerup", up);
+});
+
+/* ===================== resizing ===================== */
+// In the real extension Chrome and Firefox resize the sidebar themselves; this handle stands in for that.
+const resizer = document.getElementById("resizer");
+resizer.addEventListener("pointerdown", e => {
+  resizer.setPointerCapture(e.pointerId);
+  document.body.classList.add("resizing");
+  const move = ev => { panel.style.width = Math.max(260, Math.min(900, window.innerWidth - ev.clientX)) + "px"; snapToGrid(); };
+  const up = () => { document.body.classList.remove("resizing"); resizer.removeEventListener("pointermove", move); resizer.removeEventListener("pointerup", up); };
+  resizer.addEventListener("pointermove", move);
+  resizer.addEventListener("pointerup", up);
+});
+
+/* ===================== fake browsing ===================== */
+const pagePick = document.getElementById("page-pick");
+pagePick.innerHTML = pages.map((p, i) => `<option value="${i}">Go to: ${p.site === "KHAN ACADEMY" ? "Khan" : "Odin"} – ${p.title}</option>`).join("");
+pagePick.onchange = () => {
+  state.page = +pagePick.value;
+  state.lastCourse = pages[state.page].site === "KHAN ACADEMY" ? KHAN : TOP;
+  renderCourse();
+  const n = noteForPage();
+  if (n) open(n); else renderAll();
+};
+
+renderCourse();
+open(state.current);
+if (!params.has("nosync")) runFirstSync();
+// prototype self-test: select the whole note, copy it, and leave what landed on the clipboard in the page
+if (params.has("selftest-partial")) setTimeout(() => {
+  activate(null);
+  const s = panel.querySelector(`.blk[data-i="0"] span[data-r]`).firstChild, e2 = panel.querySelector(`.blk[data-i="5"] span[data-r]`).firstChild;
+  const r = document.createRange(); r.setStart(s, 2); r.setEnd(e2, 9); getSelection().removeAllRanges(); getSelection().addRange(r);
+  const dt = new DataTransfer(); document.dispatchEvent(new ClipboardEvent("copy", { clipboardData: dt, bubbles: true, cancelable: true }));
+  const pre = document.createElement("pre"); pre.id = "selftest"; pre.textContent = dt.getData("text/plain"); document.body.appendChild(pre);
+}, 300);
+if (params.has("selftest-copy")) setTimeout(() => {
+  selectWholeNote();
+  const dt = new DataTransfer(); document.dispatchEvent(new ClipboardEvent("copy", { clipboardData: dt, bubbles: true, cancelable: true }));
+  const pre = document.createElement("pre"); pre.id = "selftest"; pre.textContent = dt.getData("text/plain"); document.body.appendChild(pre);
+}, 300);
+if (params.has("sketch")) { sk.name = "Flexbox basics – sketch 1.svg"; sk.sel = 2; state.active = null; refreshBlocks(); }   // screenshot helper
+</script>
+</body>
+</html>
