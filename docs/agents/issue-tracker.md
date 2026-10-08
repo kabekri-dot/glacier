@@ -2,15 +2,9 @@
 
 Issues and specs for this repo live as GitHub issues on the **`glacier` code repo**. Use the `gh` CLI for all operations.
 
-## Before the first issue (not done yet)
+## Setup (done)
 
-This folder is **not a Git repository yet**. Before any skill can create an issue:
-
-1. the `glacier` repo must exist on GitHub,
-2. it must be this folder's Git remote (`git remote -v` shows it),
-3. `gh auth login` must have been done.
-
-Until all three are true, a skill that needs the tracker stops and says so. It never guesses a repo and never creates one without asking.
+The `glacier` repo is on GitHub (public, https://github.com/kabekri-dot/glacier), it is this folder's `origin` remote, and `gh` is logged in. Commits use the account's GitHub noreply email, set in this repo's git config.
 
 **Never** put issues in the private **Notes Repo** (`glacier-notes`). That repo holds the user's notes only.
 
