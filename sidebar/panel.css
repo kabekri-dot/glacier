@@ -138,6 +138,76 @@ code {
   border-radius: 3px;
 }
 
+/* The focused line and its + button (#6). The row lets the + sit in the left
+   gutter without pushing the text off the ruled lines: the textarea keeps the
+   full width and the button is lifted out into the padding. */
+.line-row {
+  position: relative;
+}
+
+.line-plus {
+  position: absolute;
+  left: -1.15rem;
+  top: 0;
+  width: 1.1rem;
+  height: var(--glacier-line-height);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--glacier-accent);
+  font: inherit;
+  line-height: var(--glacier-line-height);
+  cursor: pointer;
+  opacity: 0.35;
+}
+
+.line-plus:hover,
+.line-plus:focus {
+  opacity: 1;
+  outline: none;
+}
+
+/* The `/` command menu (#6): a small floating list near the current line. Each
+   row shows the command name on the left and the Markdown it inserts on the
+   right, so the syntax is learned by using it (ADR 0006). */
+.slash-menu {
+  position: fixed;
+  z-index: 10;
+  margin: 0.2rem 0 0;
+  padding: 0.25rem;
+  list-style: none;
+  min-width: 14rem;
+  max-height: 16rem;
+  overflow-y: auto;
+  background: var(--glacier-paper);
+  border: 1px solid var(--glacier-rule);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(27, 42, 74, 0.18);
+  font-size: 0.95rem;
+}
+
+.slash-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+  padding: 0.3rem 0.5rem;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.slash-item.is-selected,
+.slash-item:hover {
+  background: rgba(63, 120, 196, 0.15);
+}
+
+.slash-md {
+  color: var(--glacier-accent);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.85em;
+  white-space: pre;
+}
+
 /* A failed save (issue #25): a quiet banner pinned to the bottom, shown only
    when the panel unhides it, so it never covers the note it's warning about. */
 .save-error {
