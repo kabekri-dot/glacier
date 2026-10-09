@@ -28,7 +28,8 @@ which version.
 ## Opening Glacier
 
 Once loaded, open Glacier from the toolbar button or with the keyboard
-shortcut **Ctrl+Shift+Y**. You'll see an empty Zen page on Glacier paper.
+shortcut **Alt+Shift+G** (free in both Chrome and Firefox). You'll see an
+empty Zen page on Glacier paper.
 
 ## Loading the extension while developing
 
