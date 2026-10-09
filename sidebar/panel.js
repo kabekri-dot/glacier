@@ -11,6 +11,7 @@
 import { createNotebook } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { createSaveScheduler } from "../src/save-scheduler.mjs";
+import { editorTextToBody } from "../src/editor-model.mjs";
 
 const noteEl = document.querySelector(".note");
 const saveErrorEl = document.querySelector(".save-error");
@@ -53,7 +54,14 @@ async function start() {
     .pop();
 
   if (openNote) {
+    // The paper is `white-space: pre-wrap`, so the `\n` in the body render as
+    // line breaks and textContent is enough to show it.
     noteEl.textContent = openNote.body ?? "";
+
+    // Read the edited note with innerText, not textContent: innerText keeps the
+    // line breaks Enter makes (`<div>` in Chrome, `<br>` in Firefox) that
+    // textContent drops, so a multi-line note survives a reload (issue #24).
+    const readBody = () => editorTextToBody(noteEl.innerText);
 
     // Debounce writes so a burst of typing opens one transaction, not one per
     // keystroke, and flush any pending write before the sidebar goes away so
@@ -61,9 +69,7 @@ async function start() {
     const scheduler = createSaveScheduler({
       save: (body) => notebook.saveBody(openNote.title, body),
     });
-    noteEl.addEventListener("input", () =>
-      scheduler.schedule(noteEl.textContent),
-    );
+    noteEl.addEventListener("input", () => scheduler.schedule(readBody()));
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") scheduler.flush();
     });

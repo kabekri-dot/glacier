@@ -34,6 +34,9 @@ body {
 .note {
   min-height: 100%;
   padding: 1.5rem 1.25rem;
+  /* Keep the newlines in the body: render each `\n` as a line break and keep
+     runs of spaces, so the Markdown structure shows and survives (issue #24). */
+  white-space: pre-wrap;
   /* Faint ruled lines, like a real notebook. */
   background-image: repeating-linear-gradient(
     var(--glacier-paper),
