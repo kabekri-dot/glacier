@@ -4,10 +4,10 @@
 // edits are saved into this browser's own IndexedDB copy of the Notebook
 // (ADR 0003) — no save button; the write-through storage keeps every keystroke.
 //
-// The block logic (splitting, list continuation, merging, raw-offset mapping)
-// lives in editor-model.mjs as pure, tested functions; this file is only the
-// DOM wiring. The pill that switches notes and the `/` menu arrive in later
-// slices (#6, #12).
+// The block logic (splitting, list continuation, merging, raw-offset mapping,
+// the `/` command list) lives in editor-model.mjs as pure, tested functions;
+// this file is only the DOM wiring. The pill that switches notes arrives in a
+// later slice (#12).
 
 import { createNotebook } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
@@ -22,7 +22,15 @@ import {
   pressBackspace,
   renderedToRaw,
   renderLineHtml,
+  slashQuery,
+  filterCommands,
+  applySlashCommand,
 } from "../src/editor-model.mjs";
+
+// The empty-line hint and the menu that `/` and the + button open (#6). The
+// command logic (which commands, filtering, applying one) is tested in the
+// editor model; this file only draws the menu and wires its keys.
+const EMPTY_LINE_HINT = "Type / for commands — or click + on the left";
 
 const noteEl = document.querySelector(".note");
 const saveErrorEl = document.querySelector(".save-error");
@@ -164,6 +172,128 @@ async function start() {
     render();
   }
 
+  // The `/` command menu while it is open: its list element, the commands it
+  // currently shows and which one is highlighted. Null when closed. The menu
+  // floats over the page near the current line and the focused textarea keeps
+  // the caret, so typing still filters and ↑/↓/Enter/Tab/Esc drive the menu.
+  let menu = null;
+  // The focused line's raw textarea, kept so the + button can open the menu on
+  // it after a re-render.
+  let focusedTextareaEl = null;
+
+  function closeMenu() {
+    if (menu) {
+      menu.el.remove();
+      menu = null;
+    }
+  }
+
+  // Apply the highlighted command: the `/query` before the caret is replaced by
+  // the command's Markdown and the caret lands where the command points (#6).
+  function pickCommand(command) {
+    const next = applySlashCommand(lines, focus.line, focus.col, command);
+    lines = next.lines;
+    closeMenu();
+    moveTo(next.line, next.col);
+    scheduleSave();
+  }
+
+  function renderMenu() {
+    menu.el.replaceChildren();
+    menu.commands.forEach((command, i) => {
+      const item = document.createElement("li");
+      item.className = i === menu.selected ? "slash-item is-selected" : "slash-item";
+      const label = document.createElement("span");
+      label.className = "slash-label";
+      label.textContent = command.label;
+      // Each command shows the Markdown it inserts, so the syntax is learned by
+      // using it (ADR 0006).
+      const md = document.createElement("span");
+      md.className = "slash-md";
+      md.textContent = command.markdown;
+      item.append(label, md);
+      // mousedown (not click) keeps the caret in the textarea as we apply.
+      item.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        pickCommand(command);
+      });
+      menu.el.appendChild(item);
+    });
+  }
+
+  // Show (or refilter) the menu for the focused line. It opens only when the
+  // line is a `/` command (slashQuery); any other caret closes it.
+  function openOrUpdateMenu(ta) {
+    const query = slashQuery(lines[focus.line] ?? "", focus.col);
+    const commands = query === null ? [] : filterCommands(query);
+    if (commands.length === 0) {
+      closeMenu();
+      return;
+    }
+    if (!menu) {
+      const el = document.createElement("ul");
+      el.className = "slash-menu";
+      document.body.appendChild(el);
+      menu = { el, commands, selected: 0 };
+    } else {
+      menu.commands = commands;
+      if (menu.selected >= commands.length) menu.selected = 0;
+    }
+    const rect = ta.getBoundingClientRect();
+    menu.el.style.left = `${rect.left}px`;
+    menu.el.style.top = `${rect.bottom}px`;
+    renderMenu();
+  }
+
+  // The + button on the left of the current line opens the same menu. It works
+  // by dropping a `/` where the menu should appear — on a fresh line below when
+  // the current line already has text — so filtering and applying behave
+  // exactly as if the `/` had been typed (#6).
+  function openMenuFromPlus(start) {
+    const next = lines.slice();
+    let line = start;
+    if ((next[start] ?? "") !== "") {
+      next.splice(start + 1, 0, "/");
+      line = start + 1;
+    } else {
+      next[start] = "/";
+    }
+    lines = next;
+    focus = { line, col: 1 };
+    render();
+    if (focusedTextareaEl) openOrUpdateMenu(focusedTextareaEl);
+  }
+
+  // Let the menu steal the navigation keys while it is open; returns true when
+  // it handled the key so the editor leaves it alone.
+  function menuHandledKey(event) {
+    if (!menu) return false;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      menu.selected = (menu.selected + 1) % menu.commands.length;
+      renderMenu();
+      return true;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      menu.selected =
+        (menu.selected - 1 + menu.commands.length) % menu.commands.length;
+      renderMenu();
+      return true;
+    }
+    if (event.key === "Enter" || event.key === "Tab") {
+      event.preventDefault();
+      pickCommand(menu.commands[menu.selected]);
+      return true;
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeMenu();
+      return true;
+    }
+    return false;
+  }
+
   // Build one rendered (non-focused) block.
   function renderedBlock(range) {
     const blockLines = lines.slice(range.start, range.end);
@@ -227,14 +357,23 @@ async function start() {
       scheduleSave();
       ta.style.height = "auto";
       ta.style.height = `${ta.scrollHeight}px`;
+      ta.placeholder = ta.value === "" ? EMPTY_LINE_HINT : "";
       // A multi-line paste into a one-line block must reflow into real blocks;
       // typing inside a code block need not (it stays one block).
-      if (!isCode && newLines.length > 1) render();
+      if (!isCode && newLines.length > 1) {
+        render();
+        return;
+      }
+      // Open, refilter or close the `/` command menu for the new caret (#6).
+      openOrUpdateMenu(ta);
     };
 
     ta.addEventListener("input", sync);
 
     ta.addEventListener("keydown", (event) => {
+      // While the menu is open it owns ↑/↓/Enter/Tab/Esc (#6).
+      if (menuHandledKey(event)) return;
+
       if (event.key === "Enter" && !isCode && !event.shiftKey) {
         event.preventDefault();
         const here = lineColFromOffset(start, ta.value, ta.selectionStart);
@@ -291,7 +430,11 @@ async function start() {
   // Rebuild the page from the current lines, with the focused block as a raw
   // textarea and every other block rendered. The caret is restored afterwards.
   function render() {
+    // Any open menu belongs to the line we're leaving; a re-render is always a
+    // move away from it (nav, pick, link follow), so close it first (#6).
+    closeMenu();
     noteEl.replaceChildren();
+    focusedTextareaEl = null;
     const ranges = blockRanges(lines);
     let focusedTextarea = null;
     let focusedStart = 0;
@@ -299,7 +442,21 @@ async function start() {
     for (const range of ranges) {
       if (focus.line >= range.start && focus.line < range.end) {
         const built = focusedBlock(range);
-        noteEl.appendChild(built.ta);
+        // The + button opens the command menu from the left of the current
+        // line, without needing to know about `/` (#6).
+        const plus = document.createElement("button");
+        plus.type = "button";
+        plus.className = "line-plus";
+        plus.textContent = "+";
+        plus.setAttribute("aria-label", "Open the command menu");
+        plus.addEventListener("mousedown", (event) => {
+          event.preventDefault();
+          openMenuFromPlus(built.start);
+        });
+        const row = document.createElement("div");
+        row.className = "line-row";
+        row.append(plus, built.ta);
+        noteEl.appendChild(row);
         focusedTextarea = built.ta;
         focusedStart = built.start;
       } else {
@@ -308,9 +465,13 @@ async function start() {
     }
 
     if (focusedTextarea) {
+      focusedTextareaEl = focusedTextarea;
       const offset = offsetInBlock(focusedStart, focus.line, focus.col);
       focusedTextarea.focus();
       focusedTextarea.setSelectionRange(offset, offset);
+      // The empty-line hint reminds beginners the menu exists (#6).
+      focusedTextarea.placeholder =
+        focusedTextarea.value === "" ? EMPTY_LINE_HINT : "";
       // Grow the raw textarea to fit its content so the paper reads as one note.
       focusedTextarea.style.height = "auto";
       focusedTextarea.style.height = `${focusedTextarea.scrollHeight}px`;

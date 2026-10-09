@@ -14,11 +14,15 @@ import {
   renderedToRaw,
   renderLineHtml,
   findLinks,
+  SLASH_COMMANDS,
+  slashQuery,
+  filterCommands,
+  applySlashCommand,
 } from "../src/editor-model.mjs";
 
 // The editor model is the second test seam: pure functions on one note's
-// text, with no DOM. Here we only prove the round trip; Enter/Backspace,
-// the `/` menu and raw-offset mapping arrive in later slices.
+// text, with no DOM — the round trip, Enter/Backspace, paste, raw-offset
+// mapping, Links and the `/` command menu.
 
 test("splitting a note into lines and joining back gives the same text", () => {
   const text = "# Title\n\n- one\n- two\nplain line";
@@ -257,4 +261,78 @@ test("a caret inside a Link maps past the [[ brackets", () => {
   assert.equal(renderedToRaw("go [[Box]] end", 5), 7);
   // Caret before " end" (rendered 6) -> raw 10, past the closing `]]`.
   assert.equal(renderedToRaw("go [[Box]] end", 6), 10);
+});
+
+// The `/` command menu (#6, ADR 0006). Typing `/` at the start of a line opens
+// a menu whose commands each show their Markdown; typing filters it; applying a
+// command drops the Markdown in with the caret in the right place.
+
+test('typing "/he" opens the menu filtered to the three headings', () => {
+  const query = slashQuery("/he", 3);
+  assert.equal(query, "he");
+  assert.deepEqual(
+    filterCommands(query).map((c) => c.label),
+    ["Heading 1", "Heading 2", "Heading 3"],
+  );
+});
+
+test("typing / alone opens the full menu", () => {
+  assert.equal(slashQuery("/", 1), "");
+  assert.equal(filterCommands("").length, SLASH_COMMANDS.length);
+});
+
+test("a / in the middle of a line does not open the menu", () => {
+  // Caret just after a slash that isn't at the line start.
+  assert.equal(slashQuery("note 3/4", 7), null);
+  // A caret before the leading slash is not in a command either.
+  assert.equal(slashQuery("/he", 0), null);
+});
+
+test("filtering matches the command name anywhere, case-insensitively", () => {
+  assert.deepEqual(
+    filterCommands("code").map((c) => c.label),
+    ["Inline code", "Code block"],
+  );
+});
+
+test("every slash command shows its Markdown", () => {
+  for (const command of SLASH_COMMANDS) {
+    assert.ok(command.markdown.length > 0, `${command.label} has Markdown`);
+  }
+});
+
+test("applying Heading 1 replaces the query and puts the caret after the #", () => {
+  const h1 = SLASH_COMMANDS.find((c) => c.label === "Heading 1");
+  assert.deepEqual(applySlashCommand(["/he"], 0, 3, h1), {
+    lines: ["# "],
+    line: 0,
+    col: 2,
+  });
+});
+
+test("applying Link to a note leaves the caret inside the brackets", () => {
+  const link = SLASH_COMMANDS.find((c) => c.label === "Link to a note");
+  assert.deepEqual(applySlashCommand(["/"], 0, 1, link), {
+    lines: ["[[]]"],
+    line: 0,
+    col: 2,
+  });
+});
+
+test("applying Code block opens a fenced block with the caret on the empty line", () => {
+  const code = SLASH_COMMANDS.find((c) => c.label === "Code block");
+  assert.deepEqual(applySlashCommand(["/code"], 0, 5, code), {
+    lines: ["```", "", "```"],
+    line: 1,
+    col: 0,
+  });
+});
+
+test("applying a command keeps any text after the caret on the line", () => {
+  const bold = SLASH_COMMANDS.find((c) => c.label === "Bold");
+  assert.deepEqual(applySlashCommand(["/b rest"], 0, 2, bold), {
+    lines: ["**** rest"],
+    line: 0,
+    col: 2,
+  });
 });

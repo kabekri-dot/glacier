@@ -91,6 +91,58 @@ export function findLinks(text) {
   return links;
 }
 
+// The `/` command menu (ADR 0006, #6). Typing `/` at the start of a line opens
+// a menu of commands, each shown next to the Markdown it inserts, so the syntax
+// is learned by using it. `insert` is the Markdown dropped in when the command
+// is applied, and `caret` is where the caret lands inside it (a `\n` in
+// `insert` becomes a real line break, so Code block opens on its empty line).
+export const SLASH_COMMANDS = [
+  { id: "h1", label: "Heading 1", markdown: "#", insert: "# ", caret: 2 },
+  { id: "h2", label: "Heading 2", markdown: "##", insert: "## ", caret: 3 },
+  { id: "h3", label: "Heading 3", markdown: "###", insert: "### ", caret: 4 },
+  { id: "bullet", label: "Bullet list", markdown: "-", insert: "- ", caret: 2 },
+  { id: "link", label: "Link to a note", markdown: "[[ ]]", insert: "[[]]", caret: 2 },
+  { id: "bold", label: "Bold", markdown: "**bold**", insert: "****", caret: 2 },
+  { id: "code", label: "Inline code", markdown: "`code`", insert: "``", caret: 1 },
+  { id: "codeblock", label: "Code block", markdown: "```", insert: "```\n\n```", caret: 4 },
+];
+
+// The command query a caret is in, or null when the menu should stay closed.
+// The menu opens only when a line starts with `/`, so a `/` in the middle of a
+// line does nothing; the query is the run of non-space characters after it, up
+// to the caret (what has been typed to filter the list).
+export function slashQuery(line, col) {
+  const before = line.slice(0, col);
+  const match = /^\/(\S*)$/.exec(before);
+  return match ? match[1] : null;
+}
+
+// The commands whose name contains the query, case-insensitively. An empty
+// query (just `/`) lists every command; "he" lists the three headings.
+export function filterCommands(query) {
+  const needle = query.toLowerCase();
+  return SLASH_COMMANDS.filter((command) =>
+    command.label.toLowerCase().includes(needle),
+  );
+}
+
+// Apply a command at (line, col): replace the `/query` typed so far (everything
+// before the caret on this line) with the command's Markdown, keeping any text
+// after the caret, and land the caret where the command points. Returns the new
+// lines and caret, like the other editing functions.
+export function applySlashCommand(lines, line, col, command) {
+  const after = lines[line].slice(col);
+  const inserted = splitIntoLines(command.insert + after);
+  const next = lines.slice();
+  next.splice(line, 1, ...inserted);
+  const caretLines = splitIntoLines(command.insert.slice(0, command.caret));
+  return {
+    lines: next,
+    line: line + caretLines.length - 1,
+    col: caretLines[caretLines.length - 1].length,
+  };
+}
+
 // Enter at (line, col): split the current line. In a bullet the new line keeps
 // the marker so the list continues; an empty bullet instead ends the list,
 // leaving a blank line where the marker was. Returns the new lines and caret.
