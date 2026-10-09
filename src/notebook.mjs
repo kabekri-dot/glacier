@@ -3,6 +3,8 @@
 // browser APIs; storage (and later GitHub) is plugged in from outside
 // (ADR 0003), so the core can be tested with an in-memory stand-in.
 
+import { findLinks } from "./editor-model.mjs";
+
 // Query parameters that only record where a click came from, never which
 // lesson it is, so they're dropped before matching a Source (CONTEXT.md).
 // Kept short and in one place on purpose — extend it by adding names here.
@@ -62,20 +64,35 @@ export function createNotebook({ storage }) {
 
   // Titles are unique across the whole Notebook (ADR 0005). On a clash we add
   // the Course, e.g. "Introduction (TOP Foundations)"; if that is taken too we
-  // add a number so the new note still lands on a free title.
+  // add a number so the new note still lands on a free title. A Concept Note
+  // has no Course, so there we fall straight back to a number.
   function uniqueTitle(title, course) {
     if (!titleTaken(title)) {
       return title;
     }
-    const withCourse = `${title} (${course})`;
-    if (!titleTaken(withCourse)) {
-      return withCourse;
+    const base = course ? `${title} (${course})` : title;
+    if (course && !titleTaken(base)) {
+      return base;
     }
     let n = 2;
-    while (titleTaken(`${withCourse} ${n}`)) {
+    while (titleTaken(`${base} ${n}`)) {
       n += 1;
     }
-    return `${withCourse} ${n}`;
+    return `${base} ${n}`;
+  }
+
+  // A Concept Note captures one idea, independent of any Course, so it carries
+  // no Course and no Source (CONTEXT.md). Its title is made unique like any
+  // note's. Following a Missing Link is the main way one is born.
+  function makeConceptNote({ title, created }) {
+    const note = {
+      type: "concept",
+      title: uniqueTitle(title, undefined),
+      created: created ?? new Date().toISOString(),
+      body: "",
+    };
+    storage.putNote(note);
+    return note;
   }
 
   return {
@@ -125,6 +142,48 @@ export function createNotebook({ storage }) {
       storage.putNote(note);
       storage.putMeta(LAST_COURSE, course);
       return note;
+    },
+
+    // Make a Concept Note with the given title (made unique). Concept Notes
+    // have no Course, so one idea can be linked from lessons of many Courses.
+    createConceptNote({ title, created } = {}) {
+      return makeConceptNote({ title, created });
+    },
+
+    // The titles this note links to, in order of first appearance and without
+    // repeats, read from its `[[Title]]` Links. An unknown note, or one with no
+    // body, has none.
+    outgoingLinks(title) {
+      const note = storage.getNote(title);
+      if (!note || !note.body) {
+        return [];
+      }
+      const seen = new Set();
+      const titles = [];
+      for (const { title: target } of findLinks(note.body)) {
+        if (!seen.has(target)) {
+          seen.add(target);
+          titles.push(target);
+        }
+      }
+      return titles;
+    },
+
+    // A Missing Link is a Link whose title matches no note yet (CONTEXT.md),
+    // so following it would create the note rather than open an existing one.
+    isMissingLink(title) {
+      return storage.getNote(title) === undefined;
+    },
+
+    // Follow a `[[Title]]` Link: open the note it names, or — when it is a
+    // Missing Link — create a Concept Note with that title and open that. The
+    // note to show is returned either way.
+    openLink(title) {
+      const existing = storage.getNote(title);
+      if (existing) {
+        return existing;
+      }
+      return makeConceptNote({ title });
     },
 
     // Save the note's Markdown body. The editor calls this as you type, so

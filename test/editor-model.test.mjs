@@ -13,6 +13,7 @@ import {
   insertText,
   renderedToRaw,
   renderLineHtml,
+  findLinks,
 } from "../src/editor-model.mjs";
 
 // The editor model is the second test seam: pure functions on one note's
@@ -215,4 +216,45 @@ test("bold and inline code render as strong and code", () => {
     renderLineHtml("say **hi** and `go`"),
     "say <strong>hi</strong> and <code>go</code>",
   );
+});
+
+// Links: [[Title]] references another note. findLinks pulls the titles (and
+// their span) out of the raw text; rendering turns them into click targets,
+// red when the note doesn't exist yet (a Missing Link, CONTEXT.md).
+
+test("findLinks pulls every [[Title]] out of the text with its span", () => {
+  assert.deepEqual(findLinks("see [[Box model]] and [[Flow]]"), [
+    { title: "Box model", start: 4, end: 17 },
+    { title: "Flow", start: 22, end: 30 },
+  ]);
+});
+
+test("findLinks returns nothing when there are no Links", () => {
+  assert.deepEqual(findLinks("plain text with [brackets] only"), []);
+});
+
+test("a Link renders as a click target carrying its exact title", () => {
+  assert.equal(
+    renderLineHtml("go to [[Box model]] now"),
+    'go to <a class="md-link" data-link-title="Box model">Box model</a> now',
+  );
+});
+
+test("a Missing Link renders red when the note doesn't exist yet", () => {
+  const exists = (title) => title === "Flow";
+  assert.equal(
+    renderLineHtml("[[Flow]] vs [[Nope]]", exists),
+    '<a class="md-link" data-link-title="Flow">Flow</a> vs ' +
+      '<a class="md-link md-link-missing" data-link-title="Nope">Nope</a>',
+  );
+});
+
+test("a caret inside a Link maps past the [[ brackets", () => {
+  // "go [[Box]] end": rendered "go Box end".
+  // Caret before "B" (rendered 3) -> raw 5, just inside past the `[[`.
+  assert.equal(renderedToRaw("go [[Box]] end", 3), 5);
+  // Caret before "x" (rendered 5) -> raw 7, still inside the title.
+  assert.equal(renderedToRaw("go [[Box]] end", 5), 7);
+  // Caret before " end" (rendered 6) -> raw 10, past the closing `]]`.
+  assert.equal(renderedToRaw("go [[Box]] end", 6), 10);
 });

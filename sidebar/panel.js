@@ -59,9 +59,10 @@ async function start() {
     return;
   }
 
-  // The note currently shown. Until the note-opening UI exists (#12) this is
-  // the most recently created one, so edits land on a real note and persist.
-  const openNote = notebook
+  // The note first shown. Until the note-opening UI exists (#12) this is the
+  // most recently created one, so edits land on a real note and persist;
+  // following a Link (openLink) then moves between notes from here.
+  const firstNote = notebook
     .notes()
     .slice()
     .sort((a, b) => (a.created ?? "").localeCompare(b.created ?? ""))
@@ -71,22 +72,41 @@ async function start() {
   // until the Lesson Note flow is wired in (#12). Leaving the page read-only
   // means nothing typed can be silently dropped for lack of somewhere to save
   // it (issue #23).
-  if (!openNote) return;
+  if (!firstNote) return;
+
+  // The note currently shown, the lines it holds and where the caret sits (raw
+  // line + column). Following a Link opens another note in place (openLink), so
+  // these change as you move between notes; the cursor lands at the top of each
+  // note as it opens (ADR 0006).
+  let current = firstNote;
+  let lines = splitIntoLines(editorTextToBody(current.body ?? ""));
+  let focus = { line: 0, col: 0 };
+
+  // Does a Link's target note already exist? A Link to a note that doesn't
+  // (a Missing Link) renders red (#8).
+  const linkExists = (title) => !notebook.isMissingLink(title);
 
   // Debounce writes so a burst of typing opens one transaction, not one per
   // keystroke, and flush any pending write before the sidebar goes away so the
-  // last keystrokes aren't lost (issue #25).
+  // last keystrokes aren't lost (issue #25). Writes go to whichever note is
+  // open now.
   const scheduler = createSaveScheduler({
-    save: (body) => notebook.saveBody(openNote.title, body),
+    save: (body) => notebook.saveBody(current.title, body),
   });
-
-  // The whole note as lines, and where the caret sits (raw line + column). The
-  // cursor lands in the note as soon as it opens (ADR 0006).
-  let lines = splitIntoLines(editorTextToBody(openNote.body ?? ""));
-  let focus = { line: 0, col: 0 };
 
   const scheduleSave = () =>
     scheduler.schedule(editorTextToBody(linesToText(lines)));
+
+  // Follow a `[[Title]]` Link: save any pending edits to the note we're leaving
+  // first, then open the note the Link names in place. A Missing Link creates a
+  // Concept Note with that title and opens that instead (#8).
+  function openLink(title) {
+    scheduler.flush();
+    current = notebook.openLink(title);
+    lines = splitIntoLines(editorTextToBody(current.body ?? ""));
+    focus = { line: 0, col: 0 };
+    render();
+  }
 
   // Where in a block's text the caret sits, given its first line and the
   // caret's (line, col): the columns of every earlier in-block line, plus one
@@ -168,9 +188,17 @@ async function start() {
     }
 
     const line = blockLines[0];
-    el.innerHTML = renderLineHtml(line);
+    el.innerHTML = renderLineHtml(line, linkExists);
     el.addEventListener("mousedown", (event) => {
       event.preventDefault();
+      // A plain click on a Link follows it instead of dropping the caret: it
+      // opens the linked note, or creates and opens a Concept Note for a
+      // Missing Link (#8).
+      const linkEl = event.target.closest && event.target.closest(".md-link");
+      if (linkEl) {
+        openLink(linkEl.dataset.linkTitle);
+        return;
+      }
       const rendered = renderedOffsetAt(el, event.clientX, event.clientY);
       moveTo(range.start, renderedToRaw(line, rendered));
     });

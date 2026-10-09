@@ -73,6 +73,24 @@ export function blocksToText(blocks) {
 // (which may be empty for a fresh, still-empty bullet).
 const BULLET = /^(\s*)-(\s+)(.*)$/;
 
+// A Link is `[[Title]]` somewhere in the text (CONTEXT.md). The title is the
+// run between the brackets with no bracket inside, so `[[A]] [[B]]` are two
+// Links. findLinks returns each title and the raw span it occupies, so the
+// notebook can list a note's outgoing Links and a rename can rewrite them.
+const LINK_PATTERN = /\[\[([^[\]]+)\]\]/g;
+
+export function findLinks(text) {
+  const links = [];
+  for (const match of text.matchAll(LINK_PATTERN)) {
+    links.push({
+      title: match[1],
+      start: match.index,
+      end: match.index + match[0].length,
+    });
+  }
+  return links;
+}
+
 // Enter at (line, col): split the current line. In a bullet the new line keeps
 // the marker so the list continues; an empty bullet instead ends the list,
 // leaving a blank line where the marker was. Returns the new lines and caret.
@@ -168,6 +186,20 @@ function inlineSegments(content) {
   };
 
   while (i < content.length) {
+    if (content.startsWith("[[", i)) {
+      const end = content.indexOf("]]", i + 2);
+      if (end > i + 2) {
+        flushPlain();
+        const inner = content.slice(i + 2, end);
+        // Like bold, the brackets are their own zero-width marker segments, so
+        // a caret in the rendered title maps back past the `[[` (renderedToRaw).
+        segs.push({ raw: "[[", text: "", kind: "marker" });
+        segs.push({ raw: inner, text: inner, kind: "link", title: inner });
+        segs.push({ raw: "]]", text: "", kind: "marker" });
+        i = end + 2;
+        continue;
+      }
+    }
     if (content.startsWith("**", i)) {
       const end = content.indexOf("**", i + 2);
       if (end !== -1) {
@@ -243,13 +275,24 @@ function escapeHtml(text) {
     .replace(/>/g, "&gt;");
 }
 
-function inlineHtml(content) {
+function escapeAttr(text) {
+  return escapeHtml(text).replace(/"/g, "&quot;");
+}
+
+// `linkExists` (optional) answers whether a Link's target note already exists.
+// A Link to a note that doesn't exist yet is a Missing Link and renders red
+// (CONTEXT.md); when no predicate is given, Links render as normal targets.
+function inlineHtml(content, linkExists) {
   let html = "";
   for (const seg of inlineSegments(content)) {
     if (seg.kind === "bold") {
       html += `<strong>${escapeHtml(seg.text)}</strong>`;
     } else if (seg.kind === "code") {
       html += `<code>${escapeHtml(seg.text)}</code>`;
+    } else if (seg.kind === "link") {
+      const missing = linkExists ? !linkExists(seg.title) : false;
+      const cls = missing ? "md-link md-link-missing" : "md-link";
+      html += `<a class="${cls}" data-link-title="${escapeAttr(seg.title)}">${escapeHtml(seg.text)}</a>`;
     } else if (seg.kind === "plain") {
       html += escapeHtml(seg.text);
     }
@@ -260,20 +303,21 @@ function inlineHtml(content) {
 
 // Render one Markdown line as the HTML shown when it is not the current line.
 // Headings lose their `#`, bullets get a dot, bold and inline code become
-// `<strong>`/`<code>`; everything else is escaped text. An empty line keeps
-// its height with a `<br>`.
-export function renderLineHtml(line) {
+// `<strong>`/`<code>`, Links become click targets; everything else is escaped
+// text. An empty line keeps its height with a `<br>`. `linkExists` lets the
+// caller mark Missing Links (see inlineHtml).
+export function renderLineHtml(line, linkExists) {
   const heading = /^(#{1,3})\s+(.*)$/.exec(line);
   if (heading) {
     const level = heading[1].length;
-    return `<span class="md-h md-h${level}">${inlineHtml(heading[2])}</span>`;
+    return `<span class="md-h md-h${level}">${inlineHtml(heading[2], linkExists)}</span>`;
   }
   const bullet = /^(\s*)-\s+(.*)$/.exec(line);
   if (bullet) {
-    return `<span class="md-bullet"><span class="md-bullet-dot">•</span>${inlineHtml(bullet[2])}</span>`;
+    return `<span class="md-bullet"><span class="md-bullet-dot">•</span>${inlineHtml(bullet[2], linkExists)}</span>`;
   }
   if (line === "") {
     return "<br>";
   }
-  return inlineHtml(line);
+  return inlineHtml(line, linkExists);
 }
