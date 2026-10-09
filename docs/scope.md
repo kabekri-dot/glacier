@@ -6,7 +6,7 @@ What goes into which version. Terms are defined in [CONTEXT.md](../CONTEXT.md), 
 
 - Sidebar in Chrome and Firefox, opened from the toolbar or a keyboard shortcut
 - **One layout: Zen.** Only the page. One small pill at the top holds the title, sync status, search, recent notes and the notebook, and a small button bottom-left shows what links here. The other nine layouts from the prototype wait until later (see below)
-- Opening the panel on a known lesson page opens its Lesson Note. On an unknown page, "New lesson note" uses the page title and Source
+- Opening the panel on a known lesson page opens its Lesson Note. On an unknown page, "+ Lesson note" uses the page title and Source. Reading the current tab needs an optional permission, asked on the first click (ADR 0008); without it, "+ New note" creates a Lesson Note by hand
 - Course picked when creating a Lesson Note, last-used Course preselected
 - Note list: Courses → Lesson Notes, plus a Concepts section
 - Live-preview writing: no Edit/Preview switch, the cursor lands in the note when it opens, and Markdown shows as formatting while you write, with only the current line raw (see [ADR 0006](adr/0006-live-preview-block-editor.md)). A plain click follows a Link. Frontmatter hidden and shown as a small header (Course · source ↗)

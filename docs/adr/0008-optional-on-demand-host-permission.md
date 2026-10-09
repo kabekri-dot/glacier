@@ -8,3 +8,7 @@ The card states what the permission is used for (drawing those two panels) and w
 
 - **Required at install**: one scary, unexplained warning before you've seen the app.
 - **Never ask; panels always inside the sidebar**: no warning at all, but you lose the live view of the note while changing settings.
+
+## Addition (2026-10-10): seeing the current page works the same way
+
+To offer "+ Lesson note" for the page you're on and to open a page's Lesson Note, Glacier must read the current tab's address and title. Chrome calls that permission **"tabs"** and describes it as "Read your browsing history". It follows the same rule as above: declared **optional**, never asked at install, requested the first time you click "+ Lesson note", after Glacier's own short explanation. If you decline, Glacier still works: "+ New note" lets you create a Lesson Note by typing its title and picking the Course yourself, just without automatic matching to the page. If the panels permission is granted, it also covers reading the tab, so you're only asked once.

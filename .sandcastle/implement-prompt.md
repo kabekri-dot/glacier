@@ -43,6 +43,7 @@ Pick the highest-priority open issue that is not blocked by another open issue.
 
 - Work on **one issue per iteration**. Do not attempt multiple issues in a single iteration.
 - Do not close an issue until you have committed the fix and verified tests pass.
+- **Build every acceptance criterion, including the UI ones.** Read the issue body *and its comments*. Criteria that can only be checked by hand (buttons, prompts, what the sidebar shows) still have to be built. Before closing, go through the checklist item by item; if any part is not built, do not close the issue: leave a comment saying what is missing.
 - Do not leave commented-out code or TODO comments in committed code.
 - If you are blocked (missing context, failing tests you cannot fix, external dependency), leave a comment on the issue and move on — do not close it.
 
