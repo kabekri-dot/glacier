@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Glacier",
+  "version": "0.1.0",
+  "description": "A personal notebook in the browser's sidebar, for taking and connecting notes while following online courses.",
+  "action": {
+    "default_title": "Open Glacier"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
+  },
+  "side_panel": {
+    "default_path": "sidebar/panel.html"
+  },
+  "sidebar_action": {
+    "default_panel": "sidebar/panel.html",
+    "default_title": "Glacier"
+  },
+  "commands": {
+    "open-glacier": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y"
+      },
+      "description": "Open Glacier in the sidebar"
+    }
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "glacier@glacier.notes"
+    }
+  }
+}

@@ -1,0 +1,45 @@
+/* Glacier paper: the default Theme. Pale ice-blue page with faint blue
+   ruled lines and a soft sky tint at the top. Pixel-art panorama, bundled
+   fonts and the other Themes arrive in later slices. */
+
+:root {
+  --glacier-paper: #eef4fb;
+  --glacier-sky: #dcebfb;
+  --glacier-rule: #c7dcf2;
+  --glacier-ink: #1b2a4a;
+  --glacier-accent: #3f78c4;
+  --glacier-line-height: 1.8rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: linear-gradient(var(--glacier-sky), var(--glacier-paper) 12rem);
+  color: var(--glacier-ink);
+  /* Shantell Sans is bundled in a later slice; fall back to a handwritten feel. */
+  font-family: "Shantell Sans", "Comic Sans MS", "Segoe Print", cursive, sans-serif;
+  font-size: 1.05rem;
+  line-height: var(--glacier-line-height);
+}
+
+/* The note fills the sidebar and must stay usable from about 260px wide. */
+.note {
+  min-height: 100%;
+  padding: 1.5rem 1.25rem;
+  /* Faint ruled lines, like a real notebook. */
+  background-image: repeating-linear-gradient(
+    var(--glacier-paper),
+    var(--glacier-paper) calc(var(--glacier-line-height) - 1px),
+    var(--glacier-rule) calc(var(--glacier-line-height) - 1px),
+    var(--glacier-rule) var(--glacier-line-height)
+  );
+  background-position: 0 1.5rem;
+}
