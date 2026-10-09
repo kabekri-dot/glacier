@@ -13,3 +13,13 @@ export function splitIntoLines(text) {
 export function linesToText(lines) {
   return lines.join("\n");
 }
+
+// Turn what the editable note holds into the body we save. The panel reads the
+// surface with `innerText`, which keeps the line breaks Enter creates (`<div>`
+// in Chrome, `<br>` in Firefox) that `textContent` would drop (issue #24).
+// Platform line endings are folded to a plain `\n`, so the body is identical
+// across browsers and matches the Markdown on disk (ADR 0005); empty lines are
+// left untouched.
+export function editorTextToBody(text) {
+  return text.replace(/\r\n?/g, "\n");
+}
