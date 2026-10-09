@@ -10,8 +10,8 @@ import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 // (issue #25). Tests drive the module with a tiny fake IndexedDB.
 
 // A minimal IndexedDB double covering only what openIndexedDbStorage touches:
-// open (with an upgrade on first use), read-all/read-all-keys, and writes that
-// can be made to abort or to throw synchronously.
+// open (with an upgrade on first use), the startup read (getAll plus a meta
+// cursor), and writes that can be made to abort or to throw synchronously.
 function fakeIndexedDB({ abortOnWrite = false, throwOnPut = false, seed } = {}) {
   const stores = new Map();
   // `seed` pre-fills the stores to stand in for an already-upgraded database
@@ -33,14 +33,6 @@ function fakeIndexedDB({ abortOnWrite = false, throwOnPut = false, seed } = {}) 
         const req = {};
         queueMicrotask(() => {
           req.result = [...store.data.values()];
-          req.onsuccess?.();
-        });
-        return req;
-      },
-      getAllKeys() {
-        const req = {};
-        queueMicrotask(() => {
-          req.result = [...store.data.keys()];
           req.onsuccess?.();
         });
         return req;

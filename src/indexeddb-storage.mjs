@@ -40,7 +40,7 @@ function openDatabase(indexedDB) {
 function loadAll(db) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction([NOTES, META], "readonly");
-    const notes = [];
+    let notes = [];
     const meta = [];
     let notesDone = false;
     let metaDone = false;
@@ -50,7 +50,7 @@ function loadAll(db) {
 
     const notesRequest = tx.objectStore(NOTES).getAll();
     notesRequest.onsuccess = () => {
-      for (const note of notesRequest.result) notes.push(note);
+      notes = notesRequest.result;
       notesDone = true;
       finish();
     };
