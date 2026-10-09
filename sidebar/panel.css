@@ -9,6 +9,10 @@
   --glacier-ink: #1b2a4a;
   --glacier-accent: #3f78c4;
   --glacier-line-height: 1.8rem;
+  /* How far the ruled lines move up from the bottom of each text row, so the
+     writing sits ON the line (just under the letters) instead of floating
+     above it, as on real paper. */
+  --glacier-rule-shift: 0.45rem;
 }
 
 * {
@@ -41,7 +45,7 @@ body {
     var(--glacier-rule) calc(var(--glacier-line-height) - 1px),
     var(--glacier-rule) var(--glacier-line-height)
   );
-  background-position: 0 1.5rem;
+  background-position: 0 calc(1.5rem - var(--glacier-rule-shift));
 }
 
 /* Each line is its own block. Rendered blocks and the raw textarea share the
@@ -125,7 +129,10 @@ code,
 
 .md-code {
   margin: 0;
-  padding: 0.4rem 0.6rem;
+  /* No vertical padding: every line of code stays exactly one ruled row, so the
+     text after a code block stays on the lines too. */
+  padding: 0 0.6rem;
+  line-height: var(--glacier-line-height);
   background: rgba(27, 42, 74, 0.06);
   border-radius: 4px;
   white-space: pre-wrap;

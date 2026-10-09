@@ -204,7 +204,16 @@ async function start() {
   }
 
   // A floating menu would drift away from its line, so scrolling closes it.
-  window.addEventListener("scroll", () => dismissMenu(), true);
+  // Scrolling *inside* the menu (mouse wheel, or keeping the highlight in view)
+  // is just browsing the list, so only scrolling anything else closes it.
+  window.addEventListener(
+    "scroll",
+    (event) => {
+      if (menu && menu.el.contains(event.target)) return;
+      dismissMenu();
+    },
+    true,
+  );
 
   // Apply the highlighted command: the `/query` before the caret is replaced by
   // the command's Markdown and the caret lands where the command points (#6).
@@ -238,6 +247,17 @@ async function start() {
       });
       menu.el.appendChild(item);
     });
+    // Keep the highlighted command in view when ↑/↓ move past the visible part
+    // of the list. Scrolling only the menu itself never moves the page.
+    const item = menu.el.children[menu.selected];
+    if (item) {
+      const top = item.offsetTop;
+      const bottom = top + item.offsetHeight;
+      if (top < menu.el.scrollTop) menu.el.scrollTop = top;
+      else if (bottom > menu.el.scrollTop + menu.el.clientHeight) {
+        menu.el.scrollTop = bottom - menu.el.clientHeight;
+      }
+    }
   }
 
   // Show (or refilter) the menu for the focused line. It opens only when the
