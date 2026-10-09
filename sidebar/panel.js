@@ -31,16 +31,16 @@ async function start() {
 
   // The note currently shown. Until the note-opening UI exists (#5, #12) this
   // is the most recently created one, so edits land on a real note and persist.
-  const open = notebook
+  const openNote = notebook
     .notes()
     .slice()
     .sort((a, b) => (a.created ?? "").localeCompare(b.created ?? ""))
     .pop();
 
-  if (open) {
-    noteEl.textContent = open.body ?? "";
+  if (openNote) {
+    noteEl.textContent = openNote.body ?? "";
     noteEl.addEventListener("input", () => {
-      notebook.saveBody(open.title, noteEl.textContent);
+      notebook.saveBody(openNote.title, noteEl.textContent);
     });
   }
 }
