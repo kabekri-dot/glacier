@@ -6,6 +6,7 @@
   "action": {
     "default_title": "Open Glacier"
   },
+  "permissions": ["sidePanel"],
   "background": {
     "service_worker": "background.js",
     "scripts": ["background.js"]
@@ -20,7 +21,7 @@
   "commands": {
     "open-glacier": {
       "suggested_key": {
-        "default": "Ctrl+Shift+Y"
+        "default": "Alt+Shift+G"
       },
       "description": "Open Glacier in the sidebar"
     }
