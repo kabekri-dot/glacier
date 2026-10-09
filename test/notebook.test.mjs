@@ -163,6 +163,32 @@ test("the last-used Course is remembered for the picker", () => {
   assert.equal(notebook.lastCourse(), "Khan Algebra 1");
 });
 
+test("the Course picker lists every Course once, in order, from the Lesson Notes", () => {
+  // The "+ Lesson note" picker offers the Courses that already exist so a note
+  // joins one by a click, with the last-used one preselected (issue #3). A
+  // Course shows once however many Lesson Notes it holds; Concept Notes, which
+  // have no Course, add nothing.
+  const notebook = createNotebook({ storage: memoryStorage() });
+  assert.deepEqual(notebook.courses(), []);
+  notebook.createLessonNote({
+    title: "Intro",
+    source: "https://e.example/intro",
+    course: "TOP Foundations",
+  });
+  notebook.createLessonNote({
+    title: "Arrays",
+    source: "https://e.example/arrays",
+    course: "Khan Algebra 1",
+  });
+  notebook.createLessonNote({
+    title: "Objects",
+    source: "https://e.example/objects",
+    course: "TOP Foundations",
+  });
+  notebook.createConceptNote({ title: "Box model" });
+  assert.deepEqual(notebook.courses(), ["Khan Algebra 1", "TOP Foundations"]);
+});
+
 test("notes and the last-used Course survive a restart (same storage, new Notebook)", () => {
   // A browser restart throws away the Notebook object but keeps its storage
   // (IndexedDB, ADR 0003). A fresh Notebook over the same storage must see

@@ -208,6 +208,113 @@ code {
   white-space: pre;
 }
 
+/* The way out of an empty panel and the create form (#3): shown when no note
+   is open, so Glacier is never a blank, locked page. They sit on the paper
+   like a note, in the same ink. */
+.empty-state,
+.create-form,
+.perm-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  max-width: 24rem;
+}
+
+.create-heading {
+  margin: 0;
+  font-size: 1.3em;
+  font-weight: 700;
+}
+
+.empty-text {
+  margin: 0;
+  opacity: 0.8;
+}
+
+.create-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.create-label {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.create-input {
+  width: 100%;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--glacier-rule);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.6);
+  color: inherit;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.create-input:focus {
+  outline: none;
+  border-color: var(--glacier-accent);
+}
+
+.create-submit {
+  align-self: flex-start;
+  padding: 0.45rem 0.9rem;
+  border: 0;
+  border-radius: 6px;
+  background: var(--glacier-accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.create-submit:hover,
+.create-submit:focus {
+  outline: none;
+  filter: brightness(1.08);
+}
+
+/* The explanation card shown before the browser's permission prompt (ADR
+   0008): states what the permission is for and what it is never used for. */
+.perm-card p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.perm-never {
+  font-weight: 700;
+}
+
+.perm-next {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.perm-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.perm-cancel {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--glacier-rule);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.perm-cancel:hover,
+.perm-cancel:focus {
+  outline: none;
+  border-color: var(--glacier-accent);
+}
+
 /* A failed save (issue #25): a quiet banner pinned to the bottom, shown only
    when the panel unhides it, so it never covers the note it's warning about. */
 .save-error {

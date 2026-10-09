@@ -25,6 +25,21 @@ test("Chrome gets the sidePanel permission it needs for the side-panel API", () 
   );
 });
 
+test("tabs is optional, so installing shows no permission warning (ADR 0008)", () => {
+  // Reading the current tab's address and title needs the `tabs` permission,
+  // which Chrome shows as "Read your browsing history". Declared optional and
+  // requested on the first "+ Lesson note" click, it causes no warning at
+  // install (issue #3, ADR 0008 addition).
+  assert.ok(
+    !(manifest.permissions ?? []).includes("tabs"),
+    "tabs must not be a required permission (no install warning)",
+  );
+  assert.ok(
+    (manifest.optional_permissions ?? []).includes("tabs"),
+    "tabs must be declared as an optional permission",
+  );
+});
+
 test("the default shortcut avoids Firefox's built-in Ctrl+Shift+Y", () => {
   const key = manifest.commands["open-glacier"].suggested_key.default;
   assert.notEqual(key, "Ctrl+Shift+Y");
