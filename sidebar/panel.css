@@ -100,6 +100,23 @@ body {
   color: var(--glacier-accent);
 }
 
+/* A Link to another note: the accent colour, underlined on hover so it reads
+   as clickable. A Missing Link (no such note yet) shows red; following it
+   creates the Concept Note (#8). */
+.md-link {
+  color: var(--glacier-accent);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.md-link:hover {
+  text-decoration: underline;
+}
+
+.md-link-missing {
+  color: #b3261e;
+}
+
 code,
 .md-code {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;

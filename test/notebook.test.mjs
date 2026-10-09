@@ -213,6 +213,71 @@ test("typing on an empty Notebook is never turned into a stray note", () => {
   assert.deepEqual(notebook.notes(), []);
 });
 
+// Concept Notes and Links (#8). A Concept Note captures one idea, belongs to
+// no Course and is shared across Courses. A [[Title]] Link points to a note by
+// its unique title; a Link to a note that doesn't exist yet is a Missing Link,
+// and following it creates a Concept Note with that title.
+
+test("a Concept Note has no Course and no Source", () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  const note = notebook.createConceptNote({ title: "Box model" });
+  assert.equal(note.type, "concept");
+  assert.equal(note.title, "Box model");
+  assert.equal(note.course, undefined);
+  assert.equal(note.source, undefined);
+  assert.equal(notebook.note("Box model"), note);
+});
+
+test("outgoing Links of a note are found correctly, distinct and in order", () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  notebook.createLessonNote({
+    title: "Layout",
+    source: "https://e.example/layout",
+    course: "CSS",
+  });
+  notebook.saveBody(
+    "Layout",
+    "The [[Box model]] feeds [[Flow]]; see the [[Box model]] again.",
+  );
+  assert.deepEqual(notebook.outgoingLinks("Layout"), ["Box model", "Flow"]);
+});
+
+test("a note with no body or no Links has no outgoing Links", () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  notebook.createLessonNote({
+    title: "Empty",
+    source: "https://e.example/empty",
+    course: "CSS",
+  });
+  assert.deepEqual(notebook.outgoingLinks("Empty"), []);
+  assert.deepEqual(notebook.outgoingLinks("No such note"), []);
+});
+
+test("following a Missing Link creates a Concept Note with that title and opens it", () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  assert.equal(notebook.isMissingLink("Flow"), true);
+
+  const opened = notebook.openLink("Flow");
+  assert.equal(opened.type, "concept");
+  assert.equal(opened.title, "Flow");
+  assert.equal(opened.course, undefined);
+  // It now exists, so it is no longer a Missing Link.
+  assert.equal(notebook.isMissingLink("Flow"), false);
+  assert.equal(notebook.note("Flow"), opened);
+});
+
+test("following a Link to an existing note opens it without creating a new one", () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  const existing = notebook.createLessonNote({
+    title: "Variables",
+    source: "https://e.example/vars",
+    course: "TOP Foundations",
+  });
+  const opened = notebook.openLink("Variables");
+  assert.equal(opened, existing);
+  assert.equal(notebook.notes().length, 1);
+});
+
 test("a clashing title gets the Course added so titles stay unique", () => {
   const notebook = createNotebook({ storage: memoryStorage() });
   notebook.createLessonNote({
