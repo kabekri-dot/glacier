@@ -69,6 +69,45 @@ test("the last-used Course is remembered for the picker", () => {
   assert.equal(notebook.lastCourse(), "Khan Algebra 1");
 });
 
+test("notes and the last-used Course survive a restart (same storage, new Notebook)", () => {
+  // A browser restart throws away the Notebook object but keeps its storage
+  // (IndexedDB, ADR 0003). A fresh Notebook over the same storage must see
+  // every note and the last-used Course again.
+  const storage = memoryStorage();
+  const first = createNotebook({ storage });
+  first.createLessonNote({
+    title: "Variables",
+    source: "https://odin.example/foundations/variables",
+    course: "TOP Foundations",
+  });
+
+  const afterRestart = createNotebook({ storage });
+  assert.equal(afterRestart.notes().length, 1);
+  assert.equal(afterRestart.notes()[0].title, "Variables");
+  assert.equal(afterRestart.lastCourse(), "TOP Foundations");
+});
+
+test("editing a note's body saves it and survives a restart", () => {
+  const storage = memoryStorage();
+  const first = createNotebook({ storage });
+  first.createLessonNote({
+    title: "Loops",
+    source: "https://odin.example/foundations/loops",
+    course: "TOP Foundations",
+  });
+  first.saveBody("Loops", "A loop repeats **until** it is done.");
+  assert.equal(
+    first.note("Loops").body,
+    "A loop repeats **until** it is done.",
+  );
+
+  const afterRestart = createNotebook({ storage });
+  assert.equal(
+    afterRestart.note("Loops").body,
+    "A loop repeats **until** it is done.",
+  );
+});
+
 test("a clashing title gets the Course added so titles stay unique", () => {
   const notebook = createNotebook({ storage: memoryStorage() });
   notebook.createLessonNote({

@@ -21,8 +21,9 @@ export function createNotebook({ storage }) {
   }
 
   // The Course a Lesson Note was last filed under, so the Course picker can
-  // preselect it. Persisting it across restarts is a later slice (#4).
-  let lastCourse;
+  // preselect it. It is kept in storage (not just memory) so it survives a
+  // browser restart (ADR 0003), alongside the notes themselves.
+  const LAST_COURSE = "lastCourse";
 
   function titleTaken(title) {
     return storage.getNote(title) !== undefined;
@@ -55,8 +56,13 @@ export function createNotebook({ storage }) {
       return storage.allNotes().length === 0;
     },
 
+    // One note by its (unique) title, or undefined if there is none.
+    note(title) {
+      return storage.getNote(title);
+    },
+
     lastCourse() {
-      return lastCourse;
+      return storage.getMeta(LAST_COURSE);
     },
 
     // The Lesson Note for the page you're on, matched by Source, or undefined
@@ -84,8 +90,21 @@ export function createNotebook({ storage }) {
         body: "",
       };
       storage.putNote(note);
-      lastCourse = course;
+      storage.putMeta(LAST_COURSE, course);
       return note;
+    },
+
+    // Save the note's Markdown body. The editor calls this as you type, so
+    // there is no save button (the write-through storage keeps IndexedDB in
+    // step). Unknown titles are ignored rather than creating a stray note.
+    saveBody(title, body) {
+      const note = storage.getNote(title);
+      if (!note) {
+        return undefined;
+      }
+      const updated = { ...note, body };
+      storage.putNote(updated);
+      return updated;
     },
   };
 }
