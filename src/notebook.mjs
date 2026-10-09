@@ -3,9 +3,47 @@
 // browser APIs; storage (and later GitHub) is plugged in from outside
 // (ADR 0003), so the core can be tested with an in-memory stand-in.
 
+// A Source is a lesson's web address compared without its query string or
+// #fragment (CONTEXT.md), so the same lesson matches one Lesson Note even
+// when the address carries extra bits like `?utm=…` or `#section-2`.
+export function normalizeSource(url) {
+  try {
+    const u = new URL(url);
+    return u.origin + u.pathname;
+  } catch {
+    return url.split("#")[0].split("?")[0];
+  }
+}
+
 export function createNotebook({ storage }) {
   if (!storage) {
     throw new Error("createNotebook needs a storage plug-in");
+  }
+
+  // The Course a Lesson Note was last filed under, so the Course picker can
+  // preselect it. Persisting it across restarts is a later slice (#4).
+  let lastCourse;
+
+  function titleTaken(title) {
+    return storage.getNote(title) !== undefined;
+  }
+
+  // Titles are unique across the whole Notebook (ADR 0005). On a clash we add
+  // the Course, e.g. "Introduction (TOP Foundations)"; if that is taken too we
+  // add a number so the new note still lands on a free title.
+  function uniqueTitle(title, course) {
+    if (!titleTaken(title)) {
+      return title;
+    }
+    const withCourse = `${title} (${course})`;
+    if (!titleTaken(withCourse)) {
+      return withCourse;
+    }
+    let n = 2;
+    while (titleTaken(`${withCourse} ${n}`)) {
+      n += 1;
+    }
+    return `${withCourse} ${n}`;
   }
 
   return {
@@ -15,6 +53,39 @@ export function createNotebook({ storage }) {
     },
     isEmpty() {
       return storage.allNotes().length === 0;
+    },
+
+    lastCourse() {
+      return lastCourse;
+    },
+
+    // The Lesson Note for the page you're on, matched by Source, or undefined
+    // when the page has none yet (the "+ Lesson note" prompt).
+    lessonNoteForSource(url) {
+      const key = normalizeSource(url);
+      return storage
+        .allNotes()
+        .find(
+          (note) =>
+            note.type === "lesson" && normalizeSource(note.source) === key,
+        );
+    },
+
+    // Start a Lesson Note for the page you're on: it takes the page title
+    // (made unique) and remembers the page as its Source. The chosen Course
+    // becomes the last-used one.
+    createLessonNote({ title, source, course, created }) {
+      const note = {
+        type: "lesson",
+        title: uniqueTitle(title, course),
+        course,
+        source: normalizeSource(source),
+        created: created ?? new Date().toISOString(),
+        body: "",
+      };
+      storage.putNote(note);
+      lastCourse = course;
+      return note;
     },
   };
 }
