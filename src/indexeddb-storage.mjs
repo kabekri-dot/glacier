@@ -83,14 +83,23 @@ export async function openIndexedDbStorage({
   // otherwise escape after the in-memory copy already claimed the change.
   // The panel surfaces these so the user knows a save failed (issue #25).
   // Sync (a later slice) is the real safety net across browsers.
+  //
+  // One failed write fires both `error` (bubbling from the request) and
+  // `abort` on the transaction, so report at most once per transaction.
   function persist(storeName, mutate) {
+    let reported = false;
+    const report = (error) => {
+      if (reported) return;
+      reported = true;
+      onPersistError(error);
+    };
     try {
       const tx = db.transaction(storeName, "readwrite");
-      tx.onerror = () => onPersistError(tx.error);
-      tx.onabort = () => onPersistError(tx.error);
+      tx.onerror = () => report(tx.error);
+      tx.onabort = () => report(tx.error);
       mutate(tx.objectStore(storeName));
     } catch (error) {
-      onPersistError(error);
+      report(error);
     }
   }
 

@@ -50,6 +50,9 @@ function fakeIndexedDB({ abortOnWrite = false, throwOnPut = false } = {}) {
           if (abortOnWrite) {
             queueMicrotask(() => {
               tx.error = new Error("AbortError: quota exceeded");
+              // A real failure bubbles an error up to the transaction and then
+              // aborts it, firing both events for the one failure.
+              tx.onerror?.();
               tx.onabort?.();
             });
           }
