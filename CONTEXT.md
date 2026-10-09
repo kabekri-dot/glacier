@@ -21,7 +21,7 @@ A named group of Lesson Notes from the same learning path, e.g. "The Odin Projec
 _Avoid_: Folder, category, website
 
 **Source**:
-The web address of the lesson a Lesson Note belongs to, compared without its query string or `#fragment`.
+The web address of the lesson a Lesson Note belongs to, compared without its `#fragment` and without known tracking parameters (`utm_…`, `fbclid`, `gclid`, `ref`…). Other query parameters stay part of it, because on sites like YouTube (`watch?v=…`) they identify the lesson.
 _Avoid_: URL, origin, link (reserved for Links between notes)
 
 **Sketch**:
