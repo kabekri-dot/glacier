@@ -55,6 +55,8 @@ function readAllKeys(db, storeName) {
 // shape as memoryStorage(), so the Notebook core cannot tell them apart.
 export async function openIndexedDbStorage({
   indexedDB = globalThis.indexedDB,
+  onPersistError = (error) =>
+    console.error("Glacier: IndexedDB write failed", error),
 } = {}) {
   if (!indexedDB) {
     throw new Error("openIndexedDbStorage needs IndexedDB");
@@ -74,12 +76,31 @@ export async function openIndexedDbStorage({
   ]);
   metaKeys.forEach((key, i) => meta.set(key, metaValues[i]));
 
-  // Persist in the background; failures are logged, not thrown, so typing is
-  // never blocked. Sync (a later slice) is the real safety net across browsers.
+  // Persist in the background; failures are reported, not thrown, so typing is
+  // never blocked. Both ways a write can fail are caught: the transaction
+  // errors or aborts (e.g. the disk quota is exceeded), and a synchronous
+  // throw from starting the transaction or storing the value — which would
+  // otherwise escape after the in-memory copy already claimed the change.
+  // The panel surfaces these so the user knows a save failed (issue #25).
+  // Sync (a later slice) is the real safety net across browsers.
+  //
+  // One failed write fires both `error` (bubbling from the request) and
+  // `abort` on the transaction, so report at most once per transaction.
   function persist(storeName, mutate) {
-    const tx = db.transaction(storeName, "readwrite");
-    mutate(tx.objectStore(storeName));
-    tx.onerror = () => console.error("Glacier: IndexedDB write failed", tx.error);
+    let reported = false;
+    const report = (error) => {
+      if (reported) return;
+      reported = true;
+      onPersistError(error);
+    };
+    try {
+      const tx = db.transaction(storeName, "readwrite");
+      tx.onerror = () => report(tx.error);
+      tx.onabort = () => report(tx.error);
+      mutate(tx.objectStore(storeName));
+    } catch (error) {
+      report(error);
+    }
   }
 
   return {

@@ -115,6 +115,37 @@ test("Lesson Notes stored before this change (path-only Source) still match", ()
   assert.equal(found?.title, "Old Note");
 });
 
+test("a Lesson Note without a Source doesn't make the lookup throw", () => {
+  // A stored Lesson Note can lack a Source (e.g. a half-created or imported
+  // note). Looking up the Lesson Note for a page must skip it, not throw.
+  const storage = memoryStorage();
+  storage.putNote({
+    type: "lesson",
+    title: "Sourceless",
+    course: "A Course",
+    created: "2024-01-01T00:00:00.000Z",
+    body: "",
+  });
+  const notebook = createNotebook({ storage });
+
+  let found;
+  assert.doesNotThrow(() => {
+    found = notebook.lessonNoteForSource("https://example.com/lesson-1");
+  });
+  assert.equal(found, undefined);
+
+  // A real match alongside the sourceless note is still found.
+  const real = notebook.createLessonNote({
+    title: "Real",
+    source: "https://example.com/lesson-1",
+    course: "A Course",
+  });
+  assert.equal(
+    notebook.lessonNoteForSource("https://example.com/lesson-1"),
+    real,
+  );
+});
+
 test("the last-used Course is remembered for the picker", () => {
   const notebook = createNotebook({ storage: memoryStorage() });
   assert.equal(notebook.lastCourse(), undefined);
