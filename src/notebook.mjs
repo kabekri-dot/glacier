@@ -3,6 +3,8 @@
 // browser APIs; storage (and later GitHub) is plugged in from outside
 // (ADR 0003), so the core can be tested with an in-memory stand-in.
 
+import { findLinks } from "./editor-model.mjs";
+
 // Query parameters that only record where a click came from, never which
 // lesson it is, so they're dropped before matching a Source (CONTEXT.md).
 // Kept short and in one place on purpose — extend it by adding names here.
@@ -12,8 +14,6 @@ const TRACKING_PARAMS = new Set(["fbclid", "gclid", "ref"]);
 function isTrackingParam(key) {
   return key.startsWith("utm_") || TRACKING_PARAMS.has(key);
 }
-
-import { findLinks } from "./editor-model.mjs";
 
 // A Source is a lesson's web address compared without its `#fragment` and
 // without known tracking parameters (CONTEXT.md). Every other query parameter
