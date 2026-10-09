@@ -3,15 +3,41 @@
 // browser APIs; storage (and later GitHub) is plugged in from outside
 // (ADR 0003), so the core can be tested with an in-memory stand-in.
 
-// A Source is a lesson's web address compared without its query string or
-// #fragment (CONTEXT.md), so the same lesson matches one Lesson Note even
-// when the address carries extra bits like `?utm=…` or `#section-2`.
+// Query parameters that only record where a click came from, never which
+// lesson it is, so they're dropped before matching a Source (CONTEXT.md).
+// Kept short and in one place on purpose — extend it by adding names here.
+// `utm_*` is matched by prefix; the rest are exact.
+const TRACKING_PARAMS = new Set(["fbclid", "gclid", "ref"]);
+
+function isTrackingParam(key) {
+  return key.startsWith("utm_") || TRACKING_PARAMS.has(key);
+}
+
+// A Source is a lesson's web address compared without its `#fragment` and
+// without known tracking parameters (CONTEXT.md). Every other query parameter
+// stays, because on sites like YouTube (`watch?v=…`) it identifies the lesson.
+// Parameters are sorted so their order on the page doesn't matter, and the
+// result is itself a valid Source (idempotent), so stored and live addresses
+// compare the same way.
 export function normalizeSource(url) {
   try {
     const u = new URL(url);
-    return u.origin + u.pathname;
+    const kept = [...u.searchParams.entries()].filter(
+      ([key]) => !isTrackingParam(key),
+    );
+    kept.sort(([ka, va], [kb, vb]) =>
+      ka === kb ? va.localeCompare(vb) : ka.localeCompare(kb),
+    );
+    const params = new URLSearchParams();
+    for (const [key, value] of kept) {
+      params.append(key, value);
+    }
+    const query = params.toString();
+    return u.origin + u.pathname + (query ? `?${query}` : "");
   } catch {
-    return url.split("#")[0].split("?")[0];
+    // Not a parseable absolute URL (e.g. a bare path): at least drop the
+    // #fragment and keep the rest, so the comparison is still stable.
+    return url.split("#")[0];
   }
 }
 
