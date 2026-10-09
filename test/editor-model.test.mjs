@@ -5,6 +5,14 @@ import {
   splitIntoLines,
   linesToText,
   editorTextToBody,
+  splitIntoBlocks,
+  blocksToText,
+  blockRanges,
+  pressEnter,
+  pressBackspace,
+  insertText,
+  renderedToRaw,
+  renderLineHtml,
 } from "../src/editor-model.mjs";
 
 // The editor model is the second test seam: pure functions on one note's
@@ -43,4 +51,168 @@ test("platform line breaks are normalized to \\n so the body is the same everywh
 test("the saved body round-trips back through the editor's lines", () => {
   const body = editorTextToBody("# Title\n\n- one\n- two\nplain line");
   assert.equal(linesToText(splitIntoLines(body)), body);
+});
+
+// Blocks (ADR 0006): one per line, except a fenced ``` code block, which stays
+// together as one block so the whole thing is edited and rendered as a unit.
+
+test("most lines are their own block, and the blocks join back to the text", () => {
+  const text = "# Title\n\nplain line";
+  assert.deepEqual(splitIntoBlocks(text), ["# Title", "", "plain line"]);
+  assert.equal(blocksToText(splitIntoBlocks(text)), text);
+});
+
+test("a fenced code block stays one block", () => {
+  const text = "before\n```js\nconst a = 1;\nconst b = 2;\n```\nafter";
+  assert.deepEqual(splitIntoBlocks(text), [
+    "before",
+    "```js\nconst a = 1;\nconst b = 2;\n```",
+    "after",
+  ]);
+  assert.equal(blocksToText(splitIntoBlocks(text)), text);
+});
+
+test("an unterminated code fence runs to the end as one block", () => {
+  const text = "intro\n```\nstill code\nmore code";
+  assert.deepEqual(splitIntoBlocks(text), [
+    "intro",
+    "```\nstill code\nmore code",
+  ]);
+  assert.equal(blocksToText(splitIntoBlocks(text)), text);
+});
+
+test("block ranges give the line span of each block", () => {
+  const lines = splitIntoLines("a\n```\ncode\n```\nb");
+  assert.deepEqual(blockRanges(lines), [
+    { start: 0, end: 1 },
+    { start: 1, end: 4 },
+    { start: 4, end: 5 },
+  ]);
+});
+
+// Enter: split the current line, continue a list, end the list on an empty
+// bullet. The model returns the new lines and where the caret should land.
+
+test("Enter splits the current line in two, caret at the start of the new line", () => {
+  const lines = ["hello world"];
+  assert.deepEqual(pressEnter(lines, 0, 5), {
+    lines: ["hello", " world"],
+    line: 1,
+    col: 0,
+  });
+});
+
+test("Enter in a bullet continues the list with a fresh marker", () => {
+  const lines = ["- one"];
+  assert.deepEqual(pressEnter(lines, 0, 5), {
+    lines: ["- one", "- "],
+    line: 1,
+    col: 2,
+  });
+});
+
+test("Enter keeps the indent when continuing a nested bullet", () => {
+  const lines = ["  - deep"];
+  const after = pressEnter(lines, 0, 8);
+  assert.deepEqual(after.lines, ["  - deep", "  - "]);
+  assert.equal(after.col, 4);
+});
+
+test("Enter on an empty bullet ends the list, leaving a blank line", () => {
+  const lines = ["- one", "- "];
+  assert.deepEqual(pressEnter(lines, 1, 2), {
+    lines: ["- one", ""],
+    line: 1,
+    col: 0,
+  });
+});
+
+// Backspace: at the start of a line, join it with the line above; otherwise
+// delete the character before the caret.
+
+test("Backspace at the start of a line joins it with the line above", () => {
+  const lines = ["hello", "world"];
+  assert.deepEqual(pressBackspace(lines, 1, 0), {
+    lines: ["helloworld"],
+    line: 0,
+    col: 5,
+  });
+});
+
+test("Backspace mid-line deletes the character before the caret", () => {
+  const lines = ["hello"];
+  assert.deepEqual(pressBackspace(lines, 0, 3), {
+    lines: ["helo"],
+    line: 0,
+    col: 2,
+  });
+});
+
+test("Backspace at the very start of the note does nothing", () => {
+  const lines = ["hello"];
+  assert.deepEqual(pressBackspace(lines, 0, 0), {
+    lines: ["hello"],
+    line: 0,
+    col: 0,
+  });
+});
+
+// Pasting: one line stays inline; several lines become several lines.
+
+test("inserting plain text with no break stays on one line", () => {
+  assert.deepEqual(insertText(["a c"], 0, 2, "b"), {
+    lines: ["a bc"],
+    line: 0,
+    col: 3,
+  });
+});
+
+test("pasting several lines splits the current line into several lines", () => {
+  assert.deepEqual(insertText(["start end"], 0, 6, "one\ntwo\nthree"), {
+    lines: ["start one", "two", "threeend"],
+    line: 2,
+    col: 5,
+  });
+});
+
+// Mapping a caret in the rendered text back to the raw Markdown, so a click on
+// the formatted line lands on the right spot once the line turns raw.
+
+test("a caret in a rendered heading maps past the # markers", () => {
+  // "## Hello": rendered text is "Hello"; caret before "H" -> raw offset 3.
+  assert.equal(renderedToRaw("## Hello", 0), 3);
+  assert.equal(renderedToRaw("## Hello", 5), 8);
+});
+
+test("a caret in a rendered bullet maps past the - marker", () => {
+  assert.equal(renderedToRaw("- item", 0), 2);
+  assert.equal(renderedToRaw("- item", 4), 6);
+});
+
+test("a caret inside bold text maps past the ** markers", () => {
+  // "a **b** c": rendered "a b c". Caret before "b" (rendered 2) -> raw 4.
+  assert.equal(renderedToRaw("a **b** c", 2), 4);
+  // Caret after "b" (rendered 3) -> raw 7 (before the trailing space).
+  assert.equal(renderedToRaw("a **b** c", 3), 7);
+});
+
+test("a caret inside inline code maps past the backticks", () => {
+  // "run `x` now": rendered "run x now". Caret before "x" (rendered 4) -> raw 5.
+  assert.equal(renderedToRaw("run `x` now", 4), 5);
+});
+
+// Rendering a line to HTML: markers become formatting, text is escaped.
+
+test("a heading renders without its # markers and escapes HTML", () => {
+  assert.equal(
+    renderLineHtml("# a < b"),
+    '<span class="md-h md-h1">a &lt; b</span>',
+  );
+});
+
+test("bold and inline code render as strong and code", () => {
+  assert.equal(
+    renderLineHtml("say **hi** and `go`"),
+    "say <strong>hi</strong> and <code>go</code>",
+  );
 });
