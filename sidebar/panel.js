@@ -17,6 +17,7 @@ import {
   linesToText,
   editorTextToBody,
   blockRanges,
+  isFence,
   pressEnter,
   pressBackspace,
   renderedToRaw,
@@ -34,10 +35,6 @@ function reportSaveError(error) {
   if (saveErrorEl) {
     saveErrorEl.hidden = false;
   }
-}
-
-function isFence(line) {
-  return /^```/.test(line);
 }
 
 async function start() {

@@ -27,7 +27,7 @@ export function editorTextToBody(text) {
 // A fence opens or closes a code block. We only need the common ``` form;
 // the whole run of lines from the opening fence to the next one (or the end
 // of the note) is a single block (ADR 0006).
-function isFence(line) {
+export function isFence(line) {
   return /^```/.test(line);
 }
 
