@@ -32,22 +32,43 @@ function openDatabase(indexedDB) {
   });
 }
 
-function readAll(db, storeName) {
+// Load the whole Notebook and its settings in a single read transaction, so
+// startup is one pass and both reflect the same snapshot (issue #23). Settings
+// are read with a cursor, which hands back each key together with its own
+// value, so keys and values can never be paired up out of step (unlike two
+// position-matched lists that a concurrent write could misalign).
+function loadAll(db) {
   return new Promise((resolve, reject) => {
-    const request = db.transaction(storeName).objectStore(storeName).getAll();
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
+    const tx = db.transaction([NOTES, META], "readonly");
+    let notes = [];
+    const meta = [];
+    let notesDone = false;
+    let metaDone = false;
+    const finish = () => {
+      if (notesDone && metaDone) resolve({ notes, meta });
+    };
 
-function readAllKeys(db, storeName) {
-  return new Promise((resolve, reject) => {
-    const request = db
-      .transaction(storeName)
-      .objectStore(storeName)
-      .getAllKeys();
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    const notesRequest = tx.objectStore(NOTES).getAll();
+    notesRequest.onsuccess = () => {
+      notes = notesRequest.result;
+      notesDone = true;
+      finish();
+    };
+
+    const metaCursor = tx.objectStore(META).openCursor();
+    metaCursor.onsuccess = () => {
+      const cursor = metaCursor.result;
+      if (cursor) {
+        meta.push([cursor.key, cursor.value]);
+        cursor.continue();
+      } else {
+        metaDone = true;
+        finish();
+      }
+    };
+
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
   });
 }
 
@@ -64,17 +85,14 @@ export async function openIndexedDbStorage({
 
   const db = await openDatabase(indexedDB);
 
+  const { notes: loadedNotes, meta: loadedMeta } = await loadAll(db);
+
   const notes = new Map();
-  for (const note of await readAll(db, NOTES)) {
+  for (const note of loadedNotes) {
     notes.set(note.title, note);
   }
 
-  const meta = new Map();
-  const [metaKeys, metaValues] = await Promise.all([
-    readAllKeys(db, META),
-    readAll(db, META),
-  ]);
-  metaKeys.forEach((key, i) => meta.set(key, metaValues[i]));
+  const meta = new Map(loadedMeta);
 
   // Persist in the background; failures are reported, not thrown, so typing is
   // never blocked. Both ways a write can fail are caught: the transaction

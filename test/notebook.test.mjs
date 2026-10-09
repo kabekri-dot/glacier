@@ -202,6 +202,17 @@ test("editing a note's body saves it and survives a restart", () => {
   );
 });
 
+test("typing on an empty Notebook is never turned into a stray note", () => {
+  // On a fresh install there is no note to save into yet (issue #23). A save
+  // for a title that doesn't exist is ignored rather than creating a note, so
+  // the panel can keep the page read-only until a real note exists without the
+  // core silently inventing one behind it.
+  const notebook = createNotebook({ storage: memoryStorage() });
+  assert.equal(notebook.saveBody("Untitled", "something I typed"), undefined);
+  assert.equal(notebook.isEmpty(), true);
+  assert.deepEqual(notebook.notes(), []);
+});
+
 test("a clashing title gets the Course added so titles stay unique", () => {
   const notebook = createNotebook({ storage: memoryStorage() });
   notebook.createLessonNote({
