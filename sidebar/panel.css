@@ -203,8 +203,7 @@ code {
   cursor: pointer;
 }
 
-.slash-item.is-selected,
-.slash-item:hover {
+.slash-item.is-selected {
   background: rgba(63, 120, 196, 0.15);
 }
 

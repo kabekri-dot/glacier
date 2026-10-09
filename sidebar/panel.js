@@ -240,6 +240,15 @@ async function start() {
       md.className = "slash-md";
       md.textContent = command.markdown;
       item.append(label, md);
+      // Moving the mouse over a command selects it, so mouse and ↑/↓ share one
+      // highlight. (mousemove, not hover: a menu that opens under a resting
+      // pointer must not show a second highlight, which Firefox otherwise does.)
+      item.addEventListener("mousemove", () => {
+        if (!menu || menu.selected === i) return;
+        menu.el.children[menu.selected]?.classList.remove("is-selected");
+        menu.selected = i;
+        item.classList.add("is-selected");
+      });
       // mousedown (not click) keeps the caret in the textarea as we apply.
       item.addEventListener("mousedown", (event) => {
         event.preventDefault();
