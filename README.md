@@ -16,7 +16,8 @@ which version.
 - `background.js` — opens the sidebar from the toolbar button and the
   keyboard shortcut.
 - `sidebar/` — the Zen panel: `panel.html`, `panel.css`, `panel.js`.
-- `src/` — the two test seams, with no screen code:
+- `src/` — the note logic, with no screen code (the first two files are the
+  two test seams):
   - `notebook.mjs` — the **Notebook core** (all note logic; storage is plugged
     in from outside).
   - `editor-model.mjs` — the **editor model** (pure functions on one note's
