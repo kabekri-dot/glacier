@@ -20,6 +20,11 @@ function isTrackingParam(key) {
 // result is itself a valid Source (idempotent), so stored and live addresses
 // compare the same way.
 export function normalizeSource(url) {
+  if (typeof url !== "string") {
+    // A note may carry no Source (half-created or imported); there's nothing
+    // to normalize and nothing it can match, so hand it straight back.
+    return url;
+  }
   try {
     const u = new URL(url);
     const kept = [...u.searchParams.entries()].filter(
@@ -99,7 +104,9 @@ export function createNotebook({ storage }) {
         .allNotes()
         .find(
           (note) =>
-            note.type === "lesson" && normalizeSource(note.source) === key,
+            note.type === "lesson" &&
+            note.source &&
+            normalizeSource(note.source) === key,
         );
     },
 

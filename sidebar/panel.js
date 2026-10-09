@@ -10,8 +10,20 @@
 
 import { createNotebook } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
+import { createSaveScheduler } from "../src/save-scheduler.mjs";
 
 const noteEl = document.querySelector(".note");
+const saveErrorEl = document.querySelector(".save-error");
+
+// A write to this browser's copy failed (aborted or threw). Tell the user so
+// they don't trust a save that didn't happen (issue #25); their text is still
+// on screen to copy out, and Sync (a later slice) is the cross-browser backup.
+function reportSaveError(error) {
+  console.error("Glacier: could not save", error);
+  if (saveErrorEl) {
+    saveErrorEl.hidden = false;
+  }
+}
 
 async function start() {
   if (!noteEl) return;
@@ -21,7 +33,10 @@ async function start() {
 
   let notebook;
   try {
-    notebook = createNotebook({ storage: await openIndexedDbStorage() });
+    const storage = await openIndexedDbStorage({
+      onPersistError: reportSaveError,
+    });
+    notebook = createNotebook({ storage });
   } catch (error) {
     // Without storage the panel still opens as a scratch page; nothing is lost
     // that was never saved. Sync (a later slice) is the cross-browser backup.
@@ -39,9 +54,20 @@ async function start() {
 
   if (openNote) {
     noteEl.textContent = openNote.body ?? "";
-    noteEl.addEventListener("input", () => {
-      notebook.saveBody(openNote.title, noteEl.textContent);
+
+    // Debounce writes so a burst of typing opens one transaction, not one per
+    // keystroke, and flush any pending write before the sidebar goes away so
+    // the last keystrokes aren't lost (issue #25).
+    const scheduler = createSaveScheduler({
+      save: (body) => notebook.saveBody(openNote.title, body),
     });
+    noteEl.addEventListener("input", () =>
+      scheduler.schedule(noteEl.textContent),
+    );
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") scheduler.flush();
+    });
+    window.addEventListener("pagehide", () => scheduler.flush());
   }
 }
 
