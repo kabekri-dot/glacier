@@ -181,6 +181,10 @@ async function start() {
   // it after a re-render.
   let focusedTextareaEl = null;
 
+  // Where the + button dropped its `/`, so dismissing the menu can take it back
+  // out again: { line, added } where `added` means + inserted a whole new line.
+  let plusOrigin = null;
+
   function closeMenu() {
     if (menu) {
       menu.el.remove();
@@ -188,9 +192,31 @@ async function start() {
     }
   }
 
+  // Close the menu without picking (Esc, clicking elsewhere, scrolling). A `/`
+  // that the + button put there and that is still untouched is removed again,
+  // so dismissing leaves the note exactly as it was.
+  function dismissMenu() {
+    if (!menu) return;
+    closeMenu();
+    const origin = plusOrigin;
+    plusOrigin = null;
+    if (origin && lines[origin.line] === "/") {
+      if (origin.added) lines.splice(origin.line, 1);
+      else lines[origin.line] = "";
+      focus = { line: origin.added ? origin.line - 1 : origin.line, col: 0 };
+      if (origin.added) focus.col = lines[focus.line].length;
+      scheduleSave();
+      render();
+    }
+  }
+
+  // A floating menu would drift away from its line, so scrolling closes it.
+  window.addEventListener("scroll", () => dismissMenu(), true);
+
   // Apply the highlighted command: the `/query` before the caret is replaced by
   // the command's Markdown and the caret lands where the command points (#6).
   function pickCommand(command) {
+    plusOrigin = null;
     const next = applySlashCommand(lines, focus.line, focus.col, command);
     lines = next.lines;
     closeMenu();
@@ -234,10 +260,13 @@ async function start() {
       const el = document.createElement("ul");
       el.className = "slash-menu";
       document.body.appendChild(el);
-      menu = { el, commands, selected: 0 };
+      menu = { el, commands, selected: 0, query };
     } else {
+      // A new query is a new list: start from the top, so the highlight never
+      // silently lands on a different command than the one shown before.
+      if (query !== menu.query) menu.selected = 0;
       menu.commands = commands;
-      if (menu.selected >= commands.length) menu.selected = 0;
+      menu.query = query;
     }
     const rect = ta.getBoundingClientRect();
     menu.el.style.left = `${rect.left}px`;
@@ -252,22 +281,45 @@ async function start() {
   function openMenuFromPlus(start) {
     const next = lines.slice();
     let line = start;
-    if ((next[start] ?? "") !== "") {
+    let added = false;
+    if (isFence(next[start] ?? "")) {
+      // In a code block the menu must not touch the code: open it on a fresh
+      // line right after the block instead.
+      const range = blockRanges(next).find((r) => r.start === start);
+      line = range ? range.end : start + 1;
+      next.splice(line, 0, "/");
+      added = true;
+    } else if ((next[start] ?? "") !== "") {
       next.splice(start + 1, 0, "/");
       line = start + 1;
+      added = true;
     } else {
       next[start] = "/";
     }
     lines = next;
     focus = { line, col: 1 };
+    scheduleSave();
     render();
-    if (focusedTextareaEl) openOrUpdateMenu(focusedTextareaEl);
+    if (focusedTextareaEl) {
+      openOrUpdateMenu(focusedTextareaEl);
+      plusOrigin = menu ? { line, added } : null;
+    }
   }
 
   // Let the menu steal the navigation keys while it is open; returns true when
-  // it handled the key so the editor leaves it alone.
-  function menuHandledKey(event) {
+  // it handled the key so the editor leaves it alone. The caret is re-read
+  // first, because it may have moved (Home, a click) since the menu last
+  // refiltered; if it's no longer on a `/` command, the menu closes instead.
+  function menuHandledKey(event, ta, start) {
     if (!menu) return false;
+    // While an input method (e.g. Chinese or Japanese) is composing, Enter
+    // confirms the composed text and must not apply a command.
+    if (event.isComposing) return false;
+    focus = lineColFromOffset(start, ta.value, ta.selectionStart);
+    if (slashQuery(lines[focus.line] ?? "", focus.col) === null) {
+      closeMenu();
+      return false;
+    }
     if (event.key === "ArrowDown") {
       event.preventDefault();
       menu.selected = (menu.selected + 1) % menu.commands.length;
@@ -288,7 +340,7 @@ async function start() {
     }
     if (event.key === "Escape") {
       event.preventDefault();
-      closeMenu();
+      dismissMenu();
       return true;
     }
     return false;
@@ -365,14 +417,33 @@ async function start() {
         return;
       }
       // Open, refilter or close the `/` command menu for the new caret (#6).
-      openOrUpdateMenu(ta);
+      // Never inside a code block: there `/` is just code, and Enter/Tab must
+      // insert a newline or a tab.
+      if (isCode) closeMenu();
+      else openOrUpdateMenu(ta);
     };
 
     ta.addEventListener("input", sync);
 
+    // The caret can move without typing (arrow keys, Home/End, a click): keep
+    // an open menu in step with it, or close it when it leaves the `/` command.
+    const followCaret = () => {
+      if (!menu) return;
+      focus = lineColFromOffset(start, ta.value, ta.selectionStart);
+      if (isCode) closeMenu();
+      else openOrUpdateMenu(ta);
+    };
+    ta.addEventListener("keyup", (event) => {
+      if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) followCaret();
+    });
+    ta.addEventListener("mouseup", followCaret);
+    // Clicking somewhere else dismisses the menu (picking an item uses
+    // mousedown with preventDefault, so it never blurs the textarea).
+    ta.addEventListener("blur", () => dismissMenu());
+
     ta.addEventListener("keydown", (event) => {
       // While the menu is open it owns ↑/↓/Enter/Tab/Esc (#6).
-      if (menuHandledKey(event)) return;
+      if (menuHandledKey(event, ta, start)) return;
 
       if (event.key === "Enter" && !isCode && !event.shiftKey) {
         event.preventDefault();

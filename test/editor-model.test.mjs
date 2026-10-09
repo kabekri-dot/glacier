@@ -328,6 +328,15 @@ test("applying Code block opens a fenced block with the caret on the empty line"
   });
 });
 
+test("applying Code block keeps the text after the caret inside the block", () => {
+  const code = SLASH_COMMANDS.find((c) => c.label === "Code block");
+  assert.deepEqual(applySlashCommand(["/code hello"], 0, 5, code), {
+    lines: ["```", " hello", "```"],
+    line: 1,
+    col: 0,
+  });
+});
+
 test("applying a command keeps any text after the caret on the line", () => {
   const bold = SLASH_COMMANDS.find((c) => c.label === "Bold");
   assert.deepEqual(applySlashCommand(["/b rest"], 0, 2, bold), {

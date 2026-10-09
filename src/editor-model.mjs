@@ -132,7 +132,13 @@ export function filterCommands(query) {
 // lines and caret, like the other editing functions.
 export function applySlashCommand(lines, line, col, command) {
   const after = lines[line].slice(col);
-  const inserted = splitIntoLines(command.insert + after);
+  // A multi-line command (Code block) puts the text after the caret inside the
+  // block, on the caret's line. Appended at the end it would sit on the closing
+  // fence line, where the rendered view hides it.
+  const text = command.insert.includes("\n")
+    ? command.insert.slice(0, command.caret) + after + command.insert.slice(command.caret)
+    : command.insert + after;
+  const inserted = splitIntoLines(text);
   const next = lines.slice();
   next.splice(line, 1, ...inserted);
   const caretLines = splitIntoLines(command.insert.slice(0, command.caret));
