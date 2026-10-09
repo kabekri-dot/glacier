@@ -38,18 +38,81 @@ test("a new Lesson Note takes the page title and remembers the page as its Sourc
   );
 });
 
-test("Source matching ignores the query string and the #fragment", () => {
+test("Source matching ignores the #fragment and known tracking parameters", () => {
   const notebook = createNotebook({ storage: memoryStorage() });
   notebook.createLessonNote({
     title: "Lesson",
-    source: "https://khan.example/algebra/lesson?utm=newsletter#section-2",
+    source: "https://khan.example/algebra/lesson",
     course: "Khan Algebra 1",
   });
-  const found = notebook.lessonNoteForSource(
-    "https://khan.example/algebra/lesson?ref=sidebar#top",
+  // A tracking parameter (utm_*, fbclid, gclid, ref…) and a #fragment are not
+  // part of the lesson, so the same Lesson Note is found.
+  const viaCampaign = notebook.lessonNoteForSource(
+    "https://khan.example/algebra/lesson?utm_source=mail",
   );
-  assert.ok(found);
-  assert.equal(found.title, "Lesson");
+  const viaFragment = notebook.lessonNoteForSource(
+    "https://khan.example/algebra/lesson#part-2",
+  );
+  assert.equal(viaCampaign?.title, "Lesson");
+  assert.equal(viaFragment?.title, "Lesson");
+});
+
+test("Source matching keeps the query parameter that identifies the lesson", () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  const a = notebook.createLessonNote({
+    title: "Video A",
+    source: "https://youtube.example/watch?v=A",
+    course: "A Course",
+  });
+  const b = notebook.createLessonNote({
+    title: "Video B",
+    source: "https://youtube.example/watch?v=B",
+    course: "A Course",
+  });
+  // Two YouTube videos share the /watch path but are different lessons.
+  assert.equal(a.title, "Video A");
+  assert.equal(b.title, "Video B");
+  assert.equal(
+    notebook.lessonNoteForSource("https://youtube.example/watch?v=A")?.title,
+    "Video A",
+  );
+  assert.equal(
+    notebook.lessonNoteForSource("https://youtube.example/watch?v=B")?.title,
+    "Video B",
+  );
+});
+
+test("Source matching doesn't care about parameter order", () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  notebook.createLessonNote({
+    title: "Module",
+    source: "https://lms.example/course?unit=3&lesson=7",
+    course: "A Course",
+  });
+  const found = notebook.lessonNoteForSource(
+    "https://lms.example/course?lesson=7&unit=3",
+  );
+  assert.equal(found?.title, "Module");
+});
+
+test("Lesson Notes stored before this change (path-only Source) still match", () => {
+  // A note created under the old rule kept only origin+path as its Source.
+  // Visiting that path again — even with a tracking parameter — must still
+  // find it, so no stored Source is orphaned by the new matching.
+  const storage = memoryStorage();
+  storage.putNote({
+    type: "lesson",
+    title: "Old Note",
+    course: "A Course",
+    source: "https://odin.example/foundations/intro",
+    created: "2024-01-01T00:00:00.000Z",
+    body: "",
+  });
+  const notebook = createNotebook({ storage });
+  const found = notebook.lessonNoteForSource(
+    "https://odin.example/foundations/intro?utm_campaign=newsletter",
+  );
+  assert.equal(found?.title, "Old Note");
 });
 
 test("the last-used Course is remembered for the picker", () => {
