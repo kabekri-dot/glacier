@@ -106,11 +106,7 @@ async function start() {
   // first, then open the note the Link names in place. A Missing Link creates a
   // Concept Note with that title and opens that instead (#8).
   function openLink(title) {
-    scheduler.flush();
-    current = notebook.openLink(title);
-    lines = splitIntoLines(editorTextToBody(current.body ?? ""));
-    focus = { line: 0, col: 0 };
-    render();
+    openNote(notebook.openLink(title));
   }
 
   // Where in a block's text the caret sits, given its first line and the
