@@ -113,6 +113,19 @@ export function createNotebook({ storage }) {
       return storage.getMeta(LAST_COURSE);
     },
 
+    // Every Course that has at least one Lesson Note, each once, sorted so the
+    // "+ Lesson note" picker can offer them (the last-used one preselected).
+    // Concept Notes have no Course and add nothing.
+    courses() {
+      const seen = new Set();
+      for (const note of storage.allNotes()) {
+        if (note.type === "lesson" && note.course) {
+          seen.add(note.course);
+        }
+      }
+      return [...seen].sort((a, b) => a.localeCompare(b));
+    },
+
     // The Lesson Note for the page you're on, matched by Source, or undefined
     // when the page has none yet (the "+ Lesson note" prompt).
     lessonNoteForSource(url) {

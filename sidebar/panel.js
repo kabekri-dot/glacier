@@ -67,28 +67,25 @@ async function start() {
     return;
   }
 
-  // The note first shown. Until the note-opening UI exists (#12) this is the
-  // most recently created one, so edits land on a real note and persist;
-  // following a Link (openLink) then moves between notes from here.
-  const firstNote = notebook
-    .notes()
-    .slice()
-    .sort((a, b) => (a.created ?? "").localeCompare(b.created ?? ""))
-    .pop();
-
-  // A fresh install has no note yet, and the panel has no note-creating UI
-  // until the Lesson Note flow is wired in (#12). Leaving the page read-only
-  // means nothing typed can be silently dropped for lack of somewhere to save
-  // it (issue #23).
-  if (!firstNote) return;
-
   // The note currently shown, the lines it holds and where the caret sits (raw
-  // line + column). Following a Link opens another note in place (openLink), so
-  // these change as you move between notes; the cursor lands at the top of each
-  // note as it opens (ADR 0006).
-  let current = firstNote;
-  let lines = splitIntoLines(editorTextToBody(current.body ?? ""));
+  // line + column). Nothing is open until the page's Lesson Note is found or a
+  // note is created (openForCurrentPage, below); while nothing is open the
+  // panel shows a way to make a note rather than a blank, locked page (#3).
+  // Following a Link opens another note in place (openLink), so these change as
+  // you move between notes; the cursor lands at the top of each note (ADR 0006).
+  let current = null;
+  let lines = [];
   let focus = { line: 0, col: 0 };
+
+  // Open a note in the editor: flush any pending save for the note we're
+  // leaving, load the new note's lines and draw it with the caret at the top.
+  function openNote(note) {
+    scheduler.flush();
+    current = note;
+    lines = splitIntoLines(editorTextToBody(current.body ?? ""));
+    focus = { line: 0, col: 0 };
+    render();
+  }
 
   // Does a Link's target note already exist? A Link to a note that doesn't
   // (a Missing Link) renders red (#8).
@@ -109,11 +106,7 @@ async function start() {
   // first, then open the note the Link names in place. A Missing Link creates a
   // Concept Note with that title and opens that instead (#8).
   function openLink(title) {
-    scheduler.flush();
-    current = notebook.openLink(title);
-    lines = splitIntoLines(editorTextToBody(current.body ?? ""));
-    focus = { line: 0, col: 0 };
-    render();
+    openNote(notebook.openLink(title));
   }
 
   // Where in a block's text the caret sits, given its first line and the
@@ -549,7 +542,276 @@ async function start() {
     }
   }
 
-  render();
+  // --- Opening the page's note, and the way out of an empty panel (#3) -------
+  //
+  // Seeing which page you're on needs the `tabs` permission, declared optional
+  // and asked for only on the first "+ Lesson note" click, behind Glacier's own
+  // explanation card (ADR 0008). Without it Glacier still works: "+ New note"
+  // makes a Lesson Note from a typed title and a picked Course, with no Source.
+
+  const api = typeof browser !== "undefined" ? browser : chrome;
+
+  async function hasTabsPermission() {
+    try {
+      return await api.permissions.contains({ permissions: ["tabs"] });
+    } catch {
+      return false;
+    }
+  }
+
+  // Must run straight from a click (both browsers require it). Resolves true if
+  // the user allows, false if they decline or the API is missing.
+  async function requestTabsPermission() {
+    try {
+      return await api.permissions.request({ permissions: ["tabs"] });
+    } catch {
+      return false;
+    }
+  }
+
+  // The active tab's address and title, or null when it can't be read: no
+  // permission, no tabs API, or a browser-internal page (new tab, settings,
+  // a PDF) that is never a lesson.
+  async function currentPage() {
+    try {
+      const tabs = await api.tabs.query({ active: true, currentWindow: true });
+      const tab = tabs && tabs[0];
+      if (!tab || !tab.url || !/^https?:/i.test(tab.url)) return null;
+      return { url: tab.url, title: tab.title || tab.url };
+    } catch {
+      return null;
+    }
+  }
+
+  // Build a labelled control row for the create form.
+  function field(labelText, control) {
+    const label = document.createElement("label");
+    label.className = "create-field";
+    const span = document.createElement("span");
+    span.className = "create-label";
+    span.textContent = labelText;
+    label.append(span, control);
+    return label;
+  }
+
+  // The Course picker: a text box with the existing Courses as suggestions
+  // (so one is joined by a click) and the last-used Course filled in, while
+  // still letting a new Course be typed (#3).
+  function coursePicker() {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "create-input";
+    input.setAttribute("list", "course-options");
+    input.placeholder = "Course";
+    const last = notebook.lastCourse();
+    if (last) input.value = last;
+    const list = document.createElement("datalist");
+    list.id = "course-options";
+    for (const course of notebook.courses()) {
+      const option = document.createElement("option");
+      option.value = course;
+      list.appendChild(option);
+    }
+    return { input, list };
+  }
+
+  // The create form, shared by "+ Lesson note" (with a Source from the page)
+  // and "+ New note" (by hand, no Source). Creating opens the new note so you
+  // can type in it straight away — never a dead end (#3).
+  function showCreateForm({ heading, titleValue, source, buttonText }) {
+    // Any edit to the note we're leaving must reach storage before we drop it.
+    scheduler.flush();
+    current = null;
+    noteEl.replaceChildren();
+
+    const form = document.createElement("form");
+    form.className = "create-form";
+
+    const title = document.createElement("h1");
+    title.className = "create-heading";
+    title.textContent = heading;
+    form.appendChild(title);
+
+    const titleInput = document.createElement("input");
+    titleInput.type = "text";
+    titleInput.className = "create-input";
+    titleInput.value = titleValue ?? "";
+    titleInput.placeholder = "Note title";
+    form.appendChild(field("Title", titleInput));
+
+    const course = coursePicker();
+    form.append(field("Course", course.input), course.list);
+
+    const submit = document.createElement("button");
+    submit.type = "submit";
+    submit.className = "create-submit";
+    submit.textContent = buttonText;
+    form.appendChild(submit);
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const noteTitle = titleInput.value.trim() || "Untitled";
+      const note = notebook.createLessonNote({
+        title: noteTitle,
+        source,
+        course: course.input.value.trim() || undefined,
+      });
+      openNote(note);
+    });
+
+    noteEl.appendChild(form);
+    titleInput.focus();
+    titleInput.select();
+  }
+
+  // Create a Lesson Note for the page you're on, its title and Source filled
+  // in from the page (both editable).
+  function showLessonForm(page) {
+    showCreateForm({
+      heading: "New Lesson Note for this page",
+      titleValue: page.title,
+      source: page.url,
+      buttonText: "Create Lesson note",
+    });
+  }
+
+  // Create a note by hand when the page can't be read (permission declined, or
+  // a browser-internal page): a typed title and a picked Course, no Source.
+  function showNewNoteForm() {
+    showCreateForm({
+      heading: "New note",
+      titleValue: "",
+      source: undefined,
+      buttonText: "Create note",
+    });
+  }
+
+  // Read the page and open its Lesson Note, or offer to create one. Called once
+  // the `tabs` permission is in hand (on load or after Allow).
+  async function proceedWithPage() {
+    const page = await currentPage();
+    if (!page) {
+      // A browser-internal page is never a lesson, so make one by hand instead.
+      showNewNoteForm();
+      return;
+    }
+    const existing = notebook.lessonNoteForSource(page.url);
+    if (existing) openNote(existing);
+    else showLessonForm(page);
+  }
+
+  // The starting panel when no note is open and the permission hasn't been
+  // granted yet: a single "+ Lesson note" button, so there's always a way in
+  // (#3). Clicking it either proceeds (already allowed) or shows the card.
+  function showStartPrompt() {
+    scheduler.flush();
+    current = null;
+    noteEl.replaceChildren();
+
+    const wrap = document.createElement("div");
+    wrap.className = "empty-state";
+
+    const line = document.createElement("p");
+    line.className = "empty-text";
+    line.textContent = "No note for this page yet";
+    wrap.appendChild(line);
+
+    const create = document.createElement("button");
+    create.type = "button";
+    create.className = "create-submit";
+    create.textContent = "+ Lesson note";
+    create.addEventListener("click", async () => {
+      if (await hasTabsPermission()) proceedWithPage();
+      else showPermissionCard();
+    });
+    wrap.appendChild(create);
+
+    noteEl.appendChild(wrap);
+  }
+
+  // Glacier's own explanation before the browser's prompt (ADR 0008): what the
+  // permission is for and what it is never used for. The browser's prompt only
+  // appears after Allow, straight from that click.
+  function showPermissionCard() {
+    noteEl.replaceChildren();
+
+    const card = document.createElement("div");
+    card.className = "perm-card";
+
+    const title = document.createElement("h1");
+    title.className = "create-heading";
+    title.textContent = "Let Glacier see the page you're on";
+    card.appendChild(title);
+
+    const why = document.createElement("p");
+    why.textContent =
+      "So your note opens with the page, and “+ Lesson note” can use the page's title and address as the note's Source.";
+    card.appendChild(why);
+
+    const never = document.createElement("p");
+    never.className = "perm-never";
+    never.textContent =
+      "Glacier never reads, saves or sends anything from the pages you visit.";
+    card.appendChild(never);
+
+    const next = document.createElement("p");
+    next.className = "perm-next";
+    next.textContent =
+      "Your browser will ask to confirm. If you decline, “+ New note” still lets you make a note by hand.";
+    card.appendChild(next);
+
+    const buttons = document.createElement("div");
+    buttons.className = "perm-buttons";
+
+    const allow = document.createElement("button");
+    allow.type = "button";
+    allow.className = "create-submit";
+    allow.textContent = "Allow";
+    allow.addEventListener("click", async () => {
+      // The request must start inside this click, so no await comes before it.
+      const granted = await requestTabsPermission();
+      if (granted) proceedWithPage();
+      else showNewNoteForm();
+    });
+
+    const notNow = document.createElement("button");
+    notNow.type = "button";
+    notNow.className = "perm-cancel";
+    notNow.textContent = "Not now — new note by hand";
+    notNow.addEventListener("click", () => showNewNoteForm());
+
+    buttons.append(allow, notNow);
+    card.appendChild(buttons);
+    noteEl.appendChild(card);
+  }
+
+  // On the sidebar opening: if the permission is already in hand, open the
+  // page's note (or offer to create one); otherwise show the starting prompt.
+  async function openForCurrentPage() {
+    if (await hasTabsPermission()) proceedWithPage();
+    else showStartPrompt();
+  }
+
+  // The page changes behind the sidebar: a note opens or the prompt updates to
+  // follow it (#3). Only when the permission is granted — without it there's
+  // nothing to read, and a tab switch must not throw away an open note.
+  async function reactToPageChange() {
+    if (await hasTabsPermission()) proceedWithPage();
+  }
+
+  if (api.tabs) {
+    if (api.tabs.onActivated) {
+      api.tabs.onActivated.addListener(() => reactToPageChange());
+    }
+    if (api.tabs.onUpdated) {
+      api.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+        // Only react to the active tab actually navigating to a new address.
+        if (changeInfo.url && tab && tab.active) reactToPageChange();
+      });
+    }
+  }
+
+  openForCurrentPage();
 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") scheduler.flush();
