@@ -29,9 +29,9 @@ import { execFileSync } from "node:child_process";
 // Configuration
 // ---------------------------------------------------------------------------
 
-// Glacier: three tickets per run, then stop, so you can look at the result
-// before starting the next run. Raise it once you trust the loop.
-const MAX_ITERATIONS = 3;
+// Glacier: how many tickets per run before stopping, so you can look at the result.
+// Default 3. Pick another number when starting: npx tsx .sandcastle/main.mts 5
+const MAX_ITERATIONS = Number.parseInt(process.argv[2] ?? "3", 10) || 3;
 
 // Glacier has no npm packages (ADR 0002), so the sandbox needs no npm install
 // and no copied node_modules. (npm is only used on the host, for Sandcastle itself.)
