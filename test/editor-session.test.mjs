@@ -714,3 +714,53 @@ test("undo closes an open / menu", () => {
   editor.undo();
   assert.equal(editor.menu, null);
 });
+
+// Formatting shortcuts (#44): the session applies Ctrl+B / Ctrl+I / Ctrl+E to
+// the focused line's selection, keeps the words selected and records one undo
+// step per press.
+
+test("Ctrl+B on a selection makes it bold and keeps it selected", () => {
+  const { editor, changes } = editorWithHistory("the key idea");
+  const selection = editor.format("bold", "the key idea", 4, 7);
+  assert.deepEqual(editor.state.lines, ["the **key** idea"]);
+  assert.deepEqual(selection, { start: 6, end: 9 });
+  assert.equal(changes[changes.length - 1], "the **key** idea");
+});
+
+test("one formatting shortcut press is one undo step", () => {
+  const { editor } = editorWithHistory("ab");
+  editor.edit("abc", 3);
+  editor.format("bold", "abc", 0, 3);
+  editor.format("italic", "**abc**", 2, 5);
+  assert.deepEqual(editor.state.lines, ["***abc***"]);
+  editor.undo();
+  assert.deepEqual(editor.state.lines, ["**abc**"]);
+  editor.undo();
+  assert.deepEqual(editor.state.lines, ["abc"]);
+});
+
+test("Ctrl+B with nothing selected, typing, then Ctrl+B again carries on plain", () => {
+  const { editor } = editorWithHistory("");
+  assert.deepEqual(editor.format("bold", "", 0, 0), { start: 2, end: 2 });
+  assert.deepEqual(editor.state.lines, ["****"]);
+  editor.edit("**hi**", 4);
+  assert.deepEqual(editor.format("bold", "**hi**", 4, 4), { start: 6, end: 6 });
+  editor.edit("**hi** there", 12);
+  assert.deepEqual(editor.state.lines, ["**hi** there"]);
+});
+
+test("stepping out of bold changes no text and records no undo step", () => {
+  const { editor, changes } = editorWithHistory("**hi**");
+  const before = changes.length;
+  editor.format("bold", "**hi**", 4, 4);
+  assert.equal(changes.length, before);
+  assert.equal(editor.undo(), false);
+});
+
+test("Ctrl+B in a code block changes nothing", () => {
+  const { editor } = editorWithHistory("```\ncode\n```");
+  editor.moveTo(1, 0);
+  assert.equal(editor.format("bold", "```\ncode\n```", 4, 8), null);
+  assert.deepEqual(editor.state.lines, ["```", "code", "```"]);
+  assert.equal(editor.undo(), false);
+});
