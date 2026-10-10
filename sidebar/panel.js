@@ -401,12 +401,69 @@ async function start() {
       const typed = search.value.trim();
       openNote(notebook.createConceptNote({ title: typed || "Untitled" }));
     });
-    actions.append(newLesson, newConcept);
+    const rename = document.createElement("button");
+    rename.type = "button";
+    rename.className = "menu-new";
+    rename.textContent = "Rename";
+    rename.title = "Change this note's title and every Link to it";
+    rename.hidden = current === null;
+    rename.addEventListener("click", () => showRename(actions, body));
+    actions.append(newLesson, newConcept, rename);
 
     menuPanelEl.append(search, actions, body);
     menuPanelEl.hidden = false;
     pillEl.setAttribute("aria-expanded", "true");
     search.focus();
+  }
+
+  // Rename (#11): a title box replaces the menu body. A taken title is refused
+  // with a free suggestion that one click puts in the box. The renamed note
+  // stays open; the Notebook rewrites the Links.
+  function showRename(actions, body) {
+    actions.hidden = true;
+    const form = document.createElement("form");
+    form.className = "rename-form";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "menu-search";
+    input.value = current.title;
+    input.setAttribute("aria-label", "New title");
+    const message = document.createElement("p");
+    message.className = "rename-message";
+    message.hidden = true;
+    const save = document.createElement("button");
+    save.type = "submit";
+    save.className = "menu-new";
+    save.textContent = "Rename";
+    form.append(input, save, message);
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      session.flush();
+      const result = notebook.renameNote(current.title, input.value);
+      if (result.ok) {
+        openNote(result.note, { byPage: openedByPage });
+        return;
+      }
+      message.hidden = false;
+      message.replaceChildren();
+      if (!result.suggestion) {
+        message.textContent = "Type a title for this note.";
+        return;
+      }
+      message.append("That title is taken. Try ");
+      const use = document.createElement("button");
+      use.type = "button";
+      use.className = "rename-suggestion";
+      use.textContent = result.suggestion;
+      use.addEventListener("click", () => {
+        input.value = result.suggestion;
+        form.requestSubmit();
+      });
+      message.append(use);
+    });
+    body.replaceChildren(form);
+    input.focus();
+    input.select();
   }
 
   pillEl.addEventListener("click", () => {

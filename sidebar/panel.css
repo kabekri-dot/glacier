@@ -618,3 +618,25 @@ code {
 .backlinks-item:hover {
   background: rgba(63, 120, 196, 0.1);
 }
+
+.rename-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.4rem 0;
+}
+
+.rename-message {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.rename-suggestion {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--glacier-accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
