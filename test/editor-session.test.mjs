@@ -827,7 +827,7 @@ test("Shift+Enter in the middle of bold keeps both halves bold", () => {
 });
 
 test("Shift+Enter in bold italic carries both marks", () => {
-  const editor = enterAt("***both***", 7, true);
+  const editor = enterAt("***both***", 5, true);
   assert.deepEqual(editor.state.lines, ["***bo***", "***th***"]);
 });
 
