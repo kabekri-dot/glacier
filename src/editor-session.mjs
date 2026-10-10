@@ -41,6 +41,13 @@ export function createEditorSession({ onChange } = {}) {
     blockCount = range.end - range.start;
   }
 
+  // Move the caret to (line, col), possibly a different block (a click, or
+  // ↑/↓ crossing a block): the focused block span is recomputed.
+  function moveTo(line, col) {
+    focus = { line, col };
+    relayout();
+  }
+
   // Report a text change as the body the sidebar should save.
   function notifyChange() {
     if (onChange) onChange(editorTextToBody(linesToText(lines)));
@@ -74,15 +81,6 @@ export function createEditorSession({ onChange } = {}) {
     get lines() {
       return lines;
     },
-    get focus() {
-      return focus;
-    },
-    get blockStart() {
-      return blockStart;
-    },
-    get blockCount() {
-      return blockCount;
-    },
 
     // The note's body, normalized for saving (ADR 0005, issue #24).
     body() {
@@ -97,12 +95,7 @@ export function createEditorSession({ onChange } = {}) {
       relayout();
     },
 
-    // Move the caret to (line, col), possibly a different block (a click, or
-    // ↑/↓ crossing a block): the focused block span is recomputed.
-    moveTo(line, col) {
-      focus = { line, col };
-      relayout();
-    },
+    moveTo,
 
     // Set the caret within the current block (its span is unchanged), used when
     // the textarea reports its caret moving without leaving the block.
@@ -178,7 +171,7 @@ export function createEditorSession({ onChange } = {}) {
       const firstBreak = value.indexOf("\n");
       const atTop = firstBreak === -1 || selStart <= firstBreak;
       if (atTop && blockStart > 0) {
-        this.moveTo(blockStart - 1, lines[blockStart - 1].length);
+        moveTo(blockStart - 1, lines[blockStart - 1].length);
         return true;
       }
       return false;
@@ -189,7 +182,7 @@ export function createEditorSession({ onChange } = {}) {
       const lastBreak = value.lastIndexOf("\n");
       const lastLine = blockStart + blockCount - 1;
       if (selStart > lastBreak && lastLine < lines.length - 1) {
-        this.moveTo(lastLine + 1, 0);
+        moveTo(lastLine + 1, 0);
         return true;
       }
       return false;
