@@ -406,8 +406,8 @@ async function start() {
     // tells us when a multi-line paste must reflow into real blocks; typing
     // inside a code block never does. While an input method is composing, the
     // spans are left alone (re-drawing would break the composition).
-    const applyEdit = (value, caret, composing = false) => {
-      const { reflow } = editor.edit(value, caret);
+    const applyEdit = (value, caret, composing = false, paste = false) => {
+      const { reflow } = editor.edit(value, caret, { paste });
       if (reflow) {
         // A re-render while the menu is open is a dismissal, so an untouched
         // + `/` goes with it rather than being saved (#28).
@@ -427,10 +427,15 @@ async function start() {
 
     // Insert plain text over the selection (paste, drop, a line break), so no
     // HTML or formatting from the clipboard ever gets into the note.
-    const insertPlain = (text, from, to) => {
+    const insertPlain = (text, from, to, paste = false) => {
       const clean = editorTextToBody(text);
       const value = el.textContent;
-      applyEdit(value.slice(0, from) + clean + value.slice(to), from + clean.length);
+      applyEdit(
+        value.slice(0, from) + clean + value.slice(to),
+        from + clean.length,
+        false,
+        paste,
+      );
     };
 
     el.addEventListener("input", (event) => {
@@ -448,7 +453,10 @@ async function start() {
         event.preventDefault();
         const { start: from, end: to } = selectionIn(el);
         insertPlain("\n", from, to);
-      } else if (event.inputType.startsWith("format")) {
+      } else if (
+        event.inputType.startsWith("format") ||
+        event.inputType.startsWith("history")
+      ) {
         event.preventDefault();
       }
     });
@@ -456,7 +464,7 @@ async function start() {
     el.addEventListener("paste", (event) => {
       event.preventDefault();
       const { start: from, end: to } = selectionIn(el);
-      insertPlain(event.clipboardData.getData("text/plain"), from, to);
+      insertPlain(event.clipboardData.getData("text/plain"), from, to, true);
     });
 
     // A drop lands where it was dropped, as plain text.
@@ -466,7 +474,7 @@ async function start() {
       if (!text) return;
       const at = caretAtPoint(event.clientX, event.clientY);
       const offset = at ? textOffset(el, at.node, at.offset) : el.textContent.length;
-      insertPlain(text, offset, offset);
+      insertPlain(text, offset, offset, true);
     });
 
     // The caret can move without typing (arrow keys, Home/End, a click): the
@@ -485,6 +493,18 @@ async function start() {
     el.addEventListener("blur", () => dismissAndRedraw());
 
     el.addEventListener("keydown", (event) => {
+      // Undo and redo are the session's own (#42): the browser's would scramble
+      // the styled spans.
+      if ((event.ctrlKey || event.metaKey) && !event.altKey) {
+        const key = event.key.toLowerCase();
+        const isUndo = key === "z" && !event.shiftKey;
+        const isRedo = (key === "z" && event.shiftKey) || key === "y";
+        if (isUndo || isRedo) {
+          event.preventDefault();
+          if (isUndo ? editor.undo() : editor.redo()) render();
+          return;
+        }
+      }
       const value = el.textContent;
       const selection = selectionIn(el);
       // While the menu is open the session owns ↑/↓/Enter/Tab/Esc (#32); it

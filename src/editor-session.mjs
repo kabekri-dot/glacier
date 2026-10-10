@@ -30,7 +30,12 @@ import {
   linkAtRendered,
 } from "./editor-model.mjs";
 
-export function createEditorSession({ onChange } = {}) {
+export function createEditorSession({
+  onChange,
+  pause = 800,
+  setTimer = setTimeout,
+  clearTimer = clearTimeout,
+} = {}) {
   // The note's lines, the caret (raw line + column), and the span of the block
   // the caret is in — its first line and how many lines it holds right now, so
   // a code block that grows still replaces exactly its own lines on each edit.
@@ -55,6 +60,51 @@ export function createEditorSession({ onChange } = {}) {
   let padStart = null;
   let padEdited = false;
 
+  // Undo history (#42): snapshots of the whole note and caret, taken before each
+  // step. A step is a run of typing until a pause (typingTimer pending) or one
+  // structural change. `beforePlus` is the note as it was before the + button
+  // dropped its `/`, so picking a command undoes to there. The timer is
+  // injected, as the save scheduler's is.
+  let undoSteps = [];
+  let redoSteps = [];
+  let typingTimer = null;
+  let beforePlus = null;
+
+  const snapshot = () => ({
+    lines: [...lines],
+    focus: { ...focus },
+  });
+
+  function endTypingRun() {
+    if (typingTimer === null) return;
+    clearTimer(typingTimer);
+    typingTimer = null;
+  }
+
+  // Remember the note as it is now, before a change. Typing joins the open run
+  // (only its first keystroke records a step); anything else is its own step.
+  function recordStep({ typing = false, before = snapshot() } = {}) {
+    if (!typing || typingTimer === null) {
+      undoSteps.push(before);
+      redoSteps = [];
+    }
+    endTypingRun();
+    if (typing) typingTimer = setTimer(() => (typingTimer = null), pause);
+  }
+
+  // Swap the note and caret for a recorded snapshot, saving it like typing.
+  function restore(saved) {
+    lines = [...saved.lines];
+    focus = { ...saved.focus };
+    menu = null;
+    plusOrigin = null;
+    beforePlus = null;
+    padStart = null;
+    padEdited = false;
+    relayout();
+    notifyChange();
+  }
+
   // Recompute the focused block's span for the current caret line.
   function relayout() {
     const range =
@@ -68,6 +118,7 @@ export function createEditorSession({ onChange } = {}) {
   // Move the caret to (line, col), possibly a different block (a click, or
   // ↑/↓ crossing a block): the focused block span is recomputed.
   function moveTo(line, col) {
+    endTypingRun();
     focus = { line, col };
     dropPadding();
     relayout();
@@ -154,7 +205,9 @@ export function createEditorSession({ onChange } = {}) {
   function pickMenu() {
     if (!menu) return;
     const command = menu.commands[menu.selected];
+    recordStep({ before: plusOrigin && beforePlus ? beforePlus : snapshot() });
     plusOrigin = null;
+    beforePlus = null;
     const next = applySlashCommand(lines, focus.line, focus.col, command);
     lines = next.lines;
     focus = { line: next.line, col: next.col };
@@ -173,6 +226,7 @@ export function createEditorSession({ onChange } = {}) {
     menu = null;
     const origin = plusOrigin;
     plusOrigin = null;
+    beforePlus = null;
     if (!(origin && lines[origin.line] === "/")) return -1;
     if (origin.added) {
       lines.splice(origin.line, 1);
@@ -210,7 +264,30 @@ export function createEditorSession({ onChange } = {}) {
       focus = { line: 0, col: 0 };
       padStart = null;
       padEdited = false;
+      undoSteps = [];
+      redoSteps = [];
+      beforePlus = null;
+      endTypingRun();
       relayout();
+    },
+
+    // Ctrl+Z: step back one recorded change, restoring text and caret. Returns
+    // false when there is nothing to undo.
+    undo() {
+      if (undoSteps.length === 0) return false;
+      endTypingRun();
+      redoSteps.push(snapshot());
+      restore(undoSteps.pop());
+      return true;
+    },
+
+    // Ctrl+Shift+Z / Ctrl+Y: step forward again. False when nothing to redo.
+    redo() {
+      if (redoSteps.length === 0) return false;
+      endTypingRun();
+      undoSteps.push(snapshot());
+      restore(redoSteps.pop());
+      return true;
     },
 
     moveTo,
@@ -327,6 +404,7 @@ export function createEditorSession({ onChange } = {}) {
     // (so the code is never touched) — then opens the menu as if `/` were typed.
     // `start` is the first line of the focused block.
     openMenuFromPlus(start) {
+      beforePlus = snapshot();
       let line = start;
       let added = false;
       if (isFence(lines[start] ?? "")) {
@@ -353,7 +431,9 @@ export function createEditorSession({ onChange } = {}) {
     // block's lines and place the caret. Returns `{ reflow }`: true when a
     // multi-line paste into a one-line block must become real blocks (the
     // sidebar re-renders), false while a code block stays one editable unit.
-    edit(value, caret) {
+    edit(value, caret, { paste = false } = {}) {
+      recordStep({ typing: !paste });
+      beforePlus = null;
       const wasCode = isFence(lines[blockStart]);
       if (padStart !== null) padEdited = true;
       const newLines = value.split("\n");
@@ -382,6 +462,7 @@ export function createEditorSession({ onChange } = {}) {
     // Enter at the caret: split the line, continuing a list or ending an empty
     // bullet (editor-model). A selection [selStart, selEnd] is deleted first.
     enter(value, selStart, selEnd) {
+      recordStep();
       const here = lineColFromOffset(value, selStart);
       if (selStart !== selEnd) {
         const end = lineColFromOffset(value, selEnd);
@@ -402,6 +483,7 @@ export function createEditorSession({ onChange } = {}) {
     backspaceAtStart() {
       if (blockStart === 0) return false;
       if (!(focus.line === blockStart && focus.col === 0)) return false;
+      recordStep();
       const next = pressBackspace(lines, blockStart, 0);
       lines = next.lines;
       focus = { line: next.line, col: next.col };

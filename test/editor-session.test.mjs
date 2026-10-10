@@ -541,3 +541,176 @@ test("moving to another added line keeps the lines above it", () => {
   assert.deepEqual(editor.state.lines, ["one", "", ""]);
   assert.deepEqual(editor.state.focus, { line: 2, col: 0 });
 });
+
+// Undo and redo (#42): the session keeps its own history of the whole note, so
+// the browser's undo never touches the styled focused line.
+
+function manualTimer() {
+  let fn = null;
+  return {
+    setTimer: (callback) => {
+      fn = callback;
+      return 1;
+    },
+    clearTimer: () => {
+      fn = null;
+    },
+    pause: () => {
+      const callback = fn;
+      fn = null;
+      callback?.();
+    },
+  };
+}
+
+function editorWithHistory(body = "") {
+  const timer = manualTimer();
+  const changes = [];
+  const editor = createEditorSession({
+    onChange: (text) => changes.push(text),
+    setTimer: timer.setTimer,
+    clearTimer: timer.clearTimer,
+  });
+  editor.load(body);
+  return { editor, timer, changes };
+}
+
+test("typing, a pause, more typing make two undo steps", () => {
+  const { editor, timer } = editorWithHistory();
+  editor.edit("h", 1);
+  editor.edit("he", 2);
+  timer.pause();
+  editor.edit("hey", 3);
+  editor.edit("hey!", 4);
+
+  editor.undo();
+  assert.deepEqual(editor.state.lines, ["he"]);
+  assert.deepEqual(editor.state.focus, { line: 0, col: 2 });
+  editor.undo();
+  assert.deepEqual(editor.state.lines, [""]);
+  assert.deepEqual(editor.state.focus, { line: 0, col: 0 });
+  assert.equal(editor.undo(), false, "nothing left to undo");
+});
+
+test("redo steps forward again, restoring text and caret", () => {
+  const { editor, timer } = editorWithHistory();
+  editor.edit("he", 2);
+  timer.pause();
+  editor.edit("hey", 3);
+  editor.undo();
+  editor.undo();
+  editor.redo();
+  assert.deepEqual(editor.state.lines, ["he"]);
+  assert.deepEqual(editor.state.focus, { line: 0, col: 2 });
+  editor.redo();
+  assert.deepEqual(editor.state.lines, ["hey"]);
+  assert.deepEqual(editor.state.focus, { line: 0, col: 3 });
+  assert.equal(editor.redo(), false, "nothing left to redo");
+});
+
+test("Enter undoes and redoes as one step that joins the lines back", () => {
+  const { editor } = editorWithHistory("hello world");
+  editor.moveTo(0, 5);
+  editor.enter("hello world", 5, 5);
+  assert.deepEqual(editor.state.lines, ["hello", " world"]);
+  editor.undo();
+  assert.deepEqual(editor.state.lines, ["hello world"]);
+  assert.deepEqual(editor.state.focus, { line: 0, col: 5 });
+  editor.redo();
+  assert.deepEqual(editor.state.lines, ["hello", " world"]);
+  assert.deepEqual(editor.state.focus, { line: 1, col: 0 });
+});
+
+test("a Backspace that joins lines undoes and redoes as one step", () => {
+  const { editor } = editorWithHistory("one\ntwo");
+  editor.moveTo(1, 0);
+  editor.backspaceAtStart();
+  assert.deepEqual(editor.state.lines, ["onetwo"]);
+  editor.undo();
+  assert.deepEqual(editor.state.lines, ["one", "two"]);
+  assert.deepEqual(editor.state.focus, { line: 1, col: 0 });
+  editor.redo();
+  assert.deepEqual(editor.state.lines, ["onetwo"]);
+});
+
+test("Enter ends a typing run, so typing before and after are separate steps", () => {
+  const { editor } = editorWithHistory();
+  editor.edit("ab", 2);
+  editor.enter("ab", 2, 2);
+  editor.edit("c", 1);
+  editor.undo();
+  assert.deepEqual(editor.state.lines, ["ab", ""]);
+  editor.undo();
+  assert.deepEqual(editor.state.lines, ["ab"]);
+  editor.undo();
+  assert.deepEqual(editor.state.lines, [""]);
+});
+
+test("a / menu command is its own undo step", () => {
+  const { editor } = editorWithHistory();
+  editor.edit("/", 1);
+  editor.refreshMenu();
+  editor.pickMenu();
+  const picked = [...editor.state.lines];
+  assert.notDeepEqual(picked, ["/"]);
+  editor.undo();
+  assert.deepEqual(editor.state.lines, ["/"]);
+  editor.redo();
+  assert.deepEqual(editor.state.lines, picked);
+});
+
+test("a command picked from the + button undoes to the line before the +", () => {
+  const { editor } = editorWithHistory("text");
+  editor.openMenuFromPlus(0);
+  editor.pickMenu();
+  editor.undo();
+  assert.deepEqual(editor.state.lines, ["text"]);
+});
+
+test("a paste is its own step, apart from the typing around it", () => {
+  const { editor } = editorWithHistory();
+  editor.edit("a", 1);
+  editor.edit("a\nb", 3, { paste: true });
+  editor.edit("a\nbc", 4);
+  editor.undo();
+  assert.equal(editor.body(), "a\nb");
+  editor.undo();
+  assert.equal(editor.body(), "a");
+});
+
+test("typing after an undo drops the redo steps", () => {
+  const { editor, timer } = editorWithHistory();
+  editor.edit("a", 1);
+  timer.pause();
+  editor.edit("ab", 2);
+  editor.undo();
+  editor.edit("ax", 2);
+  assert.equal(editor.redo(), false);
+  assert.deepEqual(editor.state.lines, ["ax"]);
+});
+
+test("undoing reports the change like typing does, so it is saved", () => {
+  const { editor, changes } = editorWithHistory();
+  editor.edit("a", 1);
+  editor.undo();
+  assert.equal(changes[changes.length - 1], "");
+  editor.redo();
+  assert.equal(changes[changes.length - 1], "a");
+});
+
+test("opening another note starts a fresh history", () => {
+  const { editor } = editorWithHistory();
+  editor.edit("a", 1);
+  editor.load("other");
+  assert.equal(editor.undo(), false);
+  assert.deepEqual(editor.state.lines, ["other"]);
+});
+
+test("undo closes an open / menu", () => {
+  const { editor } = editorWithHistory();
+  editor.edit("/", 1);
+  editor.refreshMenu();
+  assert.ok(editor.menu);
+  editor.undo();
+  assert.equal(editor.menu, null);
+});
