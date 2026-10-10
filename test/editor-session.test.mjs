@@ -473,3 +473,71 @@ test("clicking a Link reports the Link and its title, not a caret", () => {
   // Clicking off the Link is a caret, mapped past the `[[`.
   assert.equal(editor.clickLine(0, 0).type, "caret");
 });
+
+// Clicking the empty paper below the last line (#35): empty lines are added down
+// to the clicked ruled row and the caret lands there, ready to type.
+
+test("clicking the paper below the last line adds empty lines down to it", () => {
+  const editor = createEditorSession();
+  editor.load("one\ntwo");
+  editor.clickPaper(2);
+  assert.deepEqual(editor.state.lines, ["one", "two", "", "", ""]);
+  assert.deepEqual(editor.state.focus, { line: 4, col: 0 });
+});
+
+test("clicking the first row below the text adds just one empty line", () => {
+  const editor = createEditorSession();
+  editor.load("one");
+  editor.clickPaper(0);
+  assert.deepEqual(editor.state.lines, ["one", ""]);
+  assert.deepEqual(editor.state.focus, { line: 1, col: 0 });
+});
+
+test("typing after a paper click lands on the line that was clicked", () => {
+  const changes = [];
+  const editor = createEditorSession({ onChange: (body) => changes.push(body) });
+  editor.load("one");
+  editor.clickPaper(1);
+  editor.edit("hi", 2);
+  assert.equal(editor.body(), "one\n\nhi");
+  assert.deepEqual(changes, ["one\n\nhi"]);
+});
+
+test("clicking the paper and leaving without typing saves no empty lines", () => {
+  const changes = [];
+  const editor = createEditorSession({ onChange: (body) => changes.push(body) });
+  editor.load("one\ntwo");
+  editor.clickPaper(5);
+  editor.moveTo(0, 1);
+  assert.deepEqual(editor.state.lines, ["one", "two"]);
+  assert.deepEqual(changes, []);
+});
+
+test("empty lines added for a click are dropped again if the typing is deleted", () => {
+  const changes = [];
+  const editor = createEditorSession({ onChange: (body) => changes.push(body) });
+  editor.load("one");
+  editor.clickPaper(2);
+  editor.edit("x", 1);
+  editor.edit("", 0);
+  editor.moveTo(0, 0);
+  assert.deepEqual(editor.state.lines, ["one"]);
+  assert.equal(changes.at(-1), "one");
+});
+
+test("empty lines you already had are never dropped by a paper click", () => {
+  const editor = createEditorSession();
+  editor.load("one\n\n");
+  editor.clickPaper(0);
+  editor.moveTo(0, 0);
+  assert.deepEqual(editor.state.lines, ["one", "", ""]);
+});
+
+test("moving to another added line keeps the lines above it", () => {
+  const editor = createEditorSession();
+  editor.load("one");
+  editor.clickPaper(3);
+  editor.moveTo(2, 0);
+  assert.deepEqual(editor.state.lines, ["one", "", ""]);
+  assert.deepEqual(editor.state.focus, { line: 2, col: 0 });
+});
