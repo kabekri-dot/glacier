@@ -5,8 +5,11 @@
 // (ADR 0003) — no save button; the write-through storage keeps every keystroke.
 //
 // The block logic (splitting, list continuation, merging, raw-offset mapping,
-// the `/` command list) lives in editor-model.mjs as pure, tested functions;
-// this file is only the DOM wiring. The pill that switches notes arrives in a
+// the `/` command list) lives in editor-model.mjs as pure, tested functions,
+// and the editing decisions — the caret, typing, Enter/Backspace/↑↓, paste and
+// the `/` command menu with the + button — live behind the Editor session
+// (#31, #32). This file is only the DOM wiring: it forwards what happened and
+// draws editor.state and editor.menu. The pill that switches notes arrives in a
 // later slice (#12).
 
 import { createNotebook } from "../src/notebook.mjs";
@@ -19,9 +22,6 @@ import {
   isFence,
   renderedToRaw,
   renderLineHtml,
-  slashQuery,
-  filterCommands,
-  applySlashCommand,
 } from "../src/editor-model.mjs";
 
 // The empty-line hint and the menu that `/` and the + button open (#6). The
@@ -75,20 +75,23 @@ async function start() {
   let openedByPage = false;
 
   // The editing decisions — the note's lines and caret, typing, Enter,
-  // Backspace, ↑/↓, paste and the cursor maths — live behind this front door
-  // (#31, ADR 0002). This file only forwards what happened and draws
-  // editor.state; it still does the saving (scheduleSave) and the opening of
-  // notes (openNote). A text change reports the body to save.
+  // Backspace, ↑/↓, paste, the `/` command menu with the + button and the
+  // cursor maths — live behind this front door (#31, #32, ADR 0002). This file
+  // only forwards what happened and draws editor.state and editor.menu; it does
+  // the saving (a text change reports the body to schedule) and the opening of
+  // notes (openNote).
   const scheduler = createSaveScheduler({
     save: (body) => notebook.saveBody(current.title, body),
   });
-  const scheduleSave = () => scheduler.schedule(editor.body());
   const editor = createEditorSession({ onChange: (body) => scheduler.schedule(body) });
 
   // Open a note in the editor: flush any pending save for the note we're
   // leaving, load the new note's lines and draw it with the caret at the top.
   // `byPage` marks a note opened to follow the current page (see openedByPage).
   function openNote(note, { byPage = false } = {}) {
+    // Leaving a note with the menu open is a dismissal, so an untouched + `/`
+    // is taken back out before the note we're leaving is saved (#28).
+    editor.dismissMenu();
     scheduler.flush();
     current = note;
     openedByPage = byPage;
@@ -138,81 +141,46 @@ async function start() {
   }
 
   // Move the caret and redraw. The placement decision is the session's; this
-  // only draws the result.
+  // only draws the result. Moving the caret is clicking elsewhere, so it
+  // dismisses an open menu first; if that took out a `/` on its own line above
+  // the target, the target shifts up by one line (#28).
   function moveTo(line, col) {
+    const removed = editor.dismissMenu();
+    if (removed !== -1 && removed < line) line -= 1;
     editor.moveTo(line, col);
     render();
   }
 
-  // The `/` command menu while it is open: its list element, the commands it
-  // currently shows and which one is highlighted. Null when closed. The menu
-  // floats over the page near the current line and the focused textarea keeps
-  // the caret, so typing still filters and ↑/↓/Enter/Tab/Esc drive the menu.
-  let menu = null;
-  // The focused line's raw textarea, kept so the + button can open the menu on
+  // The `/` command menu's list element while it is open, or null. All the menu
+  // decisions — when it opens, what it shows, the highlight, picking, dismissing
+  // and the + placement — live in the Editor session (#32); this element just
+  // draws editor.menu, floating over the page near the current line.
+  let menuEl = null;
+  // The focused line's raw textarea, kept so the menu can be positioned against
   // it after a re-render.
   let focusedTextareaEl = null;
 
-  // Where the + button dropped its `/`, so dismissing the menu can take it back
-  // out again: { line, added } where `added` means + inserted a whole new line.
-  let plusOrigin = null;
-
-  function closeMenu() {
-    if (menu) {
-      menu.el.remove();
-      menu = null;
+  // Draw editor.menu (or remove the list when the session has closed it). The
+  // menu floats just under the focused textarea, which keeps the caret, so
+  // typing still filters and ↑/↓/Enter/Tab/Esc drive it.
+  function drawMenu() {
+    const state = editor.menu;
+    if (!state || !focusedTextareaEl) {
+      if (menuEl) {
+        menuEl.remove();
+        menuEl = null;
+      }
+      return;
     }
-  }
-
-  // Close the menu without picking (Esc, clicking elsewhere, scrolling). A `/`
-  // that the + button put there and that is still untouched is removed again,
-  // so dismissing leaves the note exactly as it was.
-  function dismissMenu() {
-    if (!menu) return;
-    closeMenu();
-    const origin = plusOrigin;
-    plusOrigin = null;
-    const ls = editor.lines;
-    if (origin && ls[origin.line] === "/") {
-      if (origin.added) ls.splice(origin.line, 1);
-      else ls[origin.line] = "";
-      const line = origin.added ? origin.line - 1 : origin.line;
-      const col = origin.added ? ls[line].length : 0;
-      editor.moveTo(line, col);
-      scheduleSave();
-      render();
+    if (!menuEl) {
+      menuEl = document.createElement("ul");
+      menuEl.className = "slash-menu";
+      document.body.appendChild(menuEl);
     }
-  }
-
-  // A floating menu would drift away from its line, so scrolling closes it.
-  // Scrolling *inside* the menu (mouse wheel, or keeping the highlight in view)
-  // is just browsing the list, so only scrolling anything else closes it.
-  window.addEventListener(
-    "scroll",
-    (event) => {
-      if (menu && menu.el.contains(event.target)) return;
-      dismissMenu();
-    },
-    true,
-  );
-
-  // Apply the highlighted command: the `/query` before the caret is replaced by
-  // the command's Markdown and the caret lands where the command points (#6).
-  function pickCommand(command) {
-    plusOrigin = null;
-    const { focus } = editor.state;
-    const next = applySlashCommand(editor.lines, focus.line, focus.col, command);
-    editor.replaceLines(next.lines);
-    closeMenu();
-    moveTo(next.line, next.col);
-    scheduleSave();
-  }
-
-  function renderMenu() {
-    menu.el.replaceChildren();
-    menu.commands.forEach((command, i) => {
+    menuEl.replaceChildren();
+    state.commands.forEach((command, i) => {
       const item = document.createElement("li");
-      item.className = i === menu.selected ? "slash-item is-selected" : "slash-item";
+      item.className = i === state.selected ? "slash-item is-selected" : "slash-item";
       const label = document.createElement("span");
       label.className = "slash-label";
       label.textContent = command.label;
@@ -226,131 +194,58 @@ async function start() {
       // highlight. (mousemove, not hover: a menu that opens under a resting
       // pointer must not show a second highlight, which Firefox otherwise does.)
       item.addEventListener("mousemove", () => {
-        if (!menu || menu.selected === i) return;
-        menu.el.children[menu.selected]?.classList.remove("is-selected");
-        menu.selected = i;
+        if (!editor.menu || editor.menu.selected === i) return;
+        editor.menuSelect(i);
+        // A lightweight highlight move: don't rebuild the list (which would
+        // reset its scroll and fight the resting pointer), just move the class.
+        menuEl.querySelector(".is-selected")?.classList.remove("is-selected");
         item.classList.add("is-selected");
       });
       // mousedown (not click) keeps the caret in the textarea as we apply.
       item.addEventListener("mousedown", (event) => {
         event.preventDefault();
-        pickCommand(command);
+        editor.menuSelect(i);
+        editor.pickMenu();
+        render();
       });
-      menu.el.appendChild(item);
+      menuEl.appendChild(item);
     });
+    const rect = focusedTextareaEl.getBoundingClientRect();
+    menuEl.style.left = `${rect.left}px`;
+    menuEl.style.top = `${rect.bottom}px`;
     // Keep the highlighted command in view when ↑/↓ move past the visible part
     // of the list. Scrolling only the menu itself never moves the page.
-    const item = menu.el.children[menu.selected];
+    const item = menuEl.children[state.selected];
     if (item) {
       const top = item.offsetTop;
       const bottom = top + item.offsetHeight;
-      if (top < menu.el.scrollTop) menu.el.scrollTop = top;
-      else if (bottom > menu.el.scrollTop + menu.el.clientHeight) {
-        menu.el.scrollTop = bottom - menu.el.clientHeight;
+      if (top < menuEl.scrollTop) menuEl.scrollTop = top;
+      else if (bottom > menuEl.scrollTop + menuEl.clientHeight) {
+        menuEl.scrollTop = bottom - menuEl.clientHeight;
       }
     }
   }
 
-  // Show (or refilter) the menu for the focused line. It opens only when the
-  // line is a `/` command (slashQuery); any other caret closes it.
-  function openOrUpdateMenu(ta) {
-    const { lines, focus } = editor.state;
-    const query = slashQuery(lines[focus.line] ?? "", focus.col);
-    const commands = query === null ? [] : filterCommands(query);
-    if (commands.length === 0) {
-      closeMenu();
-      return;
-    }
-    if (!menu) {
-      const el = document.createElement("ul");
-      el.className = "slash-menu";
-      document.body.appendChild(el);
-      menu = { el, commands, selected: 0, query };
-    } else {
-      // A new query is a new list: start from the top, so the highlight never
-      // silently lands on a different command than the one shown before.
-      if (query !== menu.query) menu.selected = 0;
-      menu.commands = commands;
-      menu.query = query;
-    }
-    const rect = ta.getBoundingClientRect();
-    menu.el.style.left = `${rect.left}px`;
-    menu.el.style.top = `${rect.bottom}px`;
-    renderMenu();
-  }
-
-  // The + button on the left of the current line opens the same menu. It works
-  // by dropping a `/` where the menu should appear — on a fresh line below when
-  // the current line already has text — so filtering and applying behave
-  // exactly as if the `/` had been typed (#6).
-  function openMenuFromPlus(start) {
-    const next = editor.lines.slice();
-    let line = start;
-    let added = false;
-    if (isFence(next[start] ?? "")) {
-      // In a code block the menu must not touch the code: open it on a fresh
-      // line right after the block instead.
-      const range = blockRanges(next).find((r) => r.start === start);
-      line = range ? range.end : start + 1;
-      next.splice(line, 0, "/");
-      added = true;
-    } else if ((next[start] ?? "") !== "") {
-      next.splice(start + 1, 0, "/");
-      line = start + 1;
-      added = true;
-    } else {
-      next[start] = "/";
-    }
-    editor.replaceLines(next);
-    editor.moveTo(line, 1);
-    scheduleSave();
+  // Dismiss the menu without picking (the session removes an untouched + `/`),
+  // then redraw so the removal shows. Used by the terminal dismissals: Esc,
+  // clicking outside the textarea, and scrolling away from the menu (#28).
+  function dismissAndRedraw() {
+    if (!editor.menu) return;
+    editor.dismissMenu();
     render();
-    if (focusedTextareaEl) {
-      openOrUpdateMenu(focusedTextareaEl);
-      plusOrigin = menu ? { line, added } : null;
-    }
   }
 
-  // Let the menu steal the navigation keys while it is open; returns true when
-  // it handled the key so the editor leaves it alone. The caret is re-read
-  // first, because it may have moved (Home, a click) since the menu last
-  // refiltered; if it's no longer on a `/` command, the menu closes instead.
-  function menuHandledKey(event, ta, start) {
-    if (!menu) return false;
-    // While an input method (e.g. Chinese or Japanese) is composing, Enter
-    // confirms the composed text and must not apply a command.
-    if (event.isComposing) return false;
-    const here = editor.lineColFromOffset(ta.value, ta.selectionStart);
-    editor.setFocus(here.line, here.col);
-    if (slashQuery(editor.lines[here.line] ?? "", here.col) === null) {
-      closeMenu();
-      return false;
-    }
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      menu.selected = (menu.selected + 1) % menu.commands.length;
-      renderMenu();
-      return true;
-    }
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      menu.selected =
-        (menu.selected - 1 + menu.commands.length) % menu.commands.length;
-      renderMenu();
-      return true;
-    }
-    if (event.key === "Enter" || event.key === "Tab") {
-      event.preventDefault();
-      pickCommand(menu.commands[menu.selected]);
-      return true;
-    }
-    if (event.key === "Escape") {
-      event.preventDefault();
-      dismissMenu();
-      return true;
-    }
-    return false;
-  }
+  // A floating menu would drift away from its line, so scrolling closes it.
+  // Scrolling *inside* the menu (mouse wheel, or keeping the highlight in view)
+  // is just browsing the list, so only scrolling anything else closes it.
+  window.addEventListener(
+    "scroll",
+    (event) => {
+      if (menuEl && menuEl.contains(event.target)) return;
+      dismissAndRedraw();
+    },
+    true,
+  );
 
   // Build one rendered (non-focused) block.
   function renderedBlock(range) {
@@ -411,26 +306,26 @@ async function start() {
       ta.style.height = `${ta.scrollHeight}px`;
       ta.placeholder = ta.value === "" ? EMPTY_LINE_HINT : "";
       if (reflow) {
+        // A re-render while the menu is open is a dismissal, so an untouched
+        // + `/` goes with it rather than being saved (#28).
+        editor.dismissMenu();
         render();
         return;
       }
-      // Open, refilter or close the `/` command menu for the new caret (#6).
-      // Never inside a code block: there `/` is just code, and Enter/Tab must
-      // insert a newline or a tab.
-      if (isCode) closeMenu();
-      else openOrUpdateMenu(ta);
+      // Open, refilter or close the `/` command menu for the new caret (#32).
+      // The session knows not to open inside a code block, where `/` is code.
+      editor.refreshMenu();
+      drawMenu();
     };
 
     ta.addEventListener("input", sync);
 
-    // The caret can move without typing (arrow keys, Home/End, a click): keep
-    // an open menu in step with it, or close it when it leaves the `/` command.
+    // The caret can move without typing (arrow keys, Home/End, a click): the
+    // session keeps an open menu in step with it, or closes it when the caret
+    // leaves the `/` command.
     const followCaret = () => {
-      if (!menu) return;
-      const here = editor.lineColFromOffset(ta.value, ta.selectionStart);
-      editor.setFocus(here.line, here.col);
-      if (isCode) closeMenu();
-      else openOrUpdateMenu(ta);
+      editor.followMenu(ta.value, ta.selectionStart);
+      drawMenu();
     };
     ta.addEventListener("keyup", (event) => {
       if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) followCaret();
@@ -438,11 +333,29 @@ async function start() {
     ta.addEventListener("mouseup", followCaret);
     // Clicking somewhere else dismisses the menu (picking an item uses
     // mousedown with preventDefault, so it never blurs the textarea).
-    ta.addEventListener("blur", () => dismissMenu());
+    ta.addEventListener("blur", () => dismissAndRedraw());
 
     ta.addEventListener("keydown", (event) => {
-      // While the menu is open it owns ↑/↓/Enter/Tab/Esc (#6).
-      if (menuHandledKey(event, ta, start)) return;
+      // While the menu is open the session owns ↑/↓/Enter/Tab/Esc (#32); it
+      // tells us what it did so we can redraw the menu or re-render the note.
+      const action = editor.menuKey(event.key, {
+        value: ta.value,
+        caret: ta.selectionStart,
+        isComposing: event.isComposing,
+      });
+      if (action === "nav") {
+        event.preventDefault();
+        drawMenu();
+        return;
+      }
+      if (action === "pick" || action === "dismiss") {
+        event.preventDefault();
+        render();
+        return;
+      }
+      // Not a menu key: the session may have closed the menu (the caret left the
+      // `/` command), so keep the drawn list in step before the editor keys run.
+      if (!editor.menu) drawMenu();
 
       // Each editing key forwards the textarea's caret to the session, which
       // decides what the edit does and where the caret lands (#31).
@@ -488,9 +401,6 @@ async function start() {
   // Rebuild the page from the current lines, with the focused block as a raw
   // textarea and every other block rendered. The caret is restored afterwards.
   function render() {
-    // Any open menu belongs to the line we're leaving; a re-render is always a
-    // move away from it (nav, pick, link follow), so close it first (#6).
-    closeMenu();
     noteEl.replaceChildren();
     focusedTextareaEl = null;
     // Keep the session's focused-block span in step with the caret before we
@@ -504,7 +414,7 @@ async function start() {
       if (focus.line >= range.start && focus.line < range.end) {
         const built = focusedBlock(range);
         // The + button opens the command menu from the left of the current
-        // line, without needing to know about `/` (#6).
+        // line; the session drops the `/` and opens the menu (#32).
         const plus = document.createElement("button");
         plus.type = "button";
         plus.className = "line-plus";
@@ -512,7 +422,8 @@ async function start() {
         plus.setAttribute("aria-label", "Open the command menu");
         plus.addEventListener("mousedown", (event) => {
           event.preventDefault();
-          openMenuFromPlus(built.start);
+          editor.openMenuFromPlus(built.start);
+          render();
         });
         const row = document.createElement("div");
         row.className = "line-row";
@@ -536,6 +447,10 @@ async function start() {
       focusedTextarea.style.height = "auto";
       focusedTextarea.style.height = `${focusedTextarea.scrollHeight}px`;
     }
+
+    // Draw the `/` menu against the fresh textarea (the + button opens it just
+    // before a render), or remove it when the session has closed it (#32).
+    drawMenu();
   }
 
   // --- Opening the page's note, and the way out of an empty panel (#3) -------
