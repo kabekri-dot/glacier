@@ -80,12 +80,10 @@ export function createEditorSession({ onChange } = {}) {
     const keep = Math.max(padStart, focus.line + 1);
     const before = lines.length;
     while (lines.length > keep && lines[lines.length - 1] === "") lines.pop();
+    if (padEdited && lines.length !== before) notifyChange();
     if (lines.length <= padStart) {
       padStart = null;
-      if (padEdited && lines.length !== before) notifyChange();
       padEdited = false;
-    } else if (padEdited && lines.length !== before) {
-      notifyChange();
     }
   }
 
