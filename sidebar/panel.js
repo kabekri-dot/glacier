@@ -17,6 +17,12 @@ import { createNotebook } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { createNoteSession } from "../src/note-session.mjs";
 import { isOpenedByPage } from "../src/page-open.mjs";
+import { createNoteHistory } from "../src/note-history.mjs";
+import {
+  newNoteChoices,
+  LESSON_NOTE_HINT,
+  CONCEPT_NOTE_HINT,
+} from "../src/new-note-choices.mjs";
 import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
@@ -41,6 +47,9 @@ const noteEl = document.querySelector(".note");
 const saveErrorEl = document.querySelector(".save-error");
 const pillEl = document.querySelector(".pill");
 const pillTitleEl = document.querySelector(".pill-title");
+const backEl = document.querySelector(".pill-back");
+const newButtonEl = document.querySelector(".pill-new");
+const newMenuEl = document.querySelector(".new-menu");
 const menuPanelEl = document.querySelector(".menu");
 
 // A write to this browser's copy failed (aborted or threw). Tell the user so
@@ -84,6 +93,8 @@ async function start() {
   // replace it) or by the user following a Link / creating it (so it stays put
   // when the page behind the sidebar changes — issue #29).
   let openedByPage = false;
+  // The notes that have been on screen, for the pill's ← button (#52).
+  const history = createNoteHistory();
 
   // The editing decisions — the note's lines and caret, typing, Enter,
   // Backspace, ↑/↓, paste, the `/` command menu with the + button and the
@@ -100,7 +111,7 @@ async function start() {
   // Open a note in the editor: flush any pending save for the note we're
   // leaving, load the new note's lines and draw it with the caret at the top.
   // `byPage` marks a note opened to follow the current page (see openedByPage).
-  function openNote(note, { byPage = false } = {}) {
+  function openNote(note, { byPage = false, fromHistory = false } = {}) {
     // Leaving a note with the menu open is a dismissal, so an untouched + `/`
     // is taken back out before the note we're leaving is saved (#28).
     editor.dismissMenu();
@@ -108,6 +119,7 @@ async function start() {
     notebook.markOpened(note.title);
     current = note;
     openedByPage = byPage;
+    if (!fromHistory) history.visit(note.title);
     editor.load(current.body ?? "");
     render();
     closeMenu();
@@ -123,7 +135,71 @@ async function start() {
 
   function updatePill() {
     pillTitleEl.textContent = current ? current.title : "Glacier";
+    const previous = history.previous();
+    backEl.hidden = previous === null;
+    backEl.title = previous === null ? "" : `Back to: ${previous}`;
   }
+
+  // ← opens the note that was on screen before. A note that has since gone
+  // is skipped, so the button never lands nowhere.
+  backEl.addEventListener("click", () => {
+    for (let title = history.back(); title !== null; title = history.back()) {
+      const note = notebook.note(title);
+      if (note) {
+        openNote(note, { byPage: isOpenedByPage(note), fromHistory: true });
+        return;
+      }
+    }
+    updatePill();
+  });
+
+  // + opens a small menu of the kinds of note to make. On a website the Lesson
+  // note belongs to the page; elsewhere it is made by hand.
+  function closeNewMenu() {
+    newMenuEl.hidden = true;
+    newMenuEl.replaceChildren();
+    newButtonEl.setAttribute("aria-expanded", "false");
+  }
+
+  function startLessonNote() {
+    session.close();
+    current = null;
+    openedByPage = false;
+    updatePill();
+    openingFlow.clickLessonNote();
+  }
+
+  async function openNewMenu() {
+    const choices = newNoteChoices({ onWebsite: await openingFlow.onWebsite() });
+    newMenuEl.replaceChildren();
+    for (const choice of choices) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "menu-new";
+      button.textContent = choice.label;
+      button.title = choice.hint;
+      button.addEventListener("click", () => {
+        closeNewMenu();
+        if (choice.kind === "lesson") startLessonNote();
+        else if (choice.kind === "byHand") {
+          session.close();
+          showNewNoteForm();
+        } else openNote(notebook.createConceptNote({ title: "Untitled" }));
+      });
+      newMenuEl.appendChild(button);
+    }
+    newMenuEl.hidden = false;
+    newButtonEl.setAttribute("aria-expanded", "true");
+    newMenuEl.querySelector("button").focus();
+  }
+
+  newButtonEl.addEventListener("click", () => {
+    if (!newMenuEl.hidden) closeNewMenu();
+    else {
+      closeMenu();
+      openNewMenu();
+    }
+  });
 
   function menuIsOpen() {
     return !menuPanelEl.hidden;
@@ -154,9 +230,10 @@ async function start() {
     return button;
   }
 
-  function menuHeading(text) {
+  function menuHeading(text, hint) {
     const heading = document.createElement("h2");
     heading.className = "menu-heading";
+    if (hint) heading.title = hint;
     heading.textContent = text;
     return heading;
   }
@@ -231,14 +308,15 @@ async function start() {
       details.open = true;
       const summary = document.createElement("summary");
       summary.textContent = course;
+      summary.title = LESSON_NOTE_HINT;
       details.append(summary, titleList(titles));
       container.appendChild(details);
     }
     if (outline.uncategorised.length > 0) {
-      container.append(menuHeading("No Course"), titleList(outline.uncategorised));
+      container.append(menuHeading("No Course", LESSON_NOTE_HINT), titleList(outline.uncategorised));
     }
     if (outline.concepts.length > 0) {
-      container.append(menuHeading("Concepts"), titleList(outline.concepts));
+      container.append(menuHeading("Concepts", CONCEPT_NOTE_HINT), titleList(outline.concepts));
     }
   }
 
@@ -272,18 +350,16 @@ async function start() {
     newLesson.type = "button";
     newLesson.className = "menu-new";
     newLesson.textContent = "+ Lesson note";
+    newLesson.title = LESSON_NOTE_HINT;
     newLesson.addEventListener("click", () => {
       closeMenu();
-      session.close();
-      current = null;
-      openedByPage = false;
-      updatePill();
-      openingFlow.clickLessonNote();
+      startLessonNote();
     });
     const newConcept = document.createElement("button");
     newConcept.type = "button";
     newConcept.className = "menu-new";
     newConcept.textContent = "+ Concept";
+    newConcept.title = CONCEPT_NOTE_HINT;
     newConcept.addEventListener("click", () => {
       const typed = search.value.trim();
       openNote(notebook.createConceptNote({ title: typed || "Untitled" }));
@@ -310,6 +386,10 @@ async function start() {
         event.preventDefault();
         event.stopPropagation();
         openMenu();
+      } else if (event.key === "Escape" && !newMenuEl.hidden) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeNewMenu();
       } else if (event.key === "Escape" && menuIsOpen()) {
         event.preventDefault();
         event.stopPropagation();
