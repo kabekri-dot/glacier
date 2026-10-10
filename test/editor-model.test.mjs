@@ -162,6 +162,27 @@ test("Backspace at the very start of the note does nothing", () => {
   });
 });
 
+// #27: Backspace must never glue a line to a ``` fence. At the start of a code
+// block it only moves the caret to the end of the line above; both fences stay.
+
+test("Backspace at the start of a code block leaves the fence intact", () => {
+  const lines = ["text", "```", "code", "```"];
+  assert.deepEqual(pressBackspace(lines, 1, 0), {
+    lines: ["text", "```", "code", "```"],
+    line: 0,
+    col: 4,
+  });
+});
+
+test("Backspace on the line after a closing fence doesn't merge into the fence", () => {
+  const lines = ["```", "code", "```", "after"];
+  assert.deepEqual(pressBackspace(lines, 3, 0), {
+    lines: ["```", "code", "```", "after"],
+    line: 2,
+    col: 3,
+  });
+});
+
 // Pasting: one line stays inline; several lines become several lines.
 
 test("inserting plain text with no break stays on one line", () => {

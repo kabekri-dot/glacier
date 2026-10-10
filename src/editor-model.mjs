@@ -191,6 +191,15 @@ export function pressBackspace(lines, line, col) {
     return { lines: next, line, col: col - 1 };
   }
   if (line > 0) {
+    // Never merge a line into a ``` fence (#27): joining text and a fence would
+    // either destroy the fence (`"abc" + "```"`) or turn a line into a new
+    // opening fence (`"```" + "text"`), breaking the code block or swallowing
+    // the text below it. At the start of a code block, or on the line right
+    // after a closing fence, just move the caret to the end of the line above,
+    // leaving the Markdown untouched.
+    if (isFence(lines[line]) || isFence(lines[line - 1])) {
+      return { lines, line: line - 1, col: lines[line - 1].length };
+    }
     const prev = lines[line - 1];
     const next = lines.slice();
     next.splice(line - 1, 2, prev + lines[line]);
