@@ -13,6 +13,7 @@ import {
   insertText,
   renderedToRaw,
   renderLineHtml,
+  linkAtRendered,
   findLinks,
   SLASH_COMMANDS,
   slashQuery,
@@ -211,8 +212,30 @@ test("a caret in a rendered heading maps past the # markers", () => {
 });
 
 test("a caret in a rendered bullet maps past the - marker", () => {
+  // "- item" draws as "•item": the "•" is drawn offset 0, "item" offsets 1..5.
+  // Clicking on the dot (0) or just before "i" (1) both land at content start.
   assert.equal(renderedToRaw("- item", 0), 2);
-  assert.equal(renderedToRaw("- item", 4), 6);
+  assert.equal(renderedToRaw("- item", 1), 2);
+  // After "m" (drawn offset 5) -> raw 6, the end of the line.
+  assert.equal(renderedToRaw("- item", 5), 6);
+});
+
+test("a bullet draws the • as one character shared by drawing and mapping", () => {
+  // The drawn "•" is a real character in the rendered line, so the same shared
+  // description both draws it and counts it when mapping a click back — #30, the
+  // bug where the "•" was drawn but not counted, putting the caret one off.
+  assert.equal(
+    renderLineHtml("- item"),
+    '<span class="md-bullet"><span class="md-bullet-dot">•</span>item</span>',
+  );
+});
+
+test("a bullet carrying a Link renders and maps from the same description", () => {
+  // "- see [[Flow]]" draws as "•see Flow": "•"=0, "see "=1..4, "Flow"=5..8.
+  assert.equal(linkAtRendered("- see [[Flow]]", 6), "Flow");
+  // The space between the dot and "see" is drawn text, so a click there is a
+  // caret, not a Link.
+  assert.equal(linkAtRendered("- see [[Flow]]", 1), null);
 });
 
 test("a caret inside bold text maps past the ** markers", () => {
@@ -282,6 +305,17 @@ test("a caret inside a Link maps past the [[ brackets", () => {
   assert.equal(renderedToRaw("go [[Box]] end", 5), 7);
   // Caret before " end" (rendered 6) -> raw 10, past the closing `]]`.
   assert.equal(renderedToRaw("go [[Box]] end", 6), 10);
+});
+
+test("linkAtRendered reports the Link under a drawn position, else null", () => {
+  // "go [[Box]] end" draws as "go Box end": "go "=0..2, "Box"=3..5, " end"=6..9.
+  assert.equal(linkAtRendered("go [[Box]] end", 0), null);
+  assert.equal(linkAtRendered("go [[Box]] end", 3), "Box");
+  assert.equal(linkAtRendered("go [[Box]] end", 5), "Box");
+  // The drawn position just after the title is already the following text.
+  assert.equal(linkAtRendered("go [[Box]] end", 6), null);
+  // Bold is drawn text, not a Link.
+  assert.equal(linkAtRendered("a **b** c", 2), null);
 });
 
 // The `/` command menu (#6, ADR 0006). Typing `/` at the start of a line opens
