@@ -13,6 +13,10 @@ const root = new URL("../", import.meta.url);
 const manifest = JSON.parse(
   readFileSync(fileURLToPath(new URL("manifest.json", root)), "utf8"),
 );
+const openPanelsSource = readFileSync(
+  fileURLToPath(new URL("src/open-panels.mjs", root)),
+  "utf8",
+).replace("export function", "function");
 const backgroundSource = readFileSync(
   fileURLToPath(new URL("background.js", root)),
   "utf8",
@@ -50,7 +54,23 @@ function runBackground(api) {
   const context = {};
   if (api.isFirefox) context.browser = api.ext;
   else context.chrome = api.ext;
-  vm.runInNewContext(backgroundSource, context);
+  vm.runInNewContext(
+    openPanelsSource + backgroundSource.replace(/^import .*$/m, ""),
+    context,
+  );
+}
+
+// A panel in `windowId` connecting to the background, like panel.js does.
+function connectPanel(calls, windowId) {
+  const port = {
+    name: `glacier-panel:${windowId}`,
+    messages: [],
+    disconnectListeners: [],
+    postMessage: (m) => port.messages.push(m),
+    onDisconnect: { addListener: (fn) => port.disconnectListeners.push(fn) },
+  };
+  calls.connectListeners[0](port);
+  return port;
 }
 
 function fakeExtension({ firefox }) {
@@ -59,18 +79,13 @@ function fakeExtension({ firefox }) {
     toggles: 0,
     opens: [],
     closes: [],
-    openPanelWindows: [],
+    connectListeners: [],
     clickListeners: [],
     commandListeners: [],
   };
   const ext = {
     runtime: {
-      getContexts: ({ windowIds }) =>
-        Promise.resolve(
-          calls.openPanelWindows
-            .filter((id) => windowIds.includes(id))
-            .map((windowId) => ({ contextType: "SIDE_PANEL", windowId })),
-        ),
+      onConnect: { addListener: (fn) => calls.connectListeners.push(fn) },
     },
     commands: {
       onCommand: {
@@ -146,19 +161,31 @@ test("Chrome: the shortcut opens the side panel when it is closed", async () => 
 
 test("Chrome: the shortcut closes the side panel when it is open", async () => {
   const { ext, calls } = fakeExtension({ firefox: false });
-  calls.openPanelWindows.push(7);
   runBackground({ isFirefox: false, ext });
+  const port = connectPanel(calls, 7);
 
   calls.commandListeners[0]("open-glacier", { windowId: 7 });
   await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(JSON.stringify(port.messages), JSON.stringify([{ type: "close" }]));
   assert.deepEqual(calls.closes.map((o) => o.windowId), [7]);
   assert.equal(calls.opens.length, 0);
 });
 
+test("Chrome: the shortcut opens the side panel again after the panel disconnected", async () => {
+  const { ext, calls } = fakeExtension({ firefox: false });
+  runBackground({ isFirefox: false, ext });
+  const port = connectPanel(calls, 7);
+  port.disconnectListeners.forEach((fn) => fn());
+
+  calls.commandListeners[0]("open-glacier", { windowId: 7 });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(calls.opens.map((o) => o.windowId), [7]);
+});
+
 test("Chrome: a panel open in another window does not stop the shortcut opening this one", async () => {
   const { ext, calls } = fakeExtension({ firefox: false });
-  calls.openPanelWindows.push(3);
   runBackground({ isFirefox: false, ext });
+  connectPanel(calls, 3);
 
   calls.commandListeners[0]("open-glacier", { windowId: 7 });
   await new Promise((resolve) => setImmediate(resolve));
