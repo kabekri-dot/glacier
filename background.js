@@ -4,6 +4,10 @@
 // - Chrome runs it as the service worker and opens its side panel.
 // - Firefox runs it as a background script and toggles its sidebar.
 
+import { createOpenPanels } from "./src/open-panels.mjs";
+
+const PANEL_PORT_PREFIX = "glacier-panel:";
+
 const api = typeof browser !== "undefined" ? browser : chrome;
 
 // Chrome: clicking the toolbar button opens the side panel. With this set,
@@ -12,7 +16,9 @@ const api = typeof browser !== "undefined" ? browser : chrome;
 if (api.sidePanel && api.sidePanel.setPanelBehavior) {
   api.sidePanel
     .setPanelBehavior({ openPanelOnActionClick: true })
-    .catch(() => {});
+    .catch((error) => {
+      console.warn("Glacier: could not set the toolbar button behavior", error);
+    });
 }
 
 // Firefox: an MV3 action with no popup only fires onClicked, so the toolbar
@@ -28,27 +34,43 @@ if (
   });
 }
 
-// Chrome: close the panel if this window has one open, otherwise open it.
-// Asking the browser (instead of remembering open windows) stays right when
-// the service worker restarts. Closing hides the panel, and the panel saves
-// the open note when it hides.
-async function toggleSidePanel(windowId) {
-  try {
-    let isOpen = false;
-    if (api.runtime.getContexts) {
-      const panels = await api.runtime.getContexts({
-        contextTypes: ["SIDE_PANEL"],
-        windowIds: [windowId],
-      });
-      isOpen = panels.length > 0;
-    }
-    if (isOpen && api.sidePanel.close) {
-      await api.sidePanel.close({ windowId });
-    } else {
-      await api.sidePanel.open({ windowId });
-    }
-  } catch (error) {
-    // The browser refused (no gesture, window gone): nothing to recover.
+// Chrome: each open panel keeps a connection to this worker (see
+// sidebar/panel.js). Asking the browser whether a panel is open proved
+// unreliable, so the connections are the record. A reconnecting panel after a
+// worker restart puts its window back on the list.
+const openPanels = createOpenPanels();
+const panelPorts = new Map();
+
+if (api.runtime && api.runtime.onConnect) {
+  api.runtime.onConnect.addListener((port) => {
+    if (!port.name.startsWith(PANEL_PORT_PREFIX)) return;
+    const windowId = Number(port.name.slice(PANEL_PORT_PREFIX.length));
+    openPanels.connect(windowId, port);
+    panelPorts.set(port, windowId);
+    port.onDisconnect.addListener(() => {
+      openPanels.disconnect(windowId, port);
+      panelPorts.delete(port);
+    });
+  });
+}
+
+// Chrome: close the window's panel, or open it. No await before open(): the
+// shortcut's user gesture must still be alive when it runs. Closing hides the
+// panel, and the panel saves the open note when it hides.
+function toggleSidePanel(windowId) {
+  if (!openPanels.isOpen(windowId)) {
+    api.sidePanel.open({ windowId }).catch((error) => {
+      console.warn("Glacier: could not open the side panel", error);
+    });
+    return;
+  }
+  for (const [port, portWindowId] of panelPorts) {
+    if (portWindowId === windowId) port.postMessage({ type: "close" });
+  }
+  if (api.sidePanel.close) {
+    api.sidePanel.close({ windowId }).catch((error) => {
+      console.warn("Glacier: could not close the side panel", error);
+    });
   }
 }
 

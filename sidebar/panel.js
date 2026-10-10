@@ -1129,6 +1129,33 @@ async function start() {
     if (document.visibilityState === "hidden") session.flush();
   });
   window.addEventListener("pagehide", () => session.flush());
+
+  keepBackgroundInformed(session);
+}
+
+// Chrome: tells the background this window's panel is open, so the shortcut
+// knows to close it (it is closed when this connection drops). The background
+// can ask the panel to close itself. Reconnects if the service worker
+// restarted. Firefox toggles its sidebar without this.
+async function keepBackgroundInformed(session) {
+  const api = typeof browser !== "undefined" ? browser : chrome;
+  if (!api.sidePanel || !api.windows) return;
+  try {
+    const { id: windowId } = await api.windows.getCurrent();
+    const connect = () => {
+      const port = api.runtime.connect({ name: `glacier-panel:${windowId}` });
+      port.onMessage.addListener((message) => {
+        if (message && message.type === "close") {
+          session.flush();
+          window.close();
+        }
+      });
+      port.onDisconnect.addListener(() => setTimeout(connect, 500));
+    };
+    connect();
+  } catch (error) {
+    console.warn("Glacier: could not connect to the background", error);
+  }
 }
 
 start();

@@ -10,7 +10,8 @@
   "optional_permissions": ["tabs"],
   "background": {
     "service_worker": "background.js",
-    "scripts": ["background.js"]
+    "scripts": ["background.js"],
+    "type": "module"
   },
   "side_panel": {
     "default_path": "sidebar/panel.html"
