@@ -12,6 +12,7 @@
 import { createNotebook } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { createSaveScheduler } from "../src/save-scheduler.mjs";
+import { decidePageOpen } from "../src/page-open.mjs";
 import {
   splitIntoLines,
   linesToText,
@@ -76,12 +77,18 @@ async function start() {
   let current = null;
   let lines = [];
   let focus = { line: 0, col: 0 };
+  // Whether the open note was opened by the page (so a later page change may
+  // replace it) or by the user following a Link / creating it (so it stays put
+  // when the page behind the sidebar changes — issue #29).
+  let openedByPage = false;
 
   // Open a note in the editor: flush any pending save for the note we're
   // leaving, load the new note's lines and draw it with the caret at the top.
-  function openNote(note) {
+  // `byPage` marks a note opened to follow the current page (see openedByPage).
+  function openNote(note, { byPage = false } = {}) {
     scheduler.flush();
     current = note;
+    openedByPage = byPage;
     lines = splitIntoLines(editorTextToBody(current.body ?? ""));
     focus = { line: 0, col: 0 };
     render();
@@ -651,6 +658,7 @@ async function start() {
     // Any edit to the note we're leaving must reach storage before we drop it.
     scheduler.flush();
     current = null;
+    openedByPage = false;
     noteEl.replaceChildren();
 
     const form = document.createElement("form");
@@ -715,18 +723,34 @@ async function start() {
     });
   }
 
-  // Read the page and open its Lesson Note, or offer to create one. Called once
-  // the `tabs` permission is in hand (on load or after Allow).
-  async function proceedWithPage() {
-    const page = await currentPage();
-    if (!page) {
-      // A browser-internal page is never a lesson, so make one by hand instead.
-      showNewNoteForm();
-      return;
+  // Follow a page: decide what it should open (decidePageOpen, #29) and carry
+  // that out — open the page's Lesson Note, offer a form, or keep what's open
+  // so a note the user navigated to isn't thrown away.
+  function followPage(page) {
+    const decision = decidePageOpen({
+      current,
+      openedByPage,
+      page,
+      lessonNoteForSource: (url) => notebook.lessonNoteForSource(url),
+    });
+    switch (decision.type) {
+      case "open":
+        openNote(decision.note, { byPage: true });
+        break;
+      case "lessonForm":
+        showLessonForm(decision.page);
+        break;
+      case "newNoteForm":
+        showNewNoteForm();
+        break;
+      // "keep": leave the open note alone.
     }
-    const existing = notebook.lessonNoteForSource(page.url);
-    if (existing) openNote(existing);
-    else showLessonForm(page);
+  }
+
+  // Read the current page and follow it. Called once the `tabs` permission is
+  // in hand (on load or after Allow).
+  async function proceedWithPage() {
+    followPage(await currentPage());
   }
 
   // The starting panel when no note is open and the permission hasn't been
@@ -735,6 +759,7 @@ async function start() {
   function showStartPrompt() {
     scheduler.flush();
     current = null;
+    openedByPage = false;
     noteEl.replaceChildren();
 
     const wrap = document.createElement("div");
@@ -821,11 +846,18 @@ async function start() {
     else showStartPrompt();
   }
 
-  // The page changes behind the sidebar: a note opens or the prompt updates to
-  // follow it (#3). Only when the permission is granted — without it there's
-  // nothing to read, and a tab switch must not throw away an open note.
+  // The page changes behind the sidebar: follow it only when it should be
+  // followed (#29), and only with the permission granted — without it there's
+  // nothing to read. Two quick changes can resolve out of order, so each one is
+  // stamped and a result is dropped if a newer change has started since: the
+  // sidebar always ends on the latest page, never the tab you left.
+  let pageChangeSeq = 0;
   async function reactToPageChange() {
-    if (await hasTabsPermission()) proceedWithPage();
+    const seq = (pageChangeSeq += 1);
+    if (!(await hasTabsPermission())) return;
+    const page = await currentPage();
+    if (seq !== pageChangeSeq) return;
+    followPage(page);
   }
 
   if (api.tabs) {
