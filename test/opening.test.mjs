@@ -58,10 +58,20 @@ function fakeExtension({ firefox }) {
     setBehavior: [],
     toggles: 0,
     opens: [],
+    closes: [],
+    openPanelWindows: [],
     clickListeners: [],
     commandListeners: [],
   };
   const ext = {
+    runtime: {
+      getContexts: ({ windowIds }) =>
+        Promise.resolve(
+          calls.openPanelWindows
+            .filter((id) => windowIds.includes(id))
+            .map((windowId) => ({ contextType: "SIDE_PANEL", windowId })),
+        ),
+    },
     commands: {
       onCommand: {
         addListener: (fn) => calls.commandListeners.push(fn),
@@ -85,6 +95,10 @@ function fakeExtension({ firefox }) {
       },
       open: (opts) => {
         calls.opens.push(opts);
+        return Promise.resolve();
+      },
+      close: (opts) => {
+        calls.closes.push(opts);
         return Promise.resolve();
       },
     };
@@ -120,11 +134,37 @@ test("Chrome: clicking the toolbar opens the side panel, no stray onClicked", ()
   assert.equal(calls.clickListeners.length, 0);
 });
 
-test("Chrome: the shortcut opens the side panel for the active window", () => {
+test("Chrome: the shortcut opens the side panel when it is closed", async () => {
   const { ext, calls } = fakeExtension({ firefox: false });
   runBackground({ isFirefox: false, ext });
 
+  await calls.commandListeners[0]("open-glacier", { windowId: 7 });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(calls.opens.map((o) => o.windowId), [7]);
+  assert.equal(calls.closes.length, 0);
+});
+
+test("Chrome: the shortcut closes the side panel when it is open", async () => {
+  const { ext, calls } = fakeExtension({ firefox: false });
+  calls.openPanelWindows.push(7);
+  runBackground({ isFirefox: false, ext });
+
   calls.commandListeners[0]("open-glacier", { windowId: 7 });
-  assert.equal(calls.opens.length, 1);
-  assert.equal(calls.opens[0].windowId, 7);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(calls.closes.map((o) => o.windowId), [7]);
+  assert.equal(calls.opens.length, 0);
+});
+
+test("Chrome: a panel open in another window does not stop the shortcut opening this one", async () => {
+  const { ext, calls } = fakeExtension({ firefox: false });
+  calls.openPanelWindows.push(3);
+  runBackground({ isFirefox: false, ext });
+
+  calls.commandListeners[0]("open-glacier", { windowId: 7 });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(calls.opens.map((o) => o.windowId), [7]);
+});
+
+test("the shortcut is described as open or close", () => {
+  assert.equal(manifest.commands["open-glacier"].description, "Open or close Glacier");
 });
