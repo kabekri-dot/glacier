@@ -238,10 +238,6 @@ export function insertText(lines, line, col, text) {
   };
 }
 
-// Split a Markdown line into segments that map a run of raw characters to the
-// text the reader sees. Marker segments (the `#`, `-`, `**`, backticks that
-// turn into formatting) render to nothing, so a caret in the rendered text can
-// be mapped back to the raw Markdown.
 // Where the italic run opened by the `*` or `_` at `start` closes, or -1 when
 // it is not italic. A marker inside a word (`snake_case`, `2*3`) stays plain
 // text: an opener must not follow a letter or digit or precede a space, and a
@@ -274,6 +270,10 @@ function pushStyled(segs, marker, inner, style) {
   segs.push({ raw: marker, text: "", kind: "marker" });
 }
 
+// Split a Markdown line into segments that map a run of raw characters to the
+// text the reader sees. Marker segments (the `#`, `-`, `**`, backticks that
+// turn into formatting) render to nothing, so a caret in the rendered text can
+// be mapped back to the raw Markdown.
 function inlineSegments(content, style = {}) {
   const segs = [];
   let i = 0;
