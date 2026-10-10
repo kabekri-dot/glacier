@@ -33,6 +33,10 @@ import { execFileSync } from "node:child_process";
 // Default 3. Pick another number when starting: npx tsx .sandcastle/main.mts 5
 const MAX_ITERATIONS = Number.parseInt(process.argv[2] ?? "3", 10) || 3;
 
+// Which model builds: "opus" (default, best for hard tickets) or a cheaper one
+// for small tickets, e.g.: npx tsx .sandcastle/main.mts 1 sonnet
+const BUILDER_MODEL = process.argv[3] ?? "claude-opus-4-8";
+
 // Glacier has no npm packages (ADR 0002), so the sandbox needs no npm install
 // and no copied node_modules. (npm is only used on the host, for Sandcastle itself.)
 const hooks = {};
@@ -103,7 +107,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     const implement = await sandbox.run({
       name: "implementer",
       maxIterations: 1,
-      agent: sandcastle.claudeCode("claude-opus-4-8"),
+      agent: sandcastle.claudeCode(BUILDER_MODEL),
       promptFile: "./.sandcastle/implement-prompt.md",
     });
 
