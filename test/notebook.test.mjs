@@ -433,3 +433,25 @@ test("recent notes are capped and skip notes that no longer exist", () => {
     "Fractions",
   ]);
 });
+
+test("Backlinks list exactly the notes containing [[This Title]]", () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  notebook.createConceptNote({ title: "Box model" });
+  notebook.createLessonNote({ title: "Layout", source: "https://e.example/l", course: "CSS" });
+  notebook.createLessonNote({ title: "Margins", source: "https://e.example/m", course: "CSS" });
+  notebook.createLessonNote({ title: "Colours", source: "https://e.example/c", course: "CSS" });
+  notebook.saveBody("Layout", "The [[Box model]] and again [[Box model]].");
+  notebook.saveBody("Margins", "Part of the [[Box model]]");
+  notebook.saveBody("Colours", "Nothing here, only [[Box model 2]] and [Box model].");
+  notebook.saveBody("Box model", "I link to myself: [[Box model]]");
+  assert.deepEqual(
+    notebook.backlinks("Box model").map((note) => note.title).sort(),
+    ["Layout", "Margins"],
+  );
+});
+
+test("a note nobody links to has no Backlinks", () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  notebook.createConceptNote({ title: "Alone" });
+  assert.deepEqual(notebook.backlinks("Alone"), []);
+});
