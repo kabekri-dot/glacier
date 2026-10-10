@@ -46,7 +46,7 @@ const MODEL_OVERRIDE = extraArgs.find((a) => !isTicketArg(a)) ?? null;
 // Which model builds is read from the ticket's label: model:sonnet for small,
 // well-specified tickets, model:opus (also the default without a label) for
 // large or judgment-heavy ones. The reviewer always runs on Sonnet.
-const MODELS: Record<string, string> = { opus: "claude-opus-4-8", sonnet: "sonnet" };
+const MODELS: Record<string, string> = { opus: "opus", sonnet: "sonnet" };
 const DEFAULT_MODEL = "opus";
 
 // Glacier has no npm packages (ADR 0002), so the sandbox needs no npm install
