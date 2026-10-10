@@ -26,6 +26,7 @@ import {
   slashQuery,
   filterCommands,
   applySlashCommand,
+  toggleFormat,
   renderedToRaw,
   linkAtRendered,
 } from "./editor-model.mjs";
@@ -474,6 +475,32 @@ export function createEditorSession({
       focus = { line: next.line, col: next.col };
       relayout();
       notifyChange();
+    },
+
+    // Ctrl+B / Ctrl+I / Ctrl+E (#44): turn bold, italic or inline code
+    // (`kind`) on or off for the selection [selStart, selEnd] of the focused
+    // block, or for what is typed next when nothing is selected. One press is
+    // one undo step; stepping out of the formatting moves only the caret.
+    // Returns the selection over the same words as block offsets, or null when
+    // nothing happened (in code), for the sidebar to select again.
+    format(kind, value, selStart, selEnd) {
+      const from = lineColFromOffset(value, selStart);
+      const to = lineColFromOffset(value, selEnd);
+      const next = toggleFormat(lines, from, to, kind);
+      const changed = next.lines !== lines;
+      const moved = next.end.line !== to.line || next.end.col !== to.col;
+      if (!changed && !moved) return null;
+      if (changed) recordStep();
+      else endTypingRun();
+      beforePlus = null;
+      lines = next.lines;
+      focus = { ...next.end };
+      relayout();
+      if (changed) notifyChange();
+      return {
+        start: offsetInBlock(next.start.line, next.start.col),
+        end: offsetInBlock(next.end.line, next.end.col),
+      };
     },
 
     // Backspace at the very start of the focused block: join it with the line

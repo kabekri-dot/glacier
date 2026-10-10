@@ -31,6 +31,10 @@ import {
 // editor model; this file only draws the menu and wires its keys.
 const EMPTY_LINE_HINT = "Type / for commands — or click + on the left";
 
+// The formatting shortcuts (#44): Ctrl (Cmd on a Mac) plus these keys. Ctrl+K
+// is kept free for search.
+const FORMAT_KEYS = { b: "bold", i: "italic", e: "code" };
+
 const noteEl = document.querySelector(".note");
 const saveErrorEl = document.querySelector(".save-error");
 
@@ -324,29 +328,41 @@ async function start() {
     };
   }
 
-  // Put the caret at a raw offset inside the focused line. At the edge between
-  // two spans it goes into the later one, so text typed right after `## ` lands
-  // in the heading text, not in the faded mark.
-  function placeCaret(root, offset) {
-    const range = document.createRange();
-    range.setStart(root, 0);
+  // The text node and offset for a raw offset inside the focused line. At the
+  // edge between two spans it is in the later one, so text typed right after
+  // `## ` lands in the heading text, not in the faded mark.
+  function pointAt(root, offset) {
+    let point = { node: root, offset: 0 };
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     let remaining = offset;
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
       const length = node.textContent.length;
-      if (remaining < length) {
-        range.setStart(node, remaining);
-        break;
-      }
+      if (remaining < length) return { node, offset: remaining };
       // Past every character so far: the end of this node, unless a later
       // node takes it.
-      range.setStart(node, length);
+      point = { node, offset: length };
       remaining -= length;
     }
-    range.collapse(true);
+    return point;
+  }
+
+  // Select the raw offsets [start, end] inside the focused line; with start
+  // equal to end this places the caret.
+  function placeSelection(root, start, end) {
+    const range = document.createRange();
+    const from = pointAt(root, start);
+    range.setStart(from.node, from.offset);
+    if (end !== start) {
+      const to = pointAt(root, end);
+      range.setEnd(to.node, to.offset);
+    }
     const selection = window.getSelection();
     selection.removeAllRanges();
     selection.addRange(range);
+  }
+
+  function placeCaret(root, offset) {
+    placeSelection(root, offset, offset);
   }
 
   // One part of the focused line: a faded mark, or text in its inline style
@@ -463,7 +479,8 @@ async function start() {
 
     // The browser's own rich-text edits are replaced by plain ones: a line
     // break becomes a "\n" in the text (Enter in a code block, Shift+Enter),
-    // and formatting shortcuts like Ctrl+B do nothing.
+    // and the browser's own rich-text formatting never applies (Ctrl+B and
+    // friends write Markdown marks instead, in the keydown handler, #44).
     el.addEventListener("beforeinput", (event) => {
       if (event.inputType === "insertParagraph" || event.inputType === "insertLineBreak") {
         event.preventDefault();
@@ -518,6 +535,20 @@ async function start() {
         if (isUndo || isRedo) {
           event.preventDefault();
           if (isUndo ? editor.undo() : editor.redo()) render();
+          return;
+        }
+        // Ctrl+B / Ctrl+I / Ctrl+E format the selection (#44). The key is
+        // always caught, so the browser's own action never fires (Firefox's
+        // bookmarks sidebar, the search bar).
+        const kind = FORMAT_KEYS[key];
+        if (kind && !event.shiftKey) {
+          event.preventDefault();
+          if (editor.menu || event.isComposing) return;
+          const { start: from, end: to } = selectionIn(el);
+          const selected = editor.format(kind, el.textContent, from, to);
+          if (!selected) return;
+          render();
+          placeSelection(focusedEl, selected.start, selected.end);
           return;
         }
       }

@@ -263,11 +263,13 @@ function italicEnd(content, start) {
 }
 
 // Bold and italic text between its two zero-width marker segments; the inside
-// is parsed again so `**bold _and italic_**` nests.
-function pushStyled(segs, marker, inner, style) {
-  segs.push({ raw: marker, text: "", kind: "marker" });
+// is parsed again so `**bold _and italic_**` nests. Each pair of markers says
+// which one opens and which closes, and what formatting it makes (`makes`), so
+// the formatting shortcuts can read where a run starts and ends (#44).
+function pushStyled(segs, marker, inner, style, makes) {
+  segs.push({ raw: marker, text: "", kind: "marker", role: "open", makes });
   segs.push(...inlineSegments(inner, style));
-  segs.push({ raw: marker, text: "", kind: "marker" });
+  segs.push({ raw: marker, text: "", kind: "marker", role: "close", makes });
 }
 
 // Split a Markdown line into segments that map a run of raw characters to the
@@ -293,9 +295,9 @@ function inlineSegments(content, style = {}) {
         const inner = content.slice(i + 2, end);
         // Like bold, the brackets are their own zero-width marker segments, so
         // a caret in the rendered title maps back past the `[[` (renderedToRaw).
-        segs.push({ raw: "[[", text: "", kind: "marker" });
+        segs.push({ raw: "[[", text: "", kind: "marker", role: "open", makes: ["link"] });
         segs.push({ raw: inner, text: inner, kind: "link", title: inner });
-        segs.push({ raw: "]]", text: "", kind: "marker" });
+        segs.push({ raw: "]]", text: "", kind: "marker", role: "close", makes: ["link"] });
         i = end + 2;
         continue;
       }
@@ -306,9 +308,9 @@ function inlineSegments(content, style = {}) {
     if (webLink) {
       flushPlain();
       const [whole, text, url] = webLink;
-      segs.push({ raw: "[", text: "", kind: "marker" });
+      segs.push({ raw: "[", text: "", kind: "marker", role: "open", makes: ["url"] });
       segs.push({ raw: text, text, kind: "url", url });
-      segs.push({ raw: `](${url})`, text: "", kind: "marker" });
+      segs.push({ raw: `](${url})`, text: "", kind: "marker", role: "close", makes: ["url"] });
       i += whole.length;
       continue;
     }
@@ -316,7 +318,7 @@ function inlineSegments(content, style = {}) {
       const end = content.indexOf("***", i + 3);
       if (end > i + 3) {
         flushPlain();
-        pushStyled(segs, "***", content.slice(i + 3, end), { ...style, bold: true, italic: true });
+        pushStyled(segs, "***", content.slice(i + 3, end), { ...style, bold: true, italic: true }, ["bold", "italic"]);
         i = end + 3;
         continue;
       }
@@ -325,7 +327,7 @@ function inlineSegments(content, style = {}) {
       const end = content.indexOf("**", i + 2);
       if (end !== -1) {
         flushPlain();
-        pushStyled(segs, "**", content.slice(i + 2, end), { ...style, bold: true });
+        pushStyled(segs, "**", content.slice(i + 2, end), { ...style, bold: true }, ["bold"]);
         i = end + 2;
         continue;
       }
@@ -334,7 +336,7 @@ function inlineSegments(content, style = {}) {
       const end = italicEnd(content, i);
       if (end !== -1) {
         flushPlain();
-        pushStyled(segs, content[i], content.slice(i + 1, end), { ...style, italic: true });
+        pushStyled(segs, content[i], content.slice(i + 1, end), { ...style, italic: true }, ["italic"]);
         i = end + 1;
         continue;
       }
@@ -344,9 +346,9 @@ function inlineSegments(content, style = {}) {
       if (end !== -1) {
         flushPlain();
         const inner = content.slice(i + 1, end);
-        segs.push({ raw: "`", text: "", kind: "marker" });
+        segs.push({ raw: "`", text: "", kind: "marker", role: "open", makes: ["code"] });
         segs.push({ raw: inner, text: inner, kind: "code" });
-        segs.push({ raw: "`", text: "", kind: "marker" });
+        segs.push({ raw: "`", text: "", kind: "marker", role: "close", makes: ["code"] });
         i = end + 1;
         continue;
       }
@@ -506,14 +508,23 @@ export function focusedLineSpans(line) {
     const inline = kind === "fence" ? textParts(rest) : inlineParts(rest);
     return { kind, ...extra, parts: [{ type: "mark", text: mark }, ...inline] };
   };
-  const heading = /^(#{1,3})\s+/.exec(line);
-  if (heading) return withMark("heading", heading[0], { level: heading[1].length });
-  const list = /^\s*(-|\d+\.)\s+/.exec(line);
-  if (list) return withMark("list", list[0]);
-  const quote = /^>\s+/.exec(line);
-  if (quote) return withMark("quote", quote[0]);
+  const start = lineStart(line);
+  if (start) return withMark(start.kind, start.mark, start.level ? { level: start.level } : {});
   if (isFence(line)) return withMark("fence", "```");
   return { kind: "plain", parts: inlineParts(line) };
+}
+
+// A line's start — the `## `, `- `, `1. ` or `> ` that makes it a heading, a
+// list item or a quote — as { kind, mark, level }, or null for a plain line.
+// Inline formatting only ever applies after it.
+function lineStart(line) {
+  const heading = /^(#{1,3})\s+/.exec(line);
+  if (heading) return { kind: "heading", mark: heading[0], level: heading[1].length };
+  const list = /^\s*(-|\d+\.)\s+/.exec(line);
+  if (list) return { kind: "list", mark: list[0] };
+  const quote = /^>\s+/.exec(line);
+  if (quote) return { kind: "quote", mark: quote[0] };
+  return null;
 }
 
 function textParts(text) {
@@ -533,4 +544,239 @@ function inlineParts(content) {
     if (seg.kind === "url") part.url = seg.url;
     return part;
   });
+}
+
+// --- Formatting shortcuts (#44, ADR 0006 addition) -------------------------
+//
+// Ctrl+B, Ctrl+I and Ctrl+E turn bold, italic or inline code on or off for a
+// selection, or for what is typed next when nothing is selected. What counts
+// as formatted is read from inlineSegments, the same parser that draws the
+// lines, so a shortcut and the renderer always agree.
+
+const MARKS = { bold: "**", italic: "*", code: "`" };
+
+const isBlank = (token) => !token.atom && /\s/.test(token.text);
+
+// The text after a line's start as formatting tokens: one per character, or
+// one per Link or web link, which are kept whole. Each says whether it is
+// bold, italic or code. Also returns the top-level runs (opening mark to
+// closing mark, as raw spans), every closing mark, and the inside of each
+// inline code span.
+function formatTokens(content) {
+  const tokens = [];
+  const runs = [];
+  const closes = [];
+  const codeSpans = [];
+  const open = [];
+  let pos = 0;
+  let runStart = 0;
+  let atom = null;
+  const has = (kind) => open.some((marker) => marker.makes.includes(kind));
+  const flags = () => ({ bold: has("bold"), italic: has("italic"), code: has("code") });
+
+  for (const seg of inlineSegments(content)) {
+    const end = pos + seg.raw.length;
+    const whole = seg.makes && (seg.makes.includes("link") || seg.makes.includes("url"));
+    if (seg.role === "open") {
+      if (open.length === 0) runStart = pos;
+      if (whole) atom = { start: pos, ...flags() };
+      open.push({ makes: seg.makes, end });
+    } else if (seg.role === "close") {
+      const opener = open.pop();
+      closes.push({ start: pos, end, makes: seg.makes });
+      if (seg.makes.includes("code")) codeSpans.push({ start: opener.end, end: pos });
+      if (whole) {
+        tokens.push({ ...atom, text: content.slice(atom.start, end), end, atom: true });
+        atom = null;
+      }
+      if (open.length === 0) runs.push({ start: runStart, end });
+    } else if (!atom) {
+      for (let k = 0; k < seg.raw.length; k += 1) {
+        tokens.push({ text: seg.raw[k], start: pos + k, end: pos + k + 1, ...flags() });
+      }
+    }
+    pos = end;
+  }
+  return { tokens, runs, closes, codeSpans };
+}
+
+// Consecutive tokens that agree on one kind of formatting.
+function groupBy(tokens, kind) {
+  const groups = [];
+  for (const token of tokens) {
+    const last = groups[groups.length - 1];
+    if (last && Boolean(last[0][kind]) === Boolean(token[kind])) last.push(token);
+    else groups.push([token]);
+  }
+  return groups;
+}
+
+// Write tokens back as Markdown, bold outermost, then italic, then code, with
+// spaces at a run's edges kept outside its marks. Text that is both bold and
+// italic throughout becomes `***text***`. Returns pieces of text, each token's
+// own piece pointing back to it so the selection can follow the words.
+function writeTokens(tokens, levels = ["bold", "italic", "code"]) {
+  if (levels.length === 0) return tokens.map((token) => ({ text: token.text, token }));
+  const [kind, ...rest] = levels;
+  const pieces = [];
+  for (const group of groupBy(tokens, kind)) {
+    if (!group[0][kind]) {
+      pieces.push(...writeTokens(group, rest));
+      continue;
+    }
+    let a = 0;
+    let b = group.length;
+    while (a < b && isBlank(group[a])) a += 1;
+    while (b > a && isBlank(group[b - 1])) b -= 1;
+    const core = group.slice(a, b);
+    pieces.push(...writeTokens(group.slice(0, a), rest));
+    if (core.length > 0) {
+      const both = kind === "bold" && core.every((token) => token.italic);
+      const mark = both ? "***" : MARKS[kind];
+      pieces.push({ text: mark }, ...writeTokens(core, both ? ["code"] : rest), { text: mark });
+    }
+    pieces.push(...writeTokens(group.slice(b), rest));
+  }
+  return pieces;
+}
+
+// One line's part in a shortcut: its start (`- `, `## `…), the text after it
+// as tokens, and the selected tokens between raw columns from and to, without
+// spaces at the selection's edges.
+function linePlan(line, from, to) {
+  const prefix = lineStart(line)?.mark.length ?? 0;
+  const content = line.slice(prefix);
+  const parsed = formatTokens(content);
+  const s = from - prefix;
+  const e = to - prefix;
+  const selected = parsed.tokens.filter((token) => token.start < e && token.end > s);
+  while (selected.length > 0 && isBlank(selected[0])) selected.shift();
+  while (selected.length > 0 && isBlank(selected[selected.length - 1])) selected.pop();
+  return { start: line.slice(0, prefix), content, ...parsed, selected };
+}
+
+// Code can't hold bold or italic, and a Link can't go inside code.
+function canTake(token, kind) {
+  return kind === "code" ? !token.atom : !token.code;
+}
+
+// Turn `kind` on or off for a line's selected tokens. The rewritten stretch
+// grows over every run it overlaps or touches, so old marks inside are tidied
+// away instead of piling up. Returns the new line and the selected words'
+// new columns.
+function applyPlan(plan, kind, on) {
+  const { start, content, tokens, runs, selected } = plan;
+  let from = selected[0].start;
+  let to = selected[selected.length - 1].end;
+  let grown = true;
+  while (grown) {
+    grown = false;
+    for (const run of runs) {
+      if (run.start <= to && run.end >= from && (run.start < from || run.end > to)) {
+        from = Math.min(from, run.start);
+        to = Math.max(to, run.end);
+        grown = true;
+      }
+    }
+  }
+  const stretch = tokens
+    .filter((token) => token.start >= from && token.end <= to)
+    .map((token) => {
+      const changes = selected.includes(token) && canTake(token, kind);
+      return { ...token, [kind]: changes ? on : token[kind], original: token };
+    });
+  let text = "";
+  const placed = new Map();
+  for (const piece of writeTokens(stretch)) {
+    if (piece.token) placed.set(piece.token.original, start.length + from + text.length);
+    text += piece.text;
+  }
+  const first = selected[0];
+  const last = selected[selected.length - 1];
+  return {
+    line: start + content.slice(0, from) + text + content.slice(to),
+    from: placed.get(first),
+    to: placed.get(last) + last.text.length,
+  };
+}
+
+// The lines inside fenced code blocks, fences included: shortcuts skip them.
+function codeLines(lines) {
+  const inCode = new Set();
+  for (const range of blockRanges(lines)) {
+    if (!isFence(lines[range.start])) continue;
+    for (let l = range.start; l < range.end; l += 1) inCode.add(l);
+  }
+  return inCode;
+}
+
+// `*|*`: the caret between an empty italic pair (one the renderer doesn't
+// count as italic yet), not part of a longer run of `*`.
+function inEmptyItalic(content, c) {
+  return (
+    content[c - 1] === "*" &&
+    content[c] === "*" &&
+    content[c - 2] !== "*" &&
+    content[c + 1] !== "*"
+  );
+}
+
+// A shortcut with nothing selected: just before the closing marks of that
+// formatting it steps past them, so typing carries on plain; otherwise it
+// inserts the empty pair with the caret inside. In code it does nothing.
+function formatAtCaret(lines, caret, kind) {
+  const unchanged = { lines, start: caret, end: caret };
+  if (codeLines(lines).has(caret.line)) return unchanged;
+  const line = lines[caret.line];
+  const prefix = lineStart(line)?.mark.length ?? 0;
+  const col = Math.max(caret.col, prefix);
+  const content = line.slice(prefix);
+  const c = col - prefix;
+  const { closes, codeSpans } = formatTokens(content);
+  const close = closes.find((mark) => mark.start === c && mark.makes.includes(kind));
+  const stepTo = (to) => ({ lines, start: { line: caret.line, col: to }, end: { line: caret.line, col: to } });
+  if (close) return stepTo(prefix + close.end);
+  if (kind === "italic" && inEmptyItalic(content, c)) return stepTo(col + 1);
+  if (codeSpans.some((span) => span.start <= c && c <= span.end)) return unchanged;
+  const mark = MARKS[kind];
+  const next = lines.slice();
+  next[caret.line] = line.slice(0, col) + mark + mark + line.slice(col);
+  const inside = { line: caret.line, col: col + mark.length };
+  return { lines: next, start: inside, end: inside };
+}
+
+// Ctrl+B / Ctrl+I / Ctrl+E (`kind` is "bold", "italic" or "code") on the
+// selection from `start` to `end`, each a { line, col }. If all of the
+// selection already has the formatting it is removed; otherwise all of it gets
+// it. Each line gets its own pair of marks after its start, empty lines and
+// code blocks are skipped, and code inside the selection is left alone by bold
+// and italic. Returns the new lines and the selection over the same words.
+export function toggleFormat(lines, start, end, kind) {
+  if (start.line === end.line && start.col === end.col) {
+    return formatAtCaret(lines, start, kind);
+  }
+  const inCode = codeLines(lines);
+  const plans = new Map();
+  for (let l = start.line; l <= end.line; l += 1) {
+    if (inCode.has(l)) continue;
+    const from = l === start.line ? start.col : 0;
+    const to = l === end.line ? end.col : lines[l].length;
+    const plan = linePlan(lines[l], from, to);
+    if (plan.selected.some((token) => canTake(token, kind))) plans.set(l, plan);
+  }
+  if (plans.size === 0) return { lines, start, end };
+
+  const on = ![...plans.values()].every((plan) =>
+    plan.selected.every((token) => !canTake(token, kind) || token[kind]),
+  );
+  const next = lines.slice();
+  let newStart = start;
+  let newEnd = end;
+  for (const [l, plan] of plans) {
+    const done = applyPlan(plan, kind, on);
+    next[l] = done.line;
+    if (l === start.line) newStart = { line: l, col: done.from };
+    if (l === end.line) newEnd = { line: l, col: done.to };
+  }
+  return { lines: next, start: newStart, end: newEnd };
 }

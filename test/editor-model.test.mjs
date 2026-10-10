@@ -20,6 +20,7 @@ import {
   filterCommands,
   applySlashCommand,
   focusedLineSpans,
+  toggleFormat,
 } from "../src/editor-model.mjs";
 
 // The editor model is the second test seam: pure functions on one note's
@@ -599,4 +600,134 @@ test("a [text](url) link renders as its text on other lines", () => {
     renderLineHtml("see [MDN](https://mdn.io)"),
     'see <span class="md-url" title="https://mdn.io">MDN</span>',
   );
+});
+
+// Formatting shortcuts (#44): Ctrl+B / Ctrl+I / Ctrl+E on a selection, or on
+// the caret when nothing is selected. `at` makes a (line, col) position.
+const at = (line, col) => ({ line, col });
+
+function format(lines, start, end, kind) {
+  return toggleFormat(lines, start, end, kind);
+}
+
+test("Ctrl+B wraps the selected words in bold marks", () => {
+  const result = format(["the key idea"], at(0, 4), at(0, 7), "bold");
+  assert.deepEqual(result.lines, ["the **key** idea"]);
+});
+
+test("Ctrl+I and Ctrl+E wrap the selection in italic and code marks", () => {
+  assert.deepEqual(format(["a word"], at(0, 2), at(0, 6), "italic").lines, ["a *word*"]);
+  assert.deepEqual(format(["run npm now"], at(0, 4), at(0, 7), "code").lines, ["run `npm` now"]);
+});
+
+test("the same words stay selected after formatting", () => {
+  const result = format(["the key idea"], at(0, 4), at(0, 7), "bold");
+  assert.deepEqual(result.start, at(0, 6));
+  assert.deepEqual(result.end, at(0, 9));
+});
+
+test("Ctrl+B then Ctrl+I on the same words gives bold and italic", () => {
+  const bold = format(["both"], at(0, 0), at(0, 4), "bold");
+  const both = format(bold.lines, bold.start, bold.end, "italic");
+  assert.deepEqual(both.lines, ["***both***"]);
+  assert.deepEqual([both.start, both.end], [at(0, 3), at(0, 7)]);
+});
+
+test("Ctrl+B on an all-bold selection removes the bold", () => {
+  const result = format(["the **key** idea"], at(0, 6), at(0, 9), "bold");
+  assert.deepEqual(result.lines, ["the key idea"]);
+  assert.deepEqual([result.start, result.end], [at(0, 4), at(0, 7)]);
+});
+
+test("removing bold from words inside a bold run keeps the rest bold", () => {
+  const result = format(["**the key idea**"], at(0, 6), at(0, 9), "bold");
+  assert.deepEqual(result.lines, ["**the** key **idea**"]);
+});
+
+test("a partly bold selection becomes all bold with no leftover inner marks", () => {
+  const result = format(["the **key** idea"], at(0, 0), at(0, 16), "bold");
+  assert.deepEqual(result.lines, ["**the key idea**"]);
+});
+
+test("a selection reaching into a bold run joins it", () => {
+  const result = format(["the **key** idea"], at(0, 6), at(0, 16), "bold");
+  assert.deepEqual(result.lines, ["the **key idea**"]);
+});
+
+test("removing bold keeps italic inside it", () => {
+  const result = format(["**a *b* c**"], at(0, 2), at(0, 9), "bold");
+  assert.deepEqual(result.lines, ["a *b* c"]);
+});
+
+test("spaces at the edges of a selection stay outside the marks", () => {
+  const result = format(["the key idea"], at(0, 3), at(0, 8), "bold");
+  assert.deepEqual(result.lines, ["the **key** idea"]);
+});
+
+test("with nothing selected, Ctrl+B inserts an empty pair with the caret inside", () => {
+  const result = format(["say "], at(0, 4), at(0, 4), "bold");
+  assert.deepEqual(result.lines, ["say ****"]);
+  assert.deepEqual([result.start, result.end], [at(0, 6), at(0, 6)]);
+});
+
+test("a second Ctrl+B just before the closing marks steps past them", () => {
+  const empty = format(["****"], at(0, 2), at(0, 2), "bold");
+  assert.deepEqual(empty.lines, ["****"]);
+  assert.deepEqual(empty.start, at(0, 4));
+  const typed = format(["say **hi**"], at(0, 8), at(0, 8), "bold");
+  assert.deepEqual(typed.lines, ["say **hi**"]);
+  assert.deepEqual(typed.end, at(0, 10));
+});
+
+test("a second Ctrl+I or Ctrl+E steps out of an empty or typed pair", () => {
+  assert.deepEqual(format(["**"], at(0, 1), at(0, 1), "italic").start, at(0, 2));
+  assert.deepEqual(format(["*hi*"], at(0, 3), at(0, 3), "italic").start, at(0, 4));
+  assert.deepEqual(format(["``"], at(0, 1), at(0, 1), "code").start, at(0, 2));
+});
+
+test("Ctrl+I inside an empty bold pair turns on italic too", () => {
+  const result = format(["****"], at(0, 2), at(0, 2), "italic");
+  assert.deepEqual(result.lines, ["******"]);
+  assert.deepEqual(result.start, at(0, 3));
+});
+
+test("a multi-line selection gets marks on each line, line starts outside", () => {
+  const lines = ["- one", "## two", "", "> three", "1. four"];
+  const result = format(lines, at(0, 0), at(4, 7), "bold");
+  assert.deepEqual(result.lines, [
+    "- **one**",
+    "## **two**",
+    "",
+    "> **three**",
+    "1. **four**",
+  ]);
+  assert.deepEqual([result.start, result.end], [at(0, 4), at(4, 9)]);
+});
+
+test("a multi-line selection that is all bold loses the bold on every line", () => {
+  const result = format(["- **one**", "- **two**"], at(0, 2), at(1, 9), "bold");
+  assert.deepEqual(result.lines, ["- one", "- two"]);
+});
+
+test("Ctrl+B and Ctrl+I in a code block change nothing", () => {
+  const lines = ["```", "let a = 1", "```"];
+  assert.deepEqual(format(lines, at(1, 0), at(1, 9), "bold").lines, lines);
+  assert.deepEqual(format(lines, at(1, 3), at(1, 3), "italic").lines, lines);
+});
+
+test("Ctrl+B inside inline code changes nothing", () => {
+  const lines = ["run `npm install` now"];
+  assert.deepEqual(format(lines, at(0, 5), at(0, 8), "bold").lines, lines);
+  assert.deepEqual(format(lines, at(0, 6), at(0, 6), "bold").lines, lines);
+});
+
+test("Ctrl+E on text that is already inline code removes it", () => {
+  const result = format(["run `npm` now"], at(0, 5), at(0, 8), "code");
+  assert.deepEqual(result.lines, ["run npm now"]);
+  assert.deepEqual([result.start, result.end], [at(0, 4), at(0, 7)]);
+});
+
+test("a selection that includes code skips the code and formats the rest", () => {
+  const result = format(["run `npm` now"], at(0, 0), at(0, 13), "bold");
+  assert.deepEqual(result.lines, ["**run** `npm` **now**"]);
 });
