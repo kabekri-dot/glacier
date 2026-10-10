@@ -11,3 +11,7 @@ The five default labels: needs-triage, needs-info, ready-for-agent, ready-for-hu
 ### Domain docs
 
 Single-context: `CONTEXT.md` and `docs/adr/` at the root. See `docs/agents/domain.md`.
+
+### Coding standards
+
+All code changes, by robots or by hand, follow `.sandcastle/CODING_STANDARDS.md` (plain JS, no build step, test-first with `node --test` through the documented seams).
