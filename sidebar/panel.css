@@ -12,7 +12,7 @@
   /* How far the ruled lines move up from the bottom of each text row, so the
      writing sits ON the line (just under the letters) instead of floating
      above it, as on real paper. */
-  --glacier-rule-shift: 0.45rem;
+  --glacier-rule-shift: 0.15rem;
 }
 
 * {

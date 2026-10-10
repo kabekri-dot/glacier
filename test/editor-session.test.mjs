@@ -213,3 +213,45 @@ test("line/col is read back from a block-relative offset", () => {
     col: 1,
   });
 });
+
+test("typing ``` on a line opens a code block and adds its closing fence", () => {
+  const editor = createEditorSession();
+  editor.load("intro\n\nafter");
+  editor.moveTo(1, 0);
+  const { reflow } = editor.edit("```", 3);
+  assert.deepEqual(editor.state.lines, ["intro", "```", "```", "after"]);
+  assert.deepEqual(editor.state.focus, { line: 1, col: 3 });
+  assert.equal(reflow, true); // the line is now a code block: redraw it as one
+  assert.equal(editor.state.blockStart, 1);
+  assert.equal(editor.state.blockCount, 2); // "after" stays outside the block
+});
+
+test("closing an open code block lets the lines after it become normal lines again", () => {
+  const editor = createEditorSession();
+  editor.load("```\ncode\nafter");      // no closing fence: everything is code
+  editor.moveTo(1, 4);
+  assert.equal(editor.state.blockCount, 3);
+  const value = "```\ncode\n```\nafter";
+  const { reflow } = editor.edit(value, "```\ncode\n```".length);
+  assert.deepEqual(editor.state.lines, ["```", "code", "```", "after"]);
+  assert.equal(reflow, true);
+  assert.equal(editor.state.blockCount, 3); // "after" is its own line again
+});
+
+test("typing inside a closed code block keeps it one block", () => {
+  const editor = createEditorSession();
+  editor.load("```\ncode\n```");
+  editor.moveTo(1, 4);
+  const { reflow } = editor.edit("```\ncode!\n```", 9);
+  assert.equal(reflow, false);
+  assert.deepEqual(editor.state.lines, ["```", "code!", "```"]);
+});
+
+test("pasting a whole code block adds no extra closing fence", () => {
+  const editor = createEditorSession();
+  editor.load("intro\n");
+  editor.moveTo(1, 0);
+  const pasted = "```\ncode\n```";
+  editor.edit(pasted, pasted.length);
+  assert.deepEqual(editor.state.lines, ["intro", "```", "code", "```"]);
+});

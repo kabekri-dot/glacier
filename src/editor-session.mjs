@@ -123,13 +123,28 @@ export function createEditorSession({ onChange } = {}) {
     // multi-line paste into a one-line block must become real blocks (the
     // sidebar re-renders), false while a code block stays one editable unit.
     edit(value, caret) {
-      const isCode = isFence(lines[blockStart]);
+      const wasCode = isFence(lines[blockStart]);
       const newLines = value.split("\n");
       lines.splice(blockStart, blockCount, ...newLines);
       blockCount = newLines.length;
       focus = lineColFromOffset(value, caret);
+
+      // A line that just became an opening ``` fence gets its closing fence at
+      // once. Without it, everything below would count as code until a closing
+      // fence appears, and no `/` menu would open there.
+      if (!wasCode && newLines.length === 1 && isFence(lines[focus.line])) {
+        lines.splice(focus.line + 1, 0, "```");
+      }
+
       notifyChange();
-      return { reflow: !isCode && newLines.length > 1 };
+
+      // Did the edit change where blocks begin and end (a fence typed, closed
+      // or removed)? Then the sidebar must redraw, so each block is edited and
+      // drawn as what it now is: code, or a normal line with the `/` menu.
+      const before = { start: blockStart, count: blockCount };
+      relayout();
+      const changed = blockStart !== before.start || blockCount !== before.count;
+      return { reflow: (!wasCode && newLines.length > 1) || changed };
     },
 
     // Enter at the caret: split the line, continuing a list or ending an empty
