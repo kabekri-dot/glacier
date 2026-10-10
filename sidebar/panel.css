@@ -84,13 +84,14 @@ body {
   pointer-events: none;
 }
 
-/* The Markdown marks on the current line (`## `, `- `, `> `, ```) stay
-   visible but faded, so the syntax is still there to learn (ADR 0006). */
+/* The Markdown marks on the current line (`## `, `- `, `> `, ```, `**`,
+   backticks, link brackets) stay visible but faded, so the syntax is still
+   there to learn (ADR 0006). */
 .md-mark {
   opacity: 0.4;
 }
 
-.md-list > .md-mark {
+.md-list > .md-mark:first-child {
   color: var(--glacier-accent);
   opacity: 0.6;
 }
@@ -139,6 +140,13 @@ body {
 
 .md-link-missing {
   color: #b3261e;
+}
+
+/* A web link `[text](address)`: its text, underlined. It is not followed on
+   click; clicking puts the caret there like any other text. */
+.md-url {
+  color: var(--glacier-accent);
+  text-decoration: underline;
 }
 
 code,

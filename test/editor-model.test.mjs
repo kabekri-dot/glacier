@@ -456,7 +456,10 @@ test("a focused heading keeps its text after the mark, joining back to the raw l
   assert.equal(spans.level, 1);
   assert.deepEqual(spans.parts, [
     { type: "mark", text: "# " },
-    { type: "text", text: "Box **model**" },
+    { type: "text", text: "Box " },
+    { type: "mark", text: "**" },
+    { type: "text", text: "model", bold: true },
+    { type: "mark", text: "**" },
   ]);
   assert.equal(joined(spans), "# Box **model**");
 });
@@ -515,4 +518,85 @@ test("every focused line's parts join back to exactly the raw line", () => {
   for (const line of ["### a < b", "- ", "	- tabbed", "12. twelve", ">  two spaces", "```", "plain"]) {
     assert.equal(joined(focusedLineSpans(line)), line);
   }
+});
+
+// Inline formatting on the line you're on (#38): bold, italic, code and links
+// are styled once closed, with every mark faded, by the same rules as the
+// rendered lines.
+
+test("closing ** makes the word bold on the focused line, its marks faded", () => {
+  assert.deepEqual(focusedLineSpans("a **key** b").parts, [
+    { type: "text", text: "a " },
+    { type: "mark", text: "**" },
+    { type: "text", text: "key", bold: true },
+    { type: "mark", text: "**" },
+    { type: "text", text: " b" },
+  ]);
+});
+
+test("*italic* and _italic_ are italic on the focused line", () => {
+  assert.deepEqual(focusedLineSpans("*a* _b_").parts, [
+    { type: "mark", text: "*" },
+    { type: "text", text: "a", italic: true },
+    { type: "mark", text: "*" },
+    { type: "text", text: " " },
+    { type: "mark", text: "_" },
+    { type: "text", text: "b", italic: true },
+    { type: "mark", text: "_" },
+  ]);
+});
+
+test("***both*** is bold and italic on the focused line", () => {
+  assert.deepEqual(focusedLineSpans("***both***").parts, [
+    { type: "mark", text: "***" },
+    { type: "text", text: "both", bold: true, italic: true },
+    { type: "mark", text: "***" },
+  ]);
+});
+
+test("`code` is code on the focused line, its backticks faded", () => {
+  assert.deepEqual(focusedLineSpans("- run `ls`").parts, [
+    { type: "mark", text: "- " },
+    { type: "text", text: "run " },
+    { type: "mark", text: "`" },
+    { type: "text", text: "ls", code: true },
+    { type: "mark", text: "`" },
+  ]);
+});
+
+test("a [text](url) link shows its text as a link and its brackets and address as marks", () => {
+  assert.deepEqual(focusedLineSpans("see [MDN](https://mdn.io) now").parts, [
+    { type: "text", text: "see " },
+    { type: "mark", text: "[" },
+    { type: "text", text: "MDN", url: "https://mdn.io" },
+    { type: "mark", text: "](https://mdn.io)" },
+    { type: "text", text: " now" },
+  ]);
+});
+
+test("a [[Link]] on the focused line shows its title as a Link", () => {
+  assert.deepEqual(focusedLineSpans("[[Flow]]").parts, [
+    { type: "mark", text: "[[" },
+    { type: "text", text: "Flow", link: true },
+    { type: "mark", text: "]]" },
+  ]);
+});
+
+test("half-typed inline formatting stays plain on the focused line", () => {
+  for (const line of ["**word", "*word", "`code", "[text](url", "[text]", "snake_case_name", "2*3 and 4*5"]) {
+    assert.deepEqual(focusedLineSpans(line).parts, [{ type: "text", text: line }]);
+  }
+});
+
+test("focused lines with inline formatting join back to exactly the raw line", () => {
+  for (const line of ["# **a** _b_ `c`", "> [x](y) [[Z]]", "- ***q*** **bold _and italic_**", "```js"]) {
+    assert.equal(joined(focusedLineSpans(line)), line);
+  }
+});
+
+test("a [text](url) link renders as its text on other lines", () => {
+  assert.equal(
+    renderLineHtml("see [MDN](https://mdn.io)"),
+    'see <span class="md-url" title="https://mdn.io">MDN</span>',
+  );
 });
