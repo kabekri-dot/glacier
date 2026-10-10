@@ -47,6 +47,8 @@ const noteEl = document.querySelector(".note");
 const saveErrorEl = document.querySelector(".save-error");
 const pillEl = document.querySelector(".pill");
 const pillTitleEl = document.querySelector(".pill-title");
+const backlinksButtonEl = document.querySelector(".backlinks-button");
+const backlinksListEl = document.querySelector(".backlinks-list");
 const backEl = document.querySelector(".pill-back");
 const newButtonEl = document.querySelector(".pill-new");
 const newMenuEl = document.querySelector(".new-menu");
@@ -124,7 +126,42 @@ async function start() {
     render();
     closeMenu();
     updatePill();
+    updateBacklinks();
   }
+
+  // --- Backlinks (#10) ---------------------------------------------------------
+  //
+  // A small button at the bottom left counts the notes that link to the open
+  // note; clicking it lists them and clicking one opens it. Which notes those
+  // are is the Notebook's (backlinks); this only draws them.
+
+  function closeBacklinks() {
+    backlinksListEl.hidden = true;
+    backlinksButtonEl.setAttribute("aria-expanded", "false");
+  }
+
+  function updateBacklinks() {
+    closeBacklinks();
+    backlinksListEl.replaceChildren();
+    const linking = current ? notebook.backlinks(current.title) : [];
+    backlinksButtonEl.hidden = linking.length === 0;
+    backlinksButtonEl.textContent =
+      linking.length === 1 ? "1 backlink" : `${linking.length} backlinks`;
+    for (const note of linking) {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "backlinks-item";
+      item.textContent = note.title;
+      item.addEventListener("click", () => openNote(note));
+      backlinksListEl.appendChild(item);
+    }
+  }
+
+  backlinksButtonEl.addEventListener("click", () => {
+    const opening = backlinksListEl.hidden;
+    backlinksListEl.hidden = !opening;
+    backlinksButtonEl.setAttribute("aria-expanded", String(opening));
+  });
 
   // --- The pill and its menu (#12) -------------------------------------------
   //

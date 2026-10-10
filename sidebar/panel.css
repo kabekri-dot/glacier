@@ -567,3 +567,54 @@ code {
   margin: 0.4rem 0;
   opacity: 0.7;
 }
+
+/* Backlinks (#10): a small button at the bottom left and the list it opens. */
+.backlinks-button {
+  position: fixed;
+  left: 0.5rem;
+  bottom: 0.5rem;
+  z-index: 10;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--glacier-rule);
+  border-radius: 999px;
+  background: var(--glacier-paper);
+  color: var(--glacier-accent);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.backlinks-button[hidden],
+.backlinks-list[hidden] {
+  display: none;
+}
+
+.backlinks-list {
+  position: fixed;
+  left: 0.5rem;
+  bottom: 2.6rem;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  max-width: calc(100% - 1rem);
+  max-height: 50%;
+  overflow-y: auto;
+  background: var(--glacier-paper);
+  border: 1px solid var(--glacier-rule);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(27, 42, 74, 0.18);
+}
+
+.backlinks-item {
+  padding: 0.4rem 0.7rem;
+  border: 0;
+  background: transparent;
+  color: var(--glacier-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.backlinks-item:hover {
+  background: rgba(63, 120, 196, 0.1);
+}

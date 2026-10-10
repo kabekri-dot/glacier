@@ -199,6 +199,17 @@ export function createNotebook({ storage }) {
       return titles;
     },
 
+    // The notes that link to this title, each once (a Backlink, CONTEXT.md).
+    // A note's own Link to itself doesn't count.
+    backlinks(title) {
+      return storage
+        .allNotes()
+        .filter(
+          (note) =>
+            note.title !== title && this.outgoingLinks(note.title).includes(title),
+        );
+    },
+
     // A Missing Link is a Link whose title matches no note yet (CONTEXT.md),
     // so following it would create the note rather than open an existing one.
     isMissingLink(title) {
