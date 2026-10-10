@@ -18,7 +18,7 @@ Glacier's rules come from its ADRs (`docs/adr/`) and glossary (`CONTEXT.md`). Th
 ## Testing
 
 - Test-first (red → green → refactor), with **`node --test` only**: no test frameworks, no npm.
-- Test through the two seams only: the **Notebook core's public actions** (with in-memory stand-ins for storage and GitHub) and the **editor-model functions**. Never test private helpers or the DOM.
+- Test through these seams only: the **Notebook core's public actions** (with in-memory stand-ins for storage and GitHub), the **editor-model functions**, and the **Note session** (saving the open note, through its public interface with the in-memory storage and injected timers, as the save scheduler is). Never test private helpers or the DOM.
 - One behaviour per test, named the way a user would describe it.
 - The UI is checked by hand, so don't add browser test tools.
 
