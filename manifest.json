@@ -24,7 +24,7 @@
       "suggested_key": {
         "default": "Alt+Shift+G"
       },
-      "description": "Open Glacier in the sidebar"
+      "description": "Open or close Glacier"
     }
   },
   "browser_specific_settings": {
