@@ -399,6 +399,45 @@ code {
   box-shadow: 0 2px 8px rgba(27, 42, 74, 0.12);
 }
 
+.pill-side {
+  flex: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: 1px solid var(--glacier-rule);
+  border-radius: 50%;
+  background: var(--glacier-paper);
+  color: var(--glacier-ink);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(27, 42, 74, 0.12);
+}
+
+.pill-side[hidden] {
+  display: none;
+}
+
+.new-menu {
+  position: fixed;
+  top: 2.6rem;
+  right: 0.5rem;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.4rem;
+  background: var(--glacier-paper);
+  border: 1px solid var(--glacier-rule);
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(27, 42, 74, 0.18);
+}
+
+.new-menu[hidden] {
+  display: none;
+}
+
 .pill-title {
   overflow: hidden;
   text-overflow: ellipsis;
