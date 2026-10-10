@@ -1,7 +1,8 @@
 // Sequential Reviewer — implement-then-review loop
 //
 // This template drives a two-phase workflow per issue:
-//   Phase 1 (Implement): A sonnet agent picks an open issue, works on it
+//   Phase 1 (Implement): The script picks the next issue and the builder model
+//                        from its model: label; the agent works on it
 //                        on a dedicated branch, commits the changes, and signals
 //                        completion.
 //   Phase 2 (Review):    A second sonnet agent reviews the branch diff and either
@@ -31,16 +32,71 @@ import { execFileSync } from "node:child_process";
 
 // Glacier: how many tickets per run before stopping, so you can look at the result.
 // Default 3. Pick another number when starting: npx tsx .sandcastle/main.mts 5
-const MAX_ITERATIONS = Number.parseInt(process.argv[2] ?? "3", 10) || 3;
+//   npx tsx .sandcastle/main.mts next      -> only show which ticket and model come next
+//   npx tsx .sandcastle/main.mts 1 34      -> start with ticket #34
+//   npx tsx .sandcastle/main.mts 1 sonnet  -> force one model for this run
+const DRY_RUN = process.argv[2] === "next";
+const MAX_ITERATIONS = DRY_RUN ? 1 : Number.parseInt(process.argv[2] ?? "3", 10) || 3;
+const extraArgs = process.argv.slice(3);
+const isTicketArg = (a: string) => /^#?\d+$/.test(a);
+let startIssue = Number.parseInt(extraArgs.find(isTicketArg)?.replace("#", "") ?? "", 10) || null;
+const MODEL_OVERRIDE = extraArgs.find((a) => !isTicketArg(a)) ?? null;
 
-// Which model builds: "opus" (default, best for hard tickets) or a cheaper one
-// for small tickets, e.g.: npx tsx .sandcastle/main.mts 1 sonnet
-const BUILDER_MODEL = process.argv[3] ?? "claude-opus-4-8";
+// Which model builds is read from the ticket's label: model:sonnet for small,
+// well-specified tickets, model:opus (also the default without a label) for
+// large or judgment-heavy ones. The reviewer always runs on Sonnet.
+const MODELS: Record<string, string> = { opus: "claude-opus-4-8", sonnet: "sonnet" };
+const DEFAULT_MODEL = "opus";
 
 // Glacier has no npm packages (ADR 0002), so the sandbox needs no npm install
 // and no copied node_modules. (npm is only used on the host, for Sandcastle itself.)
 const hooks = {};
 const copyToWorktree: string[] = [];
+
+// ---------------------------------------------------------------------------
+// Glacier: pick the next ticket and its model
+// ---------------------------------------------------------------------------
+// The script picks the ticket (not the robot), so it can choose the model
+// before the robot starts: bugs first, then the lowest number, skipping #1 and
+// any ticket whose "Blocked by" section names a still-open issue.
+
+type Issue = { number: number; title: string; labels: { name: string }[]; body: string };
+const gh = (...args: string[]) => execFileSync("gh", args, { encoding: "utf8" });
+
+function pickNextIssue(): { issue: Issue; model: string } | null {
+  const ready: Issue[] = JSON.parse(gh("issue", "list", "--state", "open", "--label", "ready-for-agent",
+    "--limit", "200", "--json", "number,title,labels,body"));
+  const open = new Set<number>(JSON.parse(gh("issue", "list", "--state", "open", "--limit", "500",
+    "--json", "number")).map((i: { number: number }) => i.number));
+  const isBlocked = (issue: Issue) => {
+    const section = (issue.body ?? "").split("## Blocked by")[1]?.split("\n## ")[0] ?? "";
+    return [...section.matchAll(/#(\d+)/g)].some((m) => open.has(Number(m[1])));
+  };
+  const hasLabel = (issue: Issue, name: string) => issue.labels.some((l) => l.name === name);
+  const candidates = ready
+    .filter((i) => i.number !== 1 && !isBlocked(i))
+    .sort((a, b) => Number(hasLabel(b, "bug")) - Number(hasLabel(a, "bug")) || a.number - b.number);
+  if (startIssue !== null) {
+    const wanted = candidates.find((i) => i.number === startIssue);
+    if (!wanted) {
+      console.error(`Ticket #${startIssue} isn't ready (not ready-for-agent, closed, or blocked).`);
+      process.exit(1);
+    }
+    startIssue = null; // only the first ticket of the run
+    candidates.unshift(wanted);
+  }
+  const issue = candidates[0];
+  if (!issue) return null;
+  const label = issue.labels.find((l) => l.name.startsWith("model:"))?.name.slice("model:".length);
+  const name = MODEL_OVERRIDE ?? label ?? DEFAULT_MODEL;
+  return { issue, model: MODELS[name] ?? name };
+}
+
+if (DRY_RUN) {
+  const next = pickNextIssue();
+  console.log(next ? `Next: #${next.issue.number} ${next.issue.title} -> builder model: ${next.model}` : "Nothing ready.");
+  process.exit(0);
+}
 
 // ---------------------------------------------------------------------------
 // Glacier: merge each reviewed ticket into main
@@ -78,6 +134,13 @@ function mergeIntoMain(branch: string) {
 for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   console.log(`\n=== Iteration ${iteration}/${MAX_ITERATIONS} ===\n`);
 
+  const next = pickNextIssue();
+  if (!next) {
+    console.log("No ready, unblocked ticket left. Stopping.");
+    break;
+  }
+  console.log(`Ticket #${next.issue.number}: ${next.issue.title} (builder: ${next.model})`);
+
   // Generate a unique branch name for this iteration.
   const branch = `sandcastle/sequential-reviewer/${Date.now()}`;
 
@@ -107,13 +170,16 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     const implement = await sandbox.run({
       name: "implementer",
       maxIterations: 1,
-      agent: sandcastle.claudeCode(BUILDER_MODEL),
+      agent: sandcastle.claudeCode(next.model),
       promptFile: "./.sandcastle/implement-prompt.md",
+      promptArgs: {
+        ISSUE: String(next.issue.number),
+      },
     });
 
     if (!implement.commits.length) {
-      // No commits means the backlog is empty or every remaining issue is
-      // blocked — there is nothing left to implement or review, so stop.
+      // No commits means the builder gave up on this ticket (or found it
+      // already done), so stop and let a human look.
       console.log("Implementation agent made no commits. Stopping.");
       break;
     }

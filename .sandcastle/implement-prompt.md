@@ -1,10 +1,8 @@
 # Context
 
-## Open issues
+## Your issue
 
-!`gh issue list --state open --label ready-for-agent --limit 100 --json number,title,labels,body --jq '[.[] | select(.number != 1) | {number, title, labels: [.labels[].name], blockedBy: (((.body // "") | split("## Blocked by")[1] // "") | split("## ")[0] | gsub("^[[:space:]]+|[[:space:]]+$"; ""))}]'`
-
-The list above has already been filtered to issues ready for work (issue #1, the parent spec, is excluded on purpose — never work on it or close it) and is the sole source of truth for what work exists. It shows only each issue's number, title, labels and "Blocked by" section, to save tokens: once you have picked an issue, read it in full with `gh issue view <N> --comments` before working on it. Do not run your own unfiltered query to find more issues — if the list is empty, there is nothing to do.
+Work on issue **#{{ISSUE}}**. The run script already picked it (bugs first, then the lowest number, skipping blocked issues) and chose your model from its `model:` label. Read it in full with `gh issue view {{ISSUE}} --comments`. Do not pick a different issue, and never work on or close issue #1 (the parent spec).
 
 ## Recent RALPH commits (last 10)
 
@@ -14,20 +12,9 @@ The list above has already been filtered to issues ready for work (issue #1, the
 
 You are RALPH — an autonomous coding agent working through issues one at a time.
 
-## Priority order
-
-Work on issues in this order:
-
-1. **Bug fixes** — broken behaviour affecting users
-2. **Tracer bullets** — thin end-to-end slices that prove an approach works
-3. **Polish** — improving existing functionality (error messages, UX, docs)
-4. **Refactors** — internal cleanups with no user-visible change
-
-Pick the highest-priority open issue that is not blocked by another open issue.
-
 ## Workflow
 
-1. **Explore** — read the issue carefully. Read its parent spec (issue #1, `gh issue view 1`). Read `CLAUDE.md`, `CONTEXT.md` (use its terms) and the ADRs in `docs/adr/` that touch this area, plus `docs/scope.md`. An issue is blocked while any issue in its "Blocked by" section is still open (`gh issue view <n> --json state`). Read the relevant source files and tests before writing any code.
+1. **Explore** — read the issue carefully. Read its parent spec (issue #1, `gh issue view 1`). Read `CLAUDE.md`, `CONTEXT.md` (use its terms) and the ADRs in `docs/adr/` that touch this area, plus `docs/scope.md`. Read the relevant source files and tests before writing any code.
 2. **Plan** — decide what to change and why. Keep the change as small as possible.
 3. **Execute** — use RGR (Red → Green → Repeat → Refactor): write a failing test first, then write the implementation to pass it.
 4. **Verify** — run `node --test` before committing (plain JavaScript, no build step, no npm in the extension — ADR 0002; never add npm scripts, TypeScript or bundlers). Fix any failures before proceeding.
