@@ -382,26 +382,6 @@ code {
   max-width: calc(100% - 1.5rem);
 }
 
-/* The quiet way back to this page's note (#48), styled like the pill. */
-.pill-entry {
-  flex: none;
-  padding: 0.2rem 0.7rem;
-  border: 1px solid var(--glacier-rule);
-  border-radius: 999px;
-  background: var(--glacier-paper);
-  color: var(--glacier-ink);
-  font: inherit;
-  font-size: 0.8rem;
-  line-height: 1.4rem;
-  white-space: nowrap;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(27, 42, 74, 0.12);
-}
-
-.pill-entry[hidden] {
-  display: none;
-}
-
 .pill {
   min-width: 0;
   display: flex;

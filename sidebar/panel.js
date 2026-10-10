@@ -41,7 +41,6 @@ const noteEl = document.querySelector(".note");
 const saveErrorEl = document.querySelector(".save-error");
 const pillEl = document.querySelector(".pill");
 const pillTitleEl = document.querySelector(".pill-title");
-const pillEntryEl = document.querySelector(".pill-entry");
 const menuPanelEl = document.querySelector(".menu");
 
 // A write to this browser's copy failed (aborted or threw). Tell the user so
@@ -113,7 +112,6 @@ async function start() {
     render();
     closeMenu();
     updatePill();
-    if (!byPage) openingFlow.refreshPageEntry();
   }
 
   // --- The pill and its menu (#12) -------------------------------------------
@@ -905,17 +903,7 @@ async function start() {
     getOpenNote: () => ({ current, openedByPage }),
     lessonNoteForSource: (url) => notebook.lessonNoteForSource(url),
     show: showOpeningView,
-    showPageEntry,
   });
-
-  // The pill's way back to this page's note when another note stayed put (#48).
-  function showPageEntry(entry) {
-    pillEntryEl.hidden = !entry;
-    if (!entry) return;
-    pillEntryEl.textContent =
-      entry.type === "openPageNote" ? "→ Note for this page" : "+ Lesson note for this page";
-  }
-  pillEntryEl.addEventListener("click", () => openingFlow.clickPageEntry());
 
   // Build a labelled control row for the create form.
   function field(labelText, control) {

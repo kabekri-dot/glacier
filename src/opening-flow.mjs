@@ -2,8 +2,10 @@
 //
 // It decides between the start prompt, the permission card (ADR 0008), the
 // page's Lesson Note, the lesson form, the new-note form, or keeping the open
-// note (decidePageOpen, #29). It owns "is this a lesson page" (http or https
-// only) and the latest-change-wins rule for quick tab switches.
+// note (decidePageOpen, #29, #50): the sidebar always shows the note of the
+// website tab you are on, and a non-website page keeps the open note. It owns
+// "is this a lesson page" (http or https only) and the latest-change-wins rule
+// for quick tab switches.
 //
 // The browser is plugged in as a small "browser page" port, so tests can use a
 // fake page and panel.js only draws what the flow shows:
@@ -17,10 +19,8 @@
 // draws one of: { type: "startPrompt" }, { type: "permissionCard" },
 // { type: "open", note }, { type: "lessonForm", page }, { type: "newNoteForm" }.
 //
-// `showPageEntry(entry)` draws the pill's way back to the page (#48) after
-// every page read: null (nothing to offer), { type: "openPageNote", note } or
-// { type: "makePageNote", page }. It is offered only when a note that stayed
-// put hides this lesson page's note, or the form for making one.
+// `keepUserOpenedNotes` (default false) is the old rule: notes the user opened
+// themselves stay put when the page changes.
 import { decidePageOpen } from "./page-open.mjs";
 
 export function createOpeningFlow({
@@ -28,7 +28,7 @@ export function createOpeningFlow({
   getOpenNote,
   lessonNoteForSource,
   show,
-  showPageEntry = () => {},
+  keepUserOpenedNotes = false,
 }) {
   // Only http and https pages are lesson pages; anything else (chrome://,
   // file://, a new tab) counts as no page.
@@ -52,32 +52,16 @@ export function createOpeningFlow({
       openedByPage,
       page: lessonPage,
       lessonNoteForSource,
+      keepUserOpenedNotes,
     });
-    if (decision.type !== "keep") {
-      showPageEntry(null);
-      show(decision);
-      return;
-    }
-    showPageEntry(entryFor(current, lessonPage));
-  }
-
-  // The pill entry for a note that stayed put on this page (#48).
-  function entryFor(current, lessonPage) {
-    if (!current || !lessonPage) return null;
-    const own = lessonNoteForSource(lessonPage.url);
-    if (!own) return { type: "makePageNote", page: lessonPage };
-    if (own.title === current.title) return null;
-    return { type: "openPageNote", note: own };
+    if (decision.type !== "keep") show(decision);
   }
 
   return {
     // The sidebar opened: follow the page if allowed, else the start prompt.
     async start() {
       if (await page.hasPermission()) await followCurrentPage();
-      else {
-        showPageEntry(null);
-        show({ type: "startPrompt" });
-      }
+      else show({ type: "startPrompt" });
     },
 
     // "+ Lesson note" on the start prompt.
@@ -102,31 +86,8 @@ export function createOpeningFlow({
     // The page behind the sidebar changed. Without the permission there is
     // nothing to read, so the change is ignored.
     async pageChanged() {
-      if (!(await page.hasPermission())) {
-        showPageEntry(null);
-        return;
-      }
+      if (!(await page.hasPermission())) return;
       await followCurrentPage();
-    },
-
-    // The user opened or closed a note themselves: redraw the pill entry for
-    // the page behind the sidebar without touching the note on screen.
-    async refreshPageEntry() {
-      if (!(await page.hasPermission())) return showPageEntry(null);
-      const lessonPage = await readLessonPage();
-      const { current, openedByPage } = getOpenNote();
-      showPageEntry(openedByPage ? null : entryFor(current, lessonPage));
-    },
-
-    // The pill entry was clicked: open this page's note (page-opened, so it
-    // follows tabs again) or show the lesson form for it.
-    async clickPageEntry() {
-      const lessonPage = await readLessonPage();
-      if (!lessonPage) return;
-      const note = lessonNoteForSource(lessonPage.url);
-      showPageEntry(null);
-      if (note) show({ type: "open", note });
-      else show({ type: "lessonForm", page: lessonPage });
     },
 
     // Start listening for page changes from the port.
