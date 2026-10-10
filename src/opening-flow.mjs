@@ -16,6 +16,11 @@
 // `lessonNoteForSource(url)` returns a Lesson Note or null, and `show(view)`
 // draws one of: { type: "startPrompt" }, { type: "permissionCard" },
 // { type: "open", note }, { type: "lessonForm", page }, { type: "newNoteForm" }.
+//
+// `showPageEntry(entry)` draws the pill's way back to the page (#48) after
+// every page read: null (nothing to offer), { type: "openPageNote", note } or
+// { type: "makePageNote", page }. It is offered only when a note that stayed
+// put hides this lesson page's note, or the form for making one.
 import { decidePageOpen } from "./page-open.mjs";
 
 export function createOpeningFlow({
@@ -23,6 +28,7 @@ export function createOpeningFlow({
   getOpenNote,
   lessonNoteForSource,
   show,
+  showPageEntry = () => {},
 }) {
   // Only http and https pages are lesson pages; anything else (chrome://,
   // file://, a new tab) counts as no page.
@@ -47,14 +53,31 @@ export function createOpeningFlow({
       page: lessonPage,
       lessonNoteForSource,
     });
-    if (decision.type !== "keep") show(decision);
+    if (decision.type !== "keep") {
+      showPageEntry(null);
+      show(decision);
+      return;
+    }
+    showPageEntry(entryFor(current, lessonPage));
+  }
+
+  // The pill entry for a note that stayed put on this page (#48).
+  function entryFor(current, lessonPage) {
+    if (!current || !lessonPage) return null;
+    const own = lessonNoteForSource(lessonPage.url);
+    if (!own) return { type: "makePageNote", page: lessonPage };
+    if (own.title === current.title) return null;
+    return { type: "openPageNote", note: own };
   }
 
   return {
     // The sidebar opened: follow the page if allowed, else the start prompt.
     async start() {
       if (await page.hasPermission()) await followCurrentPage();
-      else show({ type: "startPrompt" });
+      else {
+        showPageEntry(null);
+        show({ type: "startPrompt" });
+      }
     },
 
     // "+ Lesson note" on the start prompt.
@@ -79,8 +102,31 @@ export function createOpeningFlow({
     // The page behind the sidebar changed. Without the permission there is
     // nothing to read, so the change is ignored.
     async pageChanged() {
-      if (!(await page.hasPermission())) return;
+      if (!(await page.hasPermission())) {
+        showPageEntry(null);
+        return;
+      }
       await followCurrentPage();
+    },
+
+    // The user opened or closed a note themselves: redraw the pill entry for
+    // the page behind the sidebar without touching the note on screen.
+    async refreshPageEntry() {
+      if (!(await page.hasPermission())) return showPageEntry(null);
+      const lessonPage = await readLessonPage();
+      const { current, openedByPage } = getOpenNote();
+      showPageEntry(openedByPage ? null : entryFor(current, lessonPage));
+    },
+
+    // The pill entry was clicked: open this page's note (page-opened, so it
+    // follows tabs again) or show the lesson form for it.
+    async clickPageEntry() {
+      const lessonPage = await readLessonPage();
+      if (!lessonPage) return;
+      const note = lessonNoteForSource(lessonPage.url);
+      showPageEntry(null);
+      if (note) show({ type: "open", note });
+      else show({ type: "lessonForm", page: lessonPage });
     },
 
     // Start listening for page changes from the port.

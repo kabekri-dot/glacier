@@ -8,10 +8,13 @@
   </head>
   <body>
     <!-- Zen layout: only the page, plus one pill on top that opens the menu. -->
-    <button type="button" class="pill" aria-haspopup="true" aria-expanded="false">
-      <span class="pill-title">Glacier</span>
-      <span class="sync-dot" title="Saved in this browser"></span>
-    </button>
+    <div class="pill-bar">
+      <button type="button" class="pill" aria-haspopup="true" aria-expanded="false">
+        <span class="pill-title">Glacier</span>
+        <span class="sync-dot" title="Saved in this browser"></span>
+      </button>
+      <button type="button" class="pill-entry" hidden></button>
+    </div>
     <div class="menu" hidden></div>
     <main class="note" aria-label="Note"></main>
     <!-- Shown only when a save to this browser's copy fails (issue #25). -->
