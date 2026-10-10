@@ -354,8 +354,8 @@ async function start() {
   function styledLine(line) {
     const spans = focusedLineSpans(line);
     const wrap = document.createElement("span");
-    wrap.className = `md-${spans.kind}`;
-    if (spans.kind === "heading") wrap.className = `md-h md-h${spans.level}`;
+    wrap.className =
+      spans.kind === "heading" ? `md-h md-h${spans.level}` : `md-${spans.kind}`;
     for (const part of spans.parts) {
       const span = document.createElement("span");
       if (part.type === "mark") span.className = "md-mark";
