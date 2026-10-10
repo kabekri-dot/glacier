@@ -282,11 +282,11 @@ export function createEditorSession({
     if (!("code" in point)) return point;
     const range = blockRanges(lines).find((r) => r.start === point.code);
     const closed = range.end - range.start > 1 && isFence(lines[range.end - 1]);
-    const code = lines.slice(range.start + 1, closed ? range.end - 1 : range.end);
+    const code = lines.slice(range.start + 1, closed ? range.end - 1 : range.end).join("\n");
     const last = range.end - 1;
     if (point.offset === 0) return { line: range.start, col: 0 };
-    if (point.offset >= code.join("\n").length) return { line: last, col: lines[last].length };
-    const before = code.join("\n").slice(0, point.offset).split("\n");
+    if (point.offset >= code.length) return { line: last, col: lines[last].length };
+    const before = code.slice(0, point.offset).split("\n");
     return { line: range.start + before.length, col: before[before.length - 1].length };
   }
 
