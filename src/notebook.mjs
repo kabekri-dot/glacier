@@ -57,6 +57,23 @@ export function createNotebook({ storage }) {
   // preselect it. It is kept in storage (not just memory) so it survives a
   // browser restart (ADR 0003), alongside the notes themselves.
   const LAST_COURSE = "lastCourse";
+  // Titles of the notes opened lately, newest first, kept in storage too.
+  const RECENT = "recentNotes";
+  const RECENT_KEPT = 20;
+  // How much text to show on each side of a match in a search snippet.
+  const SNIPPET_SIDE = 30;
+
+  // The text around the first match, cut to a short stretch on each side.
+  function snippetAround(body, at, length) {
+    const from = Math.max(0, at - SNIPPET_SIDE);
+    const to = Math.min(body.length, at + length + SNIPPET_SIDE);
+    const flat = (text) => text.replace(/\s+/g, " ");
+    return {
+      before: (from > 0 ? "…" : "") + flat(body.slice(from, at)),
+      match: body.slice(at, at + length),
+      after: flat(body.slice(at + length, to)) + (to < body.length ? "…" : ""),
+    };
+  }
 
   function titleTaken(title) {
     return storage.getNote(title) !== undefined;
@@ -197,6 +214,76 @@ export function createNotebook({ storage }) {
         return existing;
       }
       return makeConceptNote({ title });
+    },
+
+    // Simple substring search over titles and text, ignoring case. Notes whose
+    // title matches come first; a text match carries a snippet around the
+    // first match, split so the screen can highlight `match`.
+    search(query) {
+      const needle = (query ?? "").trim().toLowerCase();
+      if (!needle) {
+        return [];
+      }
+      const inTitle = [];
+      const inText = [];
+      for (const note of storage.allNotes()) {
+        if (note.title.toLowerCase().includes(needle)) {
+          inTitle.push({ title: note.title, type: note.type });
+          continue;
+        }
+        const body = note.body ?? "";
+        const at = body.toLowerCase().indexOf(needle);
+        if (at !== -1) {
+          inText.push({
+            title: note.title,
+            type: note.type,
+            snippet: snippetAround(body, at, needle.length),
+          });
+        }
+      }
+      return [...inTitle, ...inText];
+    },
+
+    // The Notebook as the menu lists it: Courses (sorted) with their Lesson
+    // Notes (sorted), Lesson Notes that have no Course, and the Concept Notes.
+    outline() {
+      const byCourse = new Map();
+      const uncategorised = [];
+      const concepts = [];
+      for (const note of storage.allNotes()) {
+        if (note.type === "concept") {
+          concepts.push(note.title);
+        } else if (note.course) {
+          if (!byCourse.has(note.course)) {
+            byCourse.set(note.course, []);
+          }
+          byCourse.get(note.course).push(note.title);
+        } else {
+          uncategorised.push(note.title);
+        }
+      }
+      const sorted = (titles) => titles.sort((a, b) => a.localeCompare(b));
+      return {
+        courses: [...byCourse.keys()]
+          .sort((a, b) => a.localeCompare(b))
+          .map((course) => ({ course, titles: sorted(byCourse.get(course)) })),
+        uncategorised: sorted(uncategorised),
+        concepts: sorted(concepts),
+      };
+    },
+
+    // Remember that a note was opened, for the menu's recent notes.
+    markOpened(title) {
+      const rest = (storage.getMeta(RECENT) ?? []).filter((t) => t !== title);
+      storage.putMeta(RECENT, [title, ...rest].slice(0, RECENT_KEPT));
+    },
+
+    // The notes opened lately, newest first, without any that are gone.
+    recentNotes(limit = 8) {
+      return (storage.getMeta(RECENT) ?? [])
+        .map((title) => storage.getNote(title))
+        .filter(Boolean)
+        .slice(0, limit);
     },
 
     // Save the note's Markdown body. The editor calls this as you type, so

@@ -320,3 +320,116 @@ test("a clashing title gets the Course added so titles stay unique", () => {
   const titles = notebook.notes().map((n) => n.title).sort();
   assert.deepEqual(titles, ["Introduction", "Introduction (Khan Algebra 1)"]);
 });
+
+function notebookWithNotes() {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  notebook.createLessonNote({
+    title: "Introduction",
+    source: "https://e.example/intro",
+    course: "TOP Foundations",
+  });
+  notebook.createLessonNote({
+    title: "Variables",
+    source: "https://e.example/vars",
+    course: "TOP Foundations",
+  });
+  notebook.createLessonNote({
+    title: "Fractions",
+    source: "https://k.example/fractions",
+    course: "Khan Algebra 1",
+  });
+  notebook.createConceptNote({ title: "Box model" });
+  return notebook;
+}
+
+test("search finds notes by title, ignoring case", () => {
+  const notebook = notebookWithNotes();
+  const results = notebook.search("BOX");
+  assert.deepEqual(results.map((r) => r.title), ["Box model"]);
+  assert.equal(results[0].type, "concept");
+});
+
+test("search finds notes by their text and shows the match in a snippet", () => {
+  const notebook = notebookWithNotes();
+  notebook.saveBody("Variables", "A variable holds a value you can reuse later.");
+  const results = notebook.search("holds a");
+  assert.equal(results.length, 1);
+  assert.equal(results[0].title, "Variables");
+  assert.deepEqual(results[0].snippet, {
+    before: "A variable ",
+    match: "holds a",
+    after: " value you can reuse later.",
+  });
+});
+
+test("a long text match is cut to a short snippet around the match", () => {
+  const notebook = notebookWithNotes();
+  const filler = "word ".repeat(40);
+  notebook.saveBody("Variables", `${filler}needle ${filler}`);
+  const [result] = notebook.search("needle");
+  assert.equal(result.snippet.match, "needle");
+  assert.ok(result.snippet.before.length < 50);
+  assert.ok(result.snippet.after.length < 50);
+});
+
+test("title matches come before text matches", () => {
+  const notebook = notebookWithNotes();
+  notebook.saveBody("Introduction", "Think of the box around everything.");
+  const results = notebook.search("box");
+  assert.deepEqual(results.map((r) => r.title), ["Box model", "Introduction"]);
+});
+
+test("a title match highlights the title, not the text", () => {
+  const notebook = notebookWithNotes();
+  const [result] = notebook.search("frac");
+  assert.equal(result.title, "Fractions");
+  assert.equal(result.snippet, undefined);
+});
+
+test("searching for nothing or for something absent finds nothing", () => {
+  const notebook = notebookWithNotes();
+  assert.deepEqual(notebook.search(""), []);
+  assert.deepEqual(notebook.search("   "), []);
+  assert.deepEqual(notebook.search("zzz"), []);
+});
+
+test("the outline lists Courses with their Lesson Notes, then the Concept Notes", () => {
+  const notebook = notebookWithNotes();
+  const outline = notebook.outline();
+  assert.deepEqual(outline.courses, [
+    { course: "Khan Algebra 1", titles: ["Fractions"] },
+    { course: "TOP Foundations", titles: ["Introduction", "Variables"] },
+  ]);
+  assert.deepEqual(outline.concepts, ["Box model"]);
+});
+
+test("a Lesson Note without a Course is listed apart from the Courses", () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  notebook.createLessonNote({ title: "Loose", source: undefined, course: undefined });
+  const outline = notebook.outline();
+  assert.deepEqual(outline.courses, []);
+  assert.deepEqual(outline.uncategorised, ["Loose"]);
+});
+
+test("recent notes list the most recently opened first, each once", () => {
+  const notebook = notebookWithNotes();
+  notebook.markOpened("Introduction");
+  notebook.markOpened("Variables");
+  notebook.markOpened("Introduction");
+  assert.deepEqual(notebook.recentNotes().map((n) => n.title), [
+    "Introduction",
+    "Variables",
+  ]);
+});
+
+test("recent notes are capped and skip notes that no longer exist", () => {
+  const notebook = notebookWithNotes();
+  notebook.markOpened("Fractions");
+  notebook.markOpened("Gone");
+  notebook.markOpened("Box model");
+  assert.deepEqual(notebook.recentNotes(1).map((n) => n.title), ["Box model"]);
+  assert.deepEqual(notebook.recentNotes().map((n) => n.title), [
+    "Box model",
+    "Fractions",
+  ]);
+});

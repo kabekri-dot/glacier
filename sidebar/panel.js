@@ -39,6 +39,9 @@ const FORMAT_KEYS = { b: "bold", i: "italic", e: "code" };
 
 const noteEl = document.querySelector(".note");
 const saveErrorEl = document.querySelector(".save-error");
+const pillEl = document.querySelector(".pill");
+const pillTitleEl = document.querySelector(".pill-title");
+const menuPanelEl = document.querySelector(".menu");
 
 // A write to this browser's copy failed (aborted or threw). Tell the user so
 // they don't trust a save that didn't happen (issue #25); their text is still
@@ -102,11 +105,219 @@ async function start() {
     // is taken back out before the note we're leaving is saved (#28).
     editor.dismissMenu();
     session.open(note);
+    notebook.markOpened(note.title);
     current = note;
     openedByPage = byPage;
     editor.load(current.body ?? "");
     render();
+    closeMenu();
+    updatePill();
   }
+
+  // --- The pill and its menu (#12) -------------------------------------------
+  //
+  // The pill shows the open note's title and the sync dot. Clicking it, or
+  // Ctrl+K, opens the menu: search, recent notes, the Notebook and the two
+  // "+" buttons. What to list and what a search matches is the Notebook's
+  // (search, recentNotes, outline); this only draws it. Esc closes it.
+
+  function updatePill() {
+    pillTitleEl.textContent = current ? current.title : "Glacier";
+  }
+
+  function menuIsOpen() {
+    return !menuPanelEl.hidden;
+  }
+
+  function closeMenu() {
+    if (!menuIsOpen()) return;
+    menuPanelEl.hidden = true;
+    menuPanelEl.replaceChildren();
+    pillEl.setAttribute("aria-expanded", "false");
+  }
+
+  // Close the menu and put the caret back in the note.
+  function dismissMenuPanel() {
+    if (!menuIsOpen()) return;
+    closeMenu();
+    if (current) render();
+  }
+
+  function noteButton(title, className = "menu-item") {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = className;
+    button.addEventListener("click", () => {
+      const note = notebook.note(title);
+      if (note) openNote(note, { byPage: isOpenedByPage(note) });
+    });
+    return button;
+  }
+
+  function menuHeading(text) {
+    const heading = document.createElement("h2");
+    heading.className = "menu-heading";
+    heading.textContent = text;
+    return heading;
+  }
+
+  function titleList(titles) {
+    const list = document.createElement("div");
+    for (const title of titles) {
+      const button = noteButton(title);
+      button.textContent = title;
+      list.appendChild(button);
+    }
+    return list;
+  }
+
+  // Search results: the title, with the match highlighted in a snippet of the
+  // text (or in the title itself when the title matched).
+  function drawResults(container, query) {
+    container.replaceChildren();
+    const results = notebook.search(query);
+    if (results.length === 0) {
+      const none = document.createElement("p");
+      none.className = "menu-empty";
+      none.textContent = "No notes match";
+      container.appendChild(none);
+      return;
+    }
+    for (const result of results) {
+      const button = noteButton(result.title, "menu-item menu-result");
+      const title = document.createElement("span");
+      title.className = "menu-result-title";
+      if (result.snippet) {
+        title.textContent = result.title;
+        const snippet = document.createElement("span");
+        snippet.className = "menu-snippet";
+        const mark = document.createElement("mark");
+        mark.textContent = result.snippet.match;
+        snippet.append(result.snippet.before, mark, result.snippet.after);
+        button.append(title, snippet);
+      } else {
+        const at = result.title.toLowerCase().indexOf(query.trim().toLowerCase());
+        const end = at + query.trim().length;
+        const mark = document.createElement("mark");
+        mark.textContent = result.title.slice(at, end);
+        title.append(result.title.slice(0, at), mark, result.title.slice(end));
+        button.append(title);
+      }
+      container.appendChild(button);
+    }
+  }
+
+  // Recent notes, then the Notebook: Courses → Lesson Notes, then Concepts.
+  function drawBrowse(container) {
+    container.replaceChildren();
+    const recent = notebook.recentNotes();
+    if (recent.length > 0) {
+      container.append(
+        menuHeading("Recent"),
+        titleList(recent.map((note) => note.title)),
+      );
+    }
+    const outline = notebook.outline();
+    container.appendChild(menuHeading("Notebook"));
+    if (outline.courses.length + outline.uncategorised.length + outline.concepts.length === 0) {
+      const none = document.createElement("p");
+      none.className = "menu-empty";
+      none.textContent = "No notes yet";
+      container.appendChild(none);
+    }
+    for (const { course, titles } of outline.courses) {
+      const details = document.createElement("details");
+      details.className = "menu-course";
+      details.open = true;
+      const summary = document.createElement("summary");
+      summary.textContent = course;
+      details.append(summary, titleList(titles));
+      container.appendChild(details);
+    }
+    if (outline.uncategorised.length > 0) {
+      container.append(menuHeading("No Course"), titleList(outline.uncategorised));
+    }
+    if (outline.concepts.length > 0) {
+      container.append(menuHeading("Concepts"), titleList(outline.concepts));
+    }
+  }
+
+  function openMenu() {
+    if (menuIsOpen()) {
+      menuPanelEl.querySelector(".menu-search").focus();
+      return;
+    }
+    // Flush the line being edited so the menu sees its latest text.
+    session.flush();
+    menuPanelEl.replaceChildren();
+
+    const search = document.createElement("input");
+    search.type = "search";
+    search.className = "menu-search";
+    search.placeholder = "Search titles and text";
+    search.setAttribute("aria-label", "Search notes");
+
+    const body = document.createElement("div");
+    body.className = "menu-body";
+    const refresh = () => {
+      if (search.value.trim()) drawResults(body, search.value);
+      else drawBrowse(body);
+    };
+    search.addEventListener("input", refresh);
+    refresh();
+
+    const actions = document.createElement("div");
+    actions.className = "menu-actions";
+    const newLesson = document.createElement("button");
+    newLesson.type = "button";
+    newLesson.className = "menu-new";
+    newLesson.textContent = "+ Lesson note";
+    newLesson.addEventListener("click", () => {
+      closeMenu();
+      session.close();
+      current = null;
+      openedByPage = false;
+      updatePill();
+      openingFlow.clickLessonNote();
+    });
+    const newConcept = document.createElement("button");
+    newConcept.type = "button";
+    newConcept.className = "menu-new";
+    newConcept.textContent = "+ Concept";
+    newConcept.addEventListener("click", () => {
+      const typed = search.value.trim();
+      openNote(notebook.createConceptNote({ title: typed || "Untitled" }));
+    });
+    actions.append(newLesson, newConcept);
+
+    menuPanelEl.append(search, actions, body);
+    menuPanelEl.hidden = false;
+    pillEl.setAttribute("aria-expanded", "true");
+    search.focus();
+  }
+
+  pillEl.addEventListener("click", () => {
+    if (menuIsOpen()) dismissMenuPanel();
+    else openMenu();
+  });
+
+  // Capture phase, so Ctrl+K reaches us before the page or the browser's own
+  // use of it (Firefox focuses its search bar) once the sidebar has focus.
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        event.stopPropagation();
+        openMenu();
+      } else if (event.key === "Escape" && menuIsOpen()) {
+        event.preventDefault();
+        event.stopPropagation();
+        dismissMenuPanel();
+      }
+    },
+    true,
+  );
 
   // Does a Link's target note already exist? A Link to a note that doesn't
   // (a Missing Link) renders red (#8).
@@ -733,6 +944,7 @@ async function start() {
     session.close();
     current = null;
     openedByPage = false;
+    updatePill();
     noteEl.replaceChildren();
 
     const form = document.createElement("form");
@@ -825,6 +1037,7 @@ async function start() {
     session.close();
     current = null;
     openedByPage = false;
+    updatePill();
     noteEl.replaceChildren();
 
     const wrap = document.createElement("div");
