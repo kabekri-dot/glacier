@@ -150,6 +150,32 @@ export function applySlashCommand(lines, line, col, command) {
   };
 }
 
+// `[[` autocomplete (#9). The text typed after an unclosed `[[` before the
+// caret, or null when the caret is not inside a Link being written.
+export function linkQuery(line, col) {
+  const match = /\[\[([^\[\]]*)$/.exec(line.slice(0, col));
+  return match ? match[1] : null;
+}
+
+// The titles that contain the query, case-insensitively, in their given order.
+export function filterTitles(titles, query) {
+  const needle = query.toLowerCase();
+  return titles.filter((title) => title.toLowerCase().includes(needle));
+}
+
+// Complete the Link being written at (line, col) with the exact `title`: the
+// `[[query` before the caret, and any `]]` already right after it, become
+// `[[Title]]`. Returns the new lines and the caret just after the Link.
+export function applyLinkTitle(lines, line, col, title) {
+  const current = lines[line];
+  const open = current.slice(0, col).lastIndexOf("[[");
+  const rest = current.slice(col).replace(/^\]\]/, "");
+  const head = `${current.slice(0, open)}[[${title}]]`;
+  const next = lines.slice();
+  next[line] = head + rest;
+  return { lines: next, line, col: head.length };
+}
+
 // Enter at (line, col): split the current line. In a bullet the new line keeps
 // the marker so the list continues; an empty bullet instead ends the list,
 // leaving a blank line where the marker was. Returns the new lines and caret.

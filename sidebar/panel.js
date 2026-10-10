@@ -88,7 +88,10 @@ async function start() {
   // the opening of notes (openNote); a text change is forwarded to the Note
   // session, which owns saving the open note.
   const session = createNoteSession({ notebook, onSaveError: reportSaveError });
-  const editor = createEditorSession({ onChange: (body) => session.edit(body) });
+  const editor = createEditorSession({
+    onChange: (body) => session.edit(body),
+    titles: () => notebook.notes().map((note) => note.title),
+  });
 
   // Open a note in the editor: flush any pending save for the note we're
   // leaving, load the new note's lines and draw it with the caret at the top.
@@ -205,7 +208,7 @@ async function start() {
       // using it (ADR 0006).
       const md = document.createElement("span");
       md.className = "slash-md";
-      md.textContent = command.markdown;
+      md.textContent = command.markdown ?? "";
       item.append(label, md);
       // Moving the mouse over a command selects it, so mouse and ↑/↓ share one
       // highlight. (mousemove, not hover: a menu that opens under a resting
