@@ -349,6 +349,27 @@ async function start() {
     selection.addRange(range);
   }
 
+  // One part of the focused line: a faded mark, or text in its inline style
+  // (#38) — bold, italic, code, a Link or a web link.
+  function styledPart(part) {
+    let node = document.createElement(part.code ? "code" : "span");
+    if (part.type === "mark") node.className = "md-mark";
+    if (part.link) node.className = "md-link";
+    if (part.url) node.className = "md-url";
+    node.textContent = part.text;
+    if (part.italic) {
+      const em = document.createElement("em");
+      em.appendChild(node);
+      node = em;
+    }
+    if (part.bold) {
+      const strong = document.createElement("strong");
+      strong.appendChild(node);
+      node = strong;
+    }
+    return node;
+  }
+
   // One line of the focused block as styled spans, its marks faded (#37). The
   // parts join back to the raw line, so the element's text stays the Markdown.
   function styledLine(line) {
@@ -356,12 +377,7 @@ async function start() {
     const wrap = document.createElement("span");
     wrap.className =
       spans.kind === "heading" ? `md-h md-h${spans.level}` : `md-${spans.kind}`;
-    for (const part of spans.parts) {
-      const span = document.createElement("span");
-      if (part.type === "mark") span.className = "md-mark";
-      span.textContent = part.text;
-      wrap.appendChild(span);
-    }
+    for (const part of spans.parts) wrap.appendChild(styledPart(part));
     return wrap;
   }
 

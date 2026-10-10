@@ -300,6 +300,18 @@ function inlineSegments(content, style = {}) {
         continue;
       }
     }
+    // A web link `[text](address)`: its brackets and `(address)` are marker
+    // segments, so only the text is drawn.
+    const webLink = /^\[([^[\]]+)\]\(([^()\s]+)\)/.exec(content.slice(i));
+    if (webLink) {
+      flushPlain();
+      const [whole, text, url] = webLink;
+      segs.push({ raw: "[", text: "", kind: "marker" });
+      segs.push({ raw: text, text, kind: "url", url });
+      segs.push({ raw: `](${url})`, text: "", kind: "marker" });
+      i += whole.length;
+      continue;
+    }
     if (content.startsWith("***", i)) {
       const end = content.indexOf("***", i + 3);
       if (end > i + 3) {
@@ -443,6 +455,8 @@ function inlineHtml(segments, linkExists) {
       const missing = linkExists ? !linkExists(seg.title) : false;
       const cls = missing ? "md-link md-link-missing" : "md-link";
       html += `<a class="${cls}" data-link-title="${escapeAttr(seg.title)}">${escapeHtml(seg.text)}</a>`;
+    } else if (seg.kind === "url") {
+      html += `<span class="md-url" title="${escapeAttr(seg.url)}">${escapeHtml(seg.text)}</span>`;
     } else if (seg.kind === "plain") {
       let text = escapeHtml(seg.text);
       if (seg.italic) text = `<em>${text}</em>`;
@@ -458,7 +472,8 @@ function inlineHtml(segments, linkExists) {
 // built from the same shared line description that maps a click back (#33), so
 // what is drawn and what a click maps to can never drift apart. Headings lose
 // their `#`, bullets get a dot, bold, italic and inline code become `<strong>`/`<em>`/`<code>`,
-// Links become click targets; everything else is escaped text. An empty line
+// Links become click targets, a web link `[text](url)` shows just its text;
+// everything else is escaped text. An empty line
 // keeps its height with a `<br>`. `linkExists` lets the caller mark Missing
 // Links (see inlineHtml).
 export function renderLineHtml(line, linkExists) {
@@ -477,19 +492,19 @@ export function renderLineHtml(line, linkExists) {
 }
 
 // The line you're on, split for drawing while you type (ADR 0006 addition,
-// #37). Unlike the other lines, its Markdown marks stay visible — faded — so
-// the drawn text is exactly the raw line and a caret offset in it is a raw
+// #37, #38). Unlike the other lines, its Markdown marks stay visible — faded —
+// so the drawn text is exactly the raw line and a caret offset in it is a raw
 // offset. Returns the line's kind (heading, list, quote, fence or plain), the
 // heading level, and its parts: "mark" for the Markdown that makes the
-// formatting, "text" for the rest. A mark counts only once it is complete
-// (`## `, not `##`), so half-typed formatting stays plain. Inline formatting
-// on this line is left as text for now.
+// formatting, "text" for the rest. A text part may be `bold`, `italic`,
+// `code`, a Link (`link`) or a web link (`url`). A mark counts only once it is
+// complete (`## `, `**word**`), so half-typed formatting stays plain. Inline
+// formatting is read by the same inlineSegments as the rendered lines.
 export function focusedLineSpans(line) {
   const withMark = (kind, mark, extra = {}) => {
-    const parts = [{ type: "mark", text: mark }];
     const rest = line.slice(mark.length);
-    if (rest !== "") parts.push({ type: "text", text: rest });
-    return { kind, ...extra, parts };
+    const inline = kind === "fence" ? textParts(rest) : inlineParts(rest);
+    return { kind, ...extra, parts: [{ type: "mark", text: mark }, ...inline] };
   };
   const heading = /^(#{1,3})\s+/.exec(line);
   if (heading) return withMark("heading", heading[0], { level: heading[1].length });
@@ -498,5 +513,24 @@ export function focusedLineSpans(line) {
   const quote = /^>\s+/.exec(line);
   if (quote) return withMark("quote", quote[0]);
   if (isFence(line)) return withMark("fence", "```");
-  return { kind: "plain", parts: line === "" ? [] : [{ type: "text", text: line }] };
+  return { kind: "plain", parts: inlineParts(line) };
+}
+
+function textParts(text) {
+  return text === "" ? [] : [{ type: "text", text }];
+}
+
+// Inline segments as focused-line parts: every marker keeps its raw Markdown
+// as a visible mark, and the rest keeps its styling.
+function inlineParts(content) {
+  return inlineSegments(content).map((seg) => {
+    if (seg.kind === "marker") return { type: "mark", text: seg.raw };
+    const part = { type: "text", text: seg.raw };
+    if (seg.bold) part.bold = true;
+    if (seg.italic) part.italic = true;
+    if (seg.kind === "code") part.code = true;
+    if (seg.kind === "link") part.link = true;
+    if (seg.kind === "url") part.url = seg.url;
+    return part;
+  });
 }
