@@ -455,3 +455,80 @@ test("a note nobody links to has no Backlinks", () => {
   notebook.createConceptNote({ title: "Alone" });
   assert.deepEqual(notebook.backlinks("Alone"), []);
 });
+
+function renameFixture() {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  const box = notebook.createConceptNote({ title: "Box model" });
+  const lesson = notebook.createLessonNote({
+    title: "CSS basics",
+    source: "https://example.com/css",
+    course: "TOP",
+  });
+  notebook.saveBody(lesson.title, "See [[Box model]] and [[Box model 2]] and [[Box model]].");
+  notebook.createConceptNote({ title: "Box model 2" });
+  return { notebook, box, lesson };
+}
+
+test("rename rewrites every exact [[Old Title]] and nothing else", () => {
+  const { notebook } = renameFixture();
+  const result = notebook.renameNote("Box model", "Boxes");
+  assert.equal(result.ok, true);
+  assert.equal(
+    notebook.note("CSS basics").body,
+    "See [[Boxes]] and [[Box model 2]] and [[Boxes]].",
+  );
+});
+
+test("a renamed note has its new title and the old one is gone", () => {
+  const { notebook } = renameFixture();
+  const result = notebook.renameNote("Box model", "Boxes");
+  assert.equal(result.note.title, "Boxes");
+  assert.equal(notebook.note("Box model"), undefined);
+  assert.equal(notebook.note("Boxes").type, "concept");
+});
+
+test("rename rewrites Links inside the renamed note itself", () => {
+  const { notebook } = renameFixture();
+  notebook.saveBody("Box model", "I am [[Box model]].");
+  notebook.renameNote("Box model", "Boxes");
+  assert.equal(notebook.note("Boxes").body, "I am [[Boxes]].");
+});
+
+test("Backlinks still work after a rename", () => {
+  const { notebook } = renameFixture();
+  notebook.renameNote("Box model", "Boxes");
+  assert.deepEqual(
+    notebook.backlinks("Boxes").map((note) => note.title),
+    ["CSS basics"],
+  );
+});
+
+test("a taken title is refused and a free alternative suggested", () => {
+  const { notebook } = renameFixture();
+  const result = notebook.renameNote("Box model", "CSS basics");
+  assert.equal(result.ok, false);
+  assert.equal(notebook.note("CSS basics").body.includes("[[Box model]]"), true);
+  assert.notEqual(result.suggestion, "CSS basics");
+  assert.equal(notebook.note(result.suggestion), undefined);
+});
+
+test("the suggestion for a taken title adds the Course of a Lesson Note", () => {
+  const { notebook } = renameFixture();
+  notebook.createLessonNote({ title: "Intro", source: "https://e.com/a", course: "TOP" });
+  const other = notebook.createLessonNote({ title: "Other", source: "https://e.com/b", course: "Khan" });
+  const result = notebook.renameNote(other.title, "Intro");
+  assert.equal(result.suggestion, "Intro (Khan)");
+});
+
+test("renaming a note to its own title changes nothing", () => {
+  const { notebook } = renameFixture();
+  const result = notebook.renameNote("Box model", "Box model");
+  assert.equal(result.ok, true);
+  assert.equal(notebook.note("Box model").title, "Box model");
+});
+
+test("a blank new title is refused", () => {
+  const { notebook } = renameFixture();
+  assert.equal(notebook.renameNote("Box model", "   ").ok, false);
+  assert.notEqual(notebook.note("Box model"), undefined);
+});

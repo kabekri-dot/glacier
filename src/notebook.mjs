@@ -48,6 +48,22 @@ export function normalizeSource(url) {
   }
 }
 
+// The text with every Link to `oldTitle` pointing at `newTitle` instead.
+function rewriteLinks(body, oldTitle, newTitle) {
+  if (!body) {
+    return body;
+  }
+  let result = "";
+  let from = 0;
+  for (const link of findLinks(body)) {
+    if (link.title === oldTitle) {
+      result += body.slice(from, link.start) + `[[${newTitle}]]`;
+      from = link.end;
+    }
+  }
+  return result + body.slice(from);
+}
+
 export function createNotebook({ storage }) {
   if (!storage) {
     throw new Error("createNotebook needs a storage plug-in");
@@ -295,6 +311,38 @@ export function createNotebook({ storage }) {
         .map((title) => storage.getNote(title))
         .filter(Boolean)
         .slice(0, limit);
+    },
+
+    // Change a note's title and rewrite every `[[Old Title]]` in every note to
+    // `[[New Title]]`, so no connection breaks (ADR 0005). Only exact Links are
+    // touched: `[[Old Title 2]]` stays. A title that is already taken is
+    // refused with a free alternative to offer instead.
+    renameNote(oldTitle, newTitle) {
+      const note = storage.getNote(oldTitle);
+      const title = (newTitle ?? "").trim();
+      if (!note || !title) {
+        return { ok: false };
+      }
+      if (title === oldTitle) {
+        return { ok: true, note };
+      }
+      if (titleTaken(title)) {
+        return { ok: false, suggestion: uniqueTitle(title, note.course) };
+      }
+      for (const other of storage.allNotes()) {
+        const body = rewriteLinks(other.body, oldTitle, title);
+        if (body !== other.body) {
+          storage.putNote({ ...other, body });
+        }
+      }
+      const renamed = { ...storage.getNote(oldTitle), title };
+      storage.deleteNote(oldTitle);
+      storage.putNote(renamed);
+      const recent = storage.getMeta(RECENT);
+      if (recent) {
+        storage.putMeta(RECENT, recent.map((t) => (t === oldTitle ? title : t)));
+      }
+      return { ok: true, note: renamed };
     },
 
     // Save the note's Markdown body. The editor calls this as you type, so
