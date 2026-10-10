@@ -848,3 +848,85 @@ test("Shift+Enter inside formatting undoes as one step", () => {
   assert.deepEqual(editor.state.lines, ["**key**"]);
   assert.deepEqual(editor.state.focus, { line: 0, col: 4 });
 });
+
+// `[[` autocomplete (#9): typing `[[` suggests note titles, and picking one
+// completes the Link with the exact title. The titles come from the Notebook,
+// plugged in as a function.
+
+function linkEditor(titles, value = "[[", caret = value.length) {
+  const editor = createEditorSession({ titles: () => titles });
+  editor.load("");
+  editor.edit(value, caret);
+  editor.refreshMenu();
+  return editor;
+}
+
+const titleList = (editor) => editor.menu.commands.map((c) => c.label);
+
+test("typing [[ opens suggestions of every note title", () => {
+  const editor = linkEditor(["Box model", "Flexbox"]);
+  assert.deepEqual(titleList(editor), ["Box model", "Flexbox"]);
+});
+
+test("typing after [[ keeps only the titles that match, ignoring case", () => {
+  const editor = linkEditor(["Box model", "Flexbox", "Boxing"], "[[box");
+  assert.deepEqual(titleList(editor), ["Box model", "Flexbox", "Boxing"]);
+  const narrower = linkEditor(["Box model", "Flexbox"], "[[box m");
+  assert.deepEqual(titleList(narrower), ["Box model"]);
+});
+
+test("Enter completes the Link with the exact title and puts the caret after it", () => {
+  const editor = linkEditor(["Box model", "Flexbox"], "see [[box");
+  assert.equal(editor.menuKey("Enter", { value: "see [[box", caret: 9 }), "pick");
+  assert.deepEqual(editor.state.lines, ["see [[Box model]]"]);
+  assert.deepEqual(editor.state.focus, { line: 0, col: 17 });
+  assert.equal(editor.menu, null);
+});
+
+test("Tab completes the Link too, and ↓ picks another suggestion first", () => {
+  const editor = linkEditor(["Box model", "Flexbox"]);
+  assert.equal(editor.menuKey("ArrowDown", { value: "[[", caret: 2 }), "nav");
+  assert.equal(editor.menuKey("Tab", { value: "[[", caret: 2 }), "pick");
+  assert.deepEqual(editor.state.lines, ["[[Flexbox]]"]);
+});
+
+test("completing a Link swallows closing brackets already after the caret", () => {
+  const editor = linkEditor(["Box model"], "[[bo]] and more", 4);
+  editor.menuKey("Enter", { value: "[[bo]] and more", caret: 4 });
+  assert.deepEqual(editor.state.lines, ["[[Box model]] and more"]);
+  assert.deepEqual(editor.state.focus, { line: 0, col: 13 });
+});
+
+test("Esc closes the suggestions and leaves the text alone", () => {
+  const editor = linkEditor(["Box model"], "[[bo");
+  assert.equal(editor.menuKey("Escape", { value: "[[bo", caret: 4 }), "dismiss");
+  assert.deepEqual(editor.state.lines, ["[[bo"]);
+  assert.equal(editor.menu, null);
+});
+
+test("a title that matches no note opens no suggestions, so typing it still works", () => {
+  const editor = linkEditor(["Box model"], "[[Grid layout");
+  assert.equal(editor.menu, null);
+  assert.equal(editor.menuKey("Enter", { value: "[[Grid layout", caret: 13 }), "none");
+});
+
+test("typing the closing brackets closes the suggestions", () => {
+  const editor = linkEditor(["Box model"], "[[Box model]]");
+  assert.equal(editor.menu, null);
+});
+
+test("no suggestions open inside a code block", () => {
+  const editor = createEditorSession({ titles: () => ["Box model"] });
+  editor.load("```\n[[\n```");
+  editor.moveTo(1, 2);
+  editor.refreshMenu();
+  assert.equal(editor.menu, null);
+});
+
+test("without a titles source [[ opens nothing", () => {
+  const editor = createEditorSession();
+  editor.load("[[");
+  editor.moveTo(0, 2);
+  editor.refreshMenu();
+  assert.equal(editor.menu, null);
+});

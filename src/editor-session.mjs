@@ -28,6 +28,9 @@ import {
   slashQuery,
   filterCommands,
   applySlashCommand,
+  linkQuery,
+  filterTitles,
+  applyLinkTitle,
   toggleFormat,
   renderedToRaw,
   linkAtRendered,
@@ -35,6 +38,7 @@ import {
 
 export function createEditorSession({
   onChange,
+  titles = () => [],
   pause = 800,
   setTimer = setTimeout,
   clearTimer = clearTimeout,
@@ -166,38 +170,53 @@ export function createEditorSession({
     };
   }
 
-  // The focused block is a fenced code block: there `/` is just code, so the
-  // command menu must never open (#6).
+  // The focused block is a fenced code block: there `/` and `[[` are just code,
+  // so no menu must open (#6).
   function inCodeBlock() {
     return isFence(lines[blockStart]);
   }
 
-  // The `/` command query at the caret, or null when the caret isn't on one —
-  // which includes inside a code block, where `/` is just code (#6). This is the
-  // one place the open-the-menu rule is decided.
-  function slashQueryAtCaret() {
-    return inCodeBlock() ? null : slashQuery(lines[focus.line] ?? "", focus.col);
+  // What the caret is typing, or null: a `/` command, or a Link after `[[`
+  // (#9) — { kind, query }. Both are null inside a code block. This is the one
+  // place the open-the-menu rule is decided.
+  function menuQueryAtCaret() {
+    if (inCodeBlock()) return null;
+    const line = lines[focus.line] ?? "";
+    const link = linkQuery(line, focus.col);
+    if (link !== null) return { kind: "link", query: link };
+    const slash = slashQuery(line, focus.col);
+    return slash === null ? null : { kind: "command", query: slash };
+  }
+
+  // The rows the menu shows for what is being typed. Link rows carry the exact
+  // note title as their label.
+  function menuItems({ kind, query }) {
+    if (kind === "command") return filterCommands(query);
+    return filterTitles(titles(), query).map((title) => ({ label: title }));
   }
 
   // Recompute the menu for the current caret. The menu opens only when the caret
-  // sits on a `/` command (slashQuery) outside a code block; a new query starts
-  // the highlight at the top. `allowOpen` false (a plain caret move) only
-  // updates or closes a menu that is already open — it never opens a fresh one.
+  // sits on a `/` command or inside a `[[` Link outside a code block; a new
+  // query starts the highlight at the top. `allowOpen` false (a plain caret
+  // move) only updates or closes a menu that is already open. A `[[` with no
+  // matching title shows nothing, so a title that doesn't exist yet types on.
   function syncMenu(allowOpen) {
-    const query = slashQueryAtCaret();
-    const commands = query === null ? [] : filterCommands(query);
+    const typing = menuQueryAtCaret();
+    const commands = typing === null ? [] : menuItems(typing);
     if (commands.length === 0) {
       menu = null;
       return;
     }
+    const { kind, query } = typing;
     if (!menu) {
       if (!allowOpen) return;
-      menu = { commands, selected: 0, query };
+      menu = { kind, commands, selected: 0, query };
       return;
     }
     // A new query is a new list: start from the top, so the highlight never
     // silently lands on a different command than the one shown before.
-    if (query !== menu.query) menu.selected = 0;
+    if (query !== menu.query || kind !== menu.kind) menu.selected = 0;
+    menu.kind = kind;
     menu.commands = commands;
     menu.query = query;
   }
@@ -211,7 +230,10 @@ export function createEditorSession({
     recordStep({ before: plusOrigin && beforePlus ? beforePlus : snapshot() });
     plusOrigin = null;
     beforePlus = null;
-    const next = applySlashCommand(lines, focus.line, focus.col, command);
+    const next =
+      menu.kind === "link"
+        ? applyLinkTitle(lines, focus.line, focus.col, command.label)
+        : applySlashCommand(lines, focus.line, focus.col, command);
     lines = next.lines;
     focus = { line: next.line, col: next.col };
     menu = null;
@@ -373,7 +395,7 @@ export function createEditorSession({
       if (isComposing) return "none";
       const here = lineColFromOffset(value, caret);
       focus = { line: here.line, col: here.col };
-      if (slashQueryAtCaret() === null) {
+      if (menuQueryAtCaret() === null) {
         menu = null;
         return "none";
       }
