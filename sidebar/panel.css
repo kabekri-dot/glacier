@@ -37,7 +37,7 @@ body {
 /* The note fills the sidebar and must stay usable from about 260px wide. */
 .note {
   min-height: 100%;
-  padding: 1.5rem 1.25rem;
+  padding: 3.25rem 1.25rem 1.5rem;
   /* Faint ruled lines, like a real notebook. */
   background-image: repeating-linear-gradient(
     var(--glacier-paper),
@@ -45,7 +45,7 @@ body {
     var(--glacier-rule) calc(var(--glacier-line-height) - 1px),
     var(--glacier-rule) var(--glacier-line-height)
   );
-  background-position: 0 calc(1.5rem - var(--glacier-rule-shift));
+  background-position: 0 calc(3.25rem - var(--glacier-rule-shift));
 }
 
 /* Each line is its own block. Rendered blocks and the current line share the
@@ -366,4 +366,160 @@ code {
 
 .save-error[hidden] {
   display: none;
+}
+
+/* The Zen pill: the one control on the page. It shows the open note's title and
+   the sync dot, and opens the menu. */
+.pill {
+  position: fixed;
+  top: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: calc(100% - 1.5rem);
+  padding: 0.2rem 0.8rem;
+  border: 1px solid var(--glacier-rule);
+  border-radius: 999px;
+  background: var(--glacier-paper);
+  color: var(--glacier-ink);
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1.4rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(27, 42, 74, 0.12);
+}
+
+.pill-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sync-dot {
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--glacier-accent);
+}
+
+.menu {
+  position: fixed;
+  top: 2.6rem;
+  left: 0.5rem;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  background: var(--glacier-paper);
+  border: 1px solid var(--glacier-rule);
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(27, 42, 74, 0.18);
+  font-size: 0.95rem;
+}
+
+.menu[hidden] {
+  display: none;
+}
+
+.menu-search {
+  width: 100%;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--glacier-rule);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--glacier-ink);
+  font: inherit;
+}
+
+.menu-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.menu-new {
+  flex: 1;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--glacier-accent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--glacier-accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.menu-new:hover {
+  background: rgba(63, 120, 196, 0.1);
+}
+
+.menu-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.menu-heading {
+  margin: 0.6rem 0 0.2rem;
+  font-size: 0.75rem;
+  font-weight: normal;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--glacier-accent);
+}
+
+.menu-course summary {
+  cursor: pointer;
+  padding: 0.2rem 0;
+}
+
+.menu-course .menu-item {
+  padding-left: 1rem;
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.25rem 0.4rem;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--glacier-ink);
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.menu-item:hover,
+.menu-item:focus {
+  background: rgba(63, 120, 196, 0.12);
+  outline: none;
+}
+
+.menu-result {
+  white-space: normal;
+}
+
+.menu-snippet {
+  display: block;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.menu mark {
+  background: rgba(63, 120, 196, 0.28);
+  color: inherit;
+  border-radius: 2px;
+}
+
+.menu-empty {
+  margin: 0.4rem 0;
+  opacity: 0.7;
 }

@@ -7,7 +7,12 @@
     <link rel="stylesheet" href="panel.css" />
   </head>
   <body>
-    <!-- Zen layout: only the page. The pill, menu and sync come in later slices. -->
+    <!-- Zen layout: only the page, plus one pill on top that opens the menu. -->
+    <button type="button" class="pill" aria-haspopup="true" aria-expanded="false">
+      <span class="pill-title">Glacier</span>
+      <span class="sync-dot" title="Saved in this browser"></span>
+    </button>
+    <div class="menu" hidden></div>
     <main class="note" aria-label="Note"></main>
     <!-- Shown only when a save to this browser's copy fails (issue #25). -->
     <p class="save-error" role="alert" hidden>
