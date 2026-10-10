@@ -764,3 +764,87 @@ test("Ctrl+B in a code block changes nothing", () => {
   assert.deepEqual(editor.state.lines, ["```", "code", "```"]);
   assert.equal(editor.undo(), false);
 });
+
+// Enter and Shift+Enter inside bold, italic and code (#45).
+
+function enterAt(body, col, shift = false) {
+  const { editor } = editorWithHistory(body);
+  editor.moveTo(0, col);
+  if (shift) editor.lineBreak(body, col, col);
+  else editor.enter(body, col, col);
+  return editor;
+}
+
+test("Enter at the end of bold jumps past the closing marks without a new line", () => {
+  const editor = enterAt("**key**", 5);
+  assert.deepEqual(editor.state.lines, ["**key**"]);
+  assert.deepEqual(editor.state.focus, { line: 0, col: 7 });
+});
+
+test("Enter in the middle of bold jumps to the end instead of splitting", () => {
+  const editor = enterAt("**key**", 4);
+  assert.deepEqual(editor.state.lines, ["**key**"]);
+  assert.deepEqual(editor.state.focus, { line: 0, col: 7 });
+});
+
+test("Enter in bold italic and in nested formatting jumps past the outermost pair", () => {
+  assert.deepEqual(enterAt("***both***", 6).state.focus, { line: 0, col: 10 });
+  assert.deepEqual(enterAt("**bold _it_** x", 10).state.focus, { line: 0, col: 13 });
+});
+
+test("a second Enter after leaving the formatting makes the new line", () => {
+  const editor = enterAt("**key**", 5);
+  editor.enter("**key**", 7, 7);
+  assert.deepEqual(editor.state.lines, ["**key**", ""]);
+});
+
+test("Enter outside formatting still splits and continues lists", () => {
+  assert.deepEqual(enterAt("**key** more", 12).state.lines, ["**key** more", ""]);
+  assert.deepEqual(enterAt("- **key** a", 11).state.lines, ["- **key** a", "- "]);
+});
+
+test("Enter inside inline code steps out past the closing backtick", () => {
+  assert.deepEqual(enterAt("`code`", 3).state.focus, { line: 0, col: 6 });
+});
+
+test("Enter inside a fenced code block still adds a line", () => {
+  const { editor } = editorWithHistory("```\n**a**\n```");
+  editor.moveTo(1, 3);
+  editor.enter("**a**", 3, 3);
+  assert.equal(editor.state.lines.length, 4);
+});
+
+test("Shift+Enter at the end of bold closes and reopens the marks on the new line", () => {
+  const editor = enterAt("**key**", 5, true);
+  assert.deepEqual(editor.state.lines, ["**key**", "****"]);
+  assert.deepEqual(editor.state.focus, { line: 1, col: 2 });
+});
+
+test("Shift+Enter in the middle of bold keeps both halves bold", () => {
+  const editor = enterAt("**key**", 4, true);
+  assert.deepEqual(editor.state.lines, ["**ke**", "**y**"]);
+  assert.deepEqual(editor.state.focus, { line: 1, col: 2 });
+});
+
+test("Shift+Enter in bold italic carries both marks", () => {
+  const editor = enterAt("***both***", 7, true);
+  assert.deepEqual(editor.state.lines, ["***bo***", "***th***"]);
+});
+
+test("Shift+Enter leaves a list item's start alone", () => {
+  const editor = enterAt("- **key**", 7, true);
+  assert.deepEqual(editor.state.lines, ["- **key**", "****"]);
+});
+
+test("Shift+Enter outside formatting is left to the browser", () => {
+  const { editor } = editorWithHistory("plain");
+  assert.equal(editor.lineBreak("plain", 3, 3), false);
+  assert.deepEqual(editor.state.lines, ["plain"]);
+});
+
+test("Shift+Enter inside formatting undoes as one step", () => {
+  const editor = enterAt("**key**", 4, true);
+  editor.undo();
+  assert.deepEqual(editor.state.lines, ["**key**"]);
+  assert.deepEqual(editor.state.focus, { line: 0, col: 4 });
+});

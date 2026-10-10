@@ -22,6 +22,8 @@ import {
   blockRanges,
   isFence,
   pressEnter,
+  columnAfterFormatting,
+  breakInsideFormatting,
   pressBackspace,
   slashQuery,
   filterCommands,
@@ -463,8 +465,17 @@ export function createEditorSession({
     // Enter at the caret: split the line, continuing a list or ending an empty
     // bullet (editor-model). A selection [selStart, selEnd] is deleted first.
     enter(value, selStart, selEnd) {
-      recordStep();
       const here = lineColFromOffset(value, selStart);
+      // Inside bold, italic or code, Enter only steps out past the closing
+      // marks (#45); a second Enter makes the new line.
+      const out = selStart === selEnd && columnAfterFormatting(lines, here.line, here.col);
+      if (typeof out === "number") {
+        endTypingRun();
+        focus = { line: here.line, col: out };
+        relayout();
+        return;
+      }
+      recordStep();
       if (selStart !== selEnd) {
         const end = lineColFromOffset(value, selEnd);
         lines[here.line] =
@@ -475,6 +486,23 @@ export function createEditorSession({
       focus = { line: next.line, col: next.col };
       relayout();
       notifyChange();
+    },
+
+    // Shift+Enter inside bold, italic or code (#45): close the marks, start a
+    // new line and reopen them there. Returns false when the caret is not
+    // inside formatting (or text is selected), leaving the key as it is today.
+    lineBreak(value, selStart, selEnd) {
+      if (selStart !== selEnd) return false;
+      const here = lineColFromOffset(value, selStart);
+      const next = breakInsideFormatting(lines, here.line, here.col);
+      if (!next) return false;
+      recordStep();
+      beforePlus = null;
+      lines = next.lines;
+      focus = { line: next.line, col: next.col };
+      relayout();
+      notifyChange();
+      return true;
     },
 
     // Ctrl+B / Ctrl+I / Ctrl+E (#44): turn bold, italic or inline code

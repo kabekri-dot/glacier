@@ -584,6 +584,14 @@ async function start() {
         return;
       }
 
+      if (event.key === "Enter" && !isCode && event.shiftKey && !event.isComposing) {
+        if (editor.lineBreak(value, selection.start, selection.end)) {
+          event.preventDefault();
+          render();
+          return;
+        }
+      }
+
       if (
         event.key === "Backspace" &&
         selection.start === 0 &&
