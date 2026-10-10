@@ -150,6 +150,20 @@ async function start() {
     render();
   }
 
+  // A click on the bare paper below the last line: the session adds empty lines
+  // down to the ruled row that was clicked and puts the caret there (#35). Clicks
+  // on a line itself are handled by that line, so only the paper itself counts.
+  noteEl.addEventListener("mousedown", (event) => {
+    if (event.target !== noteEl || !noteEl.lastElementChild) return;
+    const below = event.clientY - noteEl.lastElementChild.getBoundingClientRect().bottom;
+    if (below < 0) return;
+    event.preventDefault();
+    const rowHeight = parseFloat(getComputedStyle(noteEl).lineHeight);
+    editor.dismissMenu();
+    editor.clickPaper(Math.floor(below / rowHeight));
+    render();
+  });
+
   // The `/` command menu's list element while it is open, or null. All the menu
   // decisions — when it opens, what it shows, the highlight, picking, dismissing
   // and the + placement — live in the Editor session (#32); this element just

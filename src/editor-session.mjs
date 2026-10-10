@@ -48,6 +48,12 @@ export function createEditorSession({ onChange } = {}) {
   // untouched one back out again (#28): { line, added }, where `added` means +
   // inserted a whole new line rather than reusing an empty one.
   let plusOrigin = null;
+  // Empty lines a click on the bare paper added below the note (#35): the index
+  // of the first one, or null. They are dropped again when the caret leaves
+  // without them having been used; `padEdited` records that typing happened
+  // there, so dropping them has to be saved too.
+  let padStart = null;
+  let padEdited = false;
 
   // Recompute the focused block's span for the current caret line.
   function relayout() {
@@ -63,7 +69,24 @@ export function createEditorSession({ onChange } = {}) {
   // ↑/↓ crossing a block): the focused block span is recomputed.
   function moveTo(line, col) {
     focus = { line, col };
+    dropPadding();
     relayout();
+  }
+
+  // Drop the trailing empty lines a paper click added, down to (not including)
+  // the caret's line, so leaving without typing saves nothing extra (#35).
+  function dropPadding() {
+    if (padStart === null) return;
+    const keep = Math.max(padStart, focus.line + 1);
+    const before = lines.length;
+    while (lines.length > keep && lines[lines.length - 1] === "") lines.pop();
+    if (lines.length <= padStart) {
+      padStart = null;
+      if (padEdited && lines.length !== before) notifyChange();
+      padEdited = false;
+    } else if (padEdited && lines.length !== before) {
+      notifyChange();
+    }
   }
 
   // Report a text change as the body the sidebar should save.
@@ -187,10 +210,22 @@ export function createEditorSession({ onChange } = {}) {
       lines = splitIntoLines(editorTextToBody(body ?? ""));
       if (lines.length === 0) lines = [""];
       focus = { line: 0, col: 0 };
+      padStart = null;
+      padEdited = false;
       relayout();
     },
 
     moveTo,
+
+    // A click on the bare paper, `rowsBelow` ruled rows under the last line
+    // (0 = the first row below it): add empty lines down to that row and put
+    // the caret there, so the text lands where the click did (#35).
+    clickPaper(rowsBelow) {
+      if (padStart === null) padStart = lines.length;
+      for (let i = 0; i <= rowsBelow; i += 1) lines.push("");
+      focus = { line: lines.length - 1, col: 0 };
+      relayout();
+    },
 
     // A click the sidebar located in a drawn line, as the rendered-text offset
     // the click fell on (#33). The sidebar finds the position; the session
@@ -322,6 +357,7 @@ export function createEditorSession({ onChange } = {}) {
     // sidebar re-renders), false while a code block stays one editable unit.
     edit(value, caret) {
       const wasCode = isFence(lines[blockStart]);
+      if (padStart !== null) padEdited = true;
       const newLines = value.split("\n");
       lines.splice(blockStart, blockCount, ...newLines);
       blockCount = newLines.length;
