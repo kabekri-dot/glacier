@@ -3,8 +3,9 @@
 // It decides between the start prompt, the permission card (ADR 0008), the
 // page's Lesson Note, the lesson form, the new-note form, or keeping the open
 // note (decidePageOpen, #29, #50): the sidebar always shows the note of the
-// website tab you are on, and a non-website page keeps the open note. It owns "is this a lesson page" (http or https
-// only) and the latest-change-wins rule for quick tab switches.
+// website tab you are on, and a non-website page keeps the open note. It owns
+// "is this a lesson page" (http or https only) and the latest-change-wins rule
+// for quick tab switches.
 //
 // The browser is plugged in as a small "browser page" port, so tests can use a
 // fake page and panel.js only draws what the flow shows:

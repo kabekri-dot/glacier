@@ -5,7 +5,8 @@ import { decidePageOpen, isOpenedByPage } from "../src/page-open.mjs";
 // When the page behind the sidebar changes (a tab switch or a navigation),
 // Glacier must decide whether to follow it. By default a website always wins
 // (#50); with `keepUserOpenedNotes` a note the user opened themselves stays put
-// and only a page-opened Lesson Note, or an empty panel, follows the page (#29). This is the pure decision; panel.js does the drawing and the
+// and only a page-opened Lesson Note, or an empty panel, follows the page
+// (#29). This is the pure decision; panel.js does the drawing and the
 // latest-change-wins ordering around it.
 
 // A page-opened Lesson Note for one page; a note the user navigated to.
