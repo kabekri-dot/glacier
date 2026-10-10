@@ -14,7 +14,7 @@
 
 import { createNotebook } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
-import { createSaveScheduler } from "../src/save-scheduler.mjs";
+import { createNoteSession } from "../src/note-session.mjs";
 import { decidePageOpen } from "../src/page-open.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
 import {
@@ -77,12 +77,10 @@ async function start() {
   // Backspace, ↑/↓, paste, the `/` command menu with the + button and the
   // cursor maths — live behind this front door (#31, #32, ADR 0002). This file
   // only forwards what happened and draws editor.state and editor.menu; it does
-  // the saving (a text change reports the body to schedule) and the opening of
-  // notes (openNote).
-  const scheduler = createSaveScheduler({
-    save: (body) => notebook.saveBody(current.title, body),
-  });
-  const editor = createEditorSession({ onChange: (body) => scheduler.schedule(body) });
+  // the opening of notes (openNote); a text change is forwarded to the Note
+  // session, which owns saving the open note.
+  const session = createNoteSession({ notebook, onSaveError: reportSaveError });
+  const editor = createEditorSession({ onChange: (body) => session.edit(body) });
 
   // Open a note in the editor: flush any pending save for the note we're
   // leaving, load the new note's lines and draw it with the caret at the top.
@@ -91,7 +89,7 @@ async function start() {
     // Leaving a note with the menu open is a dismissal, so an untouched + `/`
     // is taken back out before the note we're leaving is saved (#28).
     editor.dismissMenu();
-    scheduler.flush();
+    session.open(note);
     current = note;
     openedByPage = byPage;
     editor.load(current.body ?? "");
@@ -545,8 +543,7 @@ async function start() {
   // and "+ New note" (by hand, no Source). Creating opens the new note so you
   // can type in it straight away — never a dead end (#3).
   function showCreateForm({ heading, titleValue, source, buttonText }) {
-    // Any edit to the note we're leaving must reach storage before we drop it.
-    scheduler.flush();
+    session.close();
     current = null;
     openedByPage = false;
     noteEl.replaceChildren();
@@ -647,7 +644,7 @@ async function start() {
   // granted yet: a single "+ Lesson note" button, so there's always a way in
   // (#3). Clicking it either proceeds (already allowed) or shows the card.
   function showStartPrompt() {
-    scheduler.flush();
+    session.close();
     current = null;
     openedByPage = false;
     noteEl.replaceChildren();
@@ -677,6 +674,7 @@ async function start() {
   // permission is for and what it is never used for. The browser's prompt only
   // appears after Allow, straight from that click.
   function showPermissionCard() {
+    session.close();
     noteEl.replaceChildren();
 
     const card = document.createElement("div");
@@ -765,9 +763,9 @@ async function start() {
   openForCurrentPage();
 
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") scheduler.flush();
+    if (document.visibilityState === "hidden") session.flush();
   });
-  window.addEventListener("pagehide", () => scheduler.flush());
+  window.addEventListener("pagehide", () => session.flush());
 }
 
 start();
