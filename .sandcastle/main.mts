@@ -40,7 +40,7 @@ const DRY_RUN = process.argv[2] === "next";
 const MAX_ITERATIONS = DRY_RUN ? 1 : Number.parseInt(process.argv[2] ?? "3", 10) || 3;
 const extraArgs = process.argv.slice(3);
 const isTicketArg = (a: string) => /^#?\d+$/.test(a);
-let startIssue = Number.parseInt(extraArgs.find(isTicketArg)?.replace("#", "") ?? "", 10) || null;
+const START_ISSUE = Number.parseInt(extraArgs.find(isTicketArg)?.replace("#", "") ?? "", 10) || null;
 const MODEL_OVERRIDE = extraArgs.find((a) => !isTicketArg(a)) ?? null;
 
 // Which model builds is read from the ticket's label: model:sonnet for small,
@@ -59,60 +59,82 @@ const copyToWorktree: string[] = [];
 // ---------------------------------------------------------------------------
 // The script picks the ticket (not the robot), so it can choose the model
 // before the robot starts: bugs first, then the order in .sandcastle/order.txt,
-// then the lowest number, skipping #1 and any ticket whose "Blocked by" section
-// names a still-open issue.
+// then the lowest number, skipping the parent spec and any ticket whose
+// "Blocked by" section names a still-open issue.
+
+// Issue #1 is the parent spec: never built, and open for good, so never a blocker.
+const PARENT_SPEC = 1;
 
 type Issue = { number: number; title: string; labels: { name: string }[]; body: string };
 const gh = (...args: string[]) => execFileSync("gh", args, { encoding: "utf8" });
 
-function pickNextIssue(): { issue: Issue; model: string } | null {
-  const ready: Issue[] = JSON.parse(gh("issue", "list", "--state", "open", "--label", "ready-for-agent",
-    "--limit", "200", "--json", "number,title,labels,body"));
-  const open = new Set<number>(JSON.parse(gh("issue", "list", "--state", "open", "--limit", "500",
-    "--json", "number")).map((i: { number: number }) => i.number));
-  const isBlocked = (issue: Issue) => {
-    const section = (issue.body ?? "").split("## Blocked by")[1]?.split("\n## ")[0] ?? "";
-    // #1 is the parent spec and stays open for good, so it never blocks.
-    return [...section.matchAll(/#(\d+)/g)].some((m) => Number(m[1]) !== 1 && open.has(Number(m[1])));
-  };
-  const hasLabel = (issue: Issue, name: string) => issue.labels.some((l) => l.name === name);
-  // One number per line; `#` starts a comment, also after a number.
+function fail(message: string): never {
+  console.error(message);
+  process.exit(1);
+}
+
+// One issue number per line; `#` starts a comment, also after a number.
+function readOrder(): number[] {
   const order: number[] = [];
   for (const raw of readFileSync(new URL("./order.txt", import.meta.url), "utf8").split(/\r?\n/)) {
     const line = raw.replace(/#.*/, "").trim();
     if (line === "") continue;
-    if (!/^\d+$/.test(line)) {
-      console.error(`order.txt: "${raw.trim()}" isn't an issue number. Fix that line first.`);
-      process.exit(1);
-    }
+    if (!/^\d+$/.test(line)) fail(`order.txt: "${raw.trim()}" isn't an issue number. Fix that line first.`);
     order.push(Number(line));
   }
-  const rank = (issue: Issue) => (order.includes(issue.number) ? order.indexOf(issue.number) : order.length);
-  const candidates = ready
-    .filter((i) => i.number !== 1 && !isBlocked(i))
-    .sort((a, b) => Number(hasLabel(b, "bug")) - Number(hasLabel(a, "bug")) || rank(a) - rank(b) || a.number - b.number);
-  if (startIssue !== null) {
-    const wanted = candidates.find((i) => i.number === startIssue);
-    if (!wanted) {
-      console.error(`Ticket #${startIssue} isn't ready (not ready-for-agent, closed, or blocked).`);
-      process.exit(1);
-    }
-    startIssue = null; // only the first ticket of the run
-    candidates.unshift(wanted);
-  }
-  const issue = candidates[0];
-  if (!issue) return null;
-  const label = issue.labels.find((l) => l.name.startsWith("model:"))?.name.slice("model:".length);
-  const name = MODEL_OVERRIDE ?? label ?? DEFAULT_MODEL;
-  if (!(name in MODELS)) {
-    console.error(`Unknown model "${name}" for #${issue.number}. Use one of: ${Object.keys(MODELS).join(", ")}.`);
-    process.exit(1);
-  }
-  return { issue, model: MODELS[name] };
+  return order;
 }
 
+const isKnownModel = (name: string) => Object.hasOwn(MODELS, name);
+const labelModel = (issue: Issue) =>
+  issue.labels.find((l) => l.name.startsWith("model:"))?.name.slice("model:".length);
+
+function readyIssues(): Issue[] {
+  return JSON.parse(gh("issue", "list", "--state", "open", "--label", "ready-for-agent",
+    "--limit", "200", "--json", "number,title,labels,body"));
+}
+
+// Check every model name once, before any robot starts, so a typo on a later
+// ticket can't stop a run halfway.
+function checkModels() {
+  const known = Object.keys(MODELS).join(", ");
+  if (MODEL_OVERRIDE !== null && !isKnownModel(MODEL_OVERRIDE)) {
+    fail(`Unknown model "${MODEL_OVERRIDE}" on the command line. Use one of: ${known}.`);
+  }
+  for (const issue of readyIssues()) {
+    const name = labelModel(issue);
+    if (name !== undefined && !isKnownModel(name)) {
+      fail(`Unknown model label "model:${name}" on #${issue.number}. Use one of: ${known}.`);
+    }
+  }
+}
+
+// The next ticket to build, or `wanted` first when one was named on the command line.
+function pickNextIssue(wanted: number | null): { issue: Issue; model: string } | null {
+  const open = new Set<number>(JSON.parse(gh("issue", "list", "--state", "open", "--limit", "500",
+    "--json", "number")).map((i: { number: number }) => i.number));
+  const isBlocked = (issue: Issue) => {
+    const section = (issue.body ?? "").split("## Blocked by")[1]?.split("\n## ")[0] ?? "";
+    return [...section.matchAll(/#(\d+)/g)]
+      .map((m) => Number(m[1]))
+      .some((n) => n !== PARENT_SPEC && open.has(n));
+  };
+  const isBug = (issue: Issue) => issue.labels.some((l) => l.name === "bug");
+  const rank = (issue: Issue) => (ORDER.includes(issue.number) ? ORDER.indexOf(issue.number) : ORDER.length);
+  const candidates = readyIssues()
+    .filter((i) => i.number !== PARENT_SPEC && !isBlocked(i))
+    .sort((a, b) => Number(isBug(b)) - Number(isBug(a)) || rank(a) - rank(b) || a.number - b.number);
+  const issue = wanted === null ? candidates[0] : candidates.find((i) => i.number === wanted);
+  if (wanted !== null && !issue) fail(`Ticket #${wanted} isn't ready (not ready-for-agent, closed, or blocked).`);
+  if (!issue) return null;
+  return { issue, model: MODELS[MODEL_OVERRIDE ?? labelModel(issue) ?? DEFAULT_MODEL] };
+}
+
+const ORDER = readOrder();
+checkModels();
+
 if (DRY_RUN) {
-  const next = pickNextIssue();
+  const next = pickNextIssue(START_ISSUE);
   console.log(next ? `Next: #${next.issue.number} ${next.issue.title} -> builder model: ${next.model}` : "Nothing ready.");
   process.exit(0);
 }
@@ -153,7 +175,8 @@ function mergeIntoMain(branch: string) {
 for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   console.log(`\n=== Iteration ${iteration}/${MAX_ITERATIONS} ===\n`);
 
-  const next = pickNextIssue();
+  // A ticket named on the command line only applies to the first iteration.
+  const next = pickNextIssue(iteration === 1 ? START_ISSUE : null);
   if (!next) {
     console.log("No ready, unblocked ticket left. Stopping.");
     break;
