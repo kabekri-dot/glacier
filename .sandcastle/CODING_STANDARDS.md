@@ -33,3 +33,13 @@ Glacier's rules come from its ADRs (`docs/adr/`) and glossary (`CONTEXT.md`). Th
 ## If a change needs to break a rule
 
 Don't silently break an ADR. Stop and leave a comment on the issue explaining why the rule might need to change.
+
+## Visible text
+
+Every piece of text the app shows (sidebar, forms, menus, cards, hover text, the manifest's descriptions) follows these rules. `test/visible-text.test.mjs` checks the dash and capitals rules.
+
+- **No dashes as punctuation**: no em dash, no en dash, no " - " between words. Rewrite the sentence (a full stop, a comma, or "or").
+- **No all-caps words** and no `text-transform: uppercase`.
+- **No AI look**: no emoji, no sparkles, no exclamation-heavy or salesy wording. Plain, short, friendly sentences.
+- Markdown syntax Glacier teaches (`- ` for a bullet in the `/` menu and the cheat sheet) is syntax, not punctuation, and stays.
+- Code comments are not visible text.
