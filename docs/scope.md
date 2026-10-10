@@ -58,6 +58,7 @@ What goes into which version. Terms are defined in [CONTEXT.md](../CONTEXT.md), 
 - Clipping highlighted page text into the current note (v2: reuses the optional permission from ADR 0008, and the explanation card gains one line for it)
 - More Themes (Dot Journal, Legal Pad)
 - Attaching the current page as the Source of a Lesson Note made without one
+- A link shortcut (Ctrl+K is kept for search; links are typed as `[text](url)`, #43)
 - Pasting from a web page keeps its formatting (headings, bold, lists, links turned into Markdown); v1 pastes plain text
 - Unlinked mentions
 - Tags

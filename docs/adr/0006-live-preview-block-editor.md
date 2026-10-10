@@ -21,3 +21,13 @@ The focused line stops being a `<textarea>` and becomes a plain-text `contentedi
 - **Convert and hide the marks** (like Notion): cleanest look, but the Markdown disappears, which undoes the `/` menu's job of teaching the syntax.
 - **Redraw the line when you pause typing**: cheapest, but the formatting still arrives late and jumps into place.
 - **Show marks only around the caret** (exact Obsidian behaviour): text shifts as marks appear and disappear, and it's harder to build.
+
+## Addition (2026-10-10): formatting shortcuts (#43, #44)
+
+Text you've already written is formatted by selecting it and pressing **Ctrl+B** (bold), **Ctrl+I** (italic) or **Ctrl+E** (inline code); Cmd on a Mac. Typing the marks by hand keeps working, and the `/` menu stays a start-of-line menu. With nothing selected, a shortcut turns the formatting on for what you type next, and a second press steps out of it. A partly formatted selection becomes fully formatted; only a fully formatted one loses it. A selection over several lines gets marks on each line, with the line's start (`- `, `## `, `> `) outside them, because Markdown marks can't span lines. In code, bold and italic do nothing. The selection stays after formatting, so bold and italic combine by pressing both.
+
+### Considered Options
+
+- **Ctrl+K for links**: the usual writing-app key, but it's also the common search key, and Glacier's search will want it. Links are typed as `[text](url)`.
+- **Applying `/` menu commands to a selection**: would make the menu do two jobs; shortcuts are what people already know.
+- **Formatting the word under the caret when nothing is selected**: surprising at a word's edge; turning formatting on for the next typing matches Word and Google Docs.
