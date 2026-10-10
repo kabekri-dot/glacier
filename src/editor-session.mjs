@@ -95,14 +95,19 @@ export function createEditorSession({ onChange } = {}) {
     return isFence(lines[blockStart]);
   }
 
+  // The `/` command query at the caret, or null when the caret isn't on one —
+  // which includes inside a code block, where `/` is just code (#6). This is the
+  // one place the open-the-menu rule is decided.
+  function slashQueryAtCaret() {
+    return inCodeBlock() ? null : slashQuery(lines[focus.line] ?? "", focus.col);
+  }
+
   // Recompute the menu for the current caret. The menu opens only when the caret
   // sits on a `/` command (slashQuery) outside a code block; a new query starts
   // the highlight at the top. `allowOpen` false (a plain caret move) only
   // updates or closes a menu that is already open — it never opens a fresh one.
   function syncMenu(allowOpen) {
-    const query = inCodeBlock()
-      ? null
-      : slashQuery(lines[focus.line] ?? "", focus.col);
+    const query = slashQueryAtCaret();
     const commands = query === null ? [] : filterCommands(query);
     if (commands.length === 0) {
       menu = null;
@@ -239,7 +244,7 @@ export function createEditorSession({ onChange } = {}) {
       if (isComposing) return "none";
       const here = lineColFromOffset(value, caret);
       focus = { line: here.line, col: here.col };
-      if (inCodeBlock() || slashQuery(lines[focus.line] ?? "", focus.col) === null) {
+      if (slashQueryAtCaret() === null) {
         menu = null;
         return "none";
       }
