@@ -31,7 +31,7 @@ import {
 // The empty-line hint and the menu that `/` and the + button open (#6). The
 // command logic (which commands, filtering, applying one) is tested in the
 // editor model; this file only draws the menu and wires its keys.
-const EMPTY_LINE_HINT = "Type / for commands — or click + on the left";
+const EMPTY_LINE_HINT = "Type / for commands, or click + on the left";
 
 // The formatting shortcuts (#44): Ctrl (Cmd on a Mac) plus these keys. Ctrl+K
 // is kept free for search.
@@ -1102,7 +1102,7 @@ async function start() {
     const notNow = document.createElement("button");
     notNow.type = "button";
     notNow.className = "perm-cancel";
-    notNow.textContent = "Not now — new note by hand";
+    notNow.textContent = "Not now, new note by hand";
     notNow.addEventListener("click", () => openingFlow.decline());
 
     buttons.append(allow, notNow);
