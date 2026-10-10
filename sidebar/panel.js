@@ -16,6 +16,7 @@
 import { createNotebook } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { createNoteSession } from "../src/note-session.mjs";
+import { isOpenedByPage } from "../src/page-open.mjs";
 import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
@@ -766,7 +767,7 @@ async function start() {
         source,
         course: course.input.value.trim() || undefined,
       });
-      openNote(note);
+      openNote(note, { byPage: isOpenedByPage(note) });
     });
 
     noteEl.appendChild(form);
