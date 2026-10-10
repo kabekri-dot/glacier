@@ -103,6 +103,7 @@ export const SLASH_COMMANDS = [
   { id: "bullet", label: "Bullet list", markdown: "-", insert: "- ", caret: 2 },
   { id: "link", label: "Link to a note", markdown: "[[ ]]", insert: "[[]]", caret: 2 },
   { id: "bold", label: "Bold", markdown: "**bold**", insert: "****", caret: 2 },
+  { id: "italic", label: "Italic", markdown: "*italic*", insert: "**", caret: 1 },
   { id: "code", label: "Inline code", markdown: "`code`", insert: "``", caret: 1 },
   { id: "codeblock", label: "Code block", markdown: "```", insert: "```\n\n```", caret: 4 },
 ];
@@ -237,17 +238,49 @@ export function insertText(lines, line, col, text) {
   };
 }
 
+// Where the italic run opened by the `*` or `_` at `start` closes, or -1 when
+// it is not italic. A marker inside a word (`snake_case`, `2*3`) stays plain
+// text: an opener must not follow a letter or digit or precede a space, and a
+// closer must follow a non-space (and, for `_`, must not precede a letter or
+// digit). Doubled markers belong to bold, so they are skipped.
+function italicEnd(content, start) {
+  const mark = content[start];
+  const isWord = (c) => c !== undefined && /[\p{L}\p{N}]/u.test(c);
+  if (isWord(content[start - 1])) return -1;
+  const first = content[start + 1];
+  if (first === undefined || /\s/.test(first) || first === mark) return -1;
+  for (let j = start + 2; j < content.length; j++) {
+    if (content[j] !== mark) continue;
+    if (content[j + 1] === mark) {
+      j += 1;
+      continue;
+    }
+    if (/\s/.test(content[j - 1])) continue;
+    if (mark === "_" && isWord(content[j + 1])) continue;
+    return j;
+  }
+  return -1;
+}
+
+// Bold and italic text between its two zero-width marker segments; the inside
+// is parsed again so `**bold _and italic_**` nests.
+function pushStyled(segs, marker, inner, style) {
+  segs.push({ raw: marker, text: "", kind: "marker" });
+  segs.push(...inlineSegments(inner, style));
+  segs.push({ raw: marker, text: "", kind: "marker" });
+}
+
 // Split a Markdown line into segments that map a run of raw characters to the
 // text the reader sees. Marker segments (the `#`, `-`, `**`, backticks that
 // turn into formatting) render to nothing, so a caret in the rendered text can
 // be mapped back to the raw Markdown.
-function inlineSegments(content) {
+function inlineSegments(content, style = {}) {
   const segs = [];
   let i = 0;
   let plain = "";
   const flushPlain = () => {
     if (plain !== "") {
-      segs.push({ raw: plain, text: plain, kind: "plain" });
+      segs.push({ raw: plain, text: plain, kind: "plain", ...style });
       plain = "";
     }
   };
@@ -267,15 +300,30 @@ function inlineSegments(content) {
         continue;
       }
     }
+    if (content.startsWith("***", i)) {
+      const end = content.indexOf("***", i + 3);
+      if (end > i + 3) {
+        flushPlain();
+        pushStyled(segs, "***", content.slice(i + 3, end), { ...style, bold: true, italic: true });
+        i = end + 3;
+        continue;
+      }
+    }
     if (content.startsWith("**", i)) {
       const end = content.indexOf("**", i + 2);
       if (end !== -1) {
         flushPlain();
-        const inner = content.slice(i + 2, end);
-        segs.push({ raw: "**", text: "", kind: "marker" });
-        segs.push({ raw: inner, text: inner, kind: "bold" });
-        segs.push({ raw: "**", text: "", kind: "marker" });
+        pushStyled(segs, "**", content.slice(i + 2, end), { ...style, bold: true });
         i = end + 2;
+        continue;
+      }
+    }
+    if (content[i] === "*" || content[i] === "_") {
+      const end = italicEnd(content, i);
+      if (end !== -1) {
+        flushPlain();
+        pushStyled(segs, content[i], content.slice(i + 1, end), { ...style, italic: true });
+        i = end + 1;
         continue;
       }
     }
@@ -389,16 +437,17 @@ function escapeAttr(text) {
 function inlineHtml(segments, linkExists) {
   let html = "";
   for (const seg of segments) {
-    if (seg.kind === "bold") {
-      html += `<strong>${escapeHtml(seg.text)}</strong>`;
-    } else if (seg.kind === "code") {
+    if (seg.kind === "code") {
       html += `<code>${escapeHtml(seg.text)}</code>`;
     } else if (seg.kind === "link") {
       const missing = linkExists ? !linkExists(seg.title) : false;
       const cls = missing ? "md-link md-link-missing" : "md-link";
       html += `<a class="${cls}" data-link-title="${escapeAttr(seg.title)}">${escapeHtml(seg.text)}</a>`;
     } else if (seg.kind === "plain") {
-      html += escapeHtml(seg.text);
+      let text = escapeHtml(seg.text);
+      if (seg.italic) text = `<em>${text}</em>`;
+      if (seg.bold) text = `<strong>${text}</strong>`;
+      html += text;
     }
     // marker segments render to nothing (the bullet "•" is drawn by the wrapper)
   }
@@ -408,7 +457,7 @@ function inlineHtml(segments, linkExists) {
 // Render one Markdown line as the HTML shown when it is not the current line,
 // built from the same shared line description that maps a click back (#33), so
 // what is drawn and what a click maps to can never drift apart. Headings lose
-// their `#`, bullets get a dot, bold and inline code become `<strong>`/`<code>`,
+// their `#`, bullets get a dot, bold, italic and inline code become `<strong>`/`<em>`/`<code>`,
 // Links become click targets; everything else is escaped text. An empty line
 // keeps its height with a `<br>`. `linkExists` lets the caller mark Missing
 // Links (see inlineHtml).
