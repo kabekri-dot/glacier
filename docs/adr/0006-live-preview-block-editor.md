@@ -35,3 +35,7 @@ Text you've already written is formatted by selecting it and pressing **Ctrl+B**
 ## Addition (2026-10-10): Enter inside formatting (#45)
 
 With the caret inside a pair of inline marks (`**key|**`, or `**ke|y**`), Enter jumps past the closing marks instead of starting a new line, so leaving bold is one key press, like a second Ctrl+B. A second Enter makes the new line. Shift+Enter inside formatting does start a new line and carries the formatting over: the marks are closed at the end of the line and reopened on the next, with the caret inside, because Markdown marks can't span lines.
+
+## Addition (2026-10-10): selecting and copying as Markdown (#7)
+
+A drawn line starts editing on a plain click, not on the press, so a press that drags selects across lines like on any page. (While the `/` menu is open a press still acts at once, so the menu's dismissal can't redraw the note mid-click.) Ctrl+A selects the line you're on, and a second Ctrl+A the whole note, never the rest of the panel. Copying puts the Markdown on the clipboard, not the drawn text: each edge of the selection is mapped back to the raw line, taking in the marks of everything it covers whole (`## `, `- `, `**`, `[[ ]]`, code fences) and none of its neighbours'. So the whole note copies back exactly, and a note pasted into Obsidian keeps its headings, lists, Links and code.

@@ -640,3 +640,23 @@ code {
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* The confirmation after a copy (#7): bottom right, clear of the Backlinks button. */
+.copied {
+  position: fixed;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  z-index: 10;
+  margin: 0;
+  padding: 0.2rem 0.65rem;
+  border: 1px solid var(--glacier-rule);
+  border-radius: 999px;
+  background: var(--glacier-paper);
+  color: var(--glacier-ink);
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
+.copied[hidden] {
+  display: none;
+}

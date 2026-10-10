@@ -440,6 +440,44 @@ export function renderedToRaw(line, renderedOffset) {
   return rawPos;
 }
 
+// --- Selecting and copying as Markdown (#7) ---------------------------------
+
+// Map an edge of a selection in a drawn line back to the raw Markdown, so the
+// copy keeps the marks around what was selected. An edge between drawn
+// characters lands after the closing marks before it (`**`, `]]`) and before
+// the opening marks after it (`## `, `- `, `**`, `[[`): a selection then takes
+// in the marks of everything it covers whole, and none of its neighbours'.
+// Past the end it clamps to the end of the line.
+export function renderedEdgeToRaw(line, renderedOffset) {
+  let rawPos = 0;
+  let renderedPos = 0;
+  for (const seg of lineSegments(line)) {
+    if (renderedOffset === renderedPos) {
+      if (seg.role !== "close") return rawPos;
+    } else if (renderedOffset < renderedPos + seg.text.length) {
+      return rawPos + (renderedOffset - renderedPos);
+    }
+    renderedPos += seg.text.length;
+    rawPos += seg.raw.length;
+  }
+  return rawPos;
+}
+
+// The Markdown between two raw positions { line, col }, start before end.
+export function markdownSlice(lines, from, to) {
+  if (from.line === to.line) return lines[from.line].slice(from.col, to.col);
+  return [
+    lines[from.line].slice(from.col),
+    ...lines.slice(from.line + 1, to.line),
+    lines[to.line].slice(0, to.col),
+  ].join("\n");
+}
+
+// The short confirmation shown after a copy.
+export function copiedMessage(count) {
+  return count === 1 ? "Copied 1 line" : `Copied ${count} lines`;
+}
+
 // The title of the Link a drawn position falls on, or null when the position
 // is not on a Link. Read from the same shared line description as the drawing,
 // so a click the sidebar located in the drawn line reports the Link under it
