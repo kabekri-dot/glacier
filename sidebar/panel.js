@@ -16,7 +16,8 @@
 import { createNotebook } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { createNoteSession } from "../src/note-session.mjs";
-import { decidePageOpen } from "../src/page-open.mjs";
+import { createOpeningFlow } from "../src/opening-flow.mjs";
+import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
 import {
   blockRanges,
@@ -71,7 +72,7 @@ async function start() {
   }
 
   // The note currently shown. Nothing is open until the page's Lesson Note is
-  // found or a note is created (openForCurrentPage, below); while nothing is
+  // found or a note is created (the Opening flow, below); while nothing is
   // open the panel shows a way to make a note rather than a blank, locked page
   // (#3). Following a Link opens another note in place (openLink).
   let current = null;
@@ -680,39 +681,14 @@ async function start() {
   // explanation card (ADR 0008). Without it Glacier still works: "+ New note"
   // makes a Lesson Note from a typed title and a picked Course, with no Source.
 
-  const api = typeof browser !== "undefined" ? browser : chrome;
-
-  async function hasTabsPermission() {
-    try {
-      return await api.permissions.contains({ permissions: ["tabs"] });
-    } catch {
-      return false;
-    }
-  }
-
-  // Must run straight from a click (both browsers require it). Resolves true if
-  // the user allows, false if they decline or the API is missing.
-  async function requestTabsPermission() {
-    try {
-      return await api.permissions.request({ permissions: ["tabs"] });
-    } catch {
-      return false;
-    }
-  }
-
-  // The active tab's address and title, or null when it can't be read: no
-  // permission, no tabs API, or a browser-internal page (new tab, settings,
-  // a PDF) that is never a lesson.
-  async function currentPage() {
-    try {
-      const tabs = await api.tabs.query({ active: true, currentWindow: true });
-      const tab = tabs && tabs[0];
-      if (!tab || !tab.url || !/^https?:/i.test(tab.url)) return null;
-      return { url: tab.url, title: tab.title || tab.url };
-    } catch {
-      return null;
-    }
-  }
+  const openingFlow = createOpeningFlow({
+    page: createBrowserPage(
+      typeof browser !== "undefined" ? browser : chrome,
+    ),
+    getOpenNote: () => ({ current, openedByPage }),
+    lessonNoteForSource: (url) => notebook.lessonNoteForSource(url),
+    show: showOpeningView,
+  });
 
   // Build a labelled control row for the create form.
   function field(labelText, control) {
@@ -817,34 +793,25 @@ async function start() {
     });
   }
 
-  // Follow a page: decide what it should open (decidePageOpen, #29) and carry
-  // that out — open the page's Lesson Note, offer a form, or keep what's open
-  // so a note the user navigated to isn't thrown away.
-  function followPage(page) {
-    const decision = decidePageOpen({
-      current,
-      openedByPage,
-      page,
-      lessonNoteForSource: (url) => notebook.lessonNoteForSource(url),
-    });
-    switch (decision.type) {
+  // Draw what the Opening flow decided.
+  function showOpeningView(view) {
+    switch (view.type) {
+      case "startPrompt":
+        showStartPrompt();
+        break;
+      case "permissionCard":
+        showPermissionCard();
+        break;
       case "open":
-        openNote(decision.note, { byPage: true });
+        openNote(view.note, { byPage: true });
         break;
       case "lessonForm":
-        showLessonForm(decision.page);
+        showLessonForm(view.page);
         break;
       case "newNoteForm":
         showNewNoteForm();
         break;
-      // "keep": leave the open note alone.
     }
-  }
-
-  // Read the current page and follow it. Called once the `tabs` permission is
-  // in hand (on load or after Allow).
-  async function proceedWithPage() {
-    followPage(await currentPage());
   }
 
   // The starting panel when no note is open and the permission hasn't been
@@ -868,10 +835,7 @@ async function start() {
     create.type = "button";
     create.className = "create-submit";
     create.textContent = "+ Lesson note";
-    create.addEventListener("click", async () => {
-      if (await hasTabsPermission()) proceedWithPage();
-      else showPermissionCard();
-    });
+    create.addEventListener("click", () => openingFlow.clickLessonNote());
     wrap.appendChild(create);
 
     noteEl.appendChild(wrap);
@@ -916,58 +880,21 @@ async function start() {
     allow.type = "button";
     allow.className = "create-submit";
     allow.textContent = "Allow";
-    allow.addEventListener("click", async () => {
-      // The request must start inside this click, so no await comes before it.
-      const granted = await requestTabsPermission();
-      if (granted) proceedWithPage();
-      else showNewNoteForm();
-    });
+    allow.addEventListener("click", () => openingFlow.allow());
 
     const notNow = document.createElement("button");
     notNow.type = "button";
     notNow.className = "perm-cancel";
     notNow.textContent = "Not now — new note by hand";
-    notNow.addEventListener("click", () => showNewNoteForm());
+    notNow.addEventListener("click", () => openingFlow.decline());
 
     buttons.append(allow, notNow);
     card.appendChild(buttons);
     noteEl.appendChild(card);
   }
 
-  // On the sidebar opening: if the permission is already in hand, open the
-  // page's note (or offer to create one); otherwise show the starting prompt.
-  async function openForCurrentPage() {
-    if (await hasTabsPermission()) proceedWithPage();
-    else showStartPrompt();
-  }
-
-  // The page changes behind the sidebar: follow it only when it should be
-  // followed (#29), and only with the permission granted — without it there's
-  // nothing to read. Two quick changes can resolve out of order, so each one is
-  // stamped and a result is dropped if a newer change has started since: the
-  // sidebar always ends on the latest page, never the tab you left.
-  let pageChangeSeq = 0;
-  async function reactToPageChange() {
-    const seq = (pageChangeSeq += 1);
-    if (!(await hasTabsPermission())) return;
-    const page = await currentPage();
-    if (seq !== pageChangeSeq) return;
-    followPage(page);
-  }
-
-  if (api.tabs) {
-    if (api.tabs.onActivated) {
-      api.tabs.onActivated.addListener(() => reactToPageChange());
-    }
-    if (api.tabs.onUpdated) {
-      api.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
-        // Only react to the active tab actually navigating to a new address.
-        if (changeInfo.url && tab && tab.active) reactToPageChange();
-      });
-    }
-  }
-
-  openForCurrentPage();
+  openingFlow.listen();
+  openingFlow.start();
 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") session.flush();
