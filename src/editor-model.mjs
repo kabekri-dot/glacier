@@ -780,3 +780,55 @@ export function toggleFormat(lines, start, end, kind) {
   }
   return { lines: next, start: newStart, end: newEnd };
 }
+
+// --- Enter and Shift+Enter inside formatting (#45) --------------------------
+
+// The bold, italic and code pairs the caret sits inside (between a pair's
+// opening and closing marks), outermost first, as raw columns of the line.
+// Read from inlineSegments like the renderer, so they always agree. Fenced
+// code lines have none.
+function pairsAround(lines, caret) {
+  if (codeLines(lines).has(caret.line)) return [];
+  const line = lines[caret.line];
+  const prefix = lineStart(line)?.mark.length ?? 0;
+  const c = caret.col - prefix;
+  const pairs = [];
+  const open = [];
+  let pos = 0;
+  for (const seg of inlineSegments(line.slice(prefix))) {
+    const end = pos + seg.raw.length;
+    if (seg.role === "open") {
+      open.push({ start: pos, openEnd: end, mark: seg.raw, makes: seg.makes });
+    } else if (seg.role === "close") {
+      const pair = open.pop();
+      const styled = pair.makes.some((kind) => kind in MARKS);
+      if (styled && pair.openEnd <= c && c <= pos) {
+        pairs.push({ mark: pair.mark, closeEnd: end + prefix });
+      }
+    }
+    pos = end;
+  }
+  return pairs.reverse();
+}
+
+// Enter inside formatting leaves it: the column just past the outermost
+// closing marks, or null when the caret is not inside any formatting.
+export function columnAfterFormatting(lines, line, col) {
+  const pairs = pairsAround(lines, { line, col });
+  if (pairs.length === 0) return null;
+  return Math.max(...pairs.map((pair) => pair.closeEnd));
+}
+
+// Shift+Enter inside formatting carries it to a new line: the open marks are
+// closed at the end of the first line and reopened at the start of the second,
+// where the caret lands. Null when the caret is not inside any formatting.
+export function breakInsideFormatting(lines, line, col) {
+  const pairs = pairsAround(lines, { line, col });
+  if (pairs.length === 0) return null;
+  const closing = pairs.map((pair) => pair.mark).reverse().join("");
+  const opening = pairs.map((pair) => pair.mark).join("");
+  const next = lines.slice();
+  next[line] = lines[line].slice(0, col) + closing;
+  next.splice(line + 1, 0, opening + lines[line].slice(col));
+  return { lines: next, line: line + 1, col: opening.length };
+}
