@@ -1,19 +1,21 @@
 // When the page behind the sidebar changes — a tab switch, or the active tab
-// navigating — Glacier decides whether to follow it (issue #29). The rule:
+// navigating — Glacier decides what the sidebar shows (issues #29, #50). The rule:
 //
-//   - A note the user navigated to themselves (a Concept Note reached through a
-//     Link, or any note opened by following a Link) is never thrown away.
-//   - A page-opened Lesson Note, or an empty panel, follows the page: it shows
-//     the new page's Lesson Note, or the "+ Lesson note" form for it.
+//   - A website (http/https) always wins: the sidebar shows its Lesson Note, or
+//     the "+ Lesson note" form for it, whatever note was open and however it
+//     was opened (page, pill menu, Link, made by hand).
 //   - A browser-internal page (new tab, settings, a PDF) is never a lesson, so
 //     a note that's open is kept; only an empty panel offers the by-hand form.
+//   - The old rule stays reachable behind `keepUserOpenedNotes`: a note the
+//     user opened themselves is never thrown away, only a page-opened note, or
+//     an empty panel, follows the page. A later setting will switch it on.
 //
 // This is the whole decision, kept pure so it can be tested with node --test
 // (ADR 0002). panel.js draws the result and makes sure only the latest page
 // change is applied, so two quick switches can't land on the tab you left.
 //
 // `current` is the open note or null; `openedByPage` says that note was opened
-// by the page (so it may be replaced by another page change). `page` is the
+// by the page (only matters with `keepUserOpenedNotes`). `page` is the
 // active tab's { url, title } or null for a browser-internal page.
 // `lessonNoteForSource(url)` returns the Lesson Note for a Source, or null.
 export function decidePageOpen({
@@ -21,9 +23,9 @@ export function decidePageOpen({
   openedByPage,
   page,
   lessonNoteForSource,
+  keepUserOpenedNotes = false,
 }) {
-  // A note the user navigated to themselves stays put.
-  if (current && !openedByPage) return { type: "keep" };
+  if (keepUserOpenedNotes && current && !openedByPage) return { type: "keep" };
 
   if (!page) {
     // Nothing on a browser-internal page to open. Keep an open note rather than

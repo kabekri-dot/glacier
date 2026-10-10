@@ -3,10 +3,9 @@ import assert from "node:assert/strict";
 import { decidePageOpen, isOpenedByPage } from "../src/page-open.mjs";
 
 // When the page behind the sidebar changes (a tab switch or a navigation),
-// Glacier must decide whether to follow it. A note the user opened themselves
-// — a Concept Note reached through a Link, or any note they navigated to — must
-// stay put; only a page-opened Lesson Note, or an empty panel, follows the page
-// (issue #29). This is the pure decision; panel.js does the drawing and the
+// Glacier must decide whether to follow it. By default a website always wins
+// (#50); with `keepUserOpenedNotes` a note the user opened themselves stays put
+// and only a page-opened Lesson Note, or an empty panel, follows the page (#29). This is the pure decision; panel.js does the drawing and the
 // latest-change-wins ordering around it.
 
 // A page-opened Lesson Note for one page; a note the user navigated to.
@@ -51,23 +50,25 @@ test("nothing open, browser-internal page: offer the by-hand form", () => {
   assert.deepEqual(decision, { type: "newNoteForm" });
 });
 
-test("a Concept Note opened through a Link stays put on a page change", () => {
+test("with the old option, a Concept Note opened through a Link stays put on a page change", () => {
   const decision = decidePageOpen({
     current: concept,
     openedByPage: false,
     page: { url: lessonA.source, title: "Lesson A" },
+    keepUserOpenedNotes: true,
     lessonNoteForSource: notebook([lessonA]),
   });
   assert.deepEqual(decision, { type: "keep" });
 });
 
-test("any note the user navigated to stays put, even its own page's Lesson Note", () => {
+test("with the old option, any note the user navigated to stays put, even its own page's Lesson Note", () => {
   // Lesson A opened by following a Link, then the sidebar lands on page A: still
   // the user's note, so it is kept rather than re-opened.
   const decision = decidePageOpen({
     current: lessonA,
     openedByPage: false,
     page: { url: lessonA.source, title: "Lesson A" },
+    keepUserOpenedNotes: true,
     lessonNoteForSource: notebook([lessonA]),
   });
   assert.deepEqual(decision, { type: "keep" });
@@ -118,13 +119,24 @@ test("a Lesson Note just created with a Source follows the next page change", ()
   assert.deepEqual(decision, { type: "open", note: lessonB });
 });
 
-test("a note just created without a Source is kept on a page change", () => {
+test("with the old option, a note just created without a Source is kept on a page change", () => {
   const created = { title: "By hand" };
   const decision = decidePageOpen({
     current: created,
     openedByPage: isOpenedByPage(created),
     page: { url: lessonB.source, title: "Lesson B" },
+    keepUserOpenedNotes: true,
     lessonNoteForSource: notebook([lessonB]),
   });
   assert.deepEqual(decision, { type: "keep" });
+});
+
+test("by default a Concept Note is replaced by the website's Lesson Note", () => {
+  const decision = decidePageOpen({
+    current: concept,
+    openedByPage: false,
+    page: { url: lessonA.source, title: "Lesson A" },
+    lessonNoteForSource: notebook([lessonA]),
+  });
+  assert.deepEqual(decision, { type: "open", note: lessonA });
 });
