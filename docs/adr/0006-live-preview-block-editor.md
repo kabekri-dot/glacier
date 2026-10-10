@@ -31,3 +31,7 @@ Text you've already written is formatted by selecting it and pressing **Ctrl+B**
 - **Ctrl+K for links**: the usual writing-app key, but it's also the common search key, and Glacier's search will want it. Links are typed as `[text](url)`.
 - **Applying `/` menu commands to a selection**: would make the menu do two jobs; shortcuts are what people already know.
 - **Formatting the word under the caret when nothing is selected**: surprising at a word's edge; turning formatting on for the next typing matches Word and Google Docs.
+
+## Addition (2026-10-10): Enter inside formatting (#45)
+
+With the caret inside a pair of inline marks (`**key|**`, or `**ke|y**`), Enter jumps past the closing marks instead of starting a new line, so leaving bold is one key press, like a second Ctrl+B. A second Enter makes the new line. Shift+Enter inside formatting does start a new line and carries the formatting over: the marks are closed at the end of the line and reopened on the next, with the caret inside, because Markdown marks can't span lines.
