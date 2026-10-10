@@ -25,6 +25,7 @@
 import * as sandcastle from "@ai-hero/sandcastle";
 import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -57,8 +58,9 @@ const copyToWorktree: string[] = [];
 // Glacier: pick the next ticket and its model
 // ---------------------------------------------------------------------------
 // The script picks the ticket (not the robot), so it can choose the model
-// before the robot starts: bugs first, then the lowest number, skipping #1 and
-// any ticket whose "Blocked by" section names a still-open issue.
+// before the robot starts: bugs first, then the order in .sandcastle/order.txt,
+// then the lowest number, skipping #1 and any ticket whose "Blocked by" section
+// names a still-open issue.
 
 type Issue = { number: number; title: string; labels: { name: string }[]; body: string };
 const gh = (...args: string[]) => execFileSync("gh", args, { encoding: "utf8" });
@@ -73,9 +75,12 @@ function pickNextIssue(): { issue: Issue; model: string } | null {
     return [...section.matchAll(/#(\d+)/g)].some((m) => open.has(Number(m[1])));
   };
   const hasLabel = (issue: Issue, name: string) => issue.labels.some((l) => l.name === name);
+  const order = readFileSync(new URL("./order.txt", import.meta.url), "utf8")
+    .split(/\r?\n/).map((line) => line.trim()).filter((line) => /^\d+$/.test(line)).map(Number);
+  const rank = (issue: Issue) => (order.includes(issue.number) ? order.indexOf(issue.number) : order.length);
   const candidates = ready
     .filter((i) => i.number !== 1 && !isBlocked(i))
-    .sort((a, b) => Number(hasLabel(b, "bug")) - Number(hasLabel(a, "bug")) || a.number - b.number);
+    .sort((a, b) => Number(hasLabel(b, "bug")) - Number(hasLabel(a, "bug")) || rank(a) - rank(b) || a.number - b.number);
   if (startIssue !== null) {
     const wanted = candidates.find((i) => i.number === startIssue);
     if (!wanted) {
@@ -198,7 +203,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
       name: "reviewer",
       maxIterations: 1,
       // Glacier: reviewing a finished change against a checklist is the easier
-      // job, so the reviewer runs on Sonnet (cheaper); the builder stays on Opus.
+      // job, so the reviewer always runs on Sonnet (cheaper).
       agent: sandcastle.claudeCode("sonnet"),
       promptFile: "./.sandcastle/review-prompt.md",
       promptArgs: {
