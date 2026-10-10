@@ -33,6 +33,8 @@ import {
   applyLinkTitle,
   toggleFormat,
   renderedToRaw,
+  renderedEdgeToRaw,
+  markdownSlice,
   linkAtRendered,
 } from "./editor-model.mjs";
 
@@ -266,6 +268,26 @@ export function createEditorSession({
     relayout();
     notifyChange();
     return -1;
+  }
+
+  // A selection edge the sidebar found, as a raw { line, col } (#7). It is a
+  // raw line and column in the line being edited, a drawn offset in a drawn
+  // line ({ line, rendered }), or an offset in the code of a drawn code block,
+  // whose fences are hidden ({ code: first line of the block, offset }). An
+  // edge at the very start or end of the code takes in the fence there.
+  function rawPoint(point) {
+    if ("rendered" in point) {
+      return { line: point.line, col: renderedEdgeToRaw(lines[point.line], point.rendered) };
+    }
+    if (!("code" in point)) return point;
+    const range = blockRanges(lines).find((r) => r.start === point.code);
+    const closed = range.end - range.start > 1 && isFence(lines[range.end - 1]);
+    const code = lines.slice(range.start + 1, closed ? range.end - 1 : range.end);
+    const last = range.end - 1;
+    if (point.offset === 0) return { line: range.start, col: 0 };
+    if (point.offset >= code.join("\n").length) return { line: last, col: lines[last].length };
+    const before = code.join("\n").slice(0, point.offset).split("\n");
+    return { line: range.start + before.length, col: before[before.length - 1].length };
   }
 
   return {
@@ -592,6 +614,24 @@ export function createEditorSession({
         return true;
       }
       return false;
+    },
+
+    // Copying a selection (#7): the Markdown between two selection edges (see
+    // rawPoint), and how many lines it holds, for the confirmation.
+    copy(from, to) {
+      const text = markdownSlice(lines, rawPoint(from), rawPoint(to));
+      return { text, count: splitIntoLines(text).length };
+    },
+
+    // Ctrl+A in the focused block [selStart, selEnd] (#7): the first press
+    // selects the caret's line, as block offsets; once that line is already
+    // selected, the next press selects the whole note ({ type: "note" }).
+    selectAll(value, selStart, selEnd) {
+      const here = lineColFromOffset(value, selEnd);
+      const start = offsetInBlock(here.line, 0);
+      const end = start + lines[here.line].length;
+      if (selStart === start && selEnd === end) return { type: "note" };
+      return { type: "line", start, end };
     },
 
     relayout,

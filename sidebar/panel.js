@@ -28,6 +28,7 @@ import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
 import {
   blockRanges,
+  copiedMessage,
   editorTextToBody,
   focusedLineSpans,
   isFence,
@@ -653,11 +654,27 @@ async function start() {
     true,
   );
 
+  // A rendered block reacts to a plain click, not to the press, so a press
+  // that drags selects across lines instead (#7). While the `/` menu is open
+  // the press still acts at once and keeps the caret in its line: letting the
+  // line lose focus would dismiss the menu and redraw the note mid-click.
+  function onPlainClick(el, act) {
+    el.addEventListener("mousedown", (event) => {
+      if (!editor.menu) return;
+      event.preventDefault();
+      act(event);
+    });
+    el.addEventListener("click", (event) => {
+      if (window.getSelection().isCollapsed) act(event);
+    });
+  }
+
   // Build one rendered (non-focused) block.
   function renderedBlock(range) {
     const blockLines = editor.lines.slice(range.start, range.end);
     const el = document.createElement("div");
     el.className = "block";
+    el.dataset.start = range.start;
 
     if (isFence(blockLines[0])) {
       // A code block: show the code, fences hidden. Clicking drops the caret in
@@ -669,17 +686,14 @@ async function start() {
       pre.className = "md-code";
       pre.textContent = inner.join("\n");
       el.appendChild(pre);
-      el.addEventListener("mousedown", (event) => {
-        event.preventDefault();
-        moveTo(range.start, blockLines[0].length);
-      });
+      el.dataset.code = "";
+      onPlainClick(el, () => moveTo(range.start, blockLines[0].length));
       return el;
     }
 
     const line = blockLines[0];
     el.innerHTML = renderLineHtml(line, linkExists);
-    el.addEventListener("mousedown", (event) => {
-      event.preventDefault();
+    onPlainClick(el, (event) => {
       // The sidebar finds which drawn character the click landed on; the Editor
       // session decides what it means from the one shared line description (#33).
       const rendered = renderedOffsetAt(el, event.clientX, event.clientY);
@@ -927,6 +941,15 @@ async function start() {
           if (isUndo ? editor.undo() : editor.redo()) render();
           return;
         }
+        // Ctrl+A selects the line, and a second Ctrl+A the whole note (#7).
+        if (key === "a" && !event.shiftKey) {
+          event.preventDefault();
+          const { start: from, end: to } = selectionIn(el);
+          const selected = editor.selectAll(el.textContent, from, to);
+          if (selected.type === "note") selectWholeNote();
+          else placeSelection(el, selected.start, selected.end);
+          return;
+        }
         // Ctrl+B / Ctrl+I / Ctrl+E format the selection (#44). The key is
         // always caught, so the browser's own action never fires (Firefox's
         // bookmarks sidebar, the search bar).
@@ -1013,6 +1036,88 @@ async function start() {
 
     return { el, start };
   }
+
+  // --- Selecting and copying as Markdown (#7) -------------------------------
+
+  // Is a note drawn in the page (rather than a form or a card)?
+  const noteShown = () => noteEl.querySelector(".line-row") !== null;
+
+  // Select the whole note, and only the note, not the rest of the panel. The
+  // line being edited lets go of the focus, so typing can't edit a selection
+  // that reaches outside it.
+  function selectWholeNote() {
+    dismissAndRedraw();
+    focusedEl?.blur();
+    const range = document.createRange();
+    range.selectNodeContents(noteEl);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  // Ctrl+A anywhere else in the panel (after the whole note is selected, the
+  // focus is on the page) keeps selecting the note, never the whole panel.
+  document.addEventListener("keydown", (event) => {
+    const isSelectAll =
+      (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey &&
+      event.key.toLowerCase() === "a";
+    if (!isSelectAll || event.defaultPrevented || !noteShown()) return;
+    if (event.target.closest?.("input, textarea, [contenteditable='true']")) return;
+    event.preventDefault();
+    selectWholeNote();
+  });
+
+  // One edge of the page's selection, as the Editor session reads it: a raw
+  // line and column in the line being edited, a drawn offset in a drawn line,
+  // or an offset in the code of a drawn code block. An edge between two blocks
+  // is the start of the later one, or the end of the last.
+  function selectionEdge(node, offset) {
+    if (node === noteEl) {
+      const blocks = noteEl.children;
+      if (offset < blocks.length) return selectionEdge(blocks[offset], 0);
+      const last = noteEl.lastElementChild;
+      return selectionEdge(last, last.childNodes.length);
+    }
+    let blockEl = node;
+    while (blockEl.parentNode !== noteEl) blockEl = blockEl.parentNode;
+    const drawn = textOffset(blockEl, node, offset);
+    if (blockEl.dataset.start === undefined) {
+      // The row of the line being edited: its + button comes before the line.
+      const plus = blockEl.querySelector(".line-plus").textContent.length;
+      const raw = Math.max(0, drawn - plus);
+      return editor.lineColFromOffset(focusedEl.textContent, raw);
+    }
+    const start = Number(blockEl.dataset.start);
+    if (blockEl.dataset.code !== undefined) return { code: start, offset: drawn };
+    return { line: start, rendered: drawn };
+  }
+
+  const copiedEl = document.querySelector(".copied");
+  let copiedTimer = null;
+
+  // A short confirmation of how many lines were copied, that fades on its own.
+  function showCopied(count) {
+    copiedEl.textContent = copiedMessage(count);
+    copiedEl.hidden = false;
+    clearTimeout(copiedTimer);
+    copiedTimer = setTimeout(() => (copiedEl.hidden = true), 1500);
+  }
+
+  // Copying a selection in the note puts its Markdown on the clipboard, so it
+  // pastes back into a note or Obsidian intact.
+  document.addEventListener("copy", (event) => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+    if (!noteShown() || !noteEl.contains(range.commonAncestorContainer)) return;
+    const copied = editor.copy(
+      selectionEdge(range.startContainer, range.startOffset),
+      selectionEdge(range.endContainer, range.endOffset),
+    );
+    event.preventDefault();
+    event.clipboardData.setData("text/plain", copied.text);
+    showCopied(copied.count);
+  });
 
   // Rebuild the page from the current lines, with the focused block as the
   // styled editing surface and every other block rendered. The caret is
