@@ -25,7 +25,7 @@ Review the code changes on branch `{{BRANCH}}` and improve code clarity, consist
    - Avoid nested ternary operators - prefer switch statements or if/else chains
    - Choose clarity over brevity - explicit code is often better than overly compact code
 
-3. **Check the ticket is really done**: find the issue number in the commit messages (`(#N)`), read it with `gh issue view N --comments`, and check every acceptance criterion against the diff, *including* UI criteria that tests can't cover (is the button, prompt or view actually in the sidebar code?). If something is missing, build it on this branch. If you can't, reopen the issue with `gh issue reopen N --comment "<what is missing>"`.
+3. **Check the ticket is really done**: find the issue number in the commit messages (`(#N)`), read the ticket text with `gh issue view N` and then its comments with `gh issue view N --comments` (that one shows only the comments, never the text), and check every acceptance criterion against the diff, *including* UI criteria that tests can't cover (is the button, prompt or view actually in the sidebar code?). If something is missing, build it on this branch. If you can't, reopen the issue with `gh issue reopen N --comment "<what is missing>"`.
 
 4. **Check correctness**:
    - Does the implementation match the intent? Are edge cases handled?

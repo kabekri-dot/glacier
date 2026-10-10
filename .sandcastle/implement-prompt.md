@@ -2,7 +2,7 @@
 
 ## Your issue
 
-Work on issue **#{{ISSUE}}**. The run script already picked it (bugs first, then the order in `.sandcastle/order.txt`, then the lowest number, skipping blocked issues) and chose your model from its `model:` label. Read it in full with `gh issue view {{ISSUE}} --comments`. Do not pick a different issue, and never work on or close issue #1 (the parent spec).
+Work on issue **#{{ISSUE}}**. The run script already picked it (bugs first, then the order in `.sandcastle/order.txt`, then the lowest number, skipping blocked issues) and chose your model from its `model:` label. Read it in full: the ticket text with `gh issue view {{ISSUE}}`, then its comments with `gh issue view {{ISSUE}} --comments` (that one shows only the comments, never the text). Do not pick a different issue, and never work on or close issue #1 (the parent spec).
 
 ## Recent RALPH commits (last 10)
 
