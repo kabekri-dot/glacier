@@ -835,9 +835,7 @@ async function start() {
     create.type = "button";
     create.className = "create-submit";
     create.textContent = "+ Lesson note";
-    create.addEventListener("click", async () => {
-      openingFlow.clickLessonNote();
-    });
+    create.addEventListener("click", () => openingFlow.clickLessonNote());
     wrap.appendChild(create);
 
     noteEl.appendChild(wrap);
