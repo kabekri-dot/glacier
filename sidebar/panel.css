@@ -48,7 +48,7 @@ body {
   background-position: 0 calc(1.5rem - var(--glacier-rule-shift));
 }
 
-/* Each line is its own block. Rendered blocks and the raw textarea share the
+/* Each line is its own block. Rendered blocks and the current line share the
    same metrics so the caret lands on the ruling and nothing jumps when a line
    turns raw and back (ADR 0006). */
 .block {
@@ -58,26 +58,46 @@ body {
   min-height: var(--glacier-line-height);
 }
 
-/* The current line's raw Markdown, edited in place. It is invisible as a
-   control — no border, no background — so it reads as part of the page. */
-.md-raw {
-  display: block;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  line-height: inherit;
-  resize: none;
-  overflow: hidden;
+/* The current line, edited in place and styled as you type (#37). It is
+   invisible as a control — no border, no background — so it reads as part of
+   the page. Its text is the raw Markdown, so runs of spaces are kept. */
+.md-edit {
+  position: relative;
+  min-height: var(--glacier-line-height);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  caret-color: var(--glacier-ink);
 }
 
-.md-raw:focus {
+.md-edit:focus {
   outline: none;
+}
+
+/* The empty-line hint (#6), drawn by CSS so it is never part of the text, and
+   lifted out of the flow so the caret stays at the start of the line. */
+.md-edit.is-empty::before {
+  content: attr(data-placeholder);
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* The Markdown marks on the current line (`## `, `- `, `> `, ```) stay
+   visible but faded, so the syntax is still there to learn (ADR 0006). */
+.md-mark {
+  opacity: 0.4;
+}
+
+.md-list > .md-mark {
+  color: var(--glacier-accent);
+  opacity: 0.6;
+}
+
+.md-quote {
+  font-style: italic;
+  opacity: 0.85;
 }
 
 /* Headings keep their line height a multiple of the ruling so following text
@@ -146,7 +166,7 @@ code {
 }
 
 /* The focused line and its + button (#6). The row lets the + sit in the left
-   gutter without pushing the text off the ruled lines: the textarea keeps the
+   gutter without pushing the text off the ruled lines: the line keeps the
    full width and the button is lifted out into the padding. */
 .line-row {
   position: relative;

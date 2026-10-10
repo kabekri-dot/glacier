@@ -475,3 +475,28 @@ export function renderLineHtml(line, linkExists) {
   }
   return inlineHtml(segments, linkExists);
 }
+
+// The line you're on, split for drawing while you type (ADR 0006 addition,
+// #37). Unlike the other lines, its Markdown marks stay visible — faded — so
+// the drawn text is exactly the raw line and a caret offset in it is a raw
+// offset. Returns the line's kind (heading, list, quote, fence or plain), the
+// heading level, and its parts: "mark" for the Markdown that makes the
+// formatting, "text" for the rest. A mark counts only once it is complete
+// (`## `, not `##`), so half-typed formatting stays plain. Inline formatting
+// on this line is left as text for now.
+export function focusedLineSpans(line) {
+  const withMark = (kind, mark, extra = {}) => {
+    const parts = [{ type: "mark", text: mark }];
+    const rest = line.slice(mark.length);
+    if (rest !== "") parts.push({ type: "text", text: rest });
+    return { kind, ...extra, parts };
+  };
+  const heading = /^(#{1,3})\s+/.exec(line);
+  if (heading) return withMark("heading", heading[0], { level: heading[1].length });
+  const list = /^\s*(-|\d+\.)\s+/.exec(line);
+  if (list) return withMark("list", list[0]);
+  const quote = /^>\s+/.exec(line);
+  if (quote) return withMark("quote", quote[0]);
+  if (isFence(line)) return withMark("fence", "```");
+  return { kind: "plain", parts: line === "" ? [] : [{ type: "text", text: line }] };
+}

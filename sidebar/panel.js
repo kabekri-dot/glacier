@@ -1,8 +1,9 @@
 // The Zen panel: a live-preview block editor (ADR 0006). The note is held as
 // lines; every block is shown as finished formatting except the one the cursor
-// is on, which becomes a small <textarea> of its raw Markdown. As you type,
-// edits are saved into this browser's own IndexedDB copy of the Notebook
-// (ADR 0003) — no save button; the write-through storage keeps every keystroke.
+// is on, which shows its raw Markdown styled as you type, its marks faded (#37).
+// As you type, edits are saved into this browser's own IndexedDB copy of the
+// Notebook (ADR 0003) — no save button; the write-through storage keeps every
+// keystroke.
 //
 // The block logic (splitting, list continuation, merging, raw-offset mapping,
 // the `/` command list) lives in editor-model.mjs as pure, tested functions,
@@ -19,6 +20,8 @@ import { decidePageOpen } from "../src/page-open.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
 import {
   blockRanges,
+  editorTextToBody,
+  focusedLineSpans,
   isFence,
   renderLineHtml,
 } from "../src/editor-model.mjs";
@@ -107,30 +110,28 @@ async function start() {
     openNote(notebook.openLink(title));
   }
 
+  // The text node and offset the browser puts the caret at for a point.
+  function caretAtPoint(x, y) {
+    if (document.caretRangeFromPoint) {
+      const range = document.caretRangeFromPoint(x, y);
+      if (range) return { node: range.startContainer, offset: range.startOffset };
+    } else if (document.caretPositionFromPoint) {
+      const pos = document.caretPositionFromPoint(x, y);
+      if (pos) return { node: pos.offsetNode, offset: pos.offset };
+    }
+    return null;
+  }
+
   // The rendered-text offset of a click inside a rendered block, walking its
   // text nodes up to the caret the browser reports for the click point.
   function renderedOffsetAt(blockEl, x, y) {
-    let node = null;
-    let nodeOffset = 0;
-    if (document.caretRangeFromPoint) {
-      const range = document.caretRangeFromPoint(x, y);
-      if (range) {
-        node = range.startContainer;
-        nodeOffset = range.startOffset;
-      }
-    } else if (document.caretPositionFromPoint) {
-      const pos = document.caretPositionFromPoint(x, y);
-      if (pos) {
-        node = pos.offsetNode;
-        nodeOffset = pos.offset;
-      }
-    }
-    if (!node) return 0;
+    const at = caretAtPoint(x, y);
+    if (!at) return 0;
     let offset = 0;
     const walker = document.createTreeWalker(blockEl, NodeFilter.SHOW_TEXT);
     let textNode = walker.nextNode();
     while (textNode) {
-      if (textNode === node) return offset + nodeOffset;
+      if (textNode === at.node) return offset + at.offset;
       offset += textNode.textContent.length;
       textNode = walker.nextNode();
     }
@@ -167,16 +168,16 @@ async function start() {
   // and the + placement — live in the Editor session (#32); this element just
   // draws editor.menu, floating over the page near the current line.
   let menuEl = null;
-  // The focused line's raw textarea, kept so the menu can be positioned against
-  // it after a re-render.
-  let focusedTextareaEl = null;
+  // The focused line's editing surface, kept so the menu can be positioned
+  // against it after a re-render.
+  let focusedEl = null;
 
   // Draw editor.menu (or remove the list when the session has closed it). The
-  // menu floats just under the focused textarea, which keeps the caret, so
+  // menu floats just under the focused line, which keeps the caret, so
   // typing still filters and ↑/↓/Enter/Tab/Esc drive it.
   function drawMenu() {
     const state = editor.menu;
-    if (!state || !focusedTextareaEl) {
+    if (!state || !focusedEl) {
       if (menuEl) {
         menuEl.remove();
         menuEl = null;
@@ -212,7 +213,7 @@ async function start() {
         menuEl.querySelector(".is-selected")?.classList.remove("is-selected");
         item.classList.add("is-selected");
       });
-      // mousedown (not click) keeps the caret in the textarea as we apply.
+      // mousedown (not click) keeps the caret in the line as we apply.
       item.addEventListener("mousedown", (event) => {
         event.preventDefault();
         editor.menuSelect(i);
@@ -221,7 +222,7 @@ async function start() {
       });
       menuEl.appendChild(item);
     });
-    const rect = focusedTextareaEl.getBoundingClientRect();
+    const rect = focusedEl.getBoundingClientRect();
     menuEl.style.left = `${rect.left}px`;
     menuEl.style.top = `${rect.bottom}px`;
     // Keep the highlighted command in view when ↑/↓ move past the visible part
@@ -239,7 +240,7 @@ async function start() {
 
   // Dismiss the menu without picking (the session removes an untouched + `/`),
   // then redraw so the removal shows. Used by the terminal dismissals: Esc,
-  // clicking outside the textarea, and scrolling away from the menu (#28).
+  // clicking outside the line, and scrolling away from the menu (#28).
   function dismissAndRedraw() {
     if (!editor.menu) return;
     editor.dismissMenu();
@@ -301,23 +302,112 @@ async function start() {
     return el;
   }
 
-  // Build the focused block as a raw-Markdown textarea and wire its keys.
+  // The text offset of (node, nodeOffset) inside `root`: the length of all the
+  // text before it. A `<br>` the browser leaves behind counts as nothing, so
+  // this is always an offset into the raw Markdown.
+  function textOffset(root, node, nodeOffset) {
+    if (!root.contains(node)) return root.textContent.length;
+    const range = document.createRange();
+    range.selectNodeContents(root);
+    range.setEnd(node, nodeOffset);
+    return range.toString().length;
+  }
+
+  // The selection inside the focused line as raw offsets { start, end }.
+  function selectionIn(root) {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return { start: 0, end: 0 };
+    const range = selection.getRangeAt(0);
+    return {
+      start: textOffset(root, range.startContainer, range.startOffset),
+      end: textOffset(root, range.endContainer, range.endOffset),
+    };
+  }
+
+  // Put the caret at a raw offset inside the focused line. At the edge between
+  // two spans it goes into the later one, so text typed right after `## ` lands
+  // in the heading text, not in the faded mark.
+  function placeCaret(root, offset) {
+    const range = document.createRange();
+    range.setStart(root, 0);
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let remaining = offset;
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const length = node.textContent.length;
+      if (remaining < length) {
+        range.setStart(node, remaining);
+        break;
+      }
+      // Past every character so far: the end of this node, unless a later
+      // node takes it.
+      range.setStart(node, length);
+      remaining -= length;
+    }
+    range.collapse(true);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  // One line of the focused block as styled spans, its marks faded (#37). The
+  // parts join back to the raw line, so the element's text stays the Markdown.
+  function styledLine(line) {
+    const spans = focusedLineSpans(line);
+    const wrap = document.createElement("span");
+    wrap.className =
+      spans.kind === "heading" ? `md-h md-h${spans.level}` : `md-${spans.kind}`;
+    for (const part of spans.parts) {
+      const span = document.createElement("span");
+      if (part.type === "mark") span.className = "md-mark";
+      span.textContent = part.text;
+      wrap.appendChild(span);
+    }
+    return wrap;
+  }
+
+  // Re-draw the focused block's spans from its raw lines. In a code block only
+  // the fences are read as Markdown; the lines between them are code. Lines are
+  // joined by real "\n" characters (shown by `white-space: pre-wrap`).
+  function drawFocused(el, blockLines) {
+    const isCode = isFence(blockLines[0]);
+    el.replaceChildren();
+    blockLines.forEach((line, i) => {
+      if (i > 0) el.appendChild(document.createTextNode("\n"));
+      const fenceLine = i === 0 || (i === blockLines.length - 1 && isFence(line));
+      if (isCode && !fenceLine) {
+        if (line !== "") el.appendChild(document.createTextNode(line));
+      } else {
+        el.appendChild(styledLine(line));
+      }
+    });
+    // A trailing empty line only shows (and takes the caret) with a <br>.
+    if (blockLines.length > 1 && blockLines[blockLines.length - 1] === "") {
+      el.appendChild(document.createElement("br"));
+    }
+    // The empty-line hint reminds beginners the menu exists (#6).
+    el.classList.toggle("is-empty", el.textContent === "");
+  }
+
+  // Build the focused block as a styled, plain-text editing surface and wire
+  // its keys (#37, ADR 0006). It is re-drawn after each edit, and its text is
+  // always exactly the raw Markdown, so its caret offsets are raw offsets.
   function focusedBlock(range) {
     const start = range.start;
     const isCode = isFence(editor.lines[start]);
-    const ta = document.createElement("textarea");
-    ta.className = "md-raw";
-    ta.rows = 1;
-    ta.value = editor.lines.slice(start, range.end).join("\n");
+    const el = document.createElement("div");
+    el.className = isCode ? "md-edit md-code" : "md-edit";
+    el.contentEditable = "true";
+    el.setAttribute("role", "textbox");
+    el.dataset.placeholder = EMPTY_LINE_HINT;
+    drawFocused(el, editor.lines.slice(start, range.end));
 
-    const sync = () => {
-      // The session splices the block and places the caret, and reports the
-      // change to save (#31). It tells us when a multi-line paste must reflow
-      // into real blocks; typing inside a code block never does.
-      const { reflow } = editor.edit(ta.value, ta.selectionStart);
-      ta.style.height = "auto";
-      ta.style.height = `${ta.scrollHeight}px`;
-      ta.placeholder = ta.value === "" ? EMPTY_LINE_HINT : "";
+    // Hand the new text and caret to the session, which splices the block and
+    // reports the change to save (#31), then re-draw this line's spans. It
+    // tells us when a multi-line paste must reflow into real blocks; typing
+    // inside a code block never does. While an input method is composing, the
+    // spans are left alone (re-drawing would break the composition).
+    const applyEdit = (value, caret, composing = false) => {
+      const { reflow } = editor.edit(value, caret);
       if (reflow) {
         // A re-render while the menu is open is a dismissal, so an untouched
         // + `/` goes with it rather than being saved (#28).
@@ -325,35 +415,83 @@ async function start() {
         render();
         return;
       }
+      if (!composing) {
+        drawFocused(el, editor.lines.slice(start, start + editor.state.blockCount));
+        placeCaret(el, caret);
+      }
       // Open, refilter or close the `/` command menu for the new caret (#32).
       // The session knows not to open inside a code block, where `/` is code.
       editor.refreshMenu();
       drawMenu();
     };
 
-    ta.addEventListener("input", sync);
+    // Insert plain text over the selection (paste, drop, a line break), so no
+    // HTML or formatting from the clipboard ever gets into the note.
+    const insertPlain = (text, from, to) => {
+      const clean = editorTextToBody(text);
+      const value = el.textContent;
+      applyEdit(value.slice(0, from) + clean + value.slice(to), from + clean.length);
+    };
+
+    el.addEventListener("input", (event) => {
+      applyEdit(el.textContent, selectionIn(el).start, event.isComposing);
+    });
+    el.addEventListener("compositionend", () => {
+      applyEdit(el.textContent, selectionIn(el).start);
+    });
+
+    // The browser's own rich-text edits are replaced by plain ones: a line
+    // break becomes a "\n" in the text (Enter in a code block, Shift+Enter),
+    // and formatting shortcuts like Ctrl+B do nothing.
+    el.addEventListener("beforeinput", (event) => {
+      if (event.inputType === "insertParagraph" || event.inputType === "insertLineBreak") {
+        event.preventDefault();
+        const { start: from, end: to } = selectionIn(el);
+        insertPlain("\n", from, to);
+      } else if (event.inputType.startsWith("format")) {
+        event.preventDefault();
+      }
+    });
+
+    el.addEventListener("paste", (event) => {
+      event.preventDefault();
+      const { start: from, end: to } = selectionIn(el);
+      insertPlain(event.clipboardData.getData("text/plain"), from, to);
+    });
+
+    // A drop lands where it was dropped, as plain text.
+    el.addEventListener("drop", (event) => {
+      event.preventDefault();
+      const text = event.dataTransfer.getData("text/plain");
+      if (!text) return;
+      const at = caretAtPoint(event.clientX, event.clientY);
+      const offset = at ? textOffset(el, at.node, at.offset) : el.textContent.length;
+      insertPlain(text, offset, offset);
+    });
 
     // The caret can move without typing (arrow keys, Home/End, a click): the
     // session keeps an open menu in step with it, or closes it when the caret
     // leaves the `/` command.
     const followCaret = () => {
-      editor.followMenu(ta.value, ta.selectionStart);
+      editor.followMenu(el.textContent, selectionIn(el).start);
       drawMenu();
     };
-    ta.addEventListener("keyup", (event) => {
+    el.addEventListener("keyup", (event) => {
       if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) followCaret();
     });
-    ta.addEventListener("mouseup", followCaret);
+    el.addEventListener("mouseup", followCaret);
     // Clicking somewhere else dismisses the menu (picking an item uses
-    // mousedown with preventDefault, so it never blurs the textarea).
-    ta.addEventListener("blur", () => dismissAndRedraw());
+    // mousedown with preventDefault, so it never blurs the line).
+    el.addEventListener("blur", () => dismissAndRedraw());
 
-    ta.addEventListener("keydown", (event) => {
+    el.addEventListener("keydown", (event) => {
+      const value = el.textContent;
+      const selection = selectionIn(el);
       // While the menu is open the session owns ↑/↓/Enter/Tab/Esc (#32); it
       // tells us what it did so we can redraw the menu or re-render the note.
       const action = editor.menuKey(event.key, {
-        value: ta.value,
-        caret: ta.selectionStart,
+        value,
+        caret: selection.start,
         isComposing: event.isComposing,
       });
       if (action === "nav") {
@@ -370,19 +508,19 @@ async function start() {
       // `/` command), so keep the drawn list in step before the editor keys run.
       if (!editor.menu) drawMenu();
 
-      // Each editing key forwards the textarea's caret to the session, which
+      // Each editing key forwards the line's caret to the session, which
       // decides what the edit does and where the caret lands (#31).
-      if (event.key === "Enter" && !isCode && !event.shiftKey) {
+      if (event.key === "Enter" && !isCode && !event.shiftKey && !event.isComposing) {
         event.preventDefault();
-        editor.enter(ta.value, ta.selectionStart, ta.selectionEnd);
+        editor.enter(value, selection.start, selection.end);
         render();
         return;
       }
 
       if (
         event.key === "Backspace" &&
-        ta.selectionStart === 0 &&
-        ta.selectionStart === ta.selectionEnd &&
+        selection.start === 0 &&
+        selection.start === selection.end &&
         start > 0
       ) {
         event.preventDefault();
@@ -393,7 +531,7 @@ async function start() {
       }
 
       if (event.key === "ArrowUp") {
-        if (editor.moveUp(ta.value, ta.selectionStart)) {
+        if (editor.moveUp(value, selection.start)) {
           event.preventDefault();
           render();
         }
@@ -401,27 +539,28 @@ async function start() {
       }
 
       if (event.key === "ArrowDown") {
-        if (editor.moveDown(ta.value, ta.selectionStart)) {
+        if (editor.moveDown(value, selection.start)) {
           event.preventDefault();
           render();
         }
       }
     });
 
-    return { ta, start };
+    return { el, start };
   }
 
-  // Rebuild the page from the current lines, with the focused block as a raw
-  // textarea and every other block rendered. The caret is restored afterwards.
+  // Rebuild the page from the current lines, with the focused block as the
+  // styled editing surface and every other block rendered. The caret is
+  // restored afterwards.
   function render() {
     noteEl.replaceChildren();
-    focusedTextareaEl = null;
+    focusedEl = null;
     // Keep the session's focused-block span in step with the caret before we
     // read it back to place the caret (#31).
     editor.relayout();
     const { lines, focus } = editor.state;
     const ranges = blockRanges(lines);
-    let focusedTextarea = null;
+    let focused = null;
 
     for (const range of ranges) {
       if (focus.line >= range.start && focus.line < range.end) {
@@ -440,28 +579,21 @@ async function start() {
         });
         const row = document.createElement("div");
         row.className = "line-row";
-        row.append(plus, built.ta);
+        row.append(plus, built.el);
         noteEl.appendChild(row);
-        focusedTextarea = built.ta;
+        focused = built.el;
       } else {
         noteEl.appendChild(renderedBlock(range));
       }
     }
 
-    if (focusedTextarea) {
-      focusedTextareaEl = focusedTextarea;
-      const offset = editor.caretOffset();
-      focusedTextarea.focus();
-      focusedTextarea.setSelectionRange(offset, offset);
-      // The empty-line hint reminds beginners the menu exists (#6).
-      focusedTextarea.placeholder =
-        focusedTextarea.value === "" ? EMPTY_LINE_HINT : "";
-      // Grow the raw textarea to fit its content so the paper reads as one note.
-      focusedTextarea.style.height = "auto";
-      focusedTextarea.style.height = `${focusedTextarea.scrollHeight}px`;
+    if (focused) {
+      focusedEl = focused;
+      focused.focus();
+      placeCaret(focused, editor.caretOffset());
     }
 
-    // Draw the `/` menu against the fresh textarea (the + button opens it just
+    // Draw the `/` menu against the fresh line (the + button opens it just
     // before a render), or remove it when the session has closed it (#32).
     drawMenu();
   }
