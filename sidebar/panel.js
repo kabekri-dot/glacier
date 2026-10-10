@@ -723,9 +723,16 @@ async function start() {
     });
   }
 
-  // Carry out a page-open decision (see decidePageOpen): open the page's note,
-  // offer a form, or keep what's open.
-  function applyPageDecision(decision) {
+  // Follow a page: decide what it should open (decidePageOpen, #29) and carry
+  // that out — open the page's Lesson Note, offer a form, or keep what's open
+  // so a note the user navigated to isn't thrown away.
+  function followPage(page) {
+    const decision = decidePageOpen({
+      current,
+      openedByPage,
+      page,
+      lessonNoteForSource: (url) => notebook.lessonNoteForSource(url),
+    });
     switch (decision.type) {
       case "open":
         openNote(decision.note, { byPage: true });
@@ -740,19 +747,10 @@ async function start() {
     }
   }
 
-  // Read the page and follow it (open its Lesson Note or offer to create one),
-  // without throwing away a note the user navigated to (#29). Called once the
-  // `tabs` permission is in hand (on load or after Allow).
+  // Read the current page and follow it. Called once the `tabs` permission is
+  // in hand (on load or after Allow).
   async function proceedWithPage() {
-    const page = await currentPage();
-    applyPageDecision(
-      decidePageOpen({
-        current,
-        openedByPage,
-        page,
-        lessonNoteForSource: (url) => notebook.lessonNoteForSource(url),
-      }),
-    );
+    followPage(await currentPage());
   }
 
   // The starting panel when no note is open and the permission hasn't been
@@ -859,14 +857,7 @@ async function start() {
     if (!(await hasTabsPermission())) return;
     const page = await currentPage();
     if (seq !== pageChangeSeq) return;
-    applyPageDecision(
-      decidePageOpen({
-        current,
-        openedByPage,
-        page,
-        lessonNoteForSource: (url) => notebook.lessonNoteForSource(url),
-      }),
-    );
+    followPage(page);
   }
 
   if (api.tabs) {
