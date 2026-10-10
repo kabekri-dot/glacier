@@ -2,9 +2,9 @@
 
 ## Open issues
 
-!`gh issue list --state open --label ready-for-agent --limit 100 --json number,title,body,labels,comments --jq '[.[] | select(.number != 1) | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'`
+!`gh issue list --state open --label ready-for-agent --limit 100 --json number,title,labels,body --jq '[.[] | select(.number != 1) | {number, title, labels: [.labels[].name], blockedBy: (((.body // "") | split("## Blocked by")[1] // "") | split("## ")[0] | gsub("^[[:space:]]+|[[:space:]]+$"; ""))}]'`
 
-The list above has already been filtered to issues ready for work (issue #1, the parent spec, is excluded on purpose — never work on it or close it) and is the sole source of truth for what work exists. Do not run your own unfiltered query to find more issues — if the list is empty, there is nothing to do.
+The list above has already been filtered to issues ready for work (issue #1, the parent spec, is excluded on purpose — never work on it or close it) and is the sole source of truth for what work exists. It shows only each issue's number, title, labels and "Blocked by" section, to save tokens: once you have picked an issue, read it in full with `gh issue view <N> --comments` before working on it. Do not run your own unfiltered query to find more issues — if the list is empty, there is nothing to do.
 
 ## Recent RALPH commits (last 10)
 

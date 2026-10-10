@@ -127,7 +127,9 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     await sandbox.run({
       name: "reviewer",
       maxIterations: 1,
-      agent: sandcastle.claudeCode("claude-opus-4-8"),
+      // Glacier: reviewing a finished change against a checklist is the easier
+      // job, so the reviewer runs on Sonnet (cheaper); the builder stays on Opus.
+      agent: sandcastle.claudeCode("sonnet"),
       promptFile: "./.sandcastle/review-prompt.md",
       promptArgs: {
         BRANCH: branch,
