@@ -72,11 +72,21 @@ function pickNextIssue(): { issue: Issue; model: string } | null {
     "--json", "number")).map((i: { number: number }) => i.number));
   const isBlocked = (issue: Issue) => {
     const section = (issue.body ?? "").split("## Blocked by")[1]?.split("\n## ")[0] ?? "";
-    return [...section.matchAll(/#(\d+)/g)].some((m) => open.has(Number(m[1])));
+    // #1 is the parent spec and stays open for good, so it never blocks.
+    return [...section.matchAll(/#(\d+)/g)].some((m) => Number(m[1]) !== 1 && open.has(Number(m[1])));
   };
   const hasLabel = (issue: Issue, name: string) => issue.labels.some((l) => l.name === name);
-  const order = readFileSync(new URL("./order.txt", import.meta.url), "utf8")
-    .split(/\r?\n/).map((line) => line.trim()).filter((line) => /^\d+$/.test(line)).map(Number);
+  // One number per line; `#` starts a comment, also after a number.
+  const order: number[] = [];
+  for (const raw of readFileSync(new URL("./order.txt", import.meta.url), "utf8").split(/\r?\n/)) {
+    const line = raw.replace(/#.*/, "").trim();
+    if (line === "") continue;
+    if (!/^\d+$/.test(line)) {
+      console.error(`order.txt: "${raw.trim()}" isn't an issue number. Fix that line first.`);
+      process.exit(1);
+    }
+    order.push(Number(line));
+  }
   const rank = (issue: Issue) => (order.includes(issue.number) ? order.indexOf(issue.number) : order.length);
   const candidates = ready
     .filter((i) => i.number !== 1 && !isBlocked(i))
@@ -94,7 +104,11 @@ function pickNextIssue(): { issue: Issue; model: string } | null {
   if (!issue) return null;
   const label = issue.labels.find((l) => l.name.startsWith("model:"))?.name.slice("model:".length);
   const name = MODEL_OVERRIDE ?? label ?? DEFAULT_MODEL;
-  return { issue, model: MODELS[name] ?? name };
+  if (!(name in MODELS)) {
+    console.error(`Unknown model "${name}" for #${issue.number}. Use one of: ${Object.keys(MODELS).join(", ")}.`);
+    process.exit(1);
+  }
+  return { issue, model: MODELS[name] };
 }
 
 if (DRY_RUN) {

@@ -3,3 +3,11 @@
 *.png binary
 *.jpg binary
 *.ico binary
+*.gif binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.zip binary
+*.xpi binary
