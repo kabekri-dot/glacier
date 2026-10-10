@@ -213,3 +213,179 @@ test("line/col is read back from a block-relative offset", () => {
     col: 1,
   });
 });
+
+// The `/` command menu and the + button live behind the session's front door
+// (#32). The sidebar only draws editor.menu and forwards keys and mouse events;
+// every decision — opening, filtering, the highlight, picking, dismissing, the
+// + placement, the code-block rule and the IME rule — is tested here.
+
+// Typing `/` opens the menu; `/he` filters to the three headings.
+test("typing a slash query opens the menu filtered to matching commands", () => {
+  const editor = createEditorSession();
+  editor.load("");
+  editor.edit("/he", 3);
+  editor.refreshMenu();
+  assert.ok(editor.menu);
+  assert.deepEqual(
+    editor.menu.commands.map((c) => c.id),
+    ["h1", "h2", "h3"],
+  );
+  assert.equal(editor.menu.selected, 0);
+});
+
+test("/he + ↓ + Enter inserts the second heading's Markdown", () => {
+  const changes = [];
+  const editor = createEditorSession({ onChange: (b) => changes.push(b) });
+  editor.load("");
+  editor.edit("/he", 3);
+  editor.refreshMenu();
+  assert.equal(editor.menuKey("ArrowDown", { value: "/he", caret: 3 }), "nav");
+  assert.equal(editor.menu.selected, 1);
+  assert.equal(editor.menuKey("Enter", { value: "/he", caret: 3 }), "pick");
+  assert.deepEqual(editor.state.lines, ["## "]);
+  assert.deepEqual(editor.state.focus, { line: 0, col: 3 });
+  assert.equal(editor.menu, null);
+  assert.equal(changes[changes.length - 1], "## ");
+});
+
+test("a new query resets the highlight to the top", () => {
+  const editor = createEditorSession();
+  editor.load("");
+  editor.edit("/h", 2);
+  editor.refreshMenu();
+  editor.menuKey("ArrowDown", { value: "/h", caret: 2 });
+  assert.equal(editor.menu.selected, 1);
+  // Typing another character is a new query: the highlight starts at the top.
+  editor.edit("/he", 3);
+  editor.refreshMenu();
+  assert.equal(editor.menu.selected, 0);
+});
+
+test("the menu never opens inside a code block", () => {
+  const editor = createEditorSession();
+  editor.load("```\n/he\n```");
+  editor.moveTo(1, 3); // caret on the "/he" line, inside the fenced block
+  editor.refreshMenu();
+  assert.equal(editor.menu, null);
+});
+
+test("while an input method is composing, Enter does not pick a command", () => {
+  const editor = createEditorSession();
+  editor.load("");
+  editor.edit("/he", 3);
+  editor.refreshMenu();
+  assert.equal(
+    editor.menuKey("Enter", { value: "/he", caret: 3, isComposing: true }),
+    "none",
+  );
+  assert.ok(editor.menu);
+  assert.deepEqual(editor.state.lines, ["/he"]);
+});
+
+// Dismissing the menu (Esc, clicking elsewhere, scrolling out) takes an
+// untouched `/` that the + button added back out again (#28).
+test("Esc dismisses the menu and removes an untouched + / on a fresh line", () => {
+  const changes = [];
+  const editor = createEditorSession({ onChange: (b) => changes.push(b) });
+  editor.load("hello");
+  editor.moveTo(0, 5);
+  editor.openMenuFromPlus(0);
+  assert.deepEqual(editor.state.lines, ["hello", "/"]);
+  assert.ok(editor.menu);
+  assert.equal(editor.menuKey("Escape", { value: "/", caret: 1 }), "dismiss");
+  assert.equal(editor.menu, null);
+  assert.deepEqual(editor.state.lines, ["hello"]);
+  assert.equal(changes[changes.length - 1], "hello");
+});
+
+test("dismissing removes an untouched + / that replaced an empty line", () => {
+  const editor = createEditorSession();
+  editor.load("");
+  editor.openMenuFromPlus(0);
+  assert.deepEqual(editor.state.lines, ["/"]);
+  assert.equal(editor.dismissMenu(), -1);
+  assert.deepEqual(editor.state.lines, [""]);
+  assert.equal(editor.menu, null);
+});
+
+test("dismissing leaves a + / alone once it has been typed into", () => {
+  const editor = createEditorSession();
+  editor.load("");
+  editor.openMenuFromPlus(0);
+  editor.edit("/h", 2); // the user typed, so the slash is no longer untouched
+  editor.refreshMenu();
+  editor.dismissMenu();
+  assert.deepEqual(editor.state.lines, ["/h"]);
+});
+
+// + placement: an empty line gets the slash in place; a line with text and a
+// code block get it on a fresh line that doesn't disturb what's there.
+test("+ on an empty line opens the menu in place", () => {
+  const editor = createEditorSession();
+  editor.load("");
+  editor.openMenuFromPlus(0);
+  assert.deepEqual(editor.state.lines, ["/"]);
+  assert.deepEqual(editor.state.focus, { line: 0, col: 1 });
+  assert.ok(editor.menu);
+});
+
+test("+ on a line with text opens the menu on a fresh line below", () => {
+  const editor = createEditorSession();
+  editor.load("text");
+  editor.moveTo(0, 4);
+  editor.openMenuFromPlus(0);
+  assert.deepEqual(editor.state.lines, ["text", "/"]);
+  assert.deepEqual(editor.state.focus, { line: 1, col: 1 });
+  assert.ok(editor.menu);
+});
+
+test("+ in a code block opens the menu on a fresh line after the block", () => {
+  const editor = createEditorSession();
+  editor.load("```\ncode\n```");
+  editor.moveTo(0, 3); // focus the whole code block
+  editor.openMenuFromPlus(0);
+  assert.deepEqual(editor.state.lines, ["```", "code", "```", "/"]);
+  assert.deepEqual(editor.state.focus, { line: 3, col: 1 });
+  assert.ok(editor.menu);
+});
+
+test("dismissing a + / after a code block reports the removed line", () => {
+  const editor = createEditorSession();
+  editor.load("```\ncode\n```");
+  editor.moveTo(0, 3);
+  editor.openMenuFromPlus(0);
+  assert.equal(editor.dismissMenu(), 3); // the fresh "/" line was removed
+  assert.deepEqual(editor.state.lines, ["```", "code", "```"]);
+});
+
+test("moving the caret before the slash closes the menu", () => {
+  const editor = createEditorSession();
+  editor.load("/he");
+  editor.moveTo(0, 3);
+  editor.refreshMenu();
+  assert.ok(editor.menu);
+  // The caret moves ahead of the "/": followMenu updates the open menu, and
+  // here it closes because the caret no longer sits on a slash command.
+  editor.followMenu("/he", 0);
+  assert.equal(editor.menu, null);
+});
+
+test("followMenu never opens a fresh menu when none is open", () => {
+  const editor = createEditorSession();
+  editor.load("/he");
+  editor.moveTo(0, 3);
+  // No refreshMenu first, so no menu is open; a caret move must not open one.
+  editor.followMenu("/he", 3);
+  assert.equal(editor.menu, null);
+});
+
+test("the mouse highlight and the arrow highlight are the same one", () => {
+  const editor = createEditorSession();
+  editor.load("");
+  editor.edit("/", 1);
+  editor.refreshMenu();
+  editor.menuSelect(3);
+  assert.equal(editor.menu.selected, 3);
+  editor.menuKey("ArrowDown", { value: "/", caret: 1 });
+  assert.equal(editor.menu.selected, 4);
+});
