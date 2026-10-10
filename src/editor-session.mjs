@@ -240,7 +240,7 @@ export function createEditorSession({ onChange } = {}) {
     },
 
     // Set the caret within the current block (its span is unchanged), used when
-    // the textarea reports its caret moving without leaving the block.
+    // the focused line reports its caret moving without leaving the block.
     setFocus(line, col) {
       focus = { line, col };
     },
@@ -248,7 +248,7 @@ export function createEditorSession({ onChange } = {}) {
     lineColFromOffset,
 
     // The block-relative offset of the caret, so the sidebar can place it in
-    // the focused textarea.
+    // the focused line.
     caretOffset() {
       return offsetInBlock(focus.line, focus.col);
     },
@@ -348,7 +348,7 @@ export function createEditorSession({ onChange } = {}) {
       notifyChange();
     },
 
-    // The focused textarea changed to `value`, caret at the block-relative
+    // The focused line changed to `value`, caret at the block-relative
     // offset `caret` — typing, or the result of a native paste. Splice the
     // block's lines and place the caret. Returns `{ reflow }`: true when a
     // multi-line paste into a one-line block must become real blocks (the
@@ -398,7 +398,7 @@ export function createEditorSession({ onChange } = {}) {
     // Backspace at the very start of the focused block: join it with the line
     // above (editor-model also keeps ``` fences intact, #27). Returns true when
     // it handled the key; false (caret not at the block start, or the top of
-    // the note) leaves the keystroke to the textarea.
+    // the note) leaves the keystroke to the browser.
     backspaceAtStart() {
       if (blockStart === 0) return false;
       if (!(focus.line === blockStart && focus.col === 0)) return false;
@@ -411,9 +411,9 @@ export function createEditorSession({ onChange } = {}) {
     },
 
     // ↑ from the top line of the block: move to the end of the line above.
-    // Returns true when it crossed a block; false leaves ↑ to the textarea
+    // Returns true when it crossed a block; false leaves ↑ to the browser
     // (moving within a multi-line block). `value`/`selStart` describe the
-    // textarea's caret.
+    // focused line's caret.
     moveUp(value, selStart) {
       const firstBreak = value.indexOf("\n");
       const atTop = firstBreak === -1 || selStart <= firstBreak;

@@ -19,6 +19,7 @@ import {
   slashQuery,
   filterCommands,
   applySlashCommand,
+  focusedLineSpans,
 } from "../src/editor-model.mjs";
 
 // The editor model is the second test seam: pure functions on one note's
@@ -434,4 +435,84 @@ test("the / menu lists Italic and applies it with the caret in the middle", () =
     line: 0,
     col: 1,
   });
+});
+
+// The line you're on is styled while you type (ADR 0006 addition, #37): its
+// marks stay visible but faded, so the drawn text is exactly the raw line and a
+// caret offset in it is a raw offset. focusedLineSpans splits the raw line into
+// "mark" and "text" parts for drawing.
+
+const joined = (spans) => spans.parts.map((part) => part.text).join("");
+
+test("typing ## makes the line a heading at once, with ## as a faded mark", () => {
+  const spans = focusedLineSpans("## ");
+  assert.equal(spans.kind, "heading");
+  assert.equal(spans.level, 2);
+  assert.deepEqual(spans.parts, [{ type: "mark", text: "## " }]);
+});
+
+test("a focused heading keeps its text after the mark, joining back to the raw line", () => {
+  const spans = focusedLineSpans("# Box **model**");
+  assert.equal(spans.level, 1);
+  assert.deepEqual(spans.parts, [
+    { type: "mark", text: "# " },
+    { type: "text", text: "Box **model**" },
+  ]);
+  assert.equal(joined(spans), "# Box **model**");
+});
+
+test("a focused bullet and a numbered item show their marker as a mark", () => {
+  assert.deepEqual(focusedLineSpans("  - item"), {
+    kind: "list",
+    parts: [
+      { type: "mark", text: "  - " },
+      { type: "text", text: "item" },
+    ],
+  });
+  assert.deepEqual(focusedLineSpans("1. first"), {
+    kind: "list",
+    parts: [
+      { type: "mark", text: "1. " },
+      { type: "text", text: "first" },
+    ],
+  });
+});
+
+test("a focused quote shows its > as a mark", () => {
+  const spans = focusedLineSpans("> wise words");
+  assert.equal(spans.kind, "quote");
+  assert.deepEqual(spans.parts, [
+    { type: "mark", text: "> " },
+    { type: "text", text: "wise words" },
+  ]);
+});
+
+test("a focused code fence shows its ``` as a mark and keeps the language", () => {
+  const spans = focusedLineSpans("```js");
+  assert.equal(spans.kind, "fence");
+  assert.deepEqual(spans.parts, [
+    { type: "mark", text: "```" },
+    { type: "text", text: "js" },
+  ]);
+});
+
+test("a focused plain line is one text part, and an empty line has no parts", () => {
+  assert.deepEqual(focusedLineSpans("just #text"), {
+    kind: "plain",
+    parts: [{ type: "text", text: "just #text" }],
+  });
+  assert.deepEqual(focusedLineSpans(""), { kind: "plain", parts: [] });
+});
+
+test("half-typed marks stay plain until they are complete", () => {
+  assert.equal(focusedLineSpans("##").kind, "plain");
+  assert.equal(focusedLineSpans("-item").kind, "plain");
+  assert.equal(focusedLineSpans(">quote").kind, "plain");
+  assert.equal(focusedLineSpans("####### too deep").kind, "plain");
+});
+
+test("every focused line's parts join back to exactly the raw line", () => {
+  for (const line of ["### a < b", "- ", "	- tabbed", "12. twelve", ">  two spaces", "```", "plain"]) {
+    assert.equal(joined(focusedLineSpans(line)), line);
+  }
 });
