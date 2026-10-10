@@ -13,14 +13,10 @@ import { createNotebook } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { createSaveScheduler } from "../src/save-scheduler.mjs";
 import { decidePageOpen } from "../src/page-open.mjs";
+import { createEditorSession } from "../src/editor-session.mjs";
 import {
-  splitIntoLines,
-  linesToText,
-  editorTextToBody,
   blockRanges,
   isFence,
-  pressEnter,
-  pressBackspace,
   renderedToRaw,
   renderLineHtml,
   slashQuery,
@@ -68,19 +64,26 @@ async function start() {
     return;
   }
 
-  // The note currently shown, the lines it holds and where the caret sits (raw
-  // line + column). Nothing is open until the page's Lesson Note is found or a
-  // note is created (openForCurrentPage, below); while nothing is open the
-  // panel shows a way to make a note rather than a blank, locked page (#3).
-  // Following a Link opens another note in place (openLink), so these change as
-  // you move between notes; the cursor lands at the top of each note (ADR 0006).
+  // The note currently shown. Nothing is open until the page's Lesson Note is
+  // found or a note is created (openForCurrentPage, below); while nothing is
+  // open the panel shows a way to make a note rather than a blank, locked page
+  // (#3). Following a Link opens another note in place (openLink).
   let current = null;
-  let lines = [];
-  let focus = { line: 0, col: 0 };
   // Whether the open note was opened by the page (so a later page change may
   // replace it) or by the user following a Link / creating it (so it stays put
   // when the page behind the sidebar changes — issue #29).
   let openedByPage = false;
+
+  // The editing decisions — the note's lines and caret, typing, Enter,
+  // Backspace, ↑/↓, paste and the cursor maths — live behind this front door
+  // (#31, ADR 0002). This file only forwards what happened and draws
+  // editor.state; it still does the saving (scheduleSave) and the opening of
+  // notes (openNote). A text change reports the body to save.
+  const scheduler = createSaveScheduler({
+    save: (body) => notebook.saveBody(current.title, body),
+  });
+  const scheduleSave = () => scheduler.schedule(editor.body());
+  const editor = createEditorSession({ onChange: (body) => scheduler.schedule(body) });
 
   // Open a note in the editor: flush any pending save for the note we're
   // leaving, load the new note's lines and draw it with the caret at the top.
@@ -89,8 +92,7 @@ async function start() {
     scheduler.flush();
     current = note;
     openedByPage = byPage;
-    lines = splitIntoLines(editorTextToBody(current.body ?? ""));
-    focus = { line: 0, col: 0 };
+    editor.load(current.body ?? "");
     render();
   }
 
@@ -98,43 +100,11 @@ async function start() {
   // (a Missing Link) renders red (#8).
   const linkExists = (title) => !notebook.isMissingLink(title);
 
-  // Debounce writes so a burst of typing opens one transaction, not one per
-  // keystroke, and flush any pending write before the sidebar goes away so the
-  // last keystrokes aren't lost (issue #25). Writes go to whichever note is
-  // open now.
-  const scheduler = createSaveScheduler({
-    save: (body) => notebook.saveBody(current.title, body),
-  });
-
-  const scheduleSave = () =>
-    scheduler.schedule(editorTextToBody(linesToText(lines)));
-
   // Follow a `[[Title]]` Link: save any pending edits to the note we're leaving
   // first, then open the note the Link names in place. A Missing Link creates a
   // Concept Note with that title and opens that instead (#8).
   function openLink(title) {
     openNote(notebook.openLink(title));
-  }
-
-  // Where in a block's text the caret sits, given its first line and the
-  // caret's (line, col): the columns of every earlier in-block line, plus one
-  // for each `\n` between them.
-  function offsetInBlock(start, line, col) {
-    let offset = col;
-    for (let l = start; l < line; l += 1) {
-      offset += lines[l].length + 1;
-    }
-    return offset;
-  }
-
-  // The caret's (line, col) from a textarea caret offset, given the block's
-  // first line: split the text before the caret and count the line breaks.
-  function lineColFromOffset(start, value, offset) {
-    const before = value.slice(0, offset).split("\n");
-    return {
-      line: start + before.length - 1,
-      col: before[before.length - 1].length,
-    };
   }
 
   // The rendered-text offset of a click inside a rendered block, walking its
@@ -167,8 +137,10 @@ async function start() {
     return offset;
   }
 
+  // Move the caret and redraw. The placement decision is the session's; this
+  // only draws the result.
   function moveTo(line, col) {
-    focus = { line, col };
+    editor.moveTo(line, col);
     render();
   }
 
@@ -200,11 +172,13 @@ async function start() {
     closeMenu();
     const origin = plusOrigin;
     plusOrigin = null;
-    if (origin && lines[origin.line] === "/") {
-      if (origin.added) lines.splice(origin.line, 1);
-      else lines[origin.line] = "";
-      focus = { line: origin.added ? origin.line - 1 : origin.line, col: 0 };
-      if (origin.added) focus.col = lines[focus.line].length;
+    const ls = editor.lines;
+    if (origin && ls[origin.line] === "/") {
+      if (origin.added) ls.splice(origin.line, 1);
+      else ls[origin.line] = "";
+      const line = origin.added ? origin.line - 1 : origin.line;
+      const col = origin.added ? ls[line].length : 0;
+      editor.moveTo(line, col);
       scheduleSave();
       render();
     }
@@ -226,8 +200,9 @@ async function start() {
   // the command's Markdown and the caret lands where the command points (#6).
   function pickCommand(command) {
     plusOrigin = null;
-    const next = applySlashCommand(lines, focus.line, focus.col, command);
-    lines = next.lines;
+    const { focus } = editor.state;
+    const next = applySlashCommand(editor.lines, focus.line, focus.col, command);
+    editor.replaceLines(next.lines);
     closeMenu();
     moveTo(next.line, next.col);
     scheduleSave();
@@ -279,6 +254,7 @@ async function start() {
   // Show (or refilter) the menu for the focused line. It opens only when the
   // line is a `/` command (slashQuery); any other caret closes it.
   function openOrUpdateMenu(ta) {
+    const { lines, focus } = editor.state;
     const query = slashQuery(lines[focus.line] ?? "", focus.col);
     const commands = query === null ? [] : filterCommands(query);
     if (commands.length === 0) {
@@ -308,7 +284,7 @@ async function start() {
   // the current line already has text — so filtering and applying behave
   // exactly as if the `/` had been typed (#6).
   function openMenuFromPlus(start) {
-    const next = lines.slice();
+    const next = editor.lines.slice();
     let line = start;
     let added = false;
     if (isFence(next[start] ?? "")) {
@@ -325,8 +301,8 @@ async function start() {
     } else {
       next[start] = "/";
     }
-    lines = next;
-    focus = { line, col: 1 };
+    editor.replaceLines(next);
+    editor.moveTo(line, 1);
     scheduleSave();
     render();
     if (focusedTextareaEl) {
@@ -344,8 +320,9 @@ async function start() {
     // While an input method (e.g. Chinese or Japanese) is composing, Enter
     // confirms the composed text and must not apply a command.
     if (event.isComposing) return false;
-    focus = lineColFromOffset(start, ta.value, ta.selectionStart);
-    if (slashQuery(lines[focus.line] ?? "", focus.col) === null) {
+    const here = editor.lineColFromOffset(ta.value, ta.selectionStart);
+    editor.setFocus(here.line, here.col);
+    if (slashQuery(editor.lines[here.line] ?? "", here.col) === null) {
       closeMenu();
       return false;
     }
@@ -377,7 +354,7 @@ async function start() {
 
   // Build one rendered (non-focused) block.
   function renderedBlock(range) {
-    const blockLines = lines.slice(range.start, range.end);
+    const blockLines = editor.lines.slice(range.start, range.end);
     const el = document.createElement("div");
     el.className = "block";
 
@@ -419,29 +396,21 @@ async function start() {
   // Build the focused block as a raw-Markdown textarea and wire its keys.
   function focusedBlock(range) {
     const start = range.start;
-    const count = range.end - start;
-    const isCode = isFence(lines[start]);
+    const isCode = isFence(editor.lines[start]);
     const ta = document.createElement("textarea");
     ta.className = "md-raw";
     ta.rows = 1;
-    ta.value = lines.slice(start, range.end).join("\n");
-
-    // How many lines this block holds right now. It grows as a code block gains
-    // lines, so each sync replaces exactly the block's current span.
-    let blockCount = count;
+    ta.value = editor.lines.slice(start, range.end).join("\n");
 
     const sync = () => {
-      const newLines = ta.value.split("\n");
-      lines.splice(start, blockCount, ...newLines);
-      blockCount = newLines.length;
-      focus = lineColFromOffset(start, ta.value, ta.selectionStart);
-      scheduleSave();
+      // The session splices the block and places the caret, and reports the
+      // change to save (#31). It tells us when a multi-line paste must reflow
+      // into real blocks; typing inside a code block never does.
+      const { reflow } = editor.edit(ta.value, ta.selectionStart);
       ta.style.height = "auto";
       ta.style.height = `${ta.scrollHeight}px`;
       ta.placeholder = ta.value === "" ? EMPTY_LINE_HINT : "";
-      // A multi-line paste into a one-line block must reflow into real blocks;
-      // typing inside a code block need not (it stays one block).
-      if (!isCode && newLines.length > 1) {
+      if (reflow) {
         render();
         return;
       }
@@ -458,7 +427,8 @@ async function start() {
     // an open menu in step with it, or close it when it leaves the `/` command.
     const followCaret = () => {
       if (!menu) return;
-      focus = lineColFromOffset(start, ta.value, ta.selectionStart);
+      const here = editor.lineColFromOffset(ta.value, ta.selectionStart);
+      editor.setFocus(here.line, here.col);
       if (isCode) closeMenu();
       else openOrUpdateMenu(ta);
     };
@@ -474,19 +444,12 @@ async function start() {
       // While the menu is open it owns ↑/↓/Enter/Tab/Esc (#6).
       if (menuHandledKey(event, ta, start)) return;
 
+      // Each editing key forwards the textarea's caret to the session, which
+      // decides what the edit does and where the caret lands (#31).
       if (event.key === "Enter" && !isCode && !event.shiftKey) {
         event.preventDefault();
-        const here = lineColFromOffset(start, ta.value, ta.selectionStart);
-        if (ta.selectionStart !== ta.selectionEnd) {
-          const selEnd = lineColFromOffset(start, ta.value, ta.selectionEnd);
-          lines[here.line] =
-            lines[here.line].slice(0, here.col) +
-            lines[selEnd.line].slice(selEnd.col);
-        }
-        const next = pressEnter(lines, here.line, here.col);
-        lines = next.lines;
-        moveTo(next.line, next.col);
-        scheduleSave();
+        editor.enter(ta.value, ta.selectionStart, ta.selectionEnd);
+        render();
         return;
       }
 
@@ -497,29 +460,24 @@ async function start() {
         start > 0
       ) {
         event.preventDefault();
-        const next = pressBackspace(lines, start, 0);
-        lines = next.lines;
-        moveTo(next.line, next.col);
-        scheduleSave();
+        editor.setFocus(start, 0);
+        editor.backspaceAtStart();
+        render();
         return;
       }
 
       if (event.key === "ArrowUp") {
-        const firstBreak = ta.value.indexOf("\n");
-        const atTop = firstBreak === -1 || ta.selectionStart <= firstBreak;
-        if (atTop && start > 0) {
+        if (editor.moveUp(ta.value, ta.selectionStart)) {
           event.preventDefault();
-          moveTo(start - 1, lines[start - 1].length);
+          render();
         }
         return;
       }
 
       if (event.key === "ArrowDown") {
-        const lastBreak = ta.value.lastIndexOf("\n");
-        const lastLine = start + count - 1;
-        if (ta.selectionStart > lastBreak && lastLine < lines.length - 1) {
+        if (editor.moveDown(ta.value, ta.selectionStart)) {
           event.preventDefault();
-          moveTo(lastLine + 1, 0);
+          render();
         }
       }
     });
@@ -535,9 +493,12 @@ async function start() {
     closeMenu();
     noteEl.replaceChildren();
     focusedTextareaEl = null;
+    // Keep the session's focused-block span in step with the caret before we
+    // read it back to place the caret (#31).
+    editor.relayout();
+    const { lines, focus } = editor.state;
     const ranges = blockRanges(lines);
     let focusedTextarea = null;
-    let focusedStart = 0;
 
     for (const range of ranges) {
       if (focus.line >= range.start && focus.line < range.end) {
@@ -558,7 +519,6 @@ async function start() {
         row.append(plus, built.ta);
         noteEl.appendChild(row);
         focusedTextarea = built.ta;
-        focusedStart = built.start;
       } else {
         noteEl.appendChild(renderedBlock(range));
       }
@@ -566,7 +526,7 @@ async function start() {
 
     if (focusedTextarea) {
       focusedTextareaEl = focusedTextarea;
-      const offset = offsetInBlock(focusedStart, focus.line, focus.col);
+      const offset = editor.caretOffset();
       focusedTextarea.focus();
       focusedTextarea.setSelectionRange(offset, offset);
       // The empty-line hint reminds beginners the menu exists (#6).
