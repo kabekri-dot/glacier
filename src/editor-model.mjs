@@ -298,20 +298,32 @@ function inlineSegments(content) {
   return segs;
 }
 
-// A whole line as segments: a leading heading or bullet marker (rendered to
-// nothing) followed by its inline content.
+// A whole line as segments: the one shared description of a line (#33). Both
+// drawing the line (renderLineHtml) and mapping a drawn position back to the
+// Markdown (renderedToRaw, linkAtRendered) read it, so the two can never
+// disagree. Each segment carries its raw Markdown (`raw`) and the text actually
+// drawn for it (`text`); a marker's `text` is what the reader sees in its place
+// — nothing for a heading's `#` or bold's `**`, but the drawn "•" for a bullet,
+// which therefore counts as one drawn character on both sides of the mapping
+// (the heart of the #30 fix).
 function lineSegments(line) {
-  const heading = /^(#{1,3}\s+)(.*)$/.exec(line);
+  const heading = /^(#{1,3})(\s+)(.*)$/.exec(line);
   if (heading) {
     return [
-      { raw: heading[1], text: "", kind: "marker" },
-      ...inlineSegments(heading[2]),
+      {
+        raw: heading[1] + heading[2],
+        text: "",
+        kind: "marker",
+        marker: "heading",
+        level: heading[1].length,
+      },
+      ...inlineSegments(heading[3]),
     ];
   }
   const bullet = /^(\s*-\s+)(.*)$/.exec(line);
   if (bullet) {
     return [
-      { raw: bullet[1], text: "", kind: "marker" },
+      { raw: bullet[1], text: "•", kind: "marker", marker: "bullet" },
       ...inlineSegments(bullet[2]),
     ];
   }
@@ -327,12 +339,36 @@ export function renderedToRaw(line, renderedOffset) {
   let renderedPos = 0;
   for (const seg of lineSegments(line)) {
     if (seg.text.length > 0 && renderedOffset < renderedPos + seg.text.length) {
+      // A drawn position inside a visible marker (the bullet "•") belongs to
+      // the marker, not to a character of the raw Markdown: it lands at the
+      // marker's end — the start of the content — so clicking the dot puts the
+      // caret where the text begins (#30), never one character into it.
+      if (seg.kind === "marker") return rawPos + seg.raw.length;
       return rawPos + (renderedOffset - renderedPos);
     }
     renderedPos += seg.text.length;
     rawPos += seg.raw.length;
   }
   return rawPos;
+}
+
+// The title of the Link a drawn position falls on, or null when the position
+// is not on a Link. Read from the same shared line description as the drawing,
+// so a click the sidebar located in the drawn line reports the Link under it
+// (#33) without a second, separate parse of the Markdown.
+export function linkAtRendered(line, renderedOffset) {
+  let renderedPos = 0;
+  for (const seg of lineSegments(line)) {
+    if (
+      seg.kind === "link" &&
+      renderedOffset >= renderedPos &&
+      renderedOffset < renderedPos + seg.text.length
+    ) {
+      return seg.title;
+    }
+    renderedPos += seg.text.length;
+  }
+  return null;
 }
 
 function escapeHtml(text) {
@@ -346,12 +382,13 @@ function escapeAttr(text) {
   return escapeHtml(text).replace(/"/g, "&quot;");
 }
 
-// `linkExists` (optional) answers whether a Link's target note already exists.
-// A Link to a note that doesn't exist yet is a Missing Link and renders red
-// (CONTEXT.md); when no predicate is given, Links render as normal targets.
-function inlineHtml(content, linkExists) {
+// The HTML for a run of inline segments. `linkExists` (optional) answers
+// whether a Link's target note already exists: a Link to a note that doesn't
+// exist yet is a Missing Link and renders red (CONTEXT.md); when no predicate
+// is given, Links render as normal targets.
+function inlineHtml(segments, linkExists) {
   let html = "";
-  for (const seg of inlineSegments(content)) {
+  for (const seg of segments) {
     if (seg.kind === "bold") {
       html += `<strong>${escapeHtml(seg.text)}</strong>`;
     } else if (seg.kind === "code") {
@@ -363,28 +400,29 @@ function inlineHtml(content, linkExists) {
     } else if (seg.kind === "plain") {
       html += escapeHtml(seg.text);
     }
-    // marker segments render to nothing
+    // marker segments render to nothing (the bullet "•" is drawn by the wrapper)
   }
   return html;
 }
 
-// Render one Markdown line as the HTML shown when it is not the current line.
-// Headings lose their `#`, bullets get a dot, bold and inline code become
-// `<strong>`/`<code>`, Links become click targets; everything else is escaped
-// text. An empty line keeps its height with a `<br>`. `linkExists` lets the
-// caller mark Missing Links (see inlineHtml).
+// Render one Markdown line as the HTML shown when it is not the current line,
+// built from the same shared line description that maps a click back (#33), so
+// what is drawn and what a click maps to can never drift apart. Headings lose
+// their `#`, bullets get a dot, bold and inline code become `<strong>`/`<code>`,
+// Links become click targets; everything else is escaped text. An empty line
+// keeps its height with a `<br>`. `linkExists` lets the caller mark Missing
+// Links (see inlineHtml).
 export function renderLineHtml(line, linkExists) {
-  const heading = /^(#{1,3})\s+(.*)$/.exec(line);
-  if (heading) {
-    const level = heading[1].length;
-    return `<span class="md-h md-h${level}">${inlineHtml(heading[2], linkExists)}</span>`;
-  }
-  const bullet = /^(\s*)-\s+(.*)$/.exec(line);
-  if (bullet) {
-    return `<span class="md-bullet"><span class="md-bullet-dot">•</span>${inlineHtml(bullet[2], linkExists)}</span>`;
-  }
   if (line === "") {
     return "<br>";
   }
-  return inlineHtml(line, linkExists);
+  const segments = lineSegments(line);
+  const first = segments[0];
+  if (first && first.marker === "heading") {
+    return `<span class="md-h md-h${first.level}">${inlineHtml(segments.slice(1), linkExists)}</span>`;
+  }
+  if (first && first.marker === "bullet") {
+    return `<span class="md-bullet"><span class="md-bullet-dot">•</span>${inlineHtml(segments.slice(1), linkExists)}</span>`;
+  }
+  return inlineHtml(segments, linkExists);
 }

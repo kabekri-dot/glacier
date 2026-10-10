@@ -20,7 +20,6 @@ import { createEditorSession } from "../src/editor-session.mjs";
 import {
   blockRanges,
   isFence,
-  renderedToRaw,
   renderLineHtml,
 } from "../src/editor-model.mjs";
 
@@ -274,16 +273,18 @@ async function start() {
     el.innerHTML = renderLineHtml(line, linkExists);
     el.addEventListener("mousedown", (event) => {
       event.preventDefault();
+      // The sidebar finds which drawn character the click landed on; the Editor
+      // session decides what it means from the one shared line description (#33).
+      const rendered = renderedOffsetAt(el, event.clientX, event.clientY);
+      const hit = editor.clickLine(range.start, rendered);
       // A plain click on a Link follows it instead of dropping the caret: it
       // opens the linked note, or creates and opens a Concept Note for a
       // Missing Link (#8).
-      const linkEl = event.target.closest && event.target.closest(".md-link");
-      if (linkEl) {
-        openLink(linkEl.dataset.linkTitle);
+      if (hit.type === "link") {
+        openLink(hit.title);
         return;
       }
-      const rendered = renderedOffsetAt(el, event.clientX, event.clientY);
-      moveTo(range.start, renderedToRaw(line, rendered));
+      moveTo(hit.line, hit.col);
     });
     return el;
   }

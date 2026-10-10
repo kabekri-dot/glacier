@@ -431,3 +431,45 @@ test("the mouse highlight and the arrow highlight are the same one", () => {
   editor.menuKey("ArrowDown", { value: "/", caret: 1 });
   assert.equal(editor.menu.selected, 4);
 });
+
+// The line display behind the front door (#33): the sidebar locates which drawn
+// character a click landed on and passes it to the session, which decides — from
+// the one shared line description — where the caret goes, or that a Link was
+// clicked. Covered here for every kind of line so the drawn position and the
+// Markdown position can never disagree.
+
+test("clicking a heading maps every drawn position past the # marker", () => {
+  const editor = createEditorSession();
+  editor.load("## Hello");
+  // "## Hello" draws as "Hello"; drawn offset 0 -> raw 3 (just after "## ").
+  assert.deepEqual(editor.clickLine(0, 0), { type: "caret", line: 0, col: 3 });
+  assert.deepEqual(editor.clickLine(0, 5), { type: "caret", line: 0, col: 8 });
+});
+
+test("clicking a bullet lands exactly where you clicked (#30)", () => {
+  const editor = createEditorSession();
+  editor.load("- item");
+  // The drawn "•" is counted, so clicking just before "i" lands at content
+  // start (raw 2), not one character in — the bug #30 fixes.
+  assert.deepEqual(editor.clickLine(0, 1), { type: "caret", line: 0, col: 2 });
+  assert.deepEqual(editor.clickLine(0, 5), { type: "caret", line: 0, col: 6 });
+});
+
+test("clicking inside bold or inline code maps past the markers", () => {
+  const editor = createEditorSession();
+  editor.load("a **b** c");
+  // Drawn "a b c"; before "b" (drawn 2) -> raw 4, just inside the `**`.
+  assert.deepEqual(editor.clickLine(0, 2), { type: "caret", line: 0, col: 4 });
+  editor.load("run `x` now");
+  // Drawn "run x now"; before "x" (drawn 4) -> raw 5, just inside the backtick.
+  assert.deepEqual(editor.clickLine(0, 4), { type: "caret", line: 0, col: 5 });
+});
+
+test("clicking a Link reports the Link and its title, not a caret", () => {
+  const editor = createEditorSession();
+  editor.load("go to [[Box model]] now");
+  // Drawn "go to Box model now"; "Box model" is drawn offsets 6..14.
+  assert.deepEqual(editor.clickLine(0, 8), { type: "link", title: "Box model" });
+  // Clicking off the Link is a caret, mapped past the `[[`.
+  assert.equal(editor.clickLine(0, 0).type, "caret");
+});

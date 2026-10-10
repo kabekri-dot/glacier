@@ -26,6 +26,8 @@ import {
   slashQuery,
   filterCommands,
   applySlashCommand,
+  renderedToRaw,
+  linkAtRendered,
 } from "./editor-model.mjs";
 
 export function createEditorSession({ onChange } = {}) {
@@ -189,6 +191,20 @@ export function createEditorSession({ onChange } = {}) {
     },
 
     moveTo,
+
+    // A click the sidebar located in a drawn line, as the rendered-text offset
+    // the click fell on (#33). The sidebar finds the position; the session
+    // decides what it means, reading the one shared line description so the
+    // decision matches what was drawn. On a Link it reports the Link clicked and
+    // its title, and leaves the caret where it was (the sidebar follows the
+    // Link); otherwise it maps the position back to the Markdown column and
+    // returns where the caret should go, for the sidebar to place it.
+    clickLine(line, renderedOffset) {
+      const raw = lines[line] ?? "";
+      const title = linkAtRendered(raw, renderedOffset);
+      if (title !== null) return { type: "link", title };
+      return { type: "caret", line, col: renderedToRaw(raw, renderedOffset) };
+    },
 
     // Set the caret within the current block (its span is unchanged), used when
     // the textarea reports its caret moving without leaving the block.
