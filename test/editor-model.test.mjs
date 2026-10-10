@@ -400,3 +400,38 @@ test("applying a command keeps any text after the caret on the line", () => {
     col: 2,
   });
 });
+
+test("*a* and _a_ render as italic with hidden markers", () => {
+  assert.equal(renderLineHtml("*a*"), "<em>a</em>");
+  assert.equal(renderLineHtml("say _a_ now"), "say <em>a</em> now");
+});
+
+test("***a*** is bold and italic, and bold can hold italic", () => {
+  assert.equal(renderLineHtml("***a***"), "<strong><em>a</em></strong>");
+  assert.equal(
+    renderLineHtml("**bold _and italic_**"),
+    "<strong>bold </strong><strong><em>and italic</em></strong>",
+  );
+});
+
+test("snake_case and 2*3 stay plain text", () => {
+  assert.equal(renderLineHtml("snake_case_name"), "snake_case_name");
+  assert.equal(renderLineHtml("2*3 and 4*5"), "2*3 and 4*5");
+});
+
+test("a caret inside italic text maps past the markers", () => {
+  // "a *b* c": drawn "a b c"; before "b" (drawn 2) -> raw 3; after it (3) -> raw 5.
+  assert.equal(renderedToRaw("a *b* c", 2), 3);
+  assert.equal(renderedToRaw("a *b* c", 3), 5);
+  assert.equal(renderedToRaw("***b*** c", 0), 3);
+});
+
+test("the / menu lists Italic and applies it with the caret in the middle", () => {
+  const italic = SLASH_COMMANDS.find((c) => c.label === "Italic");
+  assert.equal(italic.markdown, "*italic*");
+  assert.deepEqual(applySlashCommand(["/i rest"], 0, 2, italic), {
+    lines: ["** rest"],
+    line: 0,
+    col: 1,
+  });
+});
