@@ -35,3 +35,9 @@ export function decidePageOpen({
   if (existing) return { type: "open", note: existing };
   return { type: "lessonForm", page };
 }
+
+// Whether a note counts as opened by the page: a Lesson Note has a Source, so
+// it follows tab switches; a note made by hand has none and stays put.
+export function isOpenedByPage(note) {
+  return Boolean(note.source);
+}

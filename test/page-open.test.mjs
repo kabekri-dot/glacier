@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { decidePageOpen } from "../src/page-open.mjs";
+import { decidePageOpen, isOpenedByPage } from "../src/page-open.mjs";
 
 // When the page behind the sidebar changes (a tab switch or a navigation),
 // Glacier must decide whether to follow it. A note the user opened themselves
@@ -103,6 +103,28 @@ test("a page-opened note is kept on a browser-internal page, not replaced by a f
     openedByPage: true,
     page: null,
     lessonNoteForSource: notebook([lessonA]),
+  });
+  assert.deepEqual(decision, { type: "keep" });
+});
+
+test("a Lesson Note just created with a Source follows the next page change", () => {
+  const created = { title: "Fresh", source: "https://a.test/fresh" };
+  const decision = decidePageOpen({
+    current: created,
+    openedByPage: isOpenedByPage(created),
+    page: { url: lessonB.source, title: "Lesson B" },
+    lessonNoteForSource: notebook([lessonB]),
+  });
+  assert.deepEqual(decision, { type: "open", note: lessonB });
+});
+
+test("a note just created without a Source is kept on a page change", () => {
+  const created = { title: "By hand" };
+  const decision = decidePageOpen({
+    current: created,
+    openedByPage: isOpenedByPage(created),
+    page: { url: lessonB.source, title: "Lesson B" },
+    lessonNoteForSource: notebook([lessonB]),
   });
   assert.deepEqual(decision, { type: "keep" });
 });
