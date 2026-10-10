@@ -9,7 +9,7 @@ What goes into which version. Terms are defined in [CONTEXT.md](../CONTEXT.md), 
 - Opening the panel on a known lesson page opens its Lesson Note. On an unknown page, "+ Lesson note" uses the page title and Source. Reading the current tab needs an optional permission, asked on the first click (ADR 0008); without it, "+ New note" creates a Lesson Note by hand
 - Course picked when creating a Lesson Note, last-used Course preselected
 - Note list: Courses → Lesson Notes, plus a Concepts section
-- Live-preview writing: no Edit/Preview switch, the cursor lands in the note when it opens, and Markdown shows as formatting while you write, with only the current line raw (see [ADR 0006](adr/0006-live-preview-block-editor.md)). A plain click follows a Link. Frontmatter hidden and shown as a small header (Course · source ↗)
+- Live-preview writing: no Edit/Preview switch, the cursor lands in the note when it opens, and Markdown shows as formatting while you write, including on the current line, where the Markdown marks stay visible but faded (see [ADR 0006](adr/0006-live-preview-block-editor.md)). A plain click follows a Link. Frontmatter hidden and shown as a small header (Course · source ↗)
 - `/` command menu at the start of a line, showing the Markdown for each command. A small + at the left of the current line opens the same menu
 - Shortcuts panel (Markdown cheat sheet): docked to the left of the sidebar like settings, outside the notebook. Folds into a slim vertical tab on the sidebar's edge and stays open or folded until you change it. Switched on or off in settings. Nothing extra in the note's top bar, which is kept for the title
 - `[[` autocomplete for Links
@@ -57,6 +57,8 @@ What goes into which version. Terms are defined in [CONTEXT.md](../CONTEXT.md), 
 
 - Clipping highlighted page text into the current note (v2: reuses the optional permission from ADR 0008, and the explanation card gains one line for it)
 - More Themes (Dot Journal, Legal Pad)
+- Attaching the current page as the Source of a Lesson Note made without one
+- Pasting from a web page keeps its formatting (headings, bold, lists, links turned into Markdown); v1 pastes plain text
 - Unlinked mentions
 - Tags
 - Flashcards / spaced repetition
