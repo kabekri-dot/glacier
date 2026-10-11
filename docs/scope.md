@@ -6,10 +6,10 @@ What goes into which version. Terms are defined in [CONTEXT.md](../CONTEXT.md), 
 
 - Sidebar in Chrome and Firefox, opened from the toolbar or a keyboard shortcut
 - **One layout: Zen.** Only the page. One small pill at the top holds the title, sync status, search, recent notes and the notebook, and a small button bottom-left shows what links here. The other nine layouts from the prototype wait until later (see below)
-- Opening the panel on a known lesson page opens its Lesson Note. On an unknown page, "+ Lesson note" uses the page title and Source. Reading the current tab needs an optional permission, asked on the first click (ADR 0008); without it, "+ New note" creates a Lesson Note by hand
-- Course picked when creating a Lesson Note, last-used Course preselected
+- Opening the panel on a known lesson page opens its Lesson Note. On an unknown page the empty paper shows, and the Lesson Note is made with the page title and Source the moment you start writing (#61). No create form: + opens a fresh page with the title in the pill ready to type. Reading the current tab needs an optional permission, asked on the first click (ADR 0008); without it, a Lesson Note is made by hand
+- A new Lesson Note takes the last-used Course; the Course is changed in place on the line above the text
 - Note list: Courses → Lesson Notes, plus a Concepts section
-- Live-preview writing: no Edit/Preview switch, the cursor lands in the note when it opens, and Markdown shows as formatting while you write, including on the current line, where the Markdown marks stay visible but faded (see [ADR 0006](adr/0006-live-preview-block-editor.md)). A plain click follows a Link. Frontmatter hidden and shown as a small header (Course · source ↗)
+- Live-preview writing: no Edit/Preview switch, the cursor lands in the note when it opens, and Markdown shows as formatting while you write, including on the current line, where the Markdown marks stay visible but faded (see [ADR 0006](adr/0006-live-preview-block-editor.md)). A plain click follows a Link. Frontmatter hidden and shown as a small header (Course · site ↗, the site switching to the lesson's tab when it's open)
 - `/` command menu at the start of a line, showing the Markdown for each command. A small + at the left of the current line opens the same menu
 - Shortcuts panel (Markdown cheat sheet): docked to the left of the sidebar like settings, outside the notebook. Folds into a slim vertical tab on the sidebar's edge and stays open or folded until you change it. Switched on or off in settings. Nothing extra in the note's top bar, which is kept for the title
 - `[[` autocomplete for Links

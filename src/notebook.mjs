@@ -49,6 +49,16 @@ export function normalizeSource(url) {
   }
 }
 
+// The link to the lesson is labelled with its site (#61): the domain without
+// `www.`, e.g. "youtube.com".
+export function sourceLabel(source) {
+  try {
+    return new URL(source).hostname.replace(/^www\./, "");
+  } catch {
+    return source;
+  }
+}
+
 // The text with every Link to `oldTitle` pointing at `newTitle` instead.
 function rewriteLinks(body, oldTitle, newTitle) {
   if (!body) {
@@ -501,6 +511,27 @@ export function createNotebook({ storage }) {
         }
       }
       return [...seen].sort((a, b) => a.localeCompare(b));
+    },
+
+    // The Courses for the list on the line above the text (#61): the last
+    // used one first, then the rest as courses() sorts them.
+    courseChoices() {
+      const last = storage.getMeta(LAST_COURSE);
+      const rest = this.courses().filter((course) => course !== last);
+      return last ? [last, ...rest] : rest;
+    },
+
+    // Move a Lesson Note to another Course, picked or typed on the line above
+    // the text (#61). It becomes the last used Course, and the note's file
+    // moves to the Course's folder on the next sync, like a rename.
+    moveToCourse(title, course) {
+      const note = storage.getNote(title);
+      const name = (course ?? "").trim();
+      if (!note || note.type !== "lesson" || !name) return note;
+      const moved = { ...note, course: name };
+      storage.putNote(moved);
+      storage.putMeta(LAST_COURSE, name);
+      return moved;
     },
 
     // The Lesson Note for the page you're on, matched by Source, or undefined

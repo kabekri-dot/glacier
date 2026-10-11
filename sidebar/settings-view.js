@@ -16,12 +16,12 @@ import { notesRepoName } from "../src/notebook.mjs";
 import { SHORTCUT_GROUPS } from "../src/shortcuts-panel.mjs";
 import { PAPERS, paperGroups, FONT_OVERRIDES, TEXT_SIZE } from "../src/look.mjs";
 
-// A labelled control row, for the settings and the create forms.
+// A labelled control row, for the settings.
 export function field(labelText, control) {
   const label = document.createElement("label");
-  label.className = "create-field";
+  label.className = "form-field";
   const span = document.createElement("span");
-  span.className = "create-label";
+  span.className = "form-label";
   span.textContent = labelText;
   label.append(span, control);
   return label;
@@ -204,7 +204,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
         "On a page that isn't a website",
         [
           ["keep", "Keep the open note"],
-          ["newNoteForm", "Show a new note form"],
+          ["newNoteForm", "Show an empty page for a new note"],
         ],
         tabSettings.onNonWebsite,
         (value) => prefs.saveTabSettings({ onNonWebsite: value }),
@@ -311,7 +311,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
   async function drawNotesRepo({ repo: typedRepo, error } = {}) {
     const saved = await repo.connection();
 
-    const form = element("form", "create-form");
+    const form = element("form", "settings-form");
     const about = element(
       "p",
       "settings-text",
@@ -322,13 +322,13 @@ export function createSettingsView({ prefs, repo, onClose }) {
 
     const repoInput = document.createElement("input");
     repoInput.type = "text";
-    repoInput.className = "create-input repo-input";
+    repoInput.className = "form-input repo-input";
     repoInput.placeholder = "yourname/notes";
     repoInput.value = typedRepo ?? saved.repo;
 
     const tokenInput = document.createElement("input");
     tokenInput.type = "password";
-    tokenInput.className = "create-input";
+    tokenInput.className = "form-input";
     tokenInput.autocomplete = "off";
     tokenInput.placeholder = saved.token ? "Saved. Paste a new one to change it" : "Paste your token";
 
@@ -342,7 +342,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
     errorEl.setAttribute("role", "alert");
     errorEl.hidden = !error;
 
-    const submit = element("button", "create-submit", "Connect and sync");
+    const submit = element("button", "card-button", "Connect and sync");
     submit.type = "submit";
 
     form.addEventListener("submit", (event) => {
@@ -413,7 +413,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
 
     const notes = result.notes === 1 ? "1 note" : `${result.notes} notes`;
     const done = element("p", "settings-text", `Your notes are here. Brought in ${notes} from ${repoName}.`);
-    const ok = element("button", "create-submit", "Start writing");
+    const ok = element("button", "card-button", "Start writing");
     ok.type = "button";
     ok.addEventListener("click", () => {
       onClose();

@@ -5,7 +5,8 @@ export const TAB_DEFAULTS = {
   // false: the sidebar shows the note of the tab you are on.
   // true: a note you opened yourself stays when you switch tabs.
   keepUserOpenedNotes: false,
-  // On a page that isn't a website: "keep" the open note or show a "newNoteForm".
+  // On a page that isn't a website: "keep" the open note or show an empty page
+  // for a new note ("newNoteForm", the name kept so saved settings still work).
   onNonWebsite: "keep",
   // Whether the previous note button shows in the pill.
   showPreviousButton: true,

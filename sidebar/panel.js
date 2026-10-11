@@ -13,7 +13,7 @@
 // draws editor.state and editor.menu. The pill that switches notes arrives in a
 // later slice (#12).
 
-import { createNotebook, importSummary, syncErrorMessage } from "../src/notebook.mjs";
+import { createNotebook, importSummary, sourceLabel, syncErrorMessage } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { githubRemote } from "../src/github-remote.mjs";
 import { conflictMessage, createAutoSync, syncStatusText } from "../src/auto-sync.mjs";
@@ -32,7 +32,7 @@ import { readTabSettings } from "../src/tab-settings.mjs";
 import { readShortcutsPanel } from "../src/shortcuts-panel.mjs";
 import { readLook, lookStyle, wholeRows } from "../src/look.mjs";
 import { BESIDE_PERMISSION, readPanelPlace, decidePanelPlace, explainsInside } from "../src/panel-place.mjs";
-import { createSettingsView, createShortcutsView, field, menuButton, syncStatusRow } from "./settings-view.js";
+import { createSettingsView, createShortcutsView, menuButton, syncStatusRow } from "./settings-view.js";
 import { drawBesideFrames } from "./beside-frames.js";
 import {
   blockRanges,
@@ -47,6 +47,10 @@ import {
 // command logic (which commands, filtering, applying one) is tested in the
 // editor model; this file only draws the menu and wires its keys.
 const EMPTY_LINE_HINT = "Type / for commands, or click + on the left";
+
+// The one quiet line on a fresh page (#61), where the note starts as you type.
+const PAGE_DRAFT_HINT = "No note for this page yet. Just start writing.";
+const DRAFT_HINT = "Just start writing.";
 
 // The formatting shortcuts (#44): Ctrl (Cmd on a Mac) plus these keys. Ctrl+K
 // is kept free for search.
@@ -179,6 +183,11 @@ async function start() {
   // replace it) or by the user following a Link / creating it (so it stays put
   // when the page behind the sidebar changes — issue #29).
   let openedByPage = false;
+  // A fresh page that is not a note yet (#61): { type, title, hint }. The Note
+  // session makes the note at the first character or a confirmed title.
+  let draft = null;
+  // The note on screen when a fresh page took its place, so Esc can go back.
+  let noteBeforeDraft = null;
   // The notes that have been on screen, for the pill's ← button (#52).
   const history = createNoteHistory();
 
@@ -188,7 +197,7 @@ async function start() {
   // only forwards what happened and draws editor.state and editor.menu; it does
   // the opening of notes (openNote); a text change is forwarded to the Note
   // session, which owns saving the open note.
-  const session = createNoteSession({ notebook, onSaveError: reportSaveError });
+  const session = createNoteSession({ notebook, onSaveError: reportSaveError, onCreate: noteCreated });
   // Sync with the Notes Repo runs by itself (#15): a pull when the sidebar
   // opens and a push a few seconds after typing stops. When to sync is
   // auto-sync's; this connects it to GitHub and draws the status.
@@ -219,6 +228,8 @@ async function start() {
     editor.dismissMenu();
     session.open(note);
     notebook.markOpened(note.title);
+    draft = null;
+    noteBeforeDraft = null;
     current = note;
     openedByPage = byPage;
     if (!fromHistory) history.visit(note.title);
@@ -230,36 +241,137 @@ async function start() {
     updateNoteMeta();
   }
 
-  // --- The note's header (#13) ------------------------------------------------
+  // --- The note's header (#13, #61) ----------------------------------------
   //
   // The note's file keeps its Course and Source in a frontmatter (ADR 0005),
   // but the editor never shows that YAML: a Lesson Note gets a small
-  // "Course · source ↗" line above its text instead, the link opening the
-  // lesson in a new tab.
+  // "Course · site ↗" line above its text instead. Clicking the Course opens a
+  // small list right there to move the note; the site switches to the
+  // lesson's tab, or opens it in a new one.
 
   function updateNoteMeta() {
     noteMetaEl.replaceChildren();
-    const course = current?.type === "lesson" ? current.course : undefined;
-    const source = current?.type === "lesson" ? current.source : undefined;
-    if (course) {
-      const name = document.createElement("span");
-      name.className = "note-meta-course";
-      name.textContent = course;
-      noteMetaEl.append(name);
+    noteMetaEl.classList.remove("is-picking");
+    const lesson = current?.type === "lesson" ? current : null;
+    if (lesson) noteMetaEl.append(courseButton(lesson));
+    if (lesson?.source) noteMetaEl.append(" · ", sourceLink(lesson.source));
+    noteMetaEl.hidden = !lesson;
+    noteEl.classList.toggle("has-meta", Boolean(lesson));
+  }
+
+  function courseButton(note) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "note-meta-course";
+    button.classList.toggle("is-empty", !note.course);
+    button.textContent = note.course || "No course";
+    button.title = "Click to move this note to another course";
+    button.addEventListener("click", () => {
+      if (noteMetaEl.querySelector(".course-list")) updateNoteMeta();
+      else openCourseList();
+    });
+    return button;
+  }
+
+  // The Courses, the last used one first, and "New course" at the bottom.
+  function openCourseList() {
+    const list = document.createElement("div");
+    list.className = "course-list";
+    for (const course of notebook.courseChoices()) {
+      const choice = document.createElement("button");
+      choice.type = "button";
+      choice.className = "course-choice";
+      choice.textContent = course;
+      choice.addEventListener("click", () => moveCurrentNote(course));
+      list.appendChild(choice);
     }
-    if (course && source) noteMetaEl.append(" · ");
-    if (source) {
-      const link = document.createElement("a");
-      link.href = source;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.title = source;
-      link.textContent = "source ↗";
-      noteMetaEl.append(link);
-    }
-    const shown = Boolean(course || source);
-    noteMetaEl.hidden = !shown;
-    noteEl.classList.toggle("has-meta", shown);
+    const fresh = document.createElement("button");
+    fresh.type = "button";
+    fresh.className = "course-choice is-new";
+    fresh.textContent = "New course";
+    fresh.addEventListener("click", showCourseInput);
+    list.appendChild(fresh);
+    noteMetaEl.classList.add("is-picking");
+    noteMetaEl.appendChild(list);
+    list.querySelector("button").focus();
+  }
+
+  // "New course" turns the Course into a text field on the same line. Enter
+  // or clicking away moves the note; Esc or an empty field changes nothing.
+  function showCourseInput() {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "course-input";
+    input.placeholder = "New course";
+    input.setAttribute("aria-label", "New course");
+    let done = false;
+    const finish = (keep) => {
+      if (done) return;
+      done = true;
+      if (keep && input.value.trim()) moveCurrentNote(input.value);
+      else {
+        updateNoteMeta();
+        render();
+      }
+    };
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        finish(true);
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        finish(false);
+      }
+    });
+    input.addEventListener("blur", () => finish(true));
+    noteMetaEl.querySelector(".course-list")?.remove();
+    noteMetaEl.classList.remove("is-picking");
+    noteMetaEl.querySelector(".note-meta-course").replaceWith(input);
+    input.focus();
+  }
+
+  function moveCurrentNote(course) {
+    session.flush();
+    current = notebook.moveToCourse(current.title, course);
+    autoSync.changed();
+    updateNoteMeta();
+    render();
+  }
+
+  // A click anywhere else, or Esc, closes the Course list.
+  document.addEventListener("mousedown", (event) => {
+    if (!noteMetaEl.querySelector(".course-list")) return;
+    if (event.target.closest(".course-list, .note-meta-course")) return;
+    updateNoteMeta();
+  });
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (event.key !== "Escape" || !noteMetaEl.querySelector(".course-list")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      updateNoteMeta();
+      if (current) render();
+    },
+    true,
+  );
+
+  // The site, e.g. "youtube.com ↗"; hovering shows the full address. A plain
+  // click goes through the browser page port, which picks the lesson's tab.
+  function sourceLink(source) {
+    const link = document.createElement("a");
+    link.href = source;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.title = source;
+    link.textContent = `${sourceLabel(source)} ↗`;
+    link.addEventListener("click", (event) => {
+      if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      event.preventDefault();
+      browserPage.openSource(source);
+    });
+    return link;
   }
 
   // --- Backlinks (#10) ---------------------------------------------------------
@@ -305,7 +417,9 @@ async function start() {
 
   function updatePill() {
     stopTitleEdit();
-    pillTitleEl.textContent = current ? current.title : "Glacier";
+    pillTitleEl.textContent = current ? current.title : draft ? draft.title || "Title" : "Glacier";
+    pillTitleEl.classList.toggle("is-draft", Boolean(draft));
+    pillTitleEl.title = draft ? "Click to name this note" : "Click to rename";
     pillArchivedEl.hidden = !current?.archived;
     const previous = history.previous();
     backEl.hidden = previous === null || !tabSettings.showPreviousButton;
@@ -334,13 +448,13 @@ async function start() {
   }
 
   function startLessonNote() {
-    rememberNoteBeforeForm();
+    rememberNoteBeforeDraft();
     session.close();
     current = null;
     openedByPage = false;
     updatePill();
     updateNoteMeta();
-    openingFlow.clickLessonNote();
+    openingFlow.clickLessonNote({ editTitle: true });
   }
 
   async function openNewMenu() {
@@ -355,14 +469,8 @@ async function start() {
       button.addEventListener("click", () => {
         closeNewMenu();
         if (choice.kind === "lesson") startLessonNote();
-        else if (choice.kind === "byHand") {
-          rememberNoteBeforeForm();
-          session.close();
-          showNewNoteForm();
-        } else {
-          openNote(notebook.createConceptNote({ title: "Untitled" }));
-          autoSync.changed();
-        }
+        else if (choice.kind === "byHand") showDraft({ type: "lesson", hint: DRAFT_HINT, editTitle: true });
+        else showDraft({ type: "concept", hint: DRAFT_HINT, editTitle: true });
       });
       newMenuEl.appendChild(button);
     }
@@ -394,7 +502,7 @@ async function start() {
   function dismissMenuPanel() {
     if (!menuIsOpen()) return;
     closeMenu();
-    if (current) render();
+    if (current || draft) render();
   }
 
   function noteButton(title, className = "menu-item") {
@@ -550,9 +658,7 @@ async function start() {
     newConcept.textContent = "+ Concept";
     newConcept.title = CONCEPT_NOTE_HINT;
     newConcept.addEventListener("click", () => {
-      const typed = search.value.trim();
-      openNote(notebook.createConceptNote({ title: typed || "Untitled" }));
-      autoSync.changed();
+      showDraft({ type: "concept", title: search.value.trim(), hint: DRAFT_HINT, editTitle: true });
     });
     actions.append(newLesson, newConcept);
 
@@ -607,7 +713,7 @@ async function start() {
   }
 
   // Archive (#58): the note leaves the lists, and the Opening flow decides
-  // what the sidebar shows next (a page with no Lesson note gets the form).
+  // what the sidebar shows next (a page with no Lesson note gets a fresh page).
   function archiveCurrentNote() {
     session.flush();
     notebook.archiveNote(current.title);
@@ -649,7 +755,7 @@ async function start() {
 
     const confirm = document.createElement("button");
     confirm.type = "button";
-    confirm.className = "create-submit";
+    confirm.className = "card-button";
     confirm.textContent = "Delete";
 
     const keep = document.createElement("button");
@@ -915,7 +1021,7 @@ async function start() {
     settingsSection = null;
     glacierButtonEl.setAttribute("aria-expanded", "false");
     placePanels();
-    if (redraw && current) render();
+    if (redraw && (current || draft)) render();
   }
 
   // Writing again, or opening the menus, closes settings.
@@ -1058,7 +1164,7 @@ async function start() {
     card.className = "perm-card";
 
     const title = document.createElement("h1");
-    title.className = "create-heading";
+    title.className = "card-heading";
     title.textContent = "Open settings beside the sidebar";
 
     const why = document.createElement("p");
@@ -1078,7 +1184,7 @@ async function start() {
     buttons.className = "perm-buttons";
     const allow = document.createElement("button");
     allow.type = "button";
-    allow.className = "create-submit";
+    allow.className = "card-button";
     allow.textContent = "Allow";
     allow.addEventListener("click", () => {
       requestBeside().then((granted) => answer(granted ? "beside" : "inside"));
@@ -1213,6 +1319,14 @@ async function start() {
   function saveTitleEdit() {
     if (!titleEdit) return;
     const { input } = titleEdit;
+    if (draft) {
+      // A confirmed title makes the note (#61), and the caret drops onto the
+      // first line of the paper.
+      const note = session.confirmTitle(input.value);
+      if (note) render();
+      else showRenameHint(input, {});
+      return;
+    }
     session.flush();
     const result = notebook.renameNote(current.title, input.value);
     if (result.ok) {
@@ -1222,12 +1336,13 @@ async function start() {
   }
 
   function startTitleEdit() {
-    if (titleEdit || !current) return;
+    if (titleEdit || !(current || draft)) return;
     closeMenu();
     const input = document.createElement("input");
     input.type = "text";
     input.className = "pill-title-input";
-    input.value = current.title;
+    input.value = current ? current.title : draft.title;
+    input.placeholder = "Title";
     input.setAttribute("aria-label", "Note title");
     input.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
@@ -1237,10 +1352,15 @@ async function start() {
         event.preventDefault();
         event.stopPropagation();
         stopTitleEdit();
-        if (current) render();
+        if (draft) cancelDraft();
+        else if (current) render();
       }
     });
-    input.addEventListener("blur", saveTitleEdit);
+    // Clicking away from an empty title on a fresh page just leaves it unnamed.
+    input.addEventListener("blur", () => {
+      if (draft && !input.value.trim()) stopTitleEdit();
+      else saveTitleEdit();
+    });
     titleEdit = { input };
     pillTitleEl.hidden = true;
     pillTitleEl.after(input);
@@ -1341,7 +1461,15 @@ async function start() {
   // down to the ruled row that was clicked and puts the caret there (#35). Clicks
   // on a line itself are handled by that line, so only the paper itself counts.
   noteEl.addEventListener("mousedown", (event) => {
-    if (event.target !== noteEl || !noteEl.lastElementChild || !current) return;
+    if (event.target !== noteEl || !noteEl.lastElementChild) return;
+    // On a fresh page a click only puts the caret on the first line: adding
+    // lines down to the click would already make the note (#61).
+    if (draft) {
+      event.preventDefault();
+      render();
+      return;
+    }
+    if (!current) return;
     const below = event.clientY - noteEl.lastElementChild.getBoundingClientRect().bottom;
     if (below < 0) return;
     event.preventDefault();
@@ -1627,7 +1755,7 @@ async function start() {
     el.className = isCode ? "md-edit md-code" : "md-edit";
     el.contentEditable = "true";
     el.setAttribute("role", "textbox");
-    el.dataset.placeholder = EMPTY_LINE_HINT;
+    el.dataset.placeholder = draft ? draft.hint : EMPTY_LINE_HINT;
     drawFocused(el, editor.lines.slice(start, range.end));
 
     // Hand the new text and caret to the session, which splices the block and
@@ -1940,6 +2068,8 @@ async function start() {
         plus.className = "line-plus";
         plus.textContent = "+";
         plus.setAttribute("aria-label", "Open the command menu");
+        // On a fresh page the + would already make the note, so it waits.
+        plus.hidden = Boolean(draft);
         plus.addEventListener("mousedown", (event) => {
           event.preventDefault();
           editor.openMenuFromPlus(built.start);
@@ -1974,144 +2104,78 @@ async function start() {
   //
   // Seeing which page you're on needs the `tabs` permission, declared optional
   // and asked for only on the first "+ Lesson note" click, behind Glacier's own
-  // explanation card (ADR 0008). Without it Glacier still works: "+ New note"
-  // makes a Lesson Note from a typed title and a picked Course, with no Source.
+  // explanation card (ADR 0008). Without it Glacier still works: a note is
+  // made by hand on a fresh page, with no Source.
 
+  const browserPage = createBrowserPage(api);
   const openingFlow = createOpeningFlow({
-    page: createBrowserPage(api),
+    page: browserPage,
     getOpenNote: () => ({ current, openedByPage }),
     lessonNoteForSource: (url) => notebook.lessonNoteForSource(url),
     show: showOpeningView,
     getTabSettings: () => tabSettings,
   });
 
-  // The Course picker: a text box with the existing Courses as suggestions
-  // (so one is joined by a click) and the last-used Course filled in, while
-  // still letting a new Course be typed (#3).
-  function coursePicker() {
-    const input = document.createElement("input");
-    input.type = "text";
-    input.className = "create-input";
-    input.setAttribute("list", "course-options");
-    input.placeholder = "Course";
-    const last = notebook.lastCourse();
-    if (last) input.value = last;
-    const list = document.createElement("datalist");
-    list.id = "course-options";
-    for (const course of notebook.courses()) {
-      const option = document.createElement("option");
-      option.value = course;
-      list.appendChild(option);
-    }
-    return { input, list };
+  // --- A fresh page for a new note (#61) -------------------------------------
+  //
+  // No create form: a new note is an empty page you write on at once. The
+  // Note session makes the note at the first character or when the title in
+  // the pill is confirmed; until then a click or leaving makes nothing.
+
+  function rememberNoteBeforeDraft() {
+    if (current) noteBeforeDraft = { note: current, openedByPage };
   }
 
-  // The note on screen when a create form took its place, so Cancel can go
-  // back to it. A form replacing another form keeps the first note.
-  let noteBeforeForm = null;
-
-  function rememberNoteBeforeForm() {
-    if (current) noteBeforeForm = { note: current, openedByPage };
-  }
-
-  function cancelCreateForm() {
-    const before = noteBeforeForm;
-    noteBeforeForm = null;
-    const stillThere = before && notebook.note(before.note.title);
-    openingFlow.cancelForm(stillThere ? { note: stillThere, openedByPage: before.openedByPage } : null);
-  }
-
-  // Esc cancels the form wherever the focus is, since clicking the paper moves
-  // it out of the fields. Menus and cards handle their own Esc first.
-  document.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape" || event.defaultPrevented) return;
-    if (!noteEl.querySelector(".create-form")) return;
-    event.preventDefault();
-    cancelCreateForm();
-  });
-
-  // The create form, shared by "+ Lesson note" (with a Source from the page)
-  // and "+ New note" (by hand, no Source). Creating opens the new note so you
-  // can type in it straight away — never a dead end (#3).
-  function showCreateForm({ heading, titleValue, source, buttonText }) {
-    rememberNoteBeforeForm();
-    session.close();
+  // `type` is "lesson" or "concept"; a Lesson note without `source` is made by
+  // hand. `editTitle` puts the title in the pill into edit mode, all selected.
+  function showDraft({ type, title = "", source, hint, editTitle = false }) {
+    rememberNoteBeforeDraft();
+    editor.dismissMenu();
+    session.openDraft({ type, title, source });
     current = null;
     openedByPage = false;
+    draft = { type, title, hint };
+    editor.load("");
+    closeMenu();
     updatePill();
+    updateBacklinks();
     updateNoteMeta();
-    noteEl.replaceChildren();
-
-    const form = document.createElement("form");
-    form.className = "create-form";
-
-    const title = document.createElement("h1");
-    title.className = "create-heading";
-    title.textContent = heading;
-    form.appendChild(title);
-
-    const titleInput = document.createElement("input");
-    titleInput.type = "text";
-    titleInput.className = "create-input";
-    titleInput.value = titleValue ?? "";
-    titleInput.placeholder = "Note title";
-    form.appendChild(field("Title", titleInput));
-
-    const course = coursePicker();
-    form.append(field("Course", course.input), course.list);
-
-    const submit = document.createElement("button");
-    submit.type = "submit";
-    submit.className = "create-submit";
-    submit.textContent = buttonText;
-    form.appendChild(submit);
-
-    const cancel = document.createElement("button");
-    cancel.type = "button";
-    cancel.className = "create-cancel";
-    cancel.textContent = "Cancel";
-    cancel.addEventListener("click", cancelCreateForm);
-    form.appendChild(cancel);
-
-    form.addEventListener("submit", (event) => {
-      event.preventDefault();
-      noteBeforeForm = null;
-      const noteTitle = titleInput.value.trim() || "Untitled";
-      const note = notebook.createLessonNote({
-        title: noteTitle,
-        source,
-        course: course.input.value.trim() || undefined,
-      });
-      openNote(note, { byPage: isOpenedByPage(note) });
-      autoSync.changed();
-    });
-
-    noteEl.appendChild(form);
-    titleInput.focus();
-    titleInput.select();
+    render();
+    if (editTitle) startTitleEdit();
   }
 
-  // Create a Lesson Note for the page you're on, its title and Source filled
-  // in from the page (both editable).
-  function showLessonForm(page) {
-    showCreateForm({
-      heading: "New Lesson Note for this page",
-      titleValue: page.title,
-      source: page.url,
-      buttonText: "Create Lesson note",
-    });
+  // The Note session made the note: from here it is a normal note.
+  function noteCreated(note) {
+    draft = null;
+    noteBeforeDraft = null;
+    current = note;
+    openedByPage = isOpenedByPage(note);
+    history.visit(note.title);
+    notebook.markOpened(note.title);
+    updatePill();
+    updateBacklinks();
+    updateNoteMeta();
+    if (focusedEl) focusedEl.dataset.placeholder = EMPTY_LINE_HINT;
+    noteEl.querySelector(".line-plus")?.removeAttribute("hidden");
+    autoSync.changed();
   }
 
-  // Create a note by hand when the page can't be read (permission declined, or
-  // a browser-internal page): a typed title and a picked Course, no Source.
-  function showNewNoteForm() {
-    showCreateForm({
-      heading: "New note",
-      titleValue: "",
-      source: undefined,
-      buttonText: "Create note",
-    });
+  // Esc before the note was made: back to the note from before, and nothing
+  // is made.
+  function cancelDraft() {
+    const before = noteBeforeDraft;
+    noteBeforeDraft = null;
+    const stillThere = before && notebook.note(before.note.title);
+    openingFlow.cancelDraft(stillThere ? { note: stillThere, openedByPage: before.openedByPage } : null);
   }
+
+  // Esc on the paper of a fresh page. The title field, menus and cards handle
+  // their own Esc first.
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || event.defaultPrevented || !draft || titleEdit) return;
+    event.preventDefault();
+    cancelDraft();
+  });
 
   // Draw what the Opening flow decided.
   function showOpeningView(view) {
@@ -2125,20 +2189,28 @@ async function start() {
       case "open":
         openNote(view.note, { byPage: view.openedByPage ?? true });
         break;
-      case "lessonForm":
-        showLessonForm(view.page);
+      case "lessonDraft":
+        showDraft({
+          type: "lesson",
+          title: view.page.title,
+          source: view.page.url,
+          hint: PAGE_DRAFT_HINT,
+          editTitle: view.editTitle,
+        });
         break;
-      case "newNoteForm":
-        showNewNoteForm();
+      case "byHandDraft":
+        showDraft({ type: "lesson", hint: DRAFT_HINT });
         break;
     }
   }
 
   // The starting panel when no note is open and the permission hasn't been
-  // granted yet: a single "+ Lesson note" button, so there's always a way in
-  // (#3). Clicking it either proceeds (already allowed) or shows the card.
+  // granted yet: one handwritten line and a quiet "+ Lesson note", so there's
+  // always a way in (#3). Clicking it either proceeds (already allowed) or
+  // shows the card.
   function showStartPrompt() {
     session.close();
+    draft = null;
     current = null;
     openedByPage = false;
     updatePill();
@@ -2146,16 +2218,15 @@ async function start() {
     noteEl.replaceChildren();
 
     const wrap = document.createElement("div");
-    wrap.className = "empty-state";
+    wrap.className = "start-prompt";
 
     const line = document.createElement("p");
-    line.className = "empty-text";
-    line.textContent = "No note for this page yet";
+    line.textContent = "No note for this page yet.";
     wrap.appendChild(line);
 
     const create = document.createElement("button");
     create.type = "button";
-    create.className = "create-submit";
+    create.className = "start-link";
     create.textContent = "+ Lesson note";
     create.addEventListener("click", () => openingFlow.clickLessonNote());
     wrap.appendChild(create);
@@ -2168,13 +2239,14 @@ async function start() {
   // appears after Allow, straight from that click.
   function showPermissionCard() {
     session.close();
+    draft = null;
     noteEl.replaceChildren();
 
     const card = document.createElement("div");
     card.className = "perm-card";
 
     const title = document.createElement("h1");
-    title.className = "create-heading";
+    title.className = "card-heading";
     title.textContent = "Let Glacier see the page you're on";
     card.appendChild(title);
 
@@ -2192,7 +2264,7 @@ async function start() {
     const next = document.createElement("p");
     next.className = "perm-next";
     next.textContent =
-      "Your browser will ask to confirm. If you decline, “+ New note” still lets you make a note by hand.";
+      "Your browser will ask to confirm. If you decline, you can still make notes by hand.";
     card.appendChild(next);
 
     const buttons = document.createElement("div");
@@ -2200,7 +2272,7 @@ async function start() {
 
     const allow = document.createElement("button");
     allow.type = "button";
-    allow.className = "create-submit";
+    allow.className = "card-button";
     allow.textContent = "Allow";
     allow.addEventListener("click", () => openingFlow.allow());
 
