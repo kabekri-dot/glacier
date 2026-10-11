@@ -16,7 +16,7 @@
 export function drawBesideFrames(state) {
   const SETTINGS_WIDTH = 360;
   const SHORTCUTS_WIDTH = 260;
-  const TAB = { width: 34, height: 120, top: 80 };
+  const TAB = { width: 34, height: 120, top: 8 };
 
   const remove = () => {
     if (window.glacierBeside) window.glacierBeside.host.remove();
