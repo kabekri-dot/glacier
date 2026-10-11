@@ -989,6 +989,38 @@ code {
   display: none;
 }
 
+/* The short conflict message under the pill (#59). */
+.conflict-line {
+  position: fixed;
+  top: 2.6rem;
+  left: 0.75rem;
+  right: 0.75rem;
+  z-index: 15;
+  margin: 0 auto;
+  width: fit-content;
+  max-width: calc(100% - 1.5rem);
+  padding: 0.25rem 0.65rem;
+  border: 1px solid #d98a1c;
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.85rem;
+}
+
+.conflict-line[hidden] {
+  display: none;
+}
+
+.conflict-show {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .rename-suggestion {
   padding: 0;
   border: 0;
@@ -1304,4 +1336,13 @@ html.beside .shortcuts-tab {
   inset: 0;
   border-radius: 0;
   box-shadow: none;
+}
+
+.conflict-pair {
+  margin-bottom: 0.4rem;
+}
+
+.conflict-pair .menu-item + .menu-item {
+  opacity: 0.7;
+  font-size: 0.85em;
 }

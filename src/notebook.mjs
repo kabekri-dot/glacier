@@ -447,12 +447,24 @@ export function createNotebook({ storage }) {
     throw Object.assign(new Error("The Notes repo kept changing during sync"), { reason: "conflict" });
   }
 
-  // The Conflict Copies still in the Notebook, by their dated titles.
+  // The Conflict Copies still listed in the Notebook, by their dated titles.
+  // An archived copy is put away, so it no longer counts.
   function conflictCopies() {
     return storage
       .allNotes()
+      .filter((note) => !note.archived)
       .map((note) => note.title)
       .filter((title) => CONFLICT_TITLE.test(title));
+  }
+
+  // Each Conflict Copy next to its original, which is null when the original
+  // was renamed or removed since.
+  function conflictCopyPairs() {
+    return conflictCopies().map((copy) => {
+      const original = copy.replace(CONFLICT_TITLE, "");
+      const found = storage.getNote(original);
+      return { copy, original: found && !found.archived ? original : null };
+    });
   }
 
   // The notes the lists, search and the page lookup show: not the archived ones.
@@ -792,6 +804,7 @@ export function createNotebook({ storage }) {
     },
 
     conflictCopies,
+    conflictCopyPairs,
 
     // When the last sync finished (an ISO date), or undefined before any.
     lastSynced() {

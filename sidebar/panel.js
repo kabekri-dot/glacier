@@ -16,7 +16,7 @@
 import { createNotebook, importSummary, syncErrorMessage } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { githubRemote } from "../src/github-remote.mjs";
-import { createAutoSync, syncStatusText } from "../src/auto-sync.mjs";
+import { conflictMessage, createAutoSync, syncStatusText } from "../src/auto-sync.mjs";
 import { createNoteSession } from "../src/note-session.mjs";
 import { isOpenedByPage } from "../src/page-open.mjs";
 import { createNoteHistory } from "../src/note-history.mjs";
@@ -59,6 +59,7 @@ const pillTitleEl = document.querySelector(".pill-title");
 const pillArchivedEl = document.querySelector(".pill-archived");
 const pillMenuEl = document.querySelector(".pill-menu");
 const syncDotEl = document.querySelector(".sync-dot");
+const conflictLineEl = document.querySelector(".conflict-line");
 const renameHintEl = document.querySelector(".rename-hint");
 const backlinksButtonEl = document.querySelector(".backlinks-button");
 const backlinksListEl = document.querySelector(".backlinks-list");
@@ -716,7 +717,37 @@ async function start() {
     syncDotEl.dataset.state = status.state;
     syncDotEl.title = status.state === "off" ? label : `${label}. ${detail}`;
     syncDotEl.setAttribute("aria-label", label);
+    drawConflictLine(status);
   }
+
+  // The short line under the pill while Conflict Copies are left (#59).
+  function drawConflictLine(status) {
+    const copies = status.state === "conflict" ? status.conflicts.length : 0;
+    conflictLineEl.hidden = copies === 0;
+    if (copies > 0) conflictLineEl.querySelector(".conflict-text").textContent = conflictMessage(copies);
+  }
+
+  // Show them: the pill menu with only the Conflict Copies, each next to its
+  // original.
+  function showConflictCopies() {
+    openMenu();
+    const body = menuPanelEl.querySelector(".menu-body");
+    body.replaceChildren(menuHeading("Changed in two places"));
+    for (const { copy, original } of notebook.conflictCopyPairs()) {
+      const row = document.createElement("div");
+      row.className = "conflict-pair";
+      const copyButton = noteButton(copy);
+      copyButton.textContent = copy;
+      row.append(copyButton);
+      if (original) {
+        const originalButton = noteButton(original);
+        originalButton.textContent = `Original: ${original}`;
+        row.append(originalButton);
+      }
+      body.append(row);
+    }
+  }
+  conflictLineEl.querySelector(".conflict-show").addEventListener("click", showConflictCopies);
 
   // A pull changed notes. When the open note is one of them, it is shown
   // again with the incoming text; when it is gone (renamed in the other

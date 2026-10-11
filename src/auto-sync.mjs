@@ -40,6 +40,13 @@ export function createAutoSync({
     }, after);
   }
 
+  // The conflict shows until every Conflict Copy is gone: merged by hand and
+  // deleted, archived or renamed, not just this once.
+  function conflictStatus() {
+    const conflicts = notebook.conflictCopies();
+    return conflicts.length > 0 ? { state: "conflict", conflicts } : { state: "synced" };
+  }
+
   async function syncOnce() {
     if (handle !== null) {
       clearTimer(handle);
@@ -54,10 +61,7 @@ export function createAutoSync({
     setStatus({ state: "syncing" });
     try {
       const result = await notebook.sync(connection.remote);
-      // The conflict shows until every Conflict Copy is gone (merged by hand,
-      // then renamed or removed from the Notes Repo), not just this once.
-      const conflicts = notebook.conflictCopies();
-      setStatus(conflicts.length > 0 ? { state: "conflict", conflicts } : { state: "synced" });
+      setStatus(conflictStatus());
       if (result.pulled.length > 0) onPulled(result.pulled);
     } catch (error) {
       console.error("Glacier: sync failed", error);
@@ -97,6 +101,7 @@ export function createAutoSync({
   return {
     // A note changed: push a few seconds after the last change.
     changed() {
+      if (status.state === "conflict") setStatus(conflictStatus());
       plan(delay);
     },
     syncNow,
@@ -122,6 +127,11 @@ function lastSyncedText(lastSynced, now) {
   return `Last synced on ${then.toISOString().slice(0, 10)} at ${time}.`;
 }
 
+export function conflictMessage(count) {
+  const subject = count === 1 ? "A note" : `${count} notes`;
+  return `${subject} changed in two places. Glacier kept both versions.`;
+}
+
 // The status in words: a short `label` and a sentence of `detail`.
 export function syncStatusText(status, now = new Date()) {
   const last = lastSyncedText(status.lastSynced, now);
@@ -138,7 +148,7 @@ export function syncStatusText(status, now = new Date()) {
     case "conflict":
       return {
         label: "Conflict",
-        detail: `A note changed in two places. Glacier kept both: the other version is in ${status.conflicts?.join(", ") ?? "the note marked conflict with the date"}. Merge them by hand, then rename that note or delete its file from your Notes repo. ${last}`,
+        detail: `${conflictMessage(status.conflicts?.length ?? 1)} ${last}`,
       };
     case "error":
       return {

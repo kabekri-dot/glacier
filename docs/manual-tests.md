@@ -11,6 +11,17 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### A short conflict message with Show them (#59)
+
+Make a conflict first (see Conflict Copies, #16).
+
+- [ ] A short line shows under the pill: "A note changed in two places. Glacier kept both versions." It does not mention files or the Notes repo. With two conflicts it starts with "2 notes".
+- [ ] The dot in the pill is orange while the line shows.
+- [ ] Hover Show them: "Open a copy, move over what you need, then delete or archive it."
+- [ ] Click Show them: the pill menu opens with only the conflict copies, each with its original under it. Click one to open it.
+- [ ] Delete the last copy (pill menu, "Delete this note"): the line goes away and the dot turns normal.
+- [ ] Make another conflict and archive the copy instead: the line goes away and the dot turns normal.
+
 ### Archive (#58)
 
 - [ ] Open a note and open the pill menu: "Archive this note" is there, and hovering shows "Hide this note from your lists. You can bring it back any time".
@@ -164,7 +175,7 @@ Connect the same Notes repo in Chrome and in Firefox first (see #14).
 Connect the same Notes repo in Chrome and in Firefox first (see #14).
 
 - [ ] Turn the network off in Firefox (devtools, Offline). Change the same note in both browsers, with different text. Turn Firefox's network on again and let it sync. Both texts are kept: the note has Firefox's text, and a second note "Title (conflict date)" with today's date has Chrome's text. Both files are on GitHub.
-- [ ] The dot turns orange. Hovering it says "Conflict" and names the note marked conflict. The Sync line in the pill menu says the same.
+- [ ] The dot turns orange. Hovering it says "Conflict" and gives the short message. The Sync line in the pill menu says the same.
 - [ ] Type something or press "Sync now": the dot stays orange while the copy is there.
 - [ ] Open Chrome's sidebar: it also has both notes and an orange dot.
 - [ ] Rename the copy by clicking its title in the pill (for example to "Margins old"). A few seconds later the dot turns green.

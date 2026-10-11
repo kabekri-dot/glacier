@@ -19,6 +19,11 @@
       <button type="button" class="pill-side pill-new" aria-haspopup="true" aria-expanded="false" aria-label="New note">+</button>
     </div>
     <p class="rename-hint" role="status" hidden></p>
+    <!-- Shown while Conflict Copies are left (#59). -->
+    <p class="conflict-line" role="status" hidden>
+      <span class="conflict-text"></span>
+      <button type="button" class="conflict-show" title="Open a copy, move over what you need, then delete or archive it.">Show them</button>
+    </p>
     <div class="new-menu" hidden></div>
     <div class="menu" hidden></div>
     <!-- The note's Course and Source, instead of its frontmatter (#13). -->
