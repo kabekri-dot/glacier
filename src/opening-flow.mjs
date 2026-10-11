@@ -17,7 +17,7 @@
 // `getOpenNote()` returns { current, openedByPage } for the note on screen,
 // `lessonNoteForSource(url)` returns a Lesson Note or null, and `show(view)`
 // draws one of: { type: "startPrompt" }, { type: "permissionCard" },
-// { type: "open", note }, { type: "lessonForm", page }, { type: "newNoteForm" }.
+// { type: "open", note, openedByPage? }, { type: "lessonForm", page }, { type: "newNoteForm" }.
 //
 // `getTabSettings()` returns the "Tabs and notes" settings (#53), read on every
 // page change so a changed setting works at once: `keepUserOpenedNotes` is the
@@ -98,6 +98,25 @@ export function createOpeningFlow({
     async onWebsite() {
       if (!(await page.hasPermission())) return true;
       return (await readLessonPage()) !== null;
+    },
+
+    // Cancel or Esc on a create form: back to the note that was open before
+    // the form, else the page's own note, else the "+" choices (the start
+    // prompt), so cancelling never lands on the same form again.
+    async cancelForm(previous) {
+      if (previous) {
+        show({ type: "open", note: previous.note, openedByPage: previous.openedByPage });
+        return;
+      }
+      if (await page.hasPermission()) {
+        const lessonPage = await readLessonPage();
+        const note = lessonPage ? lessonNoteForSource(lessonPage.url) : null;
+        if (note) {
+          show({ type: "open", note });
+          return;
+        }
+      }
+      show({ type: "startPrompt" });
     },
 
     // Start listening for page changes from the port.

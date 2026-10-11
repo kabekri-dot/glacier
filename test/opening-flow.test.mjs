@@ -255,3 +255,31 @@ test("on a page that is not a website the new note form shows when chosen", asyn
   await flow.pageChanged();
   assert.deepEqual(shown, [{ type: "newNoteForm" }]);
 });
+
+test("cancelling a form goes back to the note from before", async () => {
+  const { flow, shown, state } = setup({ permission: true, pages: [lessonA] });
+  state.tab = { url: lessonA.source, title: "Lesson A" };
+  const before = { title: "Earlier", body: "" };
+  await flow.cancelForm({ note: before, openedByPage: false });
+  assert.deepEqual(shown, [{ type: "open", note: before, openedByPage: false }]);
+});
+
+test("cancelling a form with no earlier note opens the page's note", async () => {
+  const { flow, shown, state } = setup({ permission: true, pages: [lessonA] });
+  state.tab = { url: lessonA.source, title: "Lesson A" };
+  await flow.cancelForm(null);
+  assert.deepEqual(shown, [{ type: "open", note: lessonA }]);
+});
+
+test("cancelling a form on a page with no note shows the plus choices", async () => {
+  const { flow, shown, state } = setup({ permission: true });
+  state.tab = { url: "https://new.test/x", title: "New" };
+  await flow.cancelForm(null);
+  assert.deepEqual(shown, [{ type: "startPrompt" }]);
+});
+
+test("cancelling a form without permission shows the plus choices", async () => {
+  const { flow, shown } = setup();
+  await flow.cancelForm(null);
+  assert.deepEqual(shown, [{ type: "startPrompt" }]);
+});

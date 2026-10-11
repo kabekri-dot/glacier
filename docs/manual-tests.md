@@ -11,6 +11,14 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### A create form stays until you leave it (#56)
+
+- [ ] Open a note, then a website with no note, and click "+ Lesson note": the form shows. Click on the paper, on empty space and on the pill: the form stays.
+- [ ] Click Cancel: the note from before comes back. Do it again and press Esc: same result.
+- [ ] Open the form with no note open before it: Cancel shows the page's note if it has one, otherwise the "+ Lesson note" button.
+- [ ] Open the "New note" form from the + menu, click the paper, then Create note: the new note opens.
+- [ ] With the form open, switch to another website tab: Glacier follows the tab as before.
+
 ### Panels beside the sidebar (#21)
 
 - [ ] Remove Glacier and load it again: installing shows no permission warning. In Chrome, `chrome://extensions`, Details, Site access shows no sites.
