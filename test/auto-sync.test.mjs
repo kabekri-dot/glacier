@@ -235,3 +235,69 @@ test("a request cut off during a sync never leaves the status on syncing", async
     cap.restore();
   }
 });
+
+// The box under the sync dot (#75).
+import { syncBox, syncResultText } from "../src/auto-sync.mjs";
+
+const boxNow = new Date("2026-10-11T12:00:00");
+const twoMinutesAgo = new Date("2026-10-11T11:58:00").toISOString();
+
+test("the box says up to date with a quiet last synced line", () => {
+  const box = syncBox({ state: "synced", lastSynced: twoMinutesAgo }, boxNow);
+  assert.equal(box.status, "Up to date");
+  assert.equal(box.last, "Last synced 2 minutes ago");
+  assert.equal(box.action, "Sync now");
+  assert.equal(box.conflicts, null);
+});
+
+test("the box says when the browser is offline", () => {
+  const box = syncBox({ state: "offline", lastSynced: twoMinutesAgo }, boxNow);
+  assert.equal(box.status, "Offline. Your changes are kept here");
+});
+
+test("the box says a sync is running", () => {
+  assert.equal(syncBox({ state: "syncing" }, boxNow).status, "Syncing…");
+});
+
+test("the box gives an error in plain words", () => {
+  const box = syncBox({ state: "error", message: "Repo not found.", lastSynced: twoMinutesAgo }, boxNow);
+  assert.equal(box.status, "Repo not found.");
+});
+
+test("the box says when nothing was synced yet", () => {
+  assert.equal(syncBox({ state: "synced" }, boxNow).last, "Not synced yet");
+});
+
+test("the box offers a way to check notes with two versions", () => {
+  const box = syncBox({ state: "conflict", conflicts: ["a", "b", "c", "d", "e", "f"], lastSynced: twoMinutesAgo }, boxNow);
+  assert.equal(box.conflicts, "6 notes have two versions. Check them");
+});
+
+test("not connected, the box says so and offers to set up sync", () => {
+  const box = syncBox({ state: "off" }, boxNow);
+  assert.equal(box.status, "Not connected to GitHub");
+  assert.equal(box.action, "Set up sync");
+  assert.equal(box.last, null);
+});
+
+test("a sync that changed nothing reads up to date", () => {
+  assert.equal(syncResultText({ state: "synced", sent: 0, received: 0 }), "Up to date");
+});
+
+test("a sync that moved notes says how many went each way", () => {
+  assert.equal(syncResultText({ state: "synced", sent: 3, received: 1 }), "3 notes sent, 1 received");
+  assert.equal(syncResultText({ state: "synced", sent: 1, received: 0 }), "1 note sent");
+  assert.equal(syncResultText({ state: "synced", sent: 0, received: 2 }), "2 notes received");
+});
+
+test("a sync that failed gives the offline or error words", () => {
+  assert.equal(syncResultText({ state: "offline" }), "Offline. Your changes are kept here");
+  assert.equal(syncResultText({ state: "error", message: "Repo not found." }), "Repo not found.");
+});
+
+test("syncNow reports how many notes were sent and received", async () => {
+  const { autoSync } = setup();
+  const result = await autoSync.syncNow();
+  assert.equal(result.sent, 1);
+  assert.equal(result.received, 0);
+});

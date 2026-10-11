@@ -72,7 +72,7 @@ function markIn(text, needle) {
 // The notes for this page, recent notes, then the Notebook: Collections with
 // their notes, the notes without a Collection, and the folded Archive last.
 function browse(notebook, openNote) {
-  const parts = notesForThisPage(notebook, openNote);
+  const parts = [...twoVersions(notebook), ...notesForThisPage(notebook, openNote)];
   const recent = notebook.recentNotes();
   if (recent.length > 0) {
     parts.push(heading("Recent"), { kind: "notes", titles: recent.map((note) => note.title) });
@@ -108,13 +108,15 @@ function browse(notebook, openNote) {
   return parts;
 }
 
-// Check them (#70): only the notes with two versions, each original with its
-// second version (Conflict Copy) under it. The original is left out when it
-// is gone.
-export function conflictMenu(notebook) {
+// Two versions (n), at the top of the ▾ menu only while there are any (#75):
+// each original with its second version (Conflict Copy) under it. The
+// original is left out when it is gone.
+function twoVersions(notebook) {
+  const pairs = notebook.conflictCopyPairs();
+  if (pairs.length === 0) return [];
   return [
-    heading("Notes with two versions"),
-    ...notebook.conflictCopyPairs().map(({ copy, original }) => ({
+    heading(`Two versions (${pairs.length})`),
+    ...pairs.map(({ copy, original }) => ({
       kind: "pair",
       notes: [...(original ? [{ title: original, label: original }] : []), { title: copy, label: copy }],
     })),

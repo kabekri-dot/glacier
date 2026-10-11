@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createNotebook } from "../src/notebook.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
-import { notebookMenu, conflictMenu, noteMenu, pageNoteCount, deleteCollectionQuestion, archivedNotice, secondVersionBar } from "../src/menu-contents.mjs";
+import { notebookMenu, noteMenu, pageNoteCount, deleteCollectionQuestion, archivedNotice, secondVersionBar } from "../src/menu-contents.mjs";
 
 // What the ▾ Notebook and ⋯ This note menus list (#67), as plain data the
 // sidebar only has to draw.
@@ -150,12 +150,12 @@ test("archived notes are listed only under a folded Archive", () => {
   assert.deepEqual(notebookMenu(notebook, "outside"), [{ kind: "empty", text: "No notes match" }]);
 });
 
-test("each original is listed with its second version under it", () => {
+test("Two versions tops the menu with each original and its second version", () => {
   const notebook = notebookWith();
   notebook.createNote({ title: "Margins (conflict 2026-10-02)" });
   notebook.createNote({ title: "Gone (conflict 2026-10-02)" });
-  assert.deepEqual(conflictMenu(notebook), [
-    { kind: "heading", text: "Notes with two versions", hint: null },
+  assert.deepEqual(notebookMenu(notebook, "").slice(0, 3), [
+    { kind: "heading", text: "Two versions (2)", hint: null },
     {
       kind: "pair",
       notes: [
@@ -165,6 +165,20 @@ test("each original is listed with its second version under it", () => {
     },
     { kind: "pair", notes: [{ title: "Gone (conflict 2026-10-02)", label: "Gone (conflict 2026-10-02)" }] },
   ]);
+});
+
+test("Two versions comes before the notes for this page", () => {
+  const notebook = notebookWith();
+  notebook.createNote({ title: "Margins (conflict 2026-10-02)" });
+  const headings = notebookMenu(notebook, "", notebook.note("Flexbox"))
+    .filter((part) => part.kind === "heading")
+    .map((part) => part.text);
+  assert.deepEqual(headings.slice(0, 2), ["Two versions (1)", "Notes for this page"]);
+});
+
+test("without notes that have two versions the menu has no Two versions", () => {
+  const texts = notebookMenu(notebookWith(), "").map((part) => part.text);
+  assert.equal(texts.some((text) => text?.startsWith("Two versions")), false);
 });
 
 test("no note open means no This note menu", () => {

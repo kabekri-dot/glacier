@@ -10,6 +10,8 @@
 
 import { syncErrorMessage } from "./notebook.mjs";
 
+const NOTHING_MOVED = { sent: 0, received: 0 };
+
 export function createAutoSync({
   notebook,
   // Resolves to `{ remote, repo }`, or null while no Notes Repo is connected.
@@ -51,6 +53,7 @@ export function createAutoSync({
     return conflicts.length > 0 ? { state: "conflict", conflicts } : { state: "synced" };
   }
 
+  // Resolves to how many notes went out and came in, zero when nothing ran.
   async function syncOnce() {
     if (handle !== null) {
       clearTimer(handle);
@@ -59,7 +62,7 @@ export function createAutoSync({
     const connection = await connect();
     if (!connection) {
       setStatus({ state: "off" });
-      return;
+      return NOTHING_MOVED;
     }
     beforeSync();
     setStatus({ state: "syncing" });
@@ -68,13 +71,14 @@ export function createAutoSync({
       warnedOffline = false;
       setStatus(conflictStatus());
       if (result.pulled.length > 0) onPulled(result.pulled);
+      return { sent: result.pushed, received: result.pulled.length };
     } catch (error) {
       if (error?.reason === "aborted") {
         // Cut off because the sidebar is closing: not an error. The changes
         // stay pending and go out on the next sync.
         setStatus(settled.state === "off" ? conflictStatus() : settled);
         plan(retryDelay);
-        return;
+        return NOTHING_MOVED;
       }
       if (error?.reason === "offline") {
         if (!warnedOffline) console.warn("Glacier: offline", error.message, error.cause);
@@ -92,6 +96,7 @@ export function createAutoSync({
         plan(retryDelay);
       }
     }
+    return NOTHING_MOVED;
   }
 
   // Sync now. A call while a sync is running asks for one more round after
@@ -102,11 +107,14 @@ export function createAutoSync({
       return running;
     }
     running = (async () => {
+      const total = { sent: 0, received: 0 };
       do {
         again = false;
-        await syncOnce();
+        const moved = await syncOnce();
+        total.sent += moved.sent;
+        total.received += moved.received;
       } while (again);
-      return status;
+      return { ...status, ...total };
     })().finally(() => {
       running = null;
     });
@@ -130,16 +138,54 @@ export function createAutoSync({
   };
 }
 
-function lastSyncedText(lastSynced, now) {
-  if (!lastSynced) return "Not synced yet.";
+function lastSyncedPhrase(lastSynced, now) {
+  if (!lastSynced) return "Not synced yet";
   const then = new Date(lastSynced);
   const minutes = Math.floor((now - then) / 60000);
-  if (minutes < 1) return "Last synced just now.";
-  if (minutes === 1) return "Last synced 1 minute ago.";
-  if (minutes < 60) return `Last synced ${minutes} minutes ago.`;
+  if (minutes < 1) return "Last synced just now";
+  if (minutes === 1) return "Last synced 1 minute ago";
+  if (minutes < 60) return `Last synced ${minutes} minutes ago`;
   const time = `${then.getHours()}:${String(then.getMinutes()).padStart(2, "0")}`;
-  if (then.toDateString() === now.toDateString()) return `Last synced at ${time}.`;
-  return `Last synced on ${then.toISOString().slice(0, 10)} at ${time}.`;
+  if (then.toDateString() === now.toDateString()) return `Last synced at ${time}`;
+  return `Last synced on ${then.toISOString().slice(0, 10)} at ${time}`;
+}
+
+function lastSyncedText(lastSynced, now) {
+  return `${lastSyncedPhrase(lastSynced, now)}.`;
+}
+
+const OFFLINE_SHORT = "Offline. Your changes are kept here";
+
+// The box under the sync dot (#75): the status in words, the quiet last
+// synced line, the button's label, and the line for notes with two versions.
+export function syncBox(status, now = new Date()) {
+  if (status.state === "off") {
+    return { status: "Not connected to GitHub", last: null, action: "Set up sync", conflicts: null };
+  }
+  const words = {
+    syncing: "Syncing…",
+    offline: OFFLINE_SHORT,
+    error: syncDotText(status),
+  };
+  return {
+    status: words[status.state] ?? "Up to date",
+    last: lastSyncedPhrase(status.lastSynced, now),
+    action: "Sync now",
+    conflicts: status.state === "conflict" ? conflictMessage(status.conflicts?.length ?? 1) : null,
+  };
+}
+
+// What the Sync now button shows for a few seconds once a sync is done.
+export function syncResultText(result) {
+  if (result.state === "offline") return OFFLINE_SHORT;
+  if (result.state === "error") return syncDotText(result);
+  const sent = result.sent ?? 0;
+  const received = result.received ?? 0;
+  if (sent === 0 && received === 0) return "Up to date";
+  const notes = (count) => (count === 1 ? "1 note" : `${count} notes`);
+  if (received === 0) return `${notes(sent)} sent`;
+  if (sent === 0) return `${notes(received)} received`;
+  return `${notes(sent)} sent, ${received} received`;
 }
 
 export function conflictMessage(count) {
@@ -154,7 +200,7 @@ export function syncDotText(status) {
     case "synced":
       return "All saved to GitHub";
     case "offline":
-      return "Offline. Your changes are kept here and sync later";
+      return `${OFFLINE_SHORT} and sync later`;
     case "conflict": {
       const count = status.conflicts?.length ?? 1;
       return `${count === 1 ? "A note has" : `${count} notes have`} two versions. Click to see them`;
