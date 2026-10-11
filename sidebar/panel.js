@@ -28,6 +28,7 @@ import {
 import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
+import { readTabSettings } from "../src/tab-settings.mjs";
 import { PAPERS, FONT_OVERRIDES, TEXT_SIZE, readLook, lookStyle, wholeRows } from "../src/look.mjs";
 import {
   blockRanges,
@@ -66,6 +67,7 @@ const settingsEl = document.querySelector(".settings");
 const settingsCloseEl = document.querySelector(".settings-close");
 const paperBodyEl = document.querySelector(".paper-body");
 const writingBodyEl = document.querySelector(".writing-body");
+const tabsBodyEl = document.querySelector(".tabs-body");
 const repoBodyEl = document.querySelector(".repo-body");
 
 // This browser's own extension storage: the Notes Repo connection and the
@@ -109,6 +111,9 @@ function reportSaveError(error) {
   }
 }
 
+// How notes follow tabs (#53), kept per browser like the look.
+let tabSettings = readTabSettings(undefined);
+
 async function start() {
   if (!noteEl) return;
 
@@ -116,6 +121,11 @@ async function start() {
     look = readLook((await extensionStorage.get("look")).look);
   } catch (error) {
     console.warn("Glacier: could not read the chosen look", error);
+  }
+  try {
+    tabSettings = readTabSettings((await extensionStorage.get("tabSettings")).tabSettings);
+  } catch (error) {
+    console.warn("Glacier: could not read the tab settings", error);
   }
   drawLook();
   document.fonts?.addEventListener("loadingdone", fitRows);
@@ -275,7 +285,7 @@ async function start() {
     stopTitleEdit();
     pillTitleEl.textContent = current ? current.title : "Glacier";
     const previous = history.previous();
-    backEl.hidden = previous === null;
+    backEl.hidden = previous === null || !tabSettings.showPreviousButton;
     backEl.title = previous === null ? "" : `Back to: ${previous}`;
   }
 
@@ -901,6 +911,55 @@ async function start() {
     writingBodyEl.replaceChildren(field("Font", font), field("Text size", sizeRow));
   }
 
+  function saveTabSettings(change) {
+    tabSettings = readTabSettings({ ...tabSettings, ...change });
+    updatePill();
+    extensionStorage.set({ tabSettings }).catch((error) => {
+      console.warn("Glacier: could not keep the tab settings", error);
+    });
+  }
+
+  // "Tabs and notes": three choices, each one taking effect at once.
+  function drawTabs() {
+    const choice = (labelText, options, value, onChange) => {
+      const select = document.createElement("select");
+      for (const [optionValue, text] of options) {
+        select.add(new Option(text, optionValue, false, optionValue === value));
+      }
+      select.addEventListener("change", () => onChange(select.value));
+      return field(labelText, select);
+    };
+    tabsBodyEl.replaceChildren(
+      choice(
+        "When I switch tabs",
+        [
+          ["follow", "Show the note of the tab I'm on"],
+          ["keep", "Keep a note I opened myself"],
+        ],
+        tabSettings.keepUserOpenedNotes ? "keep" : "follow",
+        (value) => saveTabSettings({ keepUserOpenedNotes: value === "keep" }),
+      ),
+      choice(
+        "On a page that isn't a website",
+        [
+          ["keep", "Keep the open note"],
+          ["newNoteForm", "Show a new note form"],
+        ],
+        tabSettings.onNonWebsite,
+        (value) => saveTabSettings({ onNonWebsite: value }),
+      ),
+      choice(
+        "Previous note button",
+        [
+          ["shown", "Shown"],
+          ["hidden", "Hidden"],
+        ],
+        tabSettings.showPreviousButton ? "shown" : "hidden",
+        (value) => saveTabSettings({ showPreviousButton: value === "shown" }),
+      ),
+    );
+  }
+
   function openSettings(section) {
     closeMenu();
     closeNewMenu();
@@ -908,6 +967,7 @@ async function start() {
     session.flush();
     drawPapers();
     drawWriting();
+    drawTabs();
     settingsEl.hidden = false;
     glacierButtonEl.setAttribute("aria-expanded", "true");
     settingsCloseEl.focus();
@@ -1759,6 +1819,7 @@ async function start() {
     getOpenNote: () => ({ current, openedByPage }),
     lessonNoteForSource: (url) => notebook.lessonNoteForSource(url),
     show: showOpeningView,
+    getTabSettings: () => tabSettings,
   });
 
   // Build a labelled control row for the create form.

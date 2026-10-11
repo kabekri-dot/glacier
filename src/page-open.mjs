@@ -8,7 +8,7 @@
 //     a note that's open is kept; only an empty panel offers the by-hand form.
 //   - The old rule stays reachable behind `keepUserOpenedNotes`: a note the
 //     user opened themselves is never thrown away, only a page-opened note, or
-//     an empty panel, follows the page. A later setting will switch it on.
+//     an empty panel, follows the page. The "Tabs and notes" settings switch it on (#53).
 //
 // This is the whole decision, kept pure so it can be tested with node --test
 // (ADR 0002). panel.js draws the result and makes sure only the latest page
@@ -24,13 +24,15 @@ export function decidePageOpen({
   page,
   lessonNoteForSource,
   keepUserOpenedNotes = false,
+  onNonWebsite = "keep",
 }) {
   if (keepUserOpenedNotes && current && !openedByPage) return { type: "keep" };
 
   if (!page) {
     // Nothing on a browser-internal page to open. Keep an open note rather than
     // replacing it with a by-hand form; only offer the form on an empty panel.
-    return current ? { type: "keep" } : { type: "newNoteForm" };
+    // The "Tabs and notes" setting can ask for the form even then (#53).
+    return current && onNonWebsite !== "newNoteForm" ? { type: "keep" } : { type: "newNoteForm" };
   }
 
   const existing = lessonNoteForSource(page.url);
