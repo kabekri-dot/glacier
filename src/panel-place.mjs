@@ -31,3 +31,10 @@ export function decidePanelPlace({ choice, granted, url }) {
   if (choice === "inside" || !granted) return "inside";
   return canDrawBeside(url) ? "beside" : "inside";
 }
+
+// Whether a panel that opens inside the sidebar says why (#60): the user chose
+// beside and the browser allows it, but this page can't be drawn on. A declined
+// permission or a choice of inside needs no explanation.
+export function explainsInside({ choice, granted, url }) {
+  return choice === "beside" && granted && !canDrawBeside(url);
+}

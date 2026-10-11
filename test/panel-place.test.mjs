@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readPanelPlace, decidePanelPlace } from "../src/panel-place.mjs";
+import { readPanelPlace, decidePanelPlace, explainsInside } from "../src/panel-place.mjs";
 
 const article = "https://example.com/lesson-1";
 
@@ -69,4 +69,19 @@ test("the extension stores, where no extension may draw, fall back to inside the
   ]) {
     assert.equal(decidePanelPlace({ choice: "beside", granted: true, url }), "inside", url);
   }
+});
+
+test("the inside note shows when beside is chosen and the page doesn't allow it", () => {
+  for (const url of ["chrome://newtab/", "about:preferences", "https://example.com/slides.pdf", "https://addons.mozilla.org/en-US/firefox/"]) {
+    assert.equal(explainsInside({ choice: "beside", granted: true, url }), true, url);
+  }
+});
+
+test("the inside note stays away on a website that allows panels beside", () => {
+  assert.equal(explainsInside({ choice: "beside", granted: true, url: article }), false);
+});
+
+test("the inside note stays away when inside is chosen or the permission is declined", () => {
+  assert.equal(explainsInside({ choice: "inside", granted: true, url: "chrome://newtab/" }), false);
+  assert.equal(explainsInside({ choice: "beside", granted: false, url: "chrome://newtab/" }), false);
 });

@@ -1346,3 +1346,10 @@ html.beside .shortcuts-tab {
   opacity: 0.7;
   font-size: 0.85em;
 }
+
+.panel-note {
+  margin: 0;
+  padding: 8px 14px;
+  font-size: 13px;
+  opacity: 0.7;
+}

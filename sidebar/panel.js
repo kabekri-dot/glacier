@@ -31,7 +31,7 @@ import { createEditorSession } from "../src/editor-session.mjs";
 import { readTabSettings } from "../src/tab-settings.mjs";
 import { readShortcutsPanel } from "../src/shortcuts-panel.mjs";
 import { readLook, lookStyle, wholeRows } from "../src/look.mjs";
-import { BESIDE_PERMISSION, readPanelPlace, decidePanelPlace } from "../src/panel-place.mjs";
+import { BESIDE_PERMISSION, readPanelPlace, decidePanelPlace, explainsInside } from "../src/panel-place.mjs";
 import { createSettingsView, createShortcutsView, field, menuButton, syncStatusRow } from "./settings-view.js";
 import { drawBesideFrames } from "./beside-frames.js";
 import {
@@ -1022,6 +1022,9 @@ async function start() {
       if (run !== latestPlacing) return;
     }
 
+    const explain = !beside && explainsInside({ choice: panelPlace, granted, url: tab?.url });
+    settingsView.showInsideNote(explain);
+    shortcutsView.showInsideNote(explain);
     shortcutsView.draw(shortcutsPanel, !beside);
     if (settingsWanted && !beside) {
       if (!settingsView.isOpen()) settingsView.open(settingsSection);
