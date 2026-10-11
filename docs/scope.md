@@ -5,8 +5,9 @@ What goes into which version. Terms are defined in [CONTEXT.md](../CONTEXT.md), 
 ## v1
 
 - Sidebar in Chrome and Firefox, opened from the toolbar or a keyboard shortcut
-- **One layout: Zen.** Only the page. One small pill at the top holds the title, sync status, search, recent notes and the notebook, and a small button bottom-left shows what links here. The other nine layouts from the prototype wait until later (see below)
+- **One layout: Zen.** Only the page. One small pill at the top holds ← (back to the previous note), the title (click it to rename), ▾ (the Notebook menu: search, recent notes, the notebook, the Archive), ⋯ (This note: download as a file, archive, delete), the sync status and + (a new Lesson Note or Concept Note, each explained on hover). A small button bottom-left shows what links here. The other nine layouts from the prototype wait until later (see below)
 - Opening the panel on a known lesson page opens its Lesson Note. On an unknown page the empty paper shows, and the Lesson Note is made with the page title and Source the moment you start writing (#61). No create form: + opens a fresh page with the title in the pill ready to type. Reading the current tab needs an optional permission, asked on the first click (ADR 0008); without it, a Lesson Note is made by hand
+- Switching tabs: the sidebar always shows the note of the tab you're on. On a browser page (new tab, settings, a PDF) it keeps the open note. Both can be changed in settings ([ADR 0009](adr/0009-the-sidebar-follows-the-tab.md))
 - A new Lesson Note takes the last-used Course; the Course is changed in place on the line above the text
 - Note list: Courses → Lesson Notes, plus a Concepts section
 - Live-preview writing: no Edit/Preview switch, the cursor lands in the note when it opens, and Markdown shows as formatting while you write, including on the current line, where the Markdown marks stay visible but faded (see [ADR 0006](adr/0006-live-preview-block-editor.md)). A plain click follows a Link. Frontmatter hidden and shown as a small header (Course · site ↗, the site switching to the lesson's tab when it's open)
@@ -19,12 +20,13 @@ What goes into which version. Terms are defined in [CONTEXT.md](../CONTEXT.md), 
 - Search across titles and text (simple substring)
 - Sync with the Notes Repo: pull on panel open, push after typing stops, Conflict Copies. Status indicator: synced · syncing · offline · conflict, plus "last synced". "Sync now" shows a short confirmation
 - First sync: a progress screen (connecting → downloading n/total notes → linking → ready), then a confirmation
-- Manual Export/Import (zip of `.md` files)
+- Export by hand: this note (one `.md` file, from ⋯), a Course, the Archive or everything (a zip of `.md` files). Restore from backup file brings an Export back and never overwrites a note you have
+- Delete a note (asks first; the file leaves the Notes Repo too) or Archive it (hidden from lists and search, kept in `archive/` in the Notes Repo, Unarchive puts it back)
 - Themes in two groups. **Nature**: Glacier (default), Forest, Ocean, Desert, Volcano, Aurora (dark), each with a faint pixel-art panorama along the bottom of the paper, from left to right. It keeps its height, so a wider sidebar shows more landscape, and it fades out upwards with room left below the last line, so text is never drawn over it. **Classics**: Blank Page, School Notebook, Chalkboard (dark), Moleskine, Engineer
 - Text size slider (85–150 %). Line spacing grows with it, so ruled and grid paper still lines up
 - The sidebar is resizable (Chrome and Firefox both let you drag the sidebar wider). Layouts must work from about 260 px up
 - Font Override: Theme default / Shantell Sans / Patrick Hand / Kalam Light / Caveat / Architects Daughter. Fonts bundled
-- Glacier icon: pixel-art ice on smooth sky and water. Used as the toolbar icon in Chrome and Firefox, and as a large round button floating in the bottom-right corner of the sidebar. It opens settings as a panel that expands to the left of the sidebar, over the web page. The notebook keeps its size and shows changes live. Settings sections fold open and closed: Paper, Writing (font + text size), Shortcuts panel, Notes repo (token, Sync, Export/Import)
+- Glacier icon: pixel-art ice on smooth sky and water. Used as the toolbar icon in Chrome and Firefox, and as a large round button floating in the bottom-right corner of the sidebar. It opens settings as a panel that expands to the left of the sidebar, over the web page. The notebook keeps its size and shows changes live. Settings sections fold open and closed: Paper, Writing (font + text size), Shortcuts panel, Tabs and notes, Notes repo (token, Sync, Export, Restore from backup file)
 - Panels beside the sidebar use an optional permission, asked for only when settings or shortcuts first open, behind Glacier's own explanation card. Declined: both panels open inside the sidebar instead ([ADR 0008](adr/0008-optional-on-demand-host-permission.md))
 
 ### Themes

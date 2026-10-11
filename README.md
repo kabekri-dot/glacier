@@ -72,6 +72,28 @@ sign Glacier as an **unlisted** add-on on
 4. Upload the zip; AMO validates and signs it and returns a signed `.xpi`.
 5. Install the signed `.xpi` in your everyday Firefox — it stays after restart.
 
+## Syncing notes with GitHub
+
+Notes live in the browser and sync to a private GitHub repo of your own, the
+Notes Repo (ADR 0003). It holds plain Markdown files, so Obsidian can open it
+too (ADR 0005). Your code repo and your Notes Repo are separate.
+
+1. Make a **private** repo for your notes, with a README so it isn't empty
+   (for example `gh repo create yourname/glacier-notes --private --add-readme`).
+2. Make a **fine-grained token** at
+   <https://github.com/settings/personal-access-tokens/new>:
+   - Repository access: **Only select repositories**, and pick the notes repo.
+   - Permissions, Repository permissions, **Contents: Read and write**.
+   - Copy the token (`github_pat_…`). GitHub shows it only once.
+3. In Glacier open Settings (the round button bottom right), **Notes repo**,
+   type the repo as `yourname/glacier-notes`, paste the token and press
+   **Connect and sync**.
+4. Do the same in every browser you use. A browser that already has notes with
+   the same names gets Conflict Copies on its first sync (ADR 0004).
+
+The token stays in that browser's storage and is never synced or exported.
+When it expires, Glacier says so; make a new one and paste it in the same place.
+
 ## Running the tests
 
 The extension and its tests run with no npm install and no build step

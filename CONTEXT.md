@@ -71,5 +71,13 @@ A second note created when the same note was changed in two places before Sync, 
 _Avoid_: Duplicate, merge conflict
 
 **Export**:
-A zip of the whole Notebook as Markdown files, made by hand, which Import can turn back into a Notebook.
-_Avoid_: Backup, download, snapshot
+Markdown files made by hand from the Notebook: one note as a `.md` file, or a Course, the Archive or the whole Notebook as a zip. Restore from backup file turns a zip back into notes without overwriting any.
+_Avoid_: Backup, snapshot, Import
+
+**Archive**:
+Where a note goes when it's put away but kept. An archived note is still a Note, and Links to it still work, but it leaves the lists, search and recent notes, and its page no longer opens it. In the Notes Repo it sits under `archive/`. Unarchive puts it back.
+_Avoid_: Trash, bin, hidden note
+
+**Delete**:
+Removing a note for good, from the Notebook and from the Notes Repo. Links to it become Missing Links.
+_Avoid_: Remove, trash
