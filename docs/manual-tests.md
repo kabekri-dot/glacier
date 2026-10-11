@@ -11,7 +11,13 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
-Nothing right now.
+### Code review fixes (#64)
+
+- [ ] Open a note, press + and Concept note, then click the paper and write "Box model basics" without typing a title: the note in the pill menu is called "Box model basics", never "Untitled".
+- [ ] Do the same with a first line that starts with "# " and a bold word: the title has no marks in it.
+- [ ] Make a conflict, then open the copy and delete it from ⋯ This note: the conflict line goes away and the dot turns normal at once, before any sync. Do the same with Archive.
+- [ ] Close the sidebar while it says Syncing, then open it again: it ends on Synced, Offline or Conflict, never stays on Syncing.
+- [ ] Rename a note and archive a note, then sync: both arrive on GitHub as one commit each.
 
 ## 2. Everything
 
@@ -151,11 +157,14 @@ Nothing right now.
 
 - [ ] No text in Glacier uses dashes as punctuation, words in capitals, or emoji.
 
-### Export and Import
+### The Course and site line
 
 - [ ] A Lesson note with a Course and a website shows a small "Course · site ↗" line above its text (for example "youtube.com ↗"), and no `---` lines. Clicking the site switches to the lesson's tab when it is open, otherwise opens it in a new tab.
 - [ ] Clicking the Course opens a small list to move the note to another Course or a new one.
 - [ ] A Lesson note made by hand (no website) shows only its Course. A Concept note shows no such line.
+
+### Export and Restore from backup file
+
 - [ ] Open settings, then Notes repo: "Export everything" and "Restore from backup file" sit under "Backup", and hovering shows what they do.
 - [ ] "Export everything" downloads a zip named "Glacier notes" with the date.
 - [ ] Unzip it: Lesson notes are in `courses/<Course>/`, Concept notes in `concepts/`, each file named after its title with a short block of details at the top.
@@ -218,7 +227,7 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 
 ### Export: this note, a course, or everything
 
-- [ ] Open the ⋯ menu after the title: "Download as a file" is there. Open settings (the round glacier button), then Notes repo: under a small "Backup" heading are a Course list, "Export a course", "Export everything" and "Restore from backup file". Hovering each shows what it does.
+- [ ] Open the ⋯ This note menu after the title: "Download as a file" is there. Open settings (the round glacier button), then Notes repo: under a small "Backup" heading are a Course list, "Export a course", "Export everything" and "Restore from backup file". Hovering each shows what it does.
 - [ ] "Download as a file" saves one `.md` file named after the note's title, with its text.
 - [ ] Pick a Course and press "Export a course": the zip has only that Course's notes.
 - [ ] "Export everything" downloads a zip of every note, as before.
@@ -307,7 +316,7 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 
 ### Delete this note
 
-- [ ] Open a note and open the ⋯ menu after the title: "Delete" is there, and hovering shows "Remove this note for good".
+- [ ] Open a note and open the ⋯ This note menu after the title: "Delete" is there, and hovering shows "Remove this note for good".
 - [ ] Click it: the sidebar asks "Delete 'title'? It is also removed from your Notes repo." with Delete and Keep. No browser dialog shows.
 - [ ] Click Keep: the note comes back as it was. Do it again and press Esc: same result.
 - [ ] Click Delete: the sidebar shows the note of the tab you are on, or the empty paper for a new note if that page has none.
@@ -317,14 +326,14 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 
 ### Archive
 
-- [ ] Open a note and open the ⋯ menu after the title: "Archive" is there, and hovering shows "Hide this note from your lists. You can bring it back any time".
+- [ ] Open a note and open the ⋯ This note menu after the title: "Archive" is there, and hovering shows "Hide this note from your lists. You can bring it back any time".
 - [ ] Click it: the note leaves the Notebook list, recent notes and search. On a page that had it as its Lesson note, the empty paper for a new note shows.
 - [ ] Open the pill menu: an "Archive" section is at the bottom, folded shut. Open it and the archived note is listed.
-- [ ] Click the archived note: a small "Archived" label shows in the pill, and the ⋯ menu has "Unarchive" instead of "Archive".
+- [ ] Click the archived note: a small "Archived" label shows in the pill, and the ⋯ This note menu has "Unarchive" instead of "Archive".
 - [ ] Click Unarchive: the label goes, and the note is back in its Course (or Concepts) in the list.
 - [ ] A link to an archived note in another note still opens it.
 - [ ] After a sync, the archived note's file is under the archive folder on GitHub (for example archive/courses/Course name/Title.md), and it moves back out after Unarchive and a sync.
-- [ ] In Settings, Notes repo, Backup: "Export archive" downloads a zip with only the archived notes.
+- [ ] In Settings, Notes repo, under Backup: "Export archive" downloads a zip with only the archived notes.
 - [ ] "Export everything" includes archived notes, and "Restore from backup file" brings them back as archived.
 
 ### A short conflict message with Show them
@@ -335,7 +344,7 @@ Make a conflict first (see Conflict Copies, #16).
 - [ ] The dot in the pill is orange while the line shows.
 - [ ] Hover Show them: "Open a copy, move over what you need, then delete or archive it."
 - [ ] Click Show them: the pill menu opens with only the conflict copies, each with its original under it. Click one to open it.
-- [ ] Delete the last copy (the ⋯ menu, "Delete"): the line goes away and the dot turns normal.
+- [ ] Delete the last copy (the ⋯ This note menu, "Delete"): the line goes away and the dot turns normal.
 - [ ] Make another conflict and archive the copy instead: the line goes away and the dot turns normal.
 
 ### Why a panel opens inside the sidebar

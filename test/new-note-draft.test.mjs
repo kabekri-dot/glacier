@@ -107,3 +107,28 @@ test("typing on a fresh page with no title yet still makes a note", () => {
   assert.equal(notebook.notes().length, 1);
   assert.equal(notebook.notes()[0].type, "concept");
 });
+
+test("a Concept note made by writing first takes its title from the first line", () => {
+  const { notebook, session, created } = setup();
+  session.openDraft({ type: "concept", title: "" });
+  session.edit("# Box model basics and more words here\nSecond line");
+  session.flush();
+  assert.equal(created[0].title, "Box model basics and more");
+  assert.equal(notebook.note("Box model basics and more").body, "# Box model basics and more words here\nSecond line");
+});
+
+test("a title taken from the first line that clashes gets a free name", () => {
+  const { notebook, session, created } = setup();
+  notebook.createConceptNote({ title: "Margins" });
+  session.openDraft({ type: "concept", title: "" });
+  session.edit("Margins");
+  assert.notEqual(created[0].title, "Margins");
+  assert.equal(notebook.notes().length, 2);
+});
+
+test("a first line with no words falls back to a plain default", () => {
+  const { session, created } = setup();
+  session.openDraft({ type: "concept", title: "" });
+  session.edit("***");
+  assert.equal(created[0].title, "New note");
+});

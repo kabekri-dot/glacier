@@ -23,6 +23,8 @@ export function createAutoSync({
   clearTimer = clearTimeout,
 }) {
   let status = { state: "off", lastSynced: notebook.lastSynced() };
+  // The last status that wasn't "syncing", for a run that is cut off.
+  let settled = status;
   let handle = null;
   let running = null;
   let again = false;
@@ -30,6 +32,7 @@ export function createAutoSync({
 
   function setStatus(next) {
     status = { lastSynced: notebook.lastSynced(), ...next };
+    if (status.state !== "syncing") settled = status;
     onStatus(status);
   }
 
@@ -59,7 +62,6 @@ export function createAutoSync({
       return;
     }
     beforeSync();
-    const before = status;
     setStatus({ state: "syncing" });
     try {
       const result = await notebook.sync(connection.remote);
@@ -70,7 +72,7 @@ export function createAutoSync({
       if (error?.reason === "aborted") {
         // Cut off because the sidebar is closing: not an error. The changes
         // stay pending and go out on the next sync.
-        setStatus(before);
+        setStatus(settled.state === "off" ? conflictStatus() : settled);
         plan(retryDelay);
         return;
       }
