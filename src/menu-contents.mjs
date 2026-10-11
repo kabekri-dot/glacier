@@ -194,9 +194,9 @@ function noteCount(count) {
 // The hover icons on a Collection heading (#74): Download, Archive (Unarchive
 // in the Archive section) and Delete, each naming the Collection and its notes.
 export function collectionActions(course, count, archived = false) {
+  if (count === 0) return [{ kind: "delete", hint: `Delete '${course}'` }];
   const notes = noteCount(count);
   const named = `'${course}', ${notes}`;
-  if (count === 0) return [{ kind: "delete", hint: `Delete '${course}'` }];
   return [
     { kind: "download", hint: `Download '${course}', ${notes}` },
     archived ? { kind: "unarchive", hint: `Unarchive ${named}` } : { kind: "archive", hint: `Archive ${named}` },
