@@ -138,12 +138,10 @@ async function failingSync(failure) {
   const storage = memoryStorage();
   storage.putNote(concept);
   const notebook = createNotebook({ storage });
-  let calls = 0;
   const remote = githubRemote({
     repo: "me/notes",
     token: "t",
     fetch: async (url) => {
-      calls++;
       if (url.endsWith("/repos/me/notes")) return { ok: true, json: async () => ({ default_branch: "main" }) };
       throw failure;
     },
@@ -158,7 +156,7 @@ async function failingSync(failure) {
     clearTimer: () => {},
   });
   notebook.saveBody("Margins", "Typed.");
-  return { autoSync, statuses, calls: () => calls };
+  return { autoSync, statuses };
 }
 
 function captureConsole() {
@@ -175,7 +173,7 @@ test("a request cut off by the sidebar closing logs nothing and leaves the statu
     const { autoSync, statuses } = await failingSync(Object.assign(new Error("aborted"), { name: "AbortError" }));
     await autoSync.syncNow();
     assert.equal(autoSync.status().state, "off");
-    assert.deepEqual(statuses.at(-1), "off");
+    assert.equal(statuses.at(-1), "off");
     assert.deepEqual(cap.logged, { error: [], warn: [] });
   } finally {
     cap.restore();
