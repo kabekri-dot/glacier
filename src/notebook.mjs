@@ -291,16 +291,23 @@ export function createNotebook({ storage }) {
   // How much text to show on each side of a match in a search snippet.
   const SNIPPET_SIDE = 30;
 
-  // The text around the first match, cut to a short stretch on each side.
-  function snippetAround(body, at, length) {
-    const from = Math.max(0, at - SNIPPET_SIDE);
-    const to = Math.min(body.length, at + length + SNIPPET_SIDE);
-    const flat = (text) => text.replace(/\s+/g, " ");
-    return {
-      before: (from > 0 ? "…" : "") + flat(body.slice(from, at)),
-      match: body.slice(at, at + length),
-      after: flat(body.slice(at + length, to)) + (to < body.length ? "…" : ""),
-    };
+  // The text around the earliest match of any word, cut to a short stretch on
+  // each side, as pieces in order: `{ text, match }`, with `match` true for
+  // the pieces the screen should highlight.
+  function snippetAround(body, words) {
+    const lower = body.toLowerCase();
+    const found = words.map((word) => ({ at: lower.indexOf(word), length: word.length }));
+    const first = found.filter((hit) => hit.at !== -1).sort((a, b) => a.at - b.at)[0];
+    const from = Math.max(0, first.at - SNIPPET_SIDE);
+    const to = Math.min(body.length, first.at + first.length + SNIPPET_SIDE);
+    const window =
+      (from > 0 ? "…" : "") + body.slice(from, to).replace(/\s+/g, " ") + (to < body.length ? "…" : "");
+    const escaped = words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    // Splitting on a group puts the matches at the odd places.
+    return window
+      .split(new RegExp(`(${escaped.join("|")})`, "i"))
+      .map((text, i) => ({ text, match: i % 2 === 1 }))
+      .filter((piece) => piece.text !== "");
   }
 
   function titleTaken(title) {
@@ -612,31 +619,31 @@ export function createNotebook({ storage }) {
       return makeNote({ title });
     },
 
-    // Simple substring search over titles and text, ignoring case. Notes whose
-    // title matches come first; a text match carries a snippet around the
-    // first match, split so the screen can highlight `match`.
+    // Search (#69). Plain text matches titles only, ignoring case. A query
+    // starting with `//` searches the text of every note instead: a note
+    // matches when it holds every word after the `//`, in any order. Text
+    // matches carry a snippet (see snippetAround). Archived notes are left out.
     search(query) {
-      const needle = (query ?? "").trim().toLowerCase();
+      const text = (query ?? "").trim();
+      if (text.startsWith("//")) {
+        const words = text.slice(2).toLowerCase().split(/\s+/).filter(Boolean);
+        if (words.length === 0) {
+          return [];
+        }
+        return listed()
+          .filter((note) => {
+            const body = (note.body ?? "").toLowerCase();
+            return words.every((word) => body.includes(word));
+          })
+          .map((note) => ({ title: note.title, snippet: snippetAround(note.body, words) }));
+      }
+      const needle = text.toLowerCase();
       if (!needle) {
         return [];
       }
-      const inTitle = [];
-      const inText = [];
-      for (const note of listed()) {
-        if (note.title.toLowerCase().includes(needle)) {
-          inTitle.push({ title: note.title });
-          continue;
-        }
-        const body = note.body ?? "";
-        const at = body.toLowerCase().indexOf(needle);
-        if (at !== -1) {
-          inText.push({
-            title: note.title,
-            snippet: snippetAround(body, at, needle.length),
-          });
-        }
-      }
-      return [...inTitle, ...inText];
+      return listed()
+        .filter((note) => note.title.toLowerCase().includes(needle))
+        .map((note) => ({ title: note.title }));
     },
 
     // The Notebook as the menu lists it: Courses (sorted) with their notes

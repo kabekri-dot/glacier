@@ -569,6 +569,19 @@ async function start() {
     return element;
   }
 
+  function snippetPieces(element, pieces) {
+    for (const { text, match } of pieces) {
+      if (match) {
+        const mark = document.createElement("mark");
+        mark.textContent = text;
+        element.append(mark);
+      } else {
+        element.append(text);
+      }
+    }
+    return element;
+  }
+
   function searchResult({ title, titleMark, snippet }) {
     const button = noteButton(title, "menu-item menu-result");
     const titleEl = document.createElement("span");
@@ -580,7 +593,7 @@ async function start() {
     titleEl.textContent = title;
     const snippetEl = document.createElement("span");
     snippetEl.className = "menu-snippet";
-    button.append(titleEl, marked(snippetEl, snippet));
+    button.append(titleEl, snippetPieces(snippetEl, snippet));
     return button;
   }
 
@@ -652,7 +665,8 @@ async function start() {
     const search = document.createElement("input");
     search.type = "search";
     search.className = "menu-search";
-    search.placeholder = "Search titles and text";
+    search.placeholder = "Search titles, or // to search inside notes";
+    search.title = "Search titles, or // to search inside notes";
     search.setAttribute("aria-label", "Search notes");
 
     const body = document.createElement("div");

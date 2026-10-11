@@ -399,37 +399,56 @@ test("search finds notes by title, ignoring case", () => {
   assert.deepEqual(results.map((r) => r.title), ["Box model"]);
 });
 
-test("search finds notes by their text and shows the match in a snippet", () => {
+test("plain search does not look inside the text", () => {
   const notebook = notebookWithNotes();
   notebook.saveBody("Variables", "A variable holds a value you can reuse later.");
-  const results = notebook.search("holds a");
+  assert.deepEqual(notebook.search("holds"), []);
+});
+
+test("// searches the text and shows the words in a snippet", () => {
+  const notebook = notebookWithNotes();
+  notebook.saveBody("Variables", "A variable holds a value you can reuse later.");
+  const results = notebook.search("// holds");
   assert.equal(results.length, 1);
   assert.equal(results[0].title, "Variables");
-  assert.deepEqual(results[0].snippet, {
-    before: "A variable ",
-    match: "holds a",
-    after: " value you can reuse later.",
-  });
+  assert.deepEqual(results[0].snippet, [
+    { text: "A variable ", match: false },
+    { text: "holds", match: true },
+    { text: " a value you can reuse later.", match: false },
+  ]);
+});
+
+test("// needs every word, in any order, ignoring case", () => {
+  const notebook = notebookWithNotes();
+  notebook.saveBody("Variables", "A variable holds a Value.");
+  notebook.saveBody("Box model", "A value only.");
+  const results = notebook.search("//  VALUE holds");
+  assert.deepEqual(results.map((r) => r.title), ["Variables"]);
+  const marked = results[0].snippet.filter((p) => p.match).map((p) => p.text);
+  assert.deepEqual(marked, ["holds", "Value"]);
+});
+
+test("// does not match a title when the text lacks the words", () => {
+  const notebook = notebookWithNotes();
+  assert.deepEqual(notebook.search("// variables"), []);
+});
+
+test("// with no words finds nothing", () => {
+  const notebook = notebookWithNotes();
+  assert.deepEqual(notebook.search("//"), []);
+  assert.deepEqual(notebook.search("//   "), []);
 });
 
 test("a long text match is cut to a short snippet around the match", () => {
   const notebook = notebookWithNotes();
   const filler = "word ".repeat(40);
   notebook.saveBody("Variables", `${filler}needle ${filler}`);
-  const [result] = notebook.search("needle");
-  assert.equal(result.snippet.match, "needle");
-  assert.ok(result.snippet.before.length < 50);
-  assert.ok(result.snippet.after.length < 50);
+  const [result] = notebook.search("// needle");
+  assert.ok(result.snippet.map((p) => p.text).join("").length < 90);
+  assert.ok(result.snippet.some((p) => p.match && p.text === "needle"));
 });
 
-test("title matches come before text matches", () => {
-  const notebook = notebookWithNotes();
-  notebook.saveBody("Introduction", "Think of the box around everything.");
-  const results = notebook.search("box");
-  assert.deepEqual(results.map((r) => r.title), ["Box model", "Introduction"]);
-});
-
-test("a title match highlights the title, not the text", () => {
+test("a title match has no snippet", () => {
   const notebook = notebookWithNotes();
   const [result] = notebook.search("frac");
   assert.equal(result.title, "Fractions");
