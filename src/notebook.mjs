@@ -259,6 +259,8 @@ export function createNotebook({ storage }) {
   // which side changed since (#15).
   const SYNCED = "syncedFiles";
   const LAST_SYNCED = "lastSynced";
+  // "Title (conflict 2026-10-11)", with a number after it for a second one.
+  const CONFLICT_TITLE = / \(conflict \d{4}-\d{2}-\d{2}\)( \d+)?$/;
   // How much text to show on each side of a match in a search snippet.
   const SNIPPET_SIDE = 30;
 
@@ -339,7 +341,10 @@ export function createNotebook({ storage }) {
       storage.putNote(note);
       result.pulled.push(note.title);
       synced[path] = { title: note.title, version, text };
-    } else if (known ? unchangedSince(local, known, path) : sameNote(local, incoming)) {
+    } else if (
+      unchangedSince(local, { text }, path) ||
+      (known ? unchangedSince(local, known, path) : sameNote(local, incoming))
+    ) {
       if (local.title !== incoming.title) storage.deleteNote(local.title);
       storage.putNote(incoming);
       if (!sameNote(local, incoming) || local.title !== incoming.title) result.pulled.push(incoming.title);
@@ -363,31 +368,74 @@ export function createNotebook({ storage }) {
     delete synced[path];
   }
 
+  // A write or delete named a version the Notes Repo no longer has: the
+  // file changed in another browser since this one listed it. Pull it again,
+  // so a note changed in both places becomes a Conflict Copy (ADR 0004).
+  async function pullAgain(remote, path, synced, result) {
+    const listed = (await remote.listFiles()).find((file) => file.path === path);
+    if (!listed) {
+      if (synced[path]) pullDeletion(path, synced, result);
+    } else {
+      const { text, version } = await remote.readFile(path);
+      pullFile(path, version, text, synced, result);
+    }
+    storage.putMeta(SYNCED, { ...synced });
+  }
+
   // Write every note whose file differs from what was last synced, then
   // delete the files no note has any more (a rename writes the new file
   // first). What is known is saved after each step, so a lost connection
-  // halfway leaves the rest for the next sync.
-  async function push(remote, synced, result) {
+  // halfway leaves the rest for the next sync. Returns false when a stale
+  // version was refused and pulled again, so the push starts over.
+  async function pushRound(remote, synced, result) {
     const wanted = new Map();
     for (const note of storage.allNotes()) {
       const file = noteToFile(note);
       wanted.set(file.path, { title: note.title, text: file.text });
     }
-    for (const [path, { title, text }] of wanted) {
-      const known = synced[path];
-      if (known && known.title === title && known.text === text) continue;
-      const version = await remote.writeFile(path, text, known?.version);
-      synced[path] = { title, version, text };
-      storage.putMeta(SYNCED, { ...synced });
-      result.pushed += 1;
+    // The file being written or deleted, for when it is refused as stale.
+    let path;
+    try {
+      for (const [wantedPath, { title, text }] of wanted) {
+        path = wantedPath;
+        const known = synced[path];
+        if (known && known.title === title && known.text === text) continue;
+        const version = await remote.writeFile(path, text, known?.version);
+        synced[path] = { title, version, text };
+        storage.putMeta(SYNCED, { ...synced });
+        result.pushed += 1;
+      }
+      for (const syncedPath of Object.keys(synced)) {
+        if (wanted.has(syncedPath)) continue;
+        path = syncedPath;
+        await remote.deleteFile(path, synced[path].version);
+        delete synced[path];
+        storage.putMeta(SYNCED, { ...synced });
+        result.pushed += 1;
+      }
+      return true;
+    } catch (error) {
+      if (error?.reason !== "conflict") throw error;
+      await pullAgain(remote, path, synced, result);
+      return false;
     }
-    for (const path of Object.keys(synced)) {
-      if (wanted.has(path)) continue;
-      await remote.deleteFile(path, synced[path].version);
-      delete synced[path];
-      storage.putMeta(SYNCED, { ...synced });
-      result.pushed += 1;
+  }
+
+  // A few rounds are plenty: each one takes in what the other browser wrote.
+  // If files keep changing under us, the next sync carries on.
+  async function push(remote, synced, result) {
+    for (let round = 0; round < 3; round += 1) {
+      if (await pushRound(remote, synced, result)) return;
     }
+    throw Object.assign(new Error("The Notes repo kept changing during sync"), { reason: "conflict" });
+  }
+
+  // The Conflict Copies still in the Notebook, by their dated titles.
+  function conflictCopies() {
+    return storage
+      .allNotes()
+      .map((note) => note.title)
+      .filter((title) => CONFLICT_TITLE.test(title));
   }
 
   return {
@@ -698,6 +746,8 @@ export function createNotebook({ storage }) {
       storage.putMeta(LAST_SYNCED, new Date().toISOString());
       return result;
     },
+
+    conflictCopies,
 
     // When the last sync finished (an ISO date), or undefined before any.
     lastSynced() {
