@@ -80,7 +80,7 @@ test("an archived note's file moves under archive/ as one commit", async () => {
   notebook.archiveNote("Box model");
   await notebook.sync(remote);
   const paths = (await remote.listFiles()).map((file) => file.path).sort();
-  assert.deepEqual(paths, ["archive/courses/TOP Foundations/Box model.md", "notes/Margins.md"]);
+  assert.deepEqual(paths, ["archive/collections/TOP Foundations/Box model.md", "notes/Margins.md"]);
   assert.equal(remote.commits().length, before + 1);
 });
 
@@ -92,7 +92,7 @@ test("unarchive moves the file back out of archive/", async () => {
   notebook.unarchiveNote("Margins");
   await notebook.sync(remote);
   const paths = (await remote.listFiles()).map((file) => file.path).sort();
-  assert.deepEqual(paths, ["courses/TOP Foundations/Box model.md", "notes/Margins.md"]);
+  assert.deepEqual(paths, ["collections/TOP Foundations/Box model.md", "notes/Margins.md"]);
 });
 
 test("another browser sees the note archived, without a Conflict Copy", async () => {
@@ -115,7 +115,7 @@ test("Export archive holds only archived notes", async () => {
   const notebook = await syncedBrowser(memoryRemote(filesOf(margins, boxModel)));
   notebook.archiveNote("Box model");
   const files = await unzipFiles(notebook.exportArchiveZip());
-  assert.deepEqual(files.map((file) => file.path), ["archive/courses/TOP Foundations/Box model.md"]);
+  assert.deepEqual(files.map((file) => file.path), ["archive/collections/TOP Foundations/Box model.md"]);
 });
 
 test("Export everything and Restore keep the archived state", async () => {

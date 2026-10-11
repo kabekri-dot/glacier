@@ -1,7 +1,7 @@
 // An in-memory stand-in for the Notebook's storage. The real storage is
 // IndexedDB (ADR 0003); this one lives only in memory and is used by tests
 // and anywhere a throwaway Notebook is handy. It holds notes keyed by title,
-// plus a small key/value meta store for settings like the last-used Course.
+// plus a small key/value meta store for settings like the last-used Collection.
 
 export function memoryStorage() {
   const notes = new Map();

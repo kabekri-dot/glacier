@@ -78,17 +78,21 @@ function rewriteLinks(body, oldTitle, newTitle) {
 // --- Note files (ADR 0005, #13) ---------------------------------------------
 //
 // In the Notes Repo and in an Export every note is a Markdown file named after
-// its title: `courses/<Course>/<Title>.md` for a note with a Course and
-// `notes/<Title>.md` for every other note (ADR 0010). A small YAML frontmatter
-// keeps `course`, `source` (the page), `created` and `edited`, then the
-// Markdown body follows. Files written before ADR 0010 also had a `type` line
-// and a `concepts/` folder; both are still read.
+// its title: `collections/<Collection>/<Title>.md` for a note in a Collection
+// and `notes/<Title>.md` for every other note (ADR 0010). A small YAML
+// frontmatter keeps `collection`, `source` (the page), `created` and `edited`,
+// then the Markdown body follows. Files written before ADR 0010 also had a
+// `type` line and a `concepts/` folder, and before #73 Collections were called
+// Courses (`course:` and `courses/`); all of these are still read.
+//
+// Inside the Notebook a note's Collection is still kept as `note.course`, so
+// notes already stored in the browser need no change (#73).
 
 // Characters Windows, macOS or Obsidian refuse in a file or folder name.
 const UNSAFE_IN_NAMES = /[\\/:*?"<>|]/g;
 // Keys written in this order; any other key in a file (an old `type`) is
 // ignored when it is read.
-const FRONTMATTER_KEYS = ["title", "course", "source", "created", "edited"];
+const FRONTMATTER_KEYS = ["title", "collection", "source", "created", "edited"];
 
 function safeName(name) {
   return name.replace(UNSAFE_IN_NAMES, "-");
@@ -119,7 +123,7 @@ function readYamlValue(raw) {
 }
 
 function folderFor(note) {
-  return note.course ? `courses/${safeName(note.course)}` : "notes";
+  return note.course ? `collections/${safeName(note.course)}` : "notes";
 }
 
 // An archived note keeps its path below `archive/`, so Unarchive knows where it
@@ -129,7 +133,7 @@ const ARCHIVE_FOLDER = "archive/";
 function fileFor(note, stem) {
   // The title only goes into the frontmatter when the filename can't hold it
   // as it is (e.g. it has a `/`), so the round trip still gives it back.
-  const fields = { ...note, title: stem === note.title ? undefined : note.title };
+  const fields = { ...note, title: stem === note.title ? undefined : note.title, collection: note.course };
   let text = "---\n";
   for (const key of FRONTMATTER_KEYS) {
     if (fields[key]) {
@@ -169,9 +173,9 @@ function splitFrontmatter(text) {
 }
 
 // A note from its file. The frontmatter wins; without it the folder tells the
-// Course, and the filename gives the title. The page and the Course are both
-// optional, so a file in `notes/` or an old `concepts/` file is a note without
-// a Course.
+// Collection, and the filename gives the title. The page and the Collection
+// are both optional, so a file in `notes/` or an old `concepts/` file is a
+// note without a Collection.
 export function noteFromFile(path, text) {
   const archived = path.startsWith(ARCHIVE_FOLDER);
   const parts = (archived ? path.slice(ARCHIVE_FOLDER.length) : path).split("/");
@@ -180,7 +184,8 @@ export function noteFromFile(path, text) {
   const grandparent = parts.at(-3);
   const { fields, body } = splitFrontmatter(text);
   const note = { title: fields.title || stem };
-  const course = fields.course || (grandparent === "courses" ? parent : undefined);
+  const inFolder = grandparent === "collections" || grandparent === "courses";
+  const course = fields.collection || fields.course || (inFolder ? parent : undefined);
   if (course) note.course = course;
   if (fields.source) note.source = fields.source;
   note.created = fields.created || new Date().toISOString();
@@ -190,9 +195,16 @@ export function noteFromFile(path, text) {
   return note;
 }
 
+// Collection names ignore capital letters (#73), so "Testing Test" and
+// "Testing test" are the same Collection.
+function sameCollection(a, b) {
+  return (a ?? "").toLowerCase() === (b ?? "").toLowerCase();
+}
+
 function sameNote(a, b, { ignoreArchived = false } = {}) {
   return (
-    ["course", "source", "body"].every((key) => (a[key] ?? "") === (b[key] ?? "")) &&
+    sameCollection(a.course, b.course) &&
+    ["source", "body"].every((key) => (a[key] ?? "") === (b[key] ?? "")) &&
     (ignoreArchived || Boolean(a.archived) === Boolean(b.archived))
   );
 }
@@ -256,10 +268,10 @@ export function syncErrorMessage(error, repo) {
 }
 
 // Only Markdown files in the note folders are notes (`concepts/` from before
-// ADR 0010 too); a README, an `.obsidian` folder or pictures in the Notes Repo
-// are left alone.
+// ADR 0010 and `courses/` from before #73 too); a README, an `.obsidian`
+// folder or pictures in the Notes Repo are left alone.
 function isNoteFile(path) {
-  return /^(archive\/)?(courses|notes|concepts)\/.+\.md$/i.test(path);
+  return /^(archive\/)?(collections|courses|notes|concepts)\/.+\.md$/i.test(path);
 }
 
 // When a note was last written in, for "the page opens its most recently
@@ -274,7 +286,7 @@ export function createNotebook({ storage }) {
     throw new Error("createNotebook needs a storage plug-in");
   }
 
-  // The Course a note was last filed under, so the Course line can offer it
+  // The Collection a note was last filed under, so the Collection line can offer it
   // first. It is kept in storage (not just memory) so it survives a
   // browser restart (ADR 0003), alongside the notes themselves.
   const LAST_COURSE = "lastCourse";
@@ -315,9 +327,9 @@ export function createNotebook({ storage }) {
   }
 
   // Titles are unique across the whole Notebook (ADR 0005). On a clash we add
-  // the Course, e.g. "Introduction (TOP Foundations)"; if that is taken too we
+  // the Collection, e.g. "Introduction (TOP Foundations)"; if that is taken too we
   // add a number so the new note still lands on a free title. A note without a
-  // Course falls straight back to a number.
+  // Collection falls straight back to a number.
   function uniqueTitle(title, course) {
     if (!titleTaken(title)) {
       return title;
@@ -333,11 +345,12 @@ export function createNotebook({ storage }) {
     return `${base} ${n}`;
   }
 
-  // Every note is just a Note (ADR 0010): its page (Source) and its Course are
-  // both optional. The title is made unique, and a Course given becomes the
+  // Every note is just a Note (ADR 0010): its page (Source) and its Collection are
+  // both optional. The title is made unique, and a Collection given becomes the
   // last used one.
-  function makeNote({ title, source, course, created }) {
+  function makeNote({ title, source, course: typed, created }) {
     const made = created ?? new Date().toISOString();
+    const course = typed && existingCollection(typed);
     const note = { title: uniqueTitle(title, course) };
     if (course) note.course = course;
     if (source) note.source = normalizeSource(source);
@@ -349,6 +362,46 @@ export function createNotebook({ storage }) {
 
   function today() {
     return new Date().toISOString().slice(0, 10);
+  }
+
+  // The spelling the Notebook already uses for this Collection name, in any
+  // capitals (#73), or the name as typed when it is a new Collection.
+  function existingCollection(name) {
+    const found = storage.allNotes().find((note) => sameCollection(note.course, name));
+    return found ? found.course : name;
+  }
+
+  // When notes carry one Collection in different capitals, they all take one
+  // spelling (#73): the one with the most notes, or on a tie the one with the
+  // oldest note. So they show as one, and their files move into one folder on
+  // the next sync, together with everything else that sync sends.
+  function mergeCollectionCases() {
+    const groups = new Map();
+    for (const note of storage.allNotes()) {
+      if (!note.course) continue;
+      const key = note.course.toLowerCase();
+      if (!groups.has(key)) groups.set(key, new Map());
+      const spellings = groups.get(key);
+      const created = note.created ?? "";
+      const seen = spellings.get(note.course) ?? { count: 0, oldest: created };
+      spellings.set(note.course, { count: seen.count + 1, oldest: created < seen.oldest ? created : seen.oldest });
+    }
+    const chosen = new Map();
+    for (const [key, spellings] of groups) {
+      if (spellings.size < 2) continue;
+      const [[best]] = [...spellings].sort(
+        ([, a], [, b]) => b.count - a.count || a.oldest.localeCompare(b.oldest),
+      );
+      chosen.set(key, best);
+    }
+    if (chosen.size === 0) return;
+    for (const note of storage.allNotes()) {
+      const best = note.course && chosen.get(note.course.toLowerCase());
+      if (best && note.course !== best) storage.putNote({ ...note, course: best });
+    }
+    const last = storage.getMeta(LAST_COURSE);
+    const lastBest = last && chosen.get(last.toLowerCase());
+    if (lastBest && lastBest !== last) storage.putMeta(LAST_COURSE, lastBest);
   }
 
   function conflictCopy(note) {
@@ -396,8 +449,12 @@ export function createNotebook({ storage }) {
   // takes its note with it, unless the note changed here since: then it is
   // kept and pushed back.
   function pullDeletion(path, synced, result) {
-    const local = storage.getNote(synced[path].title);
-    if (local && unchangedSince(local, synced[path], path)) {
+    const title = synced[path].title;
+    const local = storage.getNote(title);
+    // A file only moved to another folder (another browser moved courses/ to
+    // collections/, #73) already came in under its new path: keep the note.
+    const moved = Object.keys(synced).some((other) => other !== path && synced[other].title === title);
+    if (local && !moved && unchangedSince(local, synced[path], path)) {
       storage.deleteNote(local.title);
       result.pulled.push(local.title);
     }
@@ -423,6 +480,7 @@ export function createNotebook({ storage }) {
       if (!listedPaths.has(path)) pullDeletion(path, synced, result);
     }
     storage.putMeta(SYNCED, { ...synced });
+    mergeCollectionCases();
   }
 
   // Send every note whose file differs from what was last synced, and delete
@@ -499,6 +557,9 @@ export function createNotebook({ storage }) {
     return storage.allNotes().filter((note) => !note.archived);
   }
 
+  // Notes saved before #73 may hold one Collection in different capitals.
+  mergeCollectionCases();
+
   return {
     // Every Note currently in the Notebook, archived ones too.
     notes() {
@@ -517,8 +578,8 @@ export function createNotebook({ storage }) {
       return storage.getMeta(LAST_COURSE);
     },
 
-    // Every Course that has at least one note, each once, sorted. Notes
-    // without a Course add nothing.
+    // Every Collection that has at least one note, each once, sorted. Notes
+    // without a Collection add nothing.
     courses() {
       const seen = new Set();
       for (const note of listed()) {
@@ -529,7 +590,7 @@ export function createNotebook({ storage }) {
       return [...seen].sort((a, b) => a.localeCompare(b));
     },
 
-    // The Courses for the list on the line above the text (#61): the last
+    // The Collections for the list on the line above the text (#61): the last
     // used one first, then the rest as courses() sorts them.
     courseChoices() {
       const last = storage.getMeta(LAST_COURSE);
@@ -537,13 +598,15 @@ export function createNotebook({ storage }) {
       return last ? [last, ...rest] : rest;
     },
 
-    // Move a note to another Course, picked or typed on the line above the
-    // text (#61). It becomes the last used Course, and the note's file moves
-    // to the Course's folder on the next sync, like a rename.
+    // Move a note to another Collection, picked or typed on the line above the
+    // text (#61). It becomes the last used Collection, and the note's file moves
+    // to the Collection's folder on the next sync, like a rename. A name typed
+    // in other capitals picks the existing Collection (#73).
     moveToCourse(title, course) {
       const note = storage.getNote(title);
-      const name = (course ?? "").trim();
-      if (!note || !name) return note;
+      const typed = (course ?? "").trim();
+      if (!note || !typed) return note;
+      const name = existingCollection(typed);
       const moved = { ...note, course: name };
       storage.putNote(moved);
       storage.putMeta(LAST_COURSE, name);
@@ -609,7 +672,7 @@ export function createNotebook({ storage }) {
     },
 
     // Follow a `[[Title]]` Link: open the note it names, or, when it is a
-    // Missing Link, create a note with that title (no page, no Course) and
+    // Missing Link, create a note with that title (no page, no Collection) and
     // open that. The note to show is returned either way.
     openLink(title) {
       const existing = storage.getNote(title);
@@ -646,8 +709,8 @@ export function createNotebook({ storage }) {
         .map((note) => ({ title: note.title }));
     },
 
-    // The Notebook as the menu lists it: Courses (sorted) with their notes
-    // (sorted), then the notes that have no Course.
+    // The Notebook as the menu lists it: Collections (sorted) with their notes
+    // (sorted), then the notes that have no Collection.
     outline() {
       const byCourse = new Map();
       const uncategorised = [];
@@ -734,7 +797,7 @@ export function createNotebook({ storage }) {
       if (note && !note.archived) storage.putNote({ ...note, archived: true });
     },
 
-    // Put an archived note back where it was: same Course, same page.
+    // Put an archived note back where it was: same Collection, same page.
     unarchiveNote(title) {
       const note = storage.getNote(title);
       if (!note || !note.archived) return;
@@ -773,7 +836,7 @@ export function createNotebook({ storage }) {
       return zipNotes(storage.allNotes());
     },
 
-    // The same zip with only one Course's notes.
+    // The same zip with only one Collection's notes.
     exportCourseZip(course) {
       return zipNotes(listed().filter((note) => note.course === course));
     },
@@ -784,7 +847,7 @@ export function createNotebook({ storage }) {
     },
 
     // The notes to lay out for printing (#71), as { title, body }: one note,
-    // or a Course's notes one after another.
+    // or a Collection's notes one after another.
     notesToPrint(title) {
       const note = storage.getNote(title);
       return note ? [{ title: note.title, body: note.body ?? "" }] : [];
@@ -832,6 +895,7 @@ export function createNotebook({ storage }) {
       }
       storage.putMeta(SYNCED, synced);
       storage.putMeta(LAST_SYNCED, new Date().toISOString());
+      mergeCollectionCases();
       onProgress({ step: "ready", notes: downloaded.length });
       return { notes: downloaded.length };
     },
@@ -881,6 +945,7 @@ export function createNotebook({ storage }) {
           result.copies += 1;
         }
       }
+      mergeCollectionCases();
       return result;
     },
   };

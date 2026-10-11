@@ -7,8 +7,9 @@ import { memoryStorage } from "../src/memory-storage.mjs";
 import { zipFiles } from "../src/zip.mjs";
 
 // Notes as Markdown files (#13, ADR 0005, ADR 0010): filename = title, a small
-// YAML frontmatter (course, source, created, edited) and the Markdown body, in
-// courses/<Course>/ for a note with a Course and notes/ for every other note.
+// YAML frontmatter (collection, source, created, edited) and the Markdown body,
+// in collections/<Collection>/ for a note in a Collection and notes/ for every
+// other note.
 // Export zips them; Import reads them back.
 
 const withCourse = {
@@ -26,8 +27,8 @@ const plain = {
   body: "Space outside the border.",
 };
 
-test("a note with a Course sits in its Course folder and is named after its title", () => {
-  assert.equal(noteToFile(withCourse).path, "courses/TOP Foundations/Box model.md");
+test("a note in a Collection sits in its Collection folder and is named after its title", () => {
+  assert.equal(noteToFile(withCourse).path, "collections/TOP Foundations/Box model.md");
 });
 
 test("a note without a Course sits in notes/, with or without a page", () => {
@@ -37,7 +38,7 @@ test("a note without a Course sits in notes/, with or without a page", () => {
 
 test("a note file starts with frontmatter and ends with the Markdown body", () => {
   const { text } = noteToFile(withCourse);
-  assert.match(text, /^---\ncourse: TOP Foundations\nsource: .+\ncreated: .+\nedited: .+\n---\n/);
+  assert.match(text, /^---\ncollection: TOP Foundations\nsource: .+\ncreated: .+\nedited: .+\n---\n/);
   assert.ok(text.endsWith("---\n# Box model\n\nSee [[Margins]].\n"));
 });
 

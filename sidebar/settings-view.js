@@ -324,12 +324,12 @@ export function createSettingsView({ prefs, repo, onClose }) {
   // files; this only picks them.
   async function backupControls() {
     const courseList = element("div", "course-list");
-    courseList.setAttribute("aria-label", "Courses to download");
+    courseList.setAttribute("aria-label", "Collections to download");
     for (const course of await repo.courses()) {
       const row = element("div", "course-row");
       row.append(
         element("span", "course-name", course),
-        iconButton("download", `Download the Course '${course}'`, (button) =>
+        iconButton("download", `Download the Collection '${course}'`, (button) =>
           askFormat(button, (format) => repo.exportCourse(course, format)),
         ),
       );

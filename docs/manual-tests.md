@@ -11,6 +11,17 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Course becomes Collection, and capitals don't split Collections (#73)
+
+Reload with ↻ first. You need a connected Notes repo for the last two checks.
+
+- [ ] The line above the text says "No collection" on a note without one. Hover it: "Move to another collection". Click it: the list ends with "+ New collection".
+- [ ] Open the ▾ menu: the Notebook lists Collections, then "No Collection" with the rest. Hover a Collection heading: "Download the Collection" and its name.
+- [ ] Settings, Notes repo: the list under Backup holds Collections, and hovering a Download icon names the Collection. Nowhere in the sidebar, menus or settings does the word Course show.
+- [ ] Put a note in "Testing Test", then click "+ New collection" on another note and type "testing test": the note joins "Testing Test", and the menu shows one Collection.
+- [ ] If you had "Testing Test" and "Testing test" before this change: after the reload they show as one Collection, spelled like the one with more notes.
+- [ ] Sync, then open the Notes repo on GitHub: the notes sit in `collections/`, the old `courses/` folder is gone, and both spellings ended up in one folder. The history shows the move as one commit.
+
 ### Shortcuts panel always on the left edge (#72)
 
 Reload with ↻ first. Turn the Shortcuts panel on in settings.
@@ -28,9 +39,9 @@ Reload with ↻ first.
 - [ ] Click Archive: the note leaves the list at once and "Archived. Undo" shows at the bottom. Click Undo: it comes back.
 - [ ] In the Archive section the middle icon is Unarchive and puts the note back.
 - [ ] Click Delete: the usual question appears. Keep leaves it, Delete removes it.
-- [ ] Hover a Course heading: one Download icon shows. Markdown gives a zip of .md files. PDF gives one document with every note of the Course, each on a new page.
+- [ ] Hover a Collection heading: one Download icon shows. Markdown gives a zip of .md files. PDF gives one document with every note of the Collection, each on a new page.
 - [ ] In ⋯ This note, Download asks the same Markdown or PDF choice.
-- [ ] Settings, Notes repo: a list of every Course (it scrolls when long), each with a Download icon that asks the same choice. Export everything and Export archive are still there.
+- [ ] Settings, Notes repo: a list of every Collection (it scrolls when long), each with a Download icon that asks the same choice. Export everything and Export archive are still there.
 
 ### Conflict line you can close, guided second versions, sync dot explained (#70)
 
@@ -66,10 +77,10 @@ Reload with ↻ first.
 - [ ] Switch to another tab and back, or reopen the sidebar: the note you wrote in last opens, and the pill says "1 of 2".
 - [ ] Click "1 of 2": the ▾ menu opens with "Notes for this page" at the top, both notes newest first, the open one in bold, and "+ New note for this page" under them. Click the other note: it opens and the pill says "2 of 2".
 - [ ] Write a word in that note, switch tabs and come back: now it opens first, with "1 of 2".
-- [ ] + and "New note": a blank note with "Title" faded in the pill. Name it and write: the line above the text shows only "No course", no site link. Click "No course" to give it a Course.
+- [ ] + and "New note": a blank note with "Title" faded in the pill. Name it and write: the line above the text shows only "No collection", no site link. Click "No collection" to give it a Collection.
 - [ ] Hover the two + choices: "A blank note, not tied to any page." and "A note for the page you're on. It opens again when you visit the page."
 - [ ] On a settings page, + offers only "New note".
-- [ ] Click a Missing Link: the new note has no site link and "No course".
+- [ ] Click a Missing Link: the new note has no site link and "No collection".
 - [ ] Look through the pill, both menus, the + menu, the start prompt, the permission card and settings: nothing says Lesson or Concept.
 - [ ] With a Notes repo that still has a `concepts/` folder, sync: on GitHub one commit moves those files to `notes/`, and the notes still open with their text and backlinks.
 - [ ] Restore from an older Export zip (with `concepts/` in it): every note comes back.
@@ -104,7 +115,7 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 - [ ] Archive
 - [ ] Delete this note
 - [ ] Rename by clicking the title
-- [ ] The Course and site line
+- [ ] The Collection and site line
 
 ## 2. Everything
 
@@ -125,7 +136,7 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 
 ### Notes for the page you're on
 
-- [ ] On a website without a note, the empty paper shows with "No note for this page yet. Just start writing." Typing makes the note, with the page title and the last used Course.
+- [ ] On a website without a note, the empty paper shows with "No note for this page yet. Just start writing." Typing makes the note, with the page title and the last used Collection.
 - [ ] Clicking the paper without typing, or leaving, makes no note.
 - [ ] Reopening the sidebar on that page opens the same note again. With several notes for the page, the one you wrote in last opens, and the pill says "1 of 2" or more.
 - [ ] Two videos on the same site (different `?v=`) get different notes.
@@ -145,7 +156,7 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 - [ ] Clicking the ▾ after the title, the bare part of the pill, or pressing Ctrl+K, opens the menu with the search box ready.
 - [ ] Search finds words in titles and in the text, with the match highlighted. Clicking a result opens it and closes the menu.
 - [ ] Recent notes are listed, including notes made by hand.
-- [ ] The Notebook is listed: Courses with their notes, then "No Course" with the rest.
+- [ ] The Notebook is listed: Collections with their notes, then "No Collection" with the rest.
 - [ ] On a note with a page, the menu starts with "Notes for this page", newest first, and "+ New note for this page" under them.
 - [ ] Esc closes the menu.
 - [ ] `←` appears after the note changed. Hovering shows "Back to: <title>". Clicking goes back one note, and clicking again goes further back.
@@ -218,7 +229,7 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 - [ ] `[[` plus the first letters of a title shows matching notes. ↑/↓ and Enter or Tab complete the link, and Esc closes the list.
 - [ ] A link to an existing note looks different from a link to a missing one.
 - [ ] Clicking a link opens that note. Clicking a missing link creates a note with that name and opens it.
-- [ ] A note made from a missing link has no Course and no site link.
+- [ ] A note made from a missing link has no Collection and no site link.
 - [ ] Note A contains `[[B]]`. Open B: a small button at the bottom left shows `1`.
 - [ ] Click it: A is listed. Click A: it opens.
 
@@ -245,21 +256,21 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 
 - [ ] No text in Glacier uses dashes as punctuation, words in capitals, or emoji.
 
-### The Course and site line
+### The Collection and site line
 
-- [ ] A note with a Course and a website shows a small "Course · site ↗" line above its text (for example "youtube.com ↗"), and no `---` lines. Clicking the site switches to the page's tab when it is open, otherwise opens it in a new tab.
-- [ ] Clicking the Course opens a small list to move the note to another Course or a new one.
-- [ ] A note without a page shows only its Course, or "No course".
+- [ ] A note with a Collection and a website shows a small "Collection · site ↗" line above its text (for example "youtube.com ↗"), and no `---` lines. Clicking the site switches to the page's tab when it is open, otherwise opens it in a new tab.
+- [ ] Clicking the Collection opens a small list to move the note to another Collection or a new one.
+- [ ] A note without a page shows only its Collection, or "No collection".
 
 ### Export and Restore from backup file
 
 - [ ] Open settings, then Notes repo: "Export everything" and "Restore from backup file" sit under "Backup", and hovering shows what they do.
 - [ ] "Export everything" downloads a zip named "Glacier notes" with the date.
-- [ ] Unzip it: notes with a Course are in `courses/<Course>/`, all others in `notes/`, each file named after its title with a short block of details at the top.
+- [ ] Unzip it: notes with a Collection are in `collections/<Collection>/`, all others in `notes/`, each file named after its title with a short block of details at the top.
 - [ ] In Obsidian, "Open folder as vault" on the unzipped folder: the notes open and clicking a Link goes to the other note.
 - [ ] Restore from that zip again: a message says no notes were added and all were already here, and nothing changed.
 - [ ] Change a note, then restore from the older zip: your note keeps your change, and the older text appears as a second note with "(imported" and the date in its title.
-- [ ] Restore from a zip in a fresh Glacier (or another browser): every note comes back with its text, Course and website.
+- [ ] Restore from a zip in a fresh Glacier (or another browser): every note comes back with its text, Collection and website.
 - [ ] Restore from a file that isn't a zip: a message says it couldn't be read, and nothing changed.
 
 ### A rename syncs as one commit
@@ -300,12 +311,12 @@ Connect the same Notes repo in Chrome and in Firefox first (see #14).
 
 ### Connect GitHub and the first sync
 
-You need a private GitHub repo for your notes and a fine grained token for it (GitHub, Settings, Developer settings, Fine grained tokens), limited to that repo with Contents set to read and write. Put a few notes in it first, for example from an Export zip, in `courses/` and `notes/`.
+You need a private GitHub repo for your notes and a fine grained token for it (GitHub, Settings, Developer settings, Fine grained tokens), limited to that repo with Contents set to read and write. Put a few notes in it first, for example from an Export zip, in `collections/` and `notes/`.
 
 - [ ] Open the pill menu: under a small "Sync" heading at the bottom there is a "Notes repo" button. It opens settings at Notes repo, with Repo and Token fields and a short text about the token.
 - [ ] The × in the settings header returns to the note that was open.
 - [ ] Type the repo as `yourname/notes` (pasting its GitHub address works too), paste the token, press "Connect and sync". A screen shows Connecting to GitHub, then Downloading 1 of N notes counting up, then Linking notes, then Ready, and says how many notes came in.
-- [ ] "Start writing" closes settings. Every note from the repo is in the menu, with its Course, text and backlinks.
+- [ ] "Start writing" closes settings. Every note from the repo is in the menu, with its Collection, text and backlinks.
 - [ ] Typing just "notes" (no owner) says to type it as owner and name.
 - [ ] A wrong token says GitHub didn't accept it. A repo name that doesn't exist says it couldn't find that repo. Nothing in the Notebook changes.
 - [ ] With the network off (devtools, Offline), it says it couldn't reach GitHub.
@@ -313,11 +324,11 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 - [ ] A note you already had with different text is kept, and the repo's version shows up next to it as "Title (conflict date)".
 - [ ] The token is in neither the repo nor an Export zip. It shows only in the extension's storage (devtools of the sidebar, Application or Storage, Extension storage).
 
-### Export: this note, a course, or everything
+### Export: this note, a collection, or everything
 
-- [ ] Open the ⋯ This note menu after the title: "Download as a file" is there. Open settings (the round glacier button), then Notes repo: under a small "Backup" heading are a Course list, "Export a course", "Export everything" and "Restore from backup file". Hovering each shows what it does.
+- [ ] Open the ⋯ This note menu after the title: "Download as a file" is there. Open settings (the round glacier button), then Notes repo: under a small "Backup" heading are a Collection list, "Export a collection", "Export everything" and "Restore from backup file". Hovering each shows what it does.
 - [ ] "Download as a file" saves one `.md` file named after the note's title, with its text.
-- [ ] Pick a Course and press "Export a course": the zip has only that Course's notes.
+- [ ] Pick a Collection and press "Export a collection": the zip has only that Collection's notes.
 - [ ] "Export everything" downloads a zip of every note, as before.
 - [ ] "Restore from backup file" works as before (see section 2).
 
@@ -389,7 +400,7 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 - [ ] Turn the Shortcuts panel on: the cheat sheet shows beside the sidebar too, to the left of settings. Close settings: the cheat sheet moves to the edge of the page.
 - [ ] Fold the cheat sheet with its arrow: a slim Shortcuts tab stays on the edge of the page. Click the tab: it opens again.
 - [ ] Close settings with the ×, with Esc, with the glacier button and by clicking in the note. Each way closes them.
-- [ ] Under Notes repo beside the sidebar: Sync now, Export a course, Export everything and Restore from backup file all work, and the downloads and messages show in the sidebar. With no repo connected, connecting one shows the first sync steps beside the sidebar.
+- [ ] Under Notes repo beside the sidebar: Sync now, Export a collection, Export everything and Restore from backup file all work, and the downloads and messages show in the sidebar. With no repo connected, connecting one shows the first sync steps beside the sidebar.
 - [ ] Switch to another website tab with settings or the cheat sheet open: they go with you. Go back: they are there and not left behind on the other tab.
 - [ ] Follow a link in the page: after it loads, the panels come back beside the sidebar.
 - [ ] On a new tab, a browser settings page (`chrome://settings` or `about:preferences`) and a PDF, open settings: they open inside the sidebar. Switch back to a website: they move beside it.
@@ -418,9 +429,9 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 - [ ] Click it: the note leaves the Notebook list, recent notes and search. On a page that had only this note, the empty paper for a new note shows.
 - [ ] Open the pill menu: an "Archive" section is at the bottom, folded shut. Open it and the archived note is listed.
 - [ ] Click the archived note: a small "Archived" label shows in the pill, and the ⋯ This note menu has "Unarchive" instead of "Archive".
-- [ ] Click Unarchive: the label goes, and the note is back in its Course (or No Course) in the list.
+- [ ] Click Unarchive: the label goes, and the note is back in its Collection (or No Collection) in the list.
 - [ ] A link to an archived note in another note still opens it.
-- [ ] After a sync, the archived note's file is under the archive folder on GitHub (for example archive/courses/Course name/Title.md), and it moves back out after Unarchive and a sync.
+- [ ] After a sync, the archived note's file is under the archive folder on GitHub (for example archive/collections/Collection name/Title.md), and it moves back out after Unarchive and a sync.
 - [ ] In Settings, Notes repo, under Backup: "Export archive" downloads a zip with only the archived notes.
 - [ ] "Export everything" includes archived notes, and "Restore from backup file" brings them back as archived.
 
@@ -450,16 +461,16 @@ Reload the extension with the reload button first. In Settings, Panels, choose "
 Reload the extension with the reload button first.
 
 - [ ] Open a website that has no note: the sidebar shows the ruled paper with one faded line, "No note for this page yet. Just start writing." The pill shows the page's title, faded. Nothing looks like a web form: no boxes, no big buttons, no heading.
-- [ ] Click the paper and type a letter: the note exists now, with the page's title in the pill (no longer faded) and the line "Course · site ↗" above the text, with the last used Course.
+- [ ] Click the paper and type a letter: the note exists now, with the page's title in the pill (no longer faded) and the line "Collection · site ↗" above the text, with the last used Collection.
 - [ ] On another website with no note, click the paper but type nothing, then switch tabs and back: no note was made (it is not in the pill menu).
 - [ ] Open a note, then + and "New note": the pill shows "Title" faded, ready to type. Type a name and press Enter: the caret drops onto the first line. Write something, and the note is in the menu under that name, never "Untitled".
 - [ ] + and "New note" again, then press Esc: the note from before comes back and nothing was made.
 - [ ] On a website, + and "New note for this page": the page's title is in the pill, all selected. Press Enter to keep it, and the note is made.
 - [ ] On a settings page, + and "New note": type a name, press Enter, write. The note has no site link.
-- [ ] Make a note for a page whose title another note already has: it gets the Course in brackets after the title.
-- [ ] Hover the Course above the text: "Click to move this note to another course". Click it: a small list opens right there, the last used Course first and "New course" at the bottom. Pick another Course: the line shows it and the note is under that Course in the menu.
-- [ ] Click the Course, then "New course": the line turns into a field. Type a name and press Enter: the note moves to that new Course. Esc in the field changes nothing.
-- [ ] After a sync, the note's file moved to the new Course's folder in the Notes repo, and the old one is gone.
+- [ ] Make a note for a page whose title another note already has: it gets the Collection in brackets after the title.
+- [ ] Hover the Collection above the text: "Move to another collection". Click it: a small list opens right there, the last used Collection first and "+ New collection" at the bottom. Pick another Collection: the line shows it and the note is under that Collection in the menu.
+- [ ] Click the Collection, then "+ New collection": the line turns into a field. Type a name and press Enter: the note moves to that new Collection. Esc in the field changes nothing.
+- [ ] After a sync, the note's file moved to the new Collection's folder in the Notes repo, and the old one is gone.
 - [ ] The link shows the site, for example "youtube.com ↗" (no www). Hover it: the full address shows.
 - [ ] With the page open in a tab (also in another window), click the link: Glacier switches to that tab. Close the page's tab and click again: it opens in a new tab.
 - [ ] Without the permission to see pages, the link always opens a new tab.

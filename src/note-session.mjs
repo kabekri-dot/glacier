@@ -47,7 +47,7 @@ export function createNoteSession({ notebook, onSaveError, onCreate, ...timers }
   }
 
   // Turn the fresh page into a note. A note for a page takes the last used
-  // Course; a blank note has no page and no Course (#68).
+  // Collection; a blank note has no page and no Collection (#68).
   function createFromDraft(title) {
     const { source } = draft;
     draft = null;

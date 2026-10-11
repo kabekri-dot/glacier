@@ -76,3 +76,25 @@ for (const file of filesIn("sidebar", ".css")) {
 test("manifest.json descriptions have no em or en dashes", () => {
   assert.doesNotMatch(read("manifest.json"), DASHES);
 });
+
+// Course became Collection (#73). Only text with a space can be shown to the
+// user, so names like "courses" or a class like "course-list" in the code
+// don't count.
+const STRINGS = /"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`/g;
+const COURSE_WORD = /(?<![-.\w$])courses?(?![-\w])/i;
+
+for (const file of jsFiles) {
+  test(`${file} shows no Course in its strings`, () => {
+    const shown = (withoutJsComments(read(file)).match(STRINGS) ?? [])
+      .map((literal) => literal.replace(/\$\{[^}]*\}/g, ""))
+      .filter((literal) => literal.includes(" "));
+    assert.deepEqual(shown.filter((literal) => COURSE_WORD.test(literal)), []);
+  });
+}
+
+for (const file of filesIn("sidebar", ".html")) {
+  test(`${file} shows no Course`, () => {
+    const text = withoutBlockComments(read(file), "<!--", "-->").replace(/<[^>]*>/g, " ");
+    assert.doesNotMatch(text, COURSE_WORD);
+  });
+}

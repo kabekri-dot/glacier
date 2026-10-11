@@ -7,7 +7,7 @@
 //   { kind: "notes", titles, current? }   note buttons, `current` the open one
 //   { kind: "newForPage", label, hint }   "+ New note for this page"
 //   { kind: "group", label, hint, open, archive, titles, download? }   a foldable group;
-//                                  `download` is the hover text of a Course's Download icon
+//                                  `download` is the hover text of a Collection's Download icon
 //   { kind: "empty", text }               a quiet line when nothing is listed
 //   { kind: "result", title, titleMark, snippet }           a search result
 //   { kind: "pair", notes: [{ title, label }] }             a Conflict Copy and its original
@@ -67,8 +67,8 @@ function markIn(text, needle) {
   return { before: text.slice(0, at), match: text.slice(at, end), after: text.slice(end) };
 }
 
-// The notes for this page, recent notes, then the Notebook: Courses with
-// their notes, the notes without a Course, and the folded Archive last.
+// The notes for this page, recent notes, then the Notebook: Collections with
+// their notes, the notes without a Collection, and the folded Archive last.
 function browse(notebook, openNote) {
   const parts = notesForThisPage(notebook, openNote);
   const recent = notebook.recentNotes();
@@ -81,10 +81,10 @@ function browse(notebook, openNote) {
     parts.push({ kind: "empty", text: "No notes yet" });
   }
   for (const { course, titles } of outline.courses) {
-    parts.push({ kind: "group", label: course, hint: "Notes in this Course", open: true, archive: false, titles, download: `Download the Course '${course}'` });
+    parts.push({ kind: "group", label: course, hint: "Notes in this Collection", open: true, archive: false, titles, download: `Download the Collection '${course}'` });
   }
   if (outline.uncategorised.length > 0) {
-    parts.push(heading("No Course", "Notes not in any Course"), { kind: "notes", titles: outline.uncategorised });
+    parts.push(heading("No Collection", "Notes not in any Collection"), { kind: "notes", titles: outline.uncategorised });
   }
   const archived = notebook.archivedNotes();
   if (archived.length > 0) {

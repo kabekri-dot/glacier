@@ -37,8 +37,8 @@ test("a Course prints every note, each starting on a new page", () => {
   assert.match(html, /page-break-before/);
 });
 
-test("the Notebook menu offers a Download on each Course heading", () => {
+test("the Notebook menu offers a Download on each Collection heading", () => {
   const parts = notebookMenu(notebookWith(), "");
   const course = parts.find((part) => part.kind === "group");
-  assert.equal(course.download, "Download the Course 'CSS'");
+  assert.equal(course.download, "Download the Collection 'CSS'");
 });

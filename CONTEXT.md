@@ -5,12 +5,12 @@ A personal notebook that lives in the browser's sidebar, for taking and connecti
 ## Notes
 
 **Note**:
-A titled piece of Markdown text, and the only kind of note there is. Two details are optional: its page (the Source it belongs to) and its Course. A page can have several notes; visiting it opens the one edited most recently. A note without a page is a blank note, e.g. one idea in your own words, or notes from a book. Its title is unique across the whole Notebook.
+A titled piece of Markdown text, and the only kind of note there is. Two details are optional: its page (the Source it belongs to) and its Collection. A page can have several notes; visiting it opens the one edited most recently. A note without a page is a blank note, e.g. one idea in your own words, or notes from a book. Its title is unique across the whole Notebook.
 _Avoid_: Lesson Note, Concept Note (two kinds of note, merged into one, ADR 0010), document, entry, card
 
-**Course**:
-A named group of notes from the same learning path, e.g. "The Odin Project – Foundations" or "Khan – Algebra 1". Chosen by hand, not derived from a website.
-_Avoid_: Folder, category, website
+**Collection**:
+A named group of notes chosen by hand, e.g. "The Odin Project – Foundations", "Khan – Algebra 1" or "Book: Clean Code". Not derived from a website. Its name ignores capital letters: "Testing Test" and "Testing test" are the same Collection.
+_Avoid_: Course (its old name, which only fit learning paths), Folder, category, website
 
 **Source**:
 The website address (`http` or `https` only) of the page a note belongs to, called "page" on screen. It is compared without its `#fragment` and without known tracking parameters (`utm_…`, `fbclid`, `gclid`, `ref`…). Other query parameters stay part of it, because on sites like YouTube (`watch?v=…`) they identify the lesson.
@@ -21,7 +21,7 @@ A drawing inside a note, made of shapes and free text, kept as a picture file ne
 _Avoid_: Canvas, diagram, whiteboard, image
 
 **Notebook**:
-All of one person's Notes and Courses together.
+All of one person's Notes and Collections together.
 _Avoid_: Vault, workspace, library
 
 ## Connections
@@ -31,7 +31,7 @@ A reference from one note to another, written as `[[Title]]` in the text.
 _Avoid_: Wikilink, reference, hyperlink
 
 **Missing Link**:
-A Link whose title matches no note yet. Following it creates a note with that title, without a page or Course.
+A Link whose title matches no note yet. Following it creates a note with that title, without a page or Collection.
 _Avoid_: Broken link, dead link
 
 **Backlink**:
@@ -63,7 +63,7 @@ A second note created when the same note was changed in two places before Sync, 
 _Avoid_: Duplicate, merge conflict
 
 **Export**:
-Markdown files made by hand from the Notebook: one note as a `.md` file, or a Course, the Archive or the whole Notebook as a zip. Restore from backup file turns a zip back into notes without overwriting any.
+Markdown files made by hand from the Notebook: one note as a `.md` file, or a Collection, the Archive or the whole Notebook as a zip. Restore from backup file turns a zip back into notes without overwriting any.
 _Avoid_: Backup, snapshot, Import
 
 **Archive**:

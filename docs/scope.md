@@ -6,22 +6,23 @@ What goes into which version. Terms are defined in [CONTEXT.md](../CONTEXT.md), 
 
 - Sidebar in Chrome and Firefox, opened from the toolbar or a keyboard shortcut
 - **One layout: Zen.** Only the page. One small pill at the top holds ← (back to the previous note), the title (click it to rename), ▾ (the Notebook menu: search, recent notes, the notebook, the Archive), ⋯ (This note: download as a file, archive, delete), the sync status, "1 of 3" when the page has more notes, and + (New note, blank, and on a website New note for this page, each explained on hover). A small button bottom-left shows what links here. The other nine layouts from the prototype wait until later (see below)
-- One kind of note ([ADR 0010](adr/0010-one-kind-of-note.md)): a page and a Course are both optional. A page can have several notes; the ▾ menu starts with Notes for this page, newest first, and "+ New note for this page"
+- One kind of note ([ADR 0010](adr/0010-one-kind-of-note.md)): a page and a Collection are both optional. A page can have several notes; the ▾ menu starts with Notes for this page, newest first, and "+ New note for this page"
 - Opening the panel on a known page opens its most recently edited note. On an unknown page the empty paper shows, and the note is made with the page title and Source the moment you start writing (#61). No create form: + opens a fresh page with the title in the pill ready to type. Reading the current tab needs an optional permission, asked on the first click (ADR 0008); without it, notes are made without a page
 - Switching tabs: the sidebar always shows the note of the tab you're on. On a browser page (new tab, settings, a PDF) it keeps the open note. Both can be changed in settings ([ADR 0009](adr/0009-the-sidebar-follows-the-tab.md))
-- A new note for a page takes the last-used Course, a blank note has none; the Course is changed in place on the line above the text, for every note
-- Note list: Courses → their notes, then the notes without a Course
-- Live-preview writing: no Edit/Preview switch, the cursor lands in the note when it opens, and Markdown shows as formatting while you write, including on the current line, where the Markdown marks stay visible but faded (see [ADR 0006](adr/0006-live-preview-block-editor.md)). A plain click follows a Link. Frontmatter hidden and shown as a small header (Course · site ↗, the site switching to the page's tab when it's open; no site for a note without a page)
+- A new note for a page takes the last-used Collection, a blank note has none; the Collection is changed in place on the line above the text, for every note
+- Note list: Collections → their notes, then the notes without a Collection
+- Collections were called Courses until #73; their names ignore capital letters, so two that differ only in capitals show and sync as one
+- Live-preview writing: no Edit/Preview switch, the cursor lands in the note when it opens, and Markdown shows as formatting while you write, including on the current line, where the Markdown marks stay visible but faded (see [ADR 0006](adr/0006-live-preview-block-editor.md)). A plain click follows a Link. Frontmatter hidden and shown as a small header (Collection · site ↗, the site switching to the page's tab when it's open; no site for a note without a page)
 - `/` command menu at the start of a line, showing the Markdown for each command. A small + at the left of the current line opens the same menu
 - Shortcuts panel (Markdown cheat sheet): docked to the left of the sidebar like settings, outside the notebook. Folds into a slim vertical tab on the sidebar's edge and stays open or folded until you change it. Switched on or off in settings. Nothing extra in the note's top bar, which is kept for the title
 - `[[` autocomplete for Links
 - Selecting and copying across paragraphs: drag-select works over several lines (a plain click starts editing). Ctrl+A selects the line, Ctrl+A again the whole note. Copy keeps the Markdown, so it pastes back intact
-- Renaming rewrites every Link. Missing Links render red, and clicking one creates a note without a page or Course
+- Renaming rewrites every Link. Missing Links render red, and clicking one creates a note without a page or Collection
 - Backlinks: in Zen, the small link button bottom-left lists the notes that link here
 - Search across titles and text (simple substring)
 - Sync with the Notes Repo: pull on panel open, push after typing stops, Conflict Copies. Status indicator: synced · syncing · offline · conflict, plus "last synced". "Sync now" shows a short confirmation
 - First sync: a progress screen (connecting → downloading n/total notes → linking → ready), then a confirmation
-- Export by hand: this note (one `.md` file, from ⋯), a Course, the Archive or everything (a zip of `.md` files). Restore from backup file brings an Export back and never overwrites a note you have
+- Export by hand: this note (one `.md` file, from ⋯), a Collection, the Archive or everything (a zip of `.md` files). Restore from backup file brings an Export back and never overwrites a note you have
 - Delete a note (asks first; the file leaves the Notes Repo too) or Archive it (hidden from lists and search, kept in `archive/` in the Notes Repo, Unarchive puts it back)
 - Themes in two groups. **Nature**: Glacier (default), Forest, Ocean, Desert, Volcano, Aurora (dark), each with a faint pixel-art panorama along the bottom of the paper, from left to right. It keeps its height, so a wider sidebar shows more landscape, and it fades out upwards with room left below the last line, so text is never drawn over it. **Classics**: Blank Page, School Notebook, Chalkboard (dark), Moleskine, Engineer
 - Text size slider (85–150 %). Line spacing grows with it, so ruled and grid paper still lines up
