@@ -331,6 +331,7 @@ async function start() {
   }
 
   function startLessonNote() {
+    rememberNoteBeforeForm();
     session.close();
     current = null;
     openedByPage = false;
@@ -352,6 +353,7 @@ async function start() {
         closeNewMenu();
         if (choice.kind === "lesson") startLessonNote();
         else if (choice.kind === "byHand") {
+          rememberNoteBeforeForm();
           session.close();
           showNewNoteForm();
         } else {
@@ -1190,7 +1192,7 @@ async function start() {
   // down to the ruled row that was clicked and puts the caret there (#35). Clicks
   // on a line itself are handled by that line, so only the paper itself counts.
   noteEl.addEventListener("mousedown", (event) => {
-    if (event.target !== noteEl || !noteEl.lastElementChild) return;
+    if (event.target !== noteEl || !noteEl.lastElementChild || !current) return;
     const below = event.clientY - noteEl.lastElementChild.getBoundingClientRect().bottom;
     if (below < 0) return;
     event.preventDefault();
@@ -1855,10 +1857,35 @@ async function start() {
     return { input, list };
   }
 
+  // The note on screen when a create form took its place, so Cancel can go
+  // back to it. A form replacing another form keeps the first note.
+  let noteBeforeForm = null;
+
+  function rememberNoteBeforeForm() {
+    if (current) noteBeforeForm = { note: current, openedByPage };
+  }
+
+  function cancelCreateForm() {
+    const before = noteBeforeForm;
+    noteBeforeForm = null;
+    const stillThere = before && notebook.note(before.note.title);
+    openingFlow.cancelForm(stillThere ? { note: stillThere, openedByPage: before.openedByPage } : null);
+  }
+
+  // Esc cancels the form wherever the focus is, since clicking the paper moves
+  // it out of the fields. Menus and cards handle their own Esc first.
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || event.defaultPrevented) return;
+    if (!noteEl.querySelector(".create-form")) return;
+    event.preventDefault();
+    cancelCreateForm();
+  });
+
   // The create form, shared by "+ Lesson note" (with a Source from the page)
   // and "+ New note" (by hand, no Source). Creating opens the new note so you
   // can type in it straight away — never a dead end (#3).
   function showCreateForm({ heading, titleValue, source, buttonText }) {
+    rememberNoteBeforeForm();
     session.close();
     current = null;
     openedByPage = false;
@@ -1890,8 +1917,16 @@ async function start() {
     submit.textContent = buttonText;
     form.appendChild(submit);
 
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "create-cancel";
+    cancel.textContent = "Cancel";
+    cancel.addEventListener("click", cancelCreateForm);
+    form.appendChild(cancel);
+
     form.addEventListener("submit", (event) => {
       event.preventDefault();
+      noteBeforeForm = null;
       const noteTitle = titleInput.value.trim() || "Untitled";
       const note = notebook.createLessonNote({
         title: noteTitle,
@@ -1939,7 +1974,7 @@ async function start() {
         showPermissionCard();
         break;
       case "open":
-        openNote(view.note, { byPage: true });
+        openNote(view.note, { byPage: view.openedByPage ?? true });
         break;
       case "lessonForm":
         showLessonForm(view.page);

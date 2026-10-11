@@ -515,6 +515,17 @@ code {
   cursor: pointer;
 }
 
+.create-cancel {
+  align-self: flex-start;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
 .create-submit:hover,
 .create-submit:focus {
   outline: none;
