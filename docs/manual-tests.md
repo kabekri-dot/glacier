@@ -11,6 +11,15 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Search titles, or // to search inside notes (#69)
+
+- [ ] Reload with the reload button first. Open the menu: the search box says "Search titles, or // to search inside notes", and hovering it says the same.
+- [ ] Type a word from a note's title: that note is listed with the word highlighted.
+- [ ] Type a word that is only inside a note's text, without //: nothing is found.
+- [ ] Type `// ` and that word: the note is listed with a short piece of its text and the word highlighted.
+- [ ] Type `// ` and two words from one note in the opposite order, in capitals: the note is still found, both words highlighted.
+- [ ] Archive a note, then search for its title and for `// ` and a word in it: it does not appear.
+
 ### One kind of note: several notes per page, blank notes (#68)
 
 Reload with ↻ first.

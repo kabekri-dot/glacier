@@ -36,10 +36,14 @@ test("a search lists notes whose title matches, with the match marked in the tit
 });
 
 test("a search that matches the text gives a snippet around the match", () => {
-  const [result] = notebookMenu(notebookWith(), "outside");
+  const [result] = notebookMenu(notebookWith(), "// outside");
   assert.equal(result.title, "Margins");
   assert.equal(result.titleMark, null);
-  assert.deepEqual(result.snippet, { before: "Space ", match: "outside", after: " the border of a box." });
+  assert.deepEqual(result.snippet, [
+    { text: "Space ", match: false },
+    { text: "outside", match: true },
+    { text: " the border of a box.", match: false },
+  ]);
 });
 
 test("a search with no match says so", () => {

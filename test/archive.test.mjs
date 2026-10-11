@@ -38,7 +38,8 @@ test("an archived note leaves the Notebook list, search and recent notes", async
   notebook.markOpened("Margins");
   notebook.archiveNote("Margins");
   assert.deepEqual(notebook.outline().uncategorised, []);
-  assert.deepEqual(notebook.search("Space outside"), []);
+  assert.deepEqual(notebook.search("Margins"), []);
+  assert.deepEqual(notebook.search("// Space outside"), []);
   assert.deepEqual(notebook.recentNotes(), []);
 });
 
