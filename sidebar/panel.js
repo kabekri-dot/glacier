@@ -13,7 +13,7 @@
 // draws editor.state and editor.menu. The pill that switches notes arrives in a
 // later slice (#12).
 
-import { createNotebook } from "../src/notebook.mjs";
+import { createNotebook, importSummary } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { createNoteSession } from "../src/note-session.mjs";
 import { isOpenedByPage } from "../src/page-open.mjs";
@@ -54,6 +54,7 @@ const backEl = document.querySelector(".pill-back");
 const newButtonEl = document.querySelector(".pill-new");
 const newMenuEl = document.querySelector(".new-menu");
 const menuPanelEl = document.querySelector(".menu");
+const noteMetaEl = document.querySelector(".note-meta");
 
 // A write to this browser's copy failed (aborted or threw). Tell the user so
 // they don't trust a save that didn't happen (issue #25); their text is still
@@ -128,6 +129,39 @@ async function start() {
     closeMenu();
     updatePill();
     updateBacklinks();
+    updateNoteMeta();
+  }
+
+  // --- The note's header (#13) ------------------------------------------------
+  //
+  // The note's file keeps its Course and Source in a frontmatter (ADR 0005),
+  // but the editor never shows that YAML: a Lesson Note gets a small
+  // "Course · source ↗" line above its text instead, the link opening the
+  // lesson in a new tab.
+
+  function updateNoteMeta() {
+    noteMetaEl.replaceChildren();
+    const course = current?.type === "lesson" ? current.course : undefined;
+    const source = current?.type === "lesson" ? current.source : undefined;
+    if (course) {
+      const name = document.createElement("span");
+      name.className = "note-meta-course";
+      name.textContent = course;
+      noteMetaEl.append(name);
+    }
+    if (course && source) noteMetaEl.append(" · ");
+    if (source) {
+      const link = document.createElement("a");
+      link.href = source;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.title = source;
+      link.textContent = "source ↗";
+      noteMetaEl.append(link);
+    }
+    const shown = Boolean(course || source);
+    noteMetaEl.hidden = !shown;
+    noteEl.classList.toggle("has-meta", shown);
   }
 
   // --- Backlinks (#10) ---------------------------------------------------------
@@ -204,6 +238,7 @@ async function start() {
     current = null;
     openedByPage = false;
     updatePill();
+    updateNoteMeta();
     openingFlow.clickLessonNote();
   }
 
@@ -411,10 +446,63 @@ async function start() {
     rename.addEventListener("click", () => showRename(actions, body));
     actions.append(newLesson, newConcept, rename);
 
-    menuPanelEl.append(search, actions, body);
+    menuPanelEl.append(search, actions, body, exportImportRow(refresh));
     menuPanelEl.hidden = false;
     pillEl.setAttribute("aria-expanded", "true");
     search.focus();
+  }
+
+  // Export and Import (#13): the whole Notebook as a zip of Markdown files, and
+  // such a zip turned back into notes. The file format lives in the Notebook
+  // core; this only downloads and picks files. They move into settings once
+  // it exists (#18).
+  function exportImportRow(refresh) {
+    const row = document.createElement("div");
+    row.className = "menu-actions menu-files";
+
+    const exportButton = document.createElement("button");
+    exportButton.type = "button";
+    exportButton.className = "menu-new";
+    exportButton.textContent = "Export";
+    exportButton.title = "Download every note as a zip of Markdown files";
+    exportButton.addEventListener("click", () => {
+      session.flush();
+      const blob = new Blob([notebook.exportZip()], { type: "application/zip" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `Glacier notes ${new Date().toISOString().slice(0, 10)}.zip`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+    });
+
+    const picker = document.createElement("input");
+    picker.type = "file";
+    picker.accept = ".zip,application/zip";
+    picker.hidden = true;
+    picker.addEventListener("change", async () => {
+      const file = picker.files?.[0];
+      if (!file) return;
+      session.flush();
+      try {
+        const result = await notebook.importZip(new Uint8Array(await file.arrayBuffer()));
+        showNotice(importSummary(result));
+        if (menuIsOpen()) refresh();
+      } catch (error) {
+        console.error("Glacier: could not import", error);
+        showNotice("Couldn't read that zip file");
+      }
+      picker.value = "";
+    });
+
+    const importButton = document.createElement("button");
+    importButton.type = "button";
+    importButton.className = "menu-new";
+    importButton.textContent = "Import";
+    importButton.title = "Add the notes from an Export zip. Notes you already have are never overwritten";
+    importButton.addEventListener("click", () => picker.click());
+
+    row.append(exportButton, importButton, picker);
+    return row;
   }
 
   // Rename (#11): a title box replaces the menu body. A taken title is refused
@@ -1097,10 +1185,15 @@ async function start() {
 
   // A short confirmation of how many lines were copied, that fades on its own.
   function showCopied(count) {
-    copiedEl.textContent = copiedMessage(count);
+    showNotice(copiedMessage(count), 1500);
+  }
+
+  // A short message in the bottom corner, gone after a moment.
+  function showNotice(text, ms = 4000) {
+    copiedEl.textContent = text;
     copiedEl.hidden = false;
     clearTimeout(copiedTimer);
-    copiedTimer = setTimeout(() => (copiedEl.hidden = true), 1500);
+    copiedTimer = setTimeout(() => (copiedEl.hidden = true), ms);
   }
 
   // Copying a selection in the note puts its Markdown on the clipboard, so it
@@ -1224,6 +1317,7 @@ async function start() {
     current = null;
     openedByPage = false;
     updatePill();
+    updateNoteMeta();
     noteEl.replaceChildren();
 
     const form = document.createElement("form");
@@ -1317,6 +1411,7 @@ async function start() {
     current = null;
     openedByPage = false;
     updatePill();
+    updateNoteMeta();
     noteEl.replaceChildren();
 
     const wrap = document.createElement("div");
