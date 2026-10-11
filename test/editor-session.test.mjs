@@ -136,6 +136,72 @@ test("#27 Backspace on the line after a closing fence does not merge into the fe
   assert.deepEqual(editor.state.focus, { line: 2, col: 3 });
 });
 
+// Delete at the end of a line mirrors Backspace: it pulls the next line up.
+
+test("Delete at the end of a line joins the next line onto it", () => {
+  const editor = createEditorSession();
+  editor.load("hello\nworld");
+  editor.moveTo(0, 5);
+  assert.equal(editor.deleteAtEnd(), true);
+  assert.deepEqual(editor.state.lines, ["helloworld"]);
+  assert.deepEqual(editor.state.focus, { line: 0, col: 5 });
+});
+
+test("Delete at the end of a line before an empty line removes the empty line", () => {
+  const editor = createEditorSession();
+  editor.load("one\n\n\nfour");
+  editor.moveTo(0, 3);
+  assert.equal(editor.deleteAtEnd(), true);
+  assert.deepEqual(editor.state.lines, ["one", "", "four"]);
+  assert.equal(editor.deleteAtEnd(), true);
+  assert.deepEqual(editor.state.lines, ["one", "four"]);
+  assert.deepEqual(editor.state.focus, { line: 0, col: 3 });
+});
+
+test("Delete inside a line is left to the textarea", () => {
+  const editor = createEditorSession();
+  editor.load("hello\nworld");
+  editor.moveTo(0, 2);
+  assert.equal(editor.deleteAtEnd(), false);
+  assert.deepEqual(editor.state.lines, ["hello", "world"]);
+});
+
+test("Delete at the end of the note does nothing", () => {
+  const editor = createEditorSession();
+  editor.load("hello\nworld");
+  editor.moveTo(1, 5);
+  assert.equal(editor.deleteAtEnd(), false);
+  assert.deepEqual(editor.state.lines, ["hello", "world"]);
+});
+
+test("Delete at the end of the line before a code block leaves the fence intact", () => {
+  const editor = createEditorSession();
+  editor.load("intro\n```\ncode\n```\nafter");
+  editor.moveTo(0, 5);
+  assert.equal(editor.deleteAtEnd(), true);
+  assert.deepEqual(editor.state.lines, ["intro", "```", "code", "```", "after"]);
+  assert.deepEqual(editor.state.focus, { line: 1, col: 0 });
+});
+
+test("Delete at the end of a closing fence leaves both fences intact", () => {
+  const editor = createEditorSession();
+  editor.load("```\ncode\n```\nafter");
+  editor.moveTo(2, 3);
+  assert.equal(editor.deleteAtEnd(), true);
+  assert.deepEqual(editor.state.lines, ["```", "code", "```", "after"]);
+  assert.deepEqual(editor.state.focus, { line: 3, col: 0 });
+});
+
+test("a Delete that joins lines undoes as one step", () => {
+  const { editor } = editorWithHistory("one\ntwo");
+  editor.moveTo(0, 3);
+  editor.deleteAtEnd();
+  assert.deepEqual(editor.state.lines, ["onetwo"]);
+  editor.undo();
+  assert.deepEqual(editor.state.lines, ["one", "two"]);
+  assert.deepEqual(editor.state.focus, { line: 0, col: 3 });
+});
+
 // ↑/↓ cross between blocks only from the top/bottom line of the focused block.
 
 test("↑ from the top of a block moves to the end of the line above", () => {

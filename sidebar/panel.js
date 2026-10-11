@@ -1931,6 +1931,20 @@ async function start() {
         return;
       }
 
+      if (
+        event.key === "Delete" &&
+        selection.start === value.length &&
+        selection.start === selection.end
+      ) {
+        const lastLine = start + value.split("\n").length - 1;
+        editor.setFocus(lastLine, value.length - value.lastIndexOf("\n") - 1);
+        if (editor.deleteAtEnd()) {
+          event.preventDefault();
+          render();
+          return;
+        }
+      }
+
       if (event.key === "ArrowUp") {
         if (editor.moveUp(value, selection.start)) {
           event.preventDefault();

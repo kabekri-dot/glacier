@@ -25,6 +25,7 @@ import {
   columnAfterFormatting,
   breakInsideFormatting,
   pressBackspace,
+  pressDelete,
   slashQuery,
   filterCommands,
   applySlashCommand,
@@ -584,6 +585,23 @@ export function createEditorSession({
       if (!(focus.line === blockStart && focus.col === 0)) return false;
       recordStep();
       const next = pressBackspace(lines, blockStart, 0);
+      lines = next.lines;
+      focus = { line: next.line, col: next.col };
+      relayout();
+      notifyChange();
+      return true;
+    },
+
+    // Delete at the very end of the focused block: pull the next line up (the
+    // mirror of backspaceAtStart, fences kept intact too). Returns true when it
+    // handled the key; false (caret not at the block end, or the end of the
+    // note) leaves the keystroke to the browser.
+    deleteAtEnd() {
+      const last = blockStart + blockCount - 1;
+      if (last >= lines.length - 1) return false;
+      if (!(focus.line === last && focus.col === lines[last].length)) return false;
+      recordStep();
+      const next = pressDelete(lines, last, focus.col);
       lines = next.lines;
       focus = { line: next.line, col: next.col };
       relayout();
