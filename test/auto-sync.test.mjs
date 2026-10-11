@@ -167,13 +167,13 @@ function captureConsole() {
   return { logged, restore: () => Object.assign(console, original) };
 }
 
-test("a request cut off by the sidebar closing logs nothing and leaves the status alone", async () => {
+test("a request cut off by the sidebar closing logs nothing and ends on a real status", async () => {
   const cap = captureConsole();
   try {
     const { autoSync, statuses } = await failingSync(Object.assign(new Error("aborted"), { name: "AbortError" }));
     await autoSync.syncNow();
-    assert.equal(autoSync.status().state, "off");
-    assert.equal(statuses.at(-1), "off");
+    assert.equal(autoSync.status().state, "synced");
+    assert.equal(statuses.at(-1), "synced");
     assert.deepEqual(cap.logged, { error: [], warn: [] });
   } finally {
     cap.restore();
@@ -190,6 +190,47 @@ test("a network failure shows Offline, keeps the cause and warns only once", asy
     assert.equal(cap.logged.error.length, 0);
     assert.equal(cap.logged.warn.length, 1);
     assert.match(cap.logged.warn[0][1], /TypeError: Failed to fetch/);
+  } finally {
+    cap.restore();
+  }
+});
+
+async function withConflict() {
+  const remote = memoryRemote({});
+  const { notebook, autoSync, statuses } = setup({ remote });
+  await autoSync.syncNow();
+  const firefox = createNotebook({ storage: memoryStorage() });
+  await firefox.sync(remote);
+  firefox.saveBody("Margins", "Firefox's text.");
+  await firefox.sync(remote);
+  notebook.saveBody("Margins", "Chrome's text.");
+  await autoSync.syncNow();
+  return { notebook, autoSync, statuses };
+}
+
+test("deleting the last Conflict Copy clears the conflict at once", async () => {
+  const { notebook, autoSync } = await withConflict();
+  assert.equal(autoSync.status().state, "conflict");
+  notebook.deleteNote(notebook.conflictCopies()[0]);
+  autoSync.changed();
+  assert.equal(autoSync.status().state, "synced");
+});
+
+test("archiving the last Conflict Copy clears the conflict at once", async () => {
+  const { notebook, autoSync } = await withConflict();
+  notebook.archiveNote(notebook.conflictCopies()[0]);
+  autoSync.changed();
+  assert.equal(autoSync.status().state, "synced");
+});
+
+test("a request cut off during a sync never leaves the status on syncing", async () => {
+  const cap = captureConsole();
+  try {
+    const { autoSync } = await failingSync(Object.assign(new Error("aborted"), { name: "AbortError" }));
+    const first = autoSync.syncNow();
+    autoSync.syncNow();
+    await first;
+    assert.notEqual(autoSync.status().state, "syncing");
   } finally {
     cap.restore();
   }

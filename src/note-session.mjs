@@ -13,6 +13,19 @@
 
 import { createSaveScheduler } from "./save-scheduler.mjs";
 
+// A few words of the first line, Markdown marks left out, for a note that was
+// written on before it was given a title.
+function titleFromText(body) {
+  const firstLine = body.split("\n").find((line) => line.trim() !== "") ?? "";
+  const words = firstLine
+    .replace(/\[\[|\]\]/g, "")
+    .replace(/[#*_`>~\[\]|\\\/:]/g, " ")
+    .replace(/^\s*-\s+/, "")
+    .split(/\s+/)
+    .filter(Boolean);
+  return words.slice(0, 5).join(" ") || "New note";
+}
+
 export function createNoteSession({ notebook, onSaveError, onCreate, ...timers }) {
   let openTitle = null;
   // The fresh page on screen: { type: "lesson" | "concept", title, source }.
@@ -67,7 +80,7 @@ export function createNoteSession({ notebook, onSaveError, onCreate, ...timers }
     },
     edit(body) {
       if (draft && body !== "") {
-        createFromDraft(draft.title.trim() || "Untitled");
+        createFromDraft(draft.title.trim() || titleFromText(body));
       }
       if (openTitle === null) {
         return;
