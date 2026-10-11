@@ -162,10 +162,14 @@ export function rowActions(title, archived = false) {
   ];
 }
 
+function noteCount(count) {
+  return count === 1 ? "1 note" : `${count} notes`;
+}
+
 // The hover icons on a Collection heading (#74): Download, Archive (Unarchive
 // in the Archive section) and Delete, each naming the Collection and its notes.
 export function collectionActions(course, count, archived = false) {
-  const notes = count === 1 ? "1 note" : `${count} notes`;
+  const notes = noteCount(count);
   const named = `'${course}', ${notes}`;
   return [
     { kind: "download", hint: `Download '${course}', ${notes}` },
@@ -181,6 +185,5 @@ export function archivedNotice(count) {
 }
 
 export function deleteCollectionQuestion(course, count) {
-  const notes = count === 1 ? "1 note" : `${count} notes`;
-  return `Delete the collection '${course}' and its ${notes}? They're also removed from your Notes repo.`;
+  return `Delete the collection '${course}' and its ${noteCount(count)}? They're also removed from your Notes repo.`;
 }
