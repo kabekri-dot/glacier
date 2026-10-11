@@ -29,7 +29,7 @@ import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
 import { readTabSettings } from "../src/tab-settings.mjs";
-import { PAPERS, FONT_OVERRIDES, TEXT_SIZE, readLook, lookStyle, wholeRows } from "../src/look.mjs";
+import { PAPERS, paperGroups, FONT_OVERRIDES, TEXT_SIZE, readLook, lookStyle, wholeRows } from "../src/look.mjs";
 import {
   blockRanges,
   copiedMessage,
@@ -84,6 +84,9 @@ function drawLook() {
   const root = document.documentElement;
   for (const [name, value] of Object.entries(lookDrawn.vars)) root.style.setProperty(name, value);
   root.dataset.pattern = lookDrawn.pattern;
+  // A Nature paper's panorama (#19); the stylesheet picks the picture.
+  if (lookDrawn.art) root.dataset.art = lookDrawn.art;
+  else delete root.dataset.art;
   root.style.colorScheme = lookDrawn.dark ? "dark" : "light";
   fitRows();
 }
@@ -848,33 +851,44 @@ async function start() {
     });
   }
 
+  // The papers in their two groups, Nature and Classics (#19). A Nature
+  // paper's swatch shows a corner of its panorama.
   function drawPapers() {
-    const list = document.createElement("div");
-    list.className = "paper-list";
-    list.setAttribute("role", "radiogroup");
-    list.setAttribute("aria-label", "Paper");
-    for (const paper of PAPERS) {
-      const label = document.createElement("label");
-      label.className = "paper-choice";
-      const radio = document.createElement("input");
-      radio.type = "radio";
-      radio.name = "paper";
-      radio.value = paper.name;
-      radio.checked = paper.name === look.paper;
-      radio.addEventListener("change", () => {
-        saveLook({ paper: paper.name });
-        drawWriting();
-      });
-      const swatch = document.createElement("span");
-      swatch.className = "paper-swatch";
-      swatch.style.background = paper.paper;
-      swatch.style.boxShadow = `inset 0 -0.35rem 0 -0.25rem ${paper.pattern === "none" ? paper.paper : paper.rule}`;
-      const name = document.createElement("span");
-      name.textContent = paper.dark ? `${paper.name} (dark)` : paper.name;
-      label.append(radio, swatch, name);
-      list.append(label);
-    }
-    paperBodyEl.replaceChildren(list);
+    const groups = paperGroups().map(({ group, papers }) => {
+      const list = document.createElement("div");
+      list.className = "paper-list";
+      list.setAttribute("role", "radiogroup");
+      list.setAttribute("aria-label", group);
+      const heading = document.createElement("h2");
+      heading.className = "settings-subheading";
+      heading.textContent = group;
+      list.append(heading, ...papers.map(paperChoice));
+      return list;
+    });
+    paperBodyEl.replaceChildren(...groups);
+  }
+
+  function paperChoice(paper) {
+    const label = document.createElement("label");
+    label.className = "paper-choice";
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = "paper";
+    radio.value = paper.name;
+    radio.checked = paper.name === look.paper;
+    radio.addEventListener("change", () => {
+      saveLook({ paper: paper.name });
+      drawWriting();
+    });
+    const swatch = document.createElement("span");
+    swatch.className = "paper-swatch";
+    swatch.style.backgroundColor = paper.paper;
+    if (paper.art) swatch.style.backgroundImage = `url("../art/${paper.art}.svg")`;
+    else swatch.style.boxShadow = `inset 0 -0.35rem 0 -0.25rem ${paper.pattern === "none" ? paper.paper : paper.rule}`;
+    const name = document.createElement("span");
+    name.textContent = paper.dark ? `${paper.name} (dark)` : paper.name;
+    label.append(radio, swatch, name);
+    return label;
   }
 
   // The Font Override and the text size. "Theme default" names the paper's

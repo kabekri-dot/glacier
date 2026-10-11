@@ -87,6 +87,10 @@
      writing sits ON the line (just under the letters) instead of floating
      above it, as on real paper. */
   --rule-shift: 6px;
+  /* The Nature panorama's fixed height, and the room the note leaves below
+     its last line (more on a Nature paper, so text never sits on the art). */
+  --panorama-height: 0px;
+  --note-bottom: 24px;
   /* Where the first row starts, and the text's left edge. */
   --note-top: 3.25rem;
   --note-left: 1.25rem;
@@ -140,8 +144,9 @@ body {
 
 /* The note fills the sidebar and must stay usable from about 260px wide. */
 .note {
+  position: relative;
   min-height: 100%;
-  padding: var(--note-top) 1.25rem 1.5rem var(--note-left);
+  padding: var(--note-top) 1.25rem var(--note-bottom) var(--note-left);
   background-position: 0 calc(var(--note-top) - var(--rule-shift));
 }
 
@@ -210,6 +215,44 @@ html[data-pattern="grid"] .note {
       var(--rule) var(--line-height)
     );
   background-position: 0 calc(var(--note-top) - var(--rule-shift));
+}
+
+/* A Nature paper's pixel-art panorama (#19), along the bottom of the paper
+   below the last line. It keeps its height and starts at the left, so a
+   wider sidebar shows more landscape. Its own top fades into the paper. */
+html[data-art] .note::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--panorama-height);
+  background: var(--panorama) left bottom / auto 100% repeat-x;
+  pointer-events: none;
+}
+
+html[data-art="glacier"] {
+  --panorama: url("../art/glacier.svg");
+}
+
+html[data-art="forest"] {
+  --panorama: url("../art/forest.svg");
+}
+
+html[data-art="ocean"] {
+  --panorama: url("../art/ocean.svg");
+}
+
+html[data-art="desert"] {
+  --panorama: url("../art/desert.svg");
+}
+
+html[data-art="volcano"] {
+  --panorama: url("../art/volcano.svg");
+}
+
+html[data-art="aurora"] {
+  --panorama: url("../art/aurora.svg");
 }
 
 /* Each line is its own block. Rendered blocks and the current line share the
@@ -965,10 +1008,11 @@ code {
   box-shadow: 0 2px 10px var(--shadow);
 }
 
-.glacier-button svg {
+.glacier-button img {
   display: block;
   width: 100%;
   height: 100%;
+  image-rendering: pixelated;
 }
 
 .glacier-button:hover,
@@ -1015,8 +1059,19 @@ code {
 }
 
 .settings-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin: 0;
   font-size: 1.1rem;
+}
+
+/* The same glacier art as the round button and the toolbar icon (#19). */
+.settings-icon {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  image-rendering: pixelated;
 }
 
 .settings-close {
@@ -1074,6 +1129,9 @@ code {
 
 .paper-swatch {
   flex: none;
+  background-position: left bottom;
+  background-size: auto 100%;
+  background-repeat: no-repeat;
   width: 1.6rem;
   height: 1.1rem;
   border: 1px solid var(--rule);

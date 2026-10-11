@@ -3,8 +3,18 @@
   "name": "Glacier",
   "version": "0.1.0",
   "description": "A personal notebook in the browser's sidebar, for taking and connecting notes while following online courses.",
+  "icons": {
+    "16": "icons/glacier-16.png",
+    "32": "icons/glacier-32.png",
+    "48": "icons/glacier-48.png",
+    "128": "icons/glacier-128.png"
+  },
   "action": {
-    "default_title": "Open Glacier"
+    "default_title": "Open Glacier",
+    "default_icon": {
+      "16": "icons/glacier-16.png",
+      "32": "icons/glacier-32.png"
+    }
   },
   "permissions": ["sidePanel", "storage"],
   "optional_permissions": ["tabs"],
@@ -18,7 +28,11 @@
   },
   "sidebar_action": {
     "default_panel": "sidebar/panel.html",
-    "default_title": "Glacier"
+    "default_title": "Glacier",
+    "default_icon": {
+      "16": "icons/glacier-16.png",
+      "32": "icons/glacier-32.png"
+    }
   },
   "commands": {
     "open-glacier": {

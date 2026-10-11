@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="128" height="128">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9d4f5"/><stop offset="1" stop-color="#e3f1fb"/></linearGradient>
+<linearGradient id="water" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a86cf"/><stop offset="1" stop-color="#2c5d9e"/></linearGradient>
+</defs>
+<rect width="16" height="10" fill="url(#sky)"/>
+<rect y="10" width="16" height="6" fill="url(#water)"/>
+<g shape-rendering="crispEdges"><path fill="#f4fbff" d="M10 3h1v1h-1zM9 4h2v1h-2zM4 5h1v1h-1zM8 5h3v1h-3zM3 6h2v1h-2zM7 6h5v1h-5zM2 7h3v1h-3zM7 7h6v1h-6zM1 8h5v1h-5zM7 8h7v1h-7zM0 9h15v1h-15zM1 10h1v1h-1zM3 10h1v1h-1zM5 10h1v1h-1zM7 10h2v1h-2zM10 10h1v1h-1zM12 10h1v1h-1zM14 10h1v1h-1z"/>
+<path fill="#9ccbee" d="M11 4h1v1h-1zM11 5h2v1h-2zM5 6h1v1h-1zM12 6h2v1h-2zM5 7h2v1h-2zM13 7h2v1h-2zM6 8h1v1h-1zM14 8h2v1h-2zM15 9h1v1h-1z"/>
+<path fill="#dcedfa" d="M0 10h1v1h-1zM4 10h1v1h-1zM11 10h1v1h-1z"/>
+<path fill="#b7d9f3" d="M2 10h1v1h-1zM6 10h1v1h-1zM9 10h1v1h-1zM13 10h1v1h-1zM15 10h1v1h-1zM0 11h16v1h-16z"/>
+<path fill="#e3f1fb" d="M3 13h2v1h-2zM11 13h2v1h-2zM8 14h2v1h-2z"/></g>
+</svg>

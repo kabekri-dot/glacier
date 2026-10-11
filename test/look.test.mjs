@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   PAPERS,
+  paperGroups,
   FONT_OVERRIDES,
   TEXT_SIZE,
   readLook,
@@ -38,9 +39,63 @@ test("each Classic paper draws its own pattern and default font", () => {
   assert.equal(style("Engineer").font, "Architects Daughter");
 });
 
-test("Chalkboard is the dark paper", () => {
+test("Aurora and Chalkboard are the dark papers", () => {
   const dark = PAPERS.filter((paper) => paper.dark).map((paper) => paper.name);
-  assert.deepEqual(dark, ["Chalkboard"]);
+  assert.deepEqual(dark, ["Aurora", "Chalkboard"]);
+});
+
+test("settings show the papers as two groups, Nature and then Classics", () => {
+  const groups = paperGroups().map(({ group, papers }) => [group, papers.map((paper) => paper.name)]);
+  assert.deepEqual(groups, [
+    ["Nature", ["Glacier", "Forest", "Ocean", "Desert", "Volcano", "Aurora"]],
+    ["Classics", ["Blank Page", "School Notebook", "Chalkboard", "Moleskine", "Engineer"]],
+  ]);
+});
+
+test("the six Nature papers can be chosen, each with its own default font", () => {
+  const style = (paper) => lookStyle(readLook({ paper }));
+  for (const name of ["Glacier", "Forest", "Ocean", "Desert", "Volcano", "Aurora"]) {
+    assert.equal(style(name).paper, name);
+    assert.equal(style(name).pattern, "ruled");
+  }
+  assert.equal(style("Glacier").font, "Shantell Sans");
+  assert.equal(style("Forest").font, "Patrick Hand");
+  assert.equal(style("Ocean").font, "Shantell Sans");
+  assert.equal(style("Desert").font, "Caveat");
+  assert.equal(style("Volcano").font, "Kalam Light");
+  assert.equal(style("Aurora").font, "Shantell Sans");
+});
+
+test("each Nature paper has its own panorama and the Classics have none", () => {
+  const art = (paper) => lookStyle(readLook({ paper })).art;
+  assert.deepEqual(
+    ["Glacier", "Forest", "Ocean", "Desert", "Volcano", "Aurora"].map(art),
+    ["glacier", "forest", "ocean", "desert", "volcano", "aurora"],
+  );
+  for (const paper of ["Blank Page", "School Notebook", "Chalkboard", "Moleskine", "Engineer"]) {
+    assert.equal(art(paper), null);
+  }
+});
+
+for (const paper of ["Glacier", "Aurora"]) {
+  for (const textSize of [85, 150]) {
+    test(`${paper} at ${textSize} % leaves room for the panorama below the last line`, () => {
+      const style = lookStyle(readLook({ paper, textSize }));
+      const panorama = px(style.vars["--panorama-height"]);
+      assert.ok(panorama > 0);
+      assert.ok(px(style.vars["--note-bottom"]) >= panorama + style.lineHeight);
+    });
+  }
+}
+
+test("the panorama keeps its height when the text size changes", () => {
+  const at = (textSize) => lookStyle(readLook({ textSize })).vars["--panorama-height"];
+  assert.equal(at(85), at(150));
+});
+
+test("a Classic paper has no panorama to leave room for", () => {
+  const style = lookStyle(readLook({ paper: "School Notebook" }));
+  assert.equal(style.vars["--panorama-height"], "0px");
 });
 
 test("the Font Override offers the five fonts and Theme default", () => {
