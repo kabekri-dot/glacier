@@ -602,13 +602,6 @@ export function createEditorSession({
       const changed = next.lines !== lines;
       const moved = next.end.line !== to.line || next.end.col !== to.col;
       if (!changed && !moved) return null;
-      formatSelection =
-        selStart !== selEnd
-          ? {
-              start: offsetInBlock(next.start.line, next.start.col),
-              end: offsetInBlock(next.end.line, next.end.col),
-            }
-          : null;
       if (changed) recordStep();
       else endTypingRun();
       beforePlus = null;
@@ -616,10 +609,12 @@ export function createEditorSession({
       focus = { ...next.end };
       relayout();
       if (changed) notifyChange();
-      return {
+      const selection = {
         start: offsetInBlock(next.start.line, next.start.col),
         end: offsetInBlock(next.end.line, next.end.col),
       };
+      formatSelection = selStart !== selEnd ? selection : null;
+      return selection;
     },
 
     // Backspace at the very start of the focused block: join it with the line
