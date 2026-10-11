@@ -26,6 +26,7 @@ export function createAutoSync({
   let handle = null;
   let running = null;
   let again = false;
+  let warnedOffline = false;
 
   function setStatus(next) {
     status = { lastSynced: notebook.lastSynced(), ...next };
@@ -58,19 +59,31 @@ export function createAutoSync({
       return;
     }
     beforeSync();
+    const before = status;
     setStatus({ state: "syncing" });
     try {
       const result = await notebook.sync(connection.remote);
+      warnedOffline = false;
       setStatus(conflictStatus());
       if (result.pulled.length > 0) onPulled(result.pulled);
     } catch (error) {
-      console.error("Glacier: sync failed", error);
+      if (error?.reason === "aborted") {
+        // Cut off because the sidebar is closing: not an error. The changes
+        // stay pending and go out on the next sync.
+        setStatus(before);
+        plan(retryDelay);
+        return;
+      }
       if (error?.reason === "offline") {
+        if (!warnedOffline) console.warn("Glacier: offline", error.message, error.cause);
+        warnedOffline = true;
         setStatus({ state: "offline" });
         plan(retryDelay);
       } else if (error?.reason === "unauthorized") {
+        console.error("Glacier: sync failed", error);
         setStatus({ state: "error", reason: "unauthorized" });
       } else {
+        console.error("Glacier: sync failed", error);
         // A version that changed under this push is picked up by the next
         // sync's pull, so trying again soon is enough.
         setStatus({ state: "error", message: syncErrorMessage(error, connection.repo) });

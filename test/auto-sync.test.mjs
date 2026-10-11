@@ -131,3 +131,66 @@ test("each status has a short label, and says when the last sync was", () => {
   assert.match(syncStatusText({ state: "synced", lastSynced }, now).detail, /Last synced 5 minutes ago/);
   assert.match(syncStatusText({ state: "offline" }, now).detail, /kept in this browser/);
 });
+
+// A fake fetch for the real GitHub remote (#62).
+async function failingSync(failure) {
+  const { githubRemote } = await import("../src/github-remote.mjs");
+  const storage = memoryStorage();
+  storage.putNote(concept);
+  const notebook = createNotebook({ storage });
+  const remote = githubRemote({
+    repo: "me/notes",
+    token: "t",
+    fetch: async (url) => {
+      if (url.endsWith("/repos/me/notes")) return { ok: true, json: async () => ({ default_branch: "main" }) };
+      throw failure;
+    },
+  });
+  await remote.connect();
+  const statuses = [];
+  const autoSync = createAutoSync({
+    notebook,
+    connect: async () => ({ remote, repo: "me/notes" }),
+    onStatus: (s) => statuses.push(s.state),
+    setTimer: () => 1,
+    clearTimer: () => {},
+  });
+  notebook.saveBody("Margins", "Typed.");
+  return { autoSync, statuses };
+}
+
+function captureConsole() {
+  const logged = { error: [], warn: [] };
+  const original = { error: console.error, warn: console.warn };
+  console.error = (...a) => logged.error.push(a);
+  console.warn = (...a) => logged.warn.push(a);
+  return { logged, restore: () => Object.assign(console, original) };
+}
+
+test("a request cut off by the sidebar closing logs nothing and leaves the status alone", async () => {
+  const cap = captureConsole();
+  try {
+    const { autoSync, statuses } = await failingSync(Object.assign(new Error("aborted"), { name: "AbortError" }));
+    await autoSync.syncNow();
+    assert.equal(autoSync.status().state, "off");
+    assert.equal(statuses.at(-1), "off");
+    assert.deepEqual(cap.logged, { error: [], warn: [] });
+  } finally {
+    cap.restore();
+  }
+});
+
+test("a network failure shows Offline, keeps the cause and warns only once", async () => {
+  const cap = captureConsole();
+  try {
+    const { autoSync } = await failingSync(new TypeError("Failed to fetch"));
+    await autoSync.syncNow();
+    await autoSync.syncNow();
+    assert.equal(autoSync.status().state, "offline");
+    assert.equal(cap.logged.error.length, 0);
+    assert.equal(cap.logged.warn.length, 1);
+    assert.match(cap.logged.warn[0][1], /TypeError: Failed to fetch/);
+  } finally {
+    cap.restore();
+  }
+});

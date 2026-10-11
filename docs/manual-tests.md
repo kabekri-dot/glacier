@@ -11,6 +11,13 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Sync cut off when the sidebar closes (#62)
+
+- [ ] Reload the extension with the reload button, then press "Clear all" in the errors list.
+- [ ] Type in a note, close the sidebar at once, then open it again. No "sync failed" shows in the errors list, and the change arrives on GitHub.
+- [ ] Rename a note and archive a note. Both arrive on GitHub.
+- [ ] Turn the network off and type. The pill says Offline and the console shows one warning with the cause, not one per retry. Turn it back on and the change syncs.
+
 ### Making a note: write straight away, no form (#61)
 
 Reload the extension with the reload button first.
