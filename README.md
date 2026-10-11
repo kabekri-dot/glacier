@@ -16,6 +16,8 @@ which version.
 - `background.js` — opens the sidebar from the toolbar button and the
   keyboard shortcut.
 - `sidebar/` — the Zen panel: `panel.html`, `panel.css`, `panel.js`.
+- `fonts/` — the bundled handwriting fonts (Latin subset, woff2), each with
+  its SIL Open Font License.
 - `src/` — the note logic, with no screen code (the first two files are the
   two test seams):
   - `notebook.mjs` — the **Notebook core** (all note logic; storage is plugged
@@ -23,6 +25,8 @@ which version.
   - `editor-model.mjs` — the **editor model** (pure functions on one note's
     text).
   - `memory-storage.mjs` — an in-memory storage stand-in for tests.
+  - `look.mjs` — the papers (Themes), the Font Override and the text size,
+    and where the ruled lines go so the writing sits on them.
 - `test/` — `node --test` tests for the two seams.
 
 ## Opening Glacier

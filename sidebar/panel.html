@@ -33,6 +33,35 @@
       Couldn't save your last changes to this browser. Your text is still here.
       Copy it somewhere safe.
     </p>
+    <!-- Settings (#18): the round glacier button opens them inside the sidebar. -->
+    <button type="button" class="glacier-button" aria-label="Settings" title="Settings" aria-expanded="false" aria-controls="settings">
+      <svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
+        <rect width="16" height="16" fill="#bfe0f7" />
+        <rect y="10" width="16" height="6" fill="#3f78c4" />
+        <path d="M2 10h12v-1h-1v-2h-1v-2h-1v-1h-1v-1h-2v1h-1v2h-1v1h-1v2h-1v1h-2z" fill="#f4fbff" />
+        <path d="M8 3h1v1h1v1h1v2h1v2h1v1h-3v-2h-1v-3h-1z" fill="#9ccbee" />
+        <rect x="3" y="12" width="3" height="1" fill="#9ccbee" />
+        <rect x="9" y="14" width="4" height="1" fill="#9ccbee" />
+      </svg>
+    </button>
+    <aside class="settings" id="settings" aria-label="Settings" hidden>
+      <header class="settings-header">
+        <h1 class="settings-title">Settings</h1>
+        <button type="button" class="settings-close" aria-label="Close settings" title="Close settings">&times;</button>
+      </header>
+      <details class="settings-section" data-section="paper" open>
+        <summary>Paper</summary>
+        <div class="settings-body paper-body"></div>
+      </details>
+      <details class="settings-section" data-section="writing" open>
+        <summary>Writing</summary>
+        <div class="settings-body writing-body"></div>
+      </details>
+      <details class="settings-section" data-section="notes-repo">
+        <summary>Notes repo</summary>
+        <div class="settings-body repo-body"></div>
+      </details>
+    </aside>
     <script type="module" src="panel.js"></script>
   </body>
 </html>

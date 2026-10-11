@@ -11,6 +11,21 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Settings, Classic papers and handwriting (#18)
+
+- [ ] A round glacier button sits in the bottom right corner. Clicking it opens settings over the lower part of the sidebar, with the note still showing above. Clicking it again, the × in the header, or Esc closes them.
+- [ ] Paper, Writing and Notes repo fold open and closed when you click their names. Open all three and scroll: the "Settings" header stays on top.
+- [ ] Under Paper, choose each one in turn: Glacier, Blank Page, School Notebook (blue lines and a red margin line), Chalkboard (dark, chalk white writing), Moleskine (very faint lines) and Engineer (a green grid, darker every fifth line). The note changes at once.
+- [ ] Close the sidebar and open it again: the paper you chose is still there. In the other browser it is its own choice.
+- [ ] On Chalkboard, the pill, the menu, the search box and the settings are all readable.
+- [ ] Under Writing, pick each font: Shantell Sans, Patrick Hand, Kalam Light, Caveat, Architects Daughter. The note changes at once.
+- [ ] With School Notebook and each font, set the text size to 85 %, 100 % and 150 %: the letters sit just on the ruled lines, from the top of the note down to the last line, also in a long note.
+- [ ] Write a heading, a line with `inline code`, a code block and a bullet list, then a few plain lines below them: the plain lines are still on the ruled lines. Same on Engineer.
+- [ ] Choose Caveat, then switch the paper a few times: Caveat stays. Pick "Theme default": each paper uses its own font again (the list shows which, for example "Theme default (Patrick Hand)").
+- [ ] Drag the text size slider: the note grows and shrinks while you drag, and the line spacing grows with it. It goes from 85 % to 150 %.
+- [ ] Turn the network off (devtools, Offline) and reload the sidebar: every font still shows. In devtools, Network, the fonts come from the extension itself.
+- [ ] Clicking in the note while settings are open closes them and puts the cursor where you clicked. Ctrl+K and the pill menu also close them.
+
 ### Rename by clicking the title (#54)
 
 - [ ] Click the title in the pill. It becomes a text field with the whole title selected. Hovering the title shows "Click to rename".
@@ -23,7 +38,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ### Export: this note, a course, or everything (#55)
 
-- [ ] Open the pill menu: "Download this note" sits at the bottom, and under a small "Backup" heading are a Course list, "Export a course", "Export everything" and "Restore from backup file". Hovering each shows what it does.
+- [ ] Open the pill menu: "Download this note" sits at the bottom. Open settings (the round glacier button), then Notes repo: under a small "Backup" heading are a Course list, "Export a course", "Export everything" and "Restore from backup file". Hovering each shows what it does.
 - [ ] "Download this note" saves one `.md` file named after the note's title, with its text.
 - [ ] Pick a Course and press "Export a course": the zip has only that Course's notes.
 - [ ] "Export everything" downloads a zip of every note, as before.
@@ -33,10 +48,10 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 You need a private GitHub repo for your notes and a fine grained token for it (GitHub, Settings, Developer settings, Fine grained tokens), limited to that repo with Contents set to read and write. Put a few notes in it first, for example from an Export zip, in `courses/` and `concepts/`.
 
-- [ ] Open the pill menu: under a small "Sync" heading at the bottom there is a "Notes repo" button. It opens a form in the sidebar with Repo and Token fields and a short text about the token.
-- [ ] "Back to my notes" returns to the note that was open.
+- [ ] Open the pill menu: under a small "Sync" heading at the bottom there is a "Notes repo" button. It opens settings at Notes repo, with Repo and Token fields and a short text about the token.
+- [ ] The × in the settings header returns to the note that was open.
 - [ ] Type the repo as `yourname/notes` (pasting its GitHub address works too), paste the token, press "Connect and sync". A screen shows Connecting to GitHub, then Downloading 1 of N notes counting up, then Linking notes, then Ready, and says how many notes came in.
-- [ ] "Start writing" goes back. Every note from the repo is in the menu, with its Course, text and backlinks.
+- [ ] "Start writing" closes settings. Every note from the repo is in the menu, with its Course, text and backlinks.
 - [ ] Typing just "notes" (no owner) says to type it as owner and name.
 - [ ] A wrong token says GitHub didn't accept it. A repo name that doesn't exist says it couldn't find that repo. Nothing in the Notebook changes.
 - [ ] With the network off (devtools, Offline), it says it couldn't reach GitHub.
@@ -218,7 +233,7 @@ Connect a Notes repo first (see #14).
 
 - [ ] A Lesson note with a Course and a website shows a small "Course · source ↗" line above its text, and no `---` lines. Clicking "source ↗" opens the lesson in a new tab.
 - [ ] A Lesson note made by hand (no website) shows only its Course. A Concept note shows no such line.
-- [ ] Open the pill menu: "Export everything" and "Restore from backup file" sit at the bottom under "Backup", and hovering shows what they do.
+- [ ] Open settings, then Notes repo: "Export everything" and "Restore from backup file" sit under "Backup", and hovering shows what they do.
 - [ ] "Export everything" downloads a zip named "Glacier notes" with the date.
 - [ ] Unzip it: Lesson notes are in `courses/<Course>/`, Concept notes in `concepts/`, each file named after its title with a short block of details at the top.
 - [ ] In Obsidian, "Open folder as vault" on the unzipped folder: the notes open and clicking a Link goes to the other note.
