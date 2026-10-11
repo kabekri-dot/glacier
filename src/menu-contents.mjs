@@ -4,23 +4,45 @@
 //
 // The ▾ menu is a list of parts:
 //   { kind: "heading", text, hint }       a small heading
-//   { kind: "notes", titles }             note buttons
+//   { kind: "notes", titles, current? }   note buttons, `current` the open one
+//   { kind: "newForPage", label, hint }   "+ New note for this page"
 //   { kind: "group", label, hint, open, archive, titles }   a foldable group
 //   { kind: "empty", text }               a quiet line when nothing is listed
 //   { kind: "result", title, titleMark, snippet }           a search result
 //   { kind: "pair", notes: [{ title, label }] }             a Conflict Copy and its original
-import { LESSON_NOTE_HINT, CONCEPT_NOTE_HINT } from "./new-note-choices.mjs";
+import { PAGE_NOTE_HINT } from "./new-note-choices.mjs";
 
 const ARCHIVE_HINT = "Notes you hid from your lists. Open one to bring it back";
+const PAGE_NOTES_HINT = "Every note for this page, the latest first";
 
 function heading(text, hint = null) {
   return { kind: "heading", text, hint };
 }
 
-// The ▾ menu: search results while there is a query, else recent notes and
-// the Notebook.
-export function notebookMenu(notebook, query) {
-  return query.trim() ? searchResults(notebook, query) : browse(notebook);
+// The ▾ menu: search results while there is a query, else the notes for the
+// open note's page, recent notes and the Notebook.
+export function notebookMenu(notebook, query, openNote = null) {
+  return query.trim() ? searchResults(notebook, query) : browse(notebook, openNote);
+}
+
+// "1 of 3" in the pill (#68): where the open note stands among the notes for
+// its page, newest first. Only when the page has more than one note.
+export function pageNoteCount(notebook, note) {
+  if (!note?.source) return null;
+  const titles = notebook.notesForPage(note.source).map((other) => other.title);
+  const at = titles.indexOf(note.title);
+  return titles.length > 1 && at !== -1 ? `${at + 1} of ${titles.length}` : null;
+}
+
+// Every note for the open note's page, newest first, and a way to add one.
+function notesForThisPage(notebook, openNote) {
+  if (!openNote?.source) return [];
+  const titles = notebook.notesForPage(openNote.source).map((note) => note.title);
+  return [
+    heading("Notes for this page", PAGE_NOTES_HINT),
+    { kind: "notes", titles, current: openNote.title },
+    { kind: "newForPage", label: "+ New note for this page", hint: PAGE_NOTE_HINT },
+  ];
 }
 
 // Each result has its title, with the match marked either in the title
@@ -43,27 +65,24 @@ function markIn(text, needle) {
   return { before: text.slice(0, at), match: text.slice(at, end), after: text.slice(end) };
 }
 
-// Recent notes, then the Notebook: Courses with their Lesson Notes, Lesson
-// Notes without a Course, Concepts, and the folded Archive last.
-function browse(notebook) {
-  const parts = [];
+// The notes for this page, recent notes, then the Notebook: Courses with
+// their notes, the notes without a Course, and the folded Archive last.
+function browse(notebook, openNote) {
+  const parts = notesForThisPage(notebook, openNote);
   const recent = notebook.recentNotes();
   if (recent.length > 0) {
     parts.push(heading("Recent"), { kind: "notes", titles: recent.map((note) => note.title) });
   }
   const outline = notebook.outline();
   parts.push(heading("Notebook"));
-  if (outline.courses.length + outline.uncategorised.length + outline.concepts.length === 0) {
+  if (outline.courses.length + outline.uncategorised.length === 0) {
     parts.push({ kind: "empty", text: "No notes yet" });
   }
   for (const { course, titles } of outline.courses) {
-    parts.push({ kind: "group", label: course, hint: LESSON_NOTE_HINT, open: true, archive: false, titles });
+    parts.push({ kind: "group", label: course, hint: "Notes in this Course", open: true, archive: false, titles });
   }
   if (outline.uncategorised.length > 0) {
-    parts.push(heading("No Course", LESSON_NOTE_HINT), { kind: "notes", titles: outline.uncategorised });
-  }
-  if (outline.concepts.length > 0) {
-    parts.push(heading("Concepts", CONCEPT_NOTE_HINT), { kind: "notes", titles: outline.concepts });
+    parts.push(heading("No Course", "Notes not in any Course"), { kind: "notes", titles: outline.uncategorised });
   }
   const archived = notebook.archivedNotes();
   if (archived.length > 0) {

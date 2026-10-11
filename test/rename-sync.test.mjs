@@ -10,14 +10,12 @@ import { memoryRemote } from "../src/memory-remote.mjs";
 // the Notes Repo together, or not at all.
 
 const margins = {
-  type: "concept",
   title: "Margins",
   created: "2026-10-02T10:00:00.000Z",
   body: "Space outside the border.",
 };
 
 const boxModel = {
-  type: "lesson",
   title: "Box model",
   course: "TOP Foundations",
   source: "https://odin.example/foundations/box-model",
@@ -26,7 +24,6 @@ const boxModel = {
 };
 
 const padding = {
-  type: "concept",
   title: "Padding",
   created: "2026-10-03T10:00:00.000Z",
   body: "Not the same as [[Margins]].",

@@ -19,12 +19,8 @@ import { githubRemote } from "../src/github-remote.mjs";
 import { conflictMessage, createAutoSync, syncStatusText } from "../src/auto-sync.mjs";
 import { createScreen } from "../src/screen.mjs";
 import { isOpenedByPage } from "../src/page-open.mjs";
-import {
-  newNoteChoices,
-  LESSON_NOTE_HINT,
-  CONCEPT_NOTE_HINT,
-} from "../src/new-note-choices.mjs";
-import { notebookMenu, conflictMenu, noteMenu } from "../src/menu-contents.mjs";
+import { newNoteChoices, NEW_NOTE_HINT, PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
+import { notebookMenu, conflictMenu, noteMenu, pageNoteCount } from "../src/menu-contents.mjs";
 import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
@@ -62,6 +58,7 @@ const saveErrorEl = document.querySelector(".save-error");
 const pillEl = document.querySelector(".pill");
 const pillTitleEl = document.querySelector(".pill-title");
 const pillArchivedEl = document.querySelector(".pill-archived");
+const pillCountEl = document.querySelector(".pill-count");
 const pillMenuEl = document.querySelector(".pill-menu");
 const syncDotEl = document.querySelector(".sync-dot");
 const conflictLineEl = document.querySelector(".conflict-line");
@@ -175,7 +172,7 @@ async function start() {
 
   // What's on screen (the note, the fresh page of #61, the note before it,
   // the ← history and saving) is the Screen's (#65). Nothing is open until the
-  // page's Lesson Note is found or a note is made (the Opening flow, below);
+  // page's note is found or a note is made (the Opening flow, below);
   // while nothing is open the panel shows a way to make a note rather than a
   // blank, locked page (#3). Each action returns what to draw next.
   const screen = createScreen({
@@ -215,7 +212,7 @@ async function start() {
     titles: () => notebook.notes().map((note) => note.title),
   });
 
-  // Open a note the user picked. `byPage` is for a Lesson note with a Source.
+  // Open a note the user picked. `byPage` is for a note with a page.
   function openNote(note, options) {
     draw(screen.open(note, options));
   }
@@ -260,7 +257,7 @@ async function start() {
         updatePill();
         updateNoteMeta();
         updateBacklinks();
-        if (view.lessonNote) openingFlow.clickLessonNote({ editTitle: true });
+        if (view.newForPage) openingFlow.newNoteForPage();
         else openingFlow.start();
         break;
       case "pageChanged":
@@ -275,20 +272,20 @@ async function start() {
   // --- The note's header (#13, #61) ----------------------------------------
   //
   // The note's file keeps its Course and Source in a frontmatter (ADR 0005),
-  // but the editor never shows that YAML: a Lesson Note gets a small
-  // "Course · site ↗" line above its text instead. Clicking the Course opens a
-  // small list right there to move the note; the site switches to the
-  // lesson's tab, or opens it in a new one.
+  // but the editor never shows that YAML: every note gets a small
+  // "Course · site ↗" line above its text instead, without the site when the
+  // note has no page (#68). Clicking the Course opens a small list right there
+  // to move the note; the site switches to the page's tab, or opens it in a
+  // new one.
 
   function updateNoteMeta() {
     noteMetaEl.replaceChildren();
     noteMetaEl.classList.remove("is-picking");
     const note = screen.note();
-    const lesson = note?.type === "lesson" ? note : null;
-    if (lesson) noteMetaEl.append(courseButton(lesson));
-    if (lesson?.source) noteMetaEl.append(" · ", sourceLink(lesson.source));
-    noteMetaEl.hidden = !lesson;
-    noteEl.classList.toggle("has-meta", Boolean(lesson));
+    if (note) noteMetaEl.append(courseButton(note));
+    if (note?.source) noteMetaEl.append(" · ", sourceLink(note.source));
+    noteMetaEl.hidden = !note;
+    noteEl.classList.toggle("has-meta", Boolean(note));
   }
 
   function courseButton(note) {
@@ -453,6 +450,11 @@ async function start() {
     pillTitleEl.classList.toggle("is-draft", Boolean(freshPage));
     pillTitleEl.title = freshPage ? "Click to name this note" : "Click to rename";
     pillArchivedEl.hidden = !note?.archived;
+    // "1 of 3": the page has more notes (#68). Like the rest of the pill, a
+    // click opens the ▾ menu, which starts with Notes for this page.
+    const count = pageNoteCount(notebook, note);
+    pillCountEl.hidden = count === null;
+    pillCountEl.textContent = count ?? "";
     updateNoteMenuButton();
     const previous = screen.previous();
     backEl.hidden = previous === null || !tabSettings.showPreviousButton;
@@ -466,16 +468,16 @@ async function start() {
     else updatePill();
   });
 
-  // + opens a small menu of the kinds of note to make. On a website the Lesson
-  // note belongs to the page; elsewhere it is made by hand.
+  // + opens a small menu: New note (blank) always, and on a website New note
+  // for this page (#68).
   function closeNewMenu() {
     newMenuEl.hidden = true;
     newMenuEl.replaceChildren();
     newButtonEl.setAttribute("aria-expanded", "false");
   }
 
-  function startLessonNote() {
-    draw(screen.startLessonNote());
+  function startNoteForPage() {
+    draw(screen.startNoteForPage());
   }
 
   async function openNewMenu() {
@@ -489,9 +491,8 @@ async function start() {
       button.title = choice.hint;
       button.addEventListener("click", () => {
         closeNewMenu();
-        if (choice.kind === "lesson") startLessonNote();
-        else if (choice.kind === "byHand") draw(screen.startFreshPage({ type: "lesson", editTitle: true }));
-        else draw(screen.startFreshPage({ type: "concept", editTitle: true }));
+        if (choice.kind === "page") startNoteForPage();
+        else draw(screen.startFreshPage({ editTitle: true }));
       });
       newMenuEl.appendChild(button);
     }
@@ -546,11 +547,15 @@ async function start() {
     return heading;
   }
 
-  function titleList(titles) {
+  function titleList(titles, current = null) {
     const list = document.createElement("div");
     for (const title of titles) {
       const button = noteButton(title);
       button.textContent = title;
+      if (title === current) {
+        button.classList.add("is-current");
+        button.setAttribute("aria-current", "true");
+      }
       list.appendChild(button);
     }
     return list;
@@ -601,12 +606,26 @@ async function start() {
     return row;
   }
 
+  function newForPageButton({ label, hint }) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "menu-new menu-new-for-page";
+    button.textContent = label;
+    button.title = hint;
+    button.addEventListener("click", () => {
+      closeMenu();
+      startNoteForPage();
+    });
+    return button;
+  }
+
   // Draw the parts src/menu-contents.mjs lists for the ▾ menu.
   function drawMenuParts(container, parts) {
     container.replaceChildren();
     for (const part of parts) {
       if (part.kind === "heading") container.append(menuHeading(part.text, part.hint));
-      else if (part.kind === "notes") container.append(titleList(part.titles));
+      else if (part.kind === "notes") container.append(titleList(part.titles, part.current));
+      else if (part.kind === "newForPage") container.append(newForPageButton(part));
       else if (part.kind === "group") container.append(menuGroup(part));
       else if (part.kind === "result") container.append(searchResult(part));
       else if (part.kind === "pair") container.append(conflictPair(part));
@@ -638,30 +657,21 @@ async function start() {
 
     const body = document.createElement("div");
     body.className = "menu-body";
-    const refresh = () => drawMenuParts(body, notebookMenu(notebook, search.value));
+    const refresh = () => drawMenuParts(body, notebookMenu(notebook, search.value, screen.note()));
     search.addEventListener("input", refresh);
     refresh();
 
     const actions = document.createElement("div");
     actions.className = "menu-actions";
-    const newLesson = document.createElement("button");
-    newLesson.type = "button";
-    newLesson.className = "menu-new";
-    newLesson.textContent = "+ Lesson note";
-    newLesson.title = LESSON_NOTE_HINT;
-    newLesson.addEventListener("click", () => {
-      closeMenu();
-      startLessonNote();
+    const newNote = document.createElement("button");
+    newNote.type = "button";
+    newNote.className = "menu-new";
+    newNote.textContent = "+ New note";
+    newNote.title = NEW_NOTE_HINT;
+    newNote.addEventListener("click", () => {
+      draw(screen.startFreshPage({ title: search.value.trim(), editTitle: true }));
     });
-    const newConcept = document.createElement("button");
-    newConcept.type = "button";
-    newConcept.className = "menu-new";
-    newConcept.textContent = "+ Concept";
-    newConcept.title = CONCEPT_NOTE_HINT;
-    newConcept.addEventListener("click", () => {
-      draw(screen.startFreshPage({ type: "concept", title: search.value.trim(), editTitle: true }));
-    });
-    actions.append(newLesson, newConcept);
+    actions.append(newNote);
 
     menuPanelEl.append(search, actions, body, notesRepoSection());
     menuPanelEl.hidden = false;
@@ -1252,7 +1262,7 @@ async function start() {
 
   // Follow a `[[Title]]` Link: save any pending edits to the note we're leaving
   // first, then open the note the Link names in place. A Missing Link creates a
-  // Concept Note with that title and opens that instead (#8).
+  // note with that title, without a page or Course, and opens that (#8, #68).
   function openLink(title) {
     if (notebook.isMissingLink(title)) autoSync.changed();
     openNote(notebook.openLink(title));
@@ -1460,8 +1470,8 @@ async function start() {
       const rendered = renderedOffsetAt(el, event.clientX, event.clientY);
       const hit = editor.clickLine(range.start, rendered);
       // A plain click on a Link follows it instead of dropping the caret: it
-      // opens the linked note, or creates and opens a Concept Note for a
-      // Missing Link (#8).
+      // opens the linked note, or creates and opens a note for a Missing Link
+      // (#8).
       if (hit.type === "link") {
         openLink(hit.title);
         return;
@@ -1943,15 +1953,15 @@ async function start() {
   // --- Opening the page's note, and the way out of an empty panel (#3) -------
   //
   // Seeing which page you're on needs the `tabs` permission, declared optional
-  // and asked for only on the first "+ Lesson note" click, behind Glacier's own
-  // explanation card (ADR 0008). Without it Glacier still works: a note is
-  // made by hand on a fresh page, with no Source.
+  // and asked for only on the first "New note for this page" click, behind
+  // Glacier's own explanation card (ADR 0008). Without it Glacier still works:
+  // a note is made on a fresh page, with no Source.
 
   const browserPage = createBrowserPage(api);
   const openingFlow = createOpeningFlow({
     page: browserPage,
     getOpenNote: () => screen.onScreen(),
-    lessonNoteForSource: (url) => notebook.lessonNoteForSource(url),
+    noteForPage: (url) => notebook.noteForPage(url),
     show: (view) => draw(screen.show(view)),
     getTabSettings: () => tabSettings,
   });
@@ -1979,8 +1989,8 @@ async function start() {
   });
 
   // The starting panel when no note is open and the permission hasn't been
-  // granted yet: one handwritten line and a quiet "+ Lesson note", so there's
-  // always a way in (#3). Clicking it either proceeds (already allowed) or
+  // granted yet: one handwritten line and a quiet "+ New note for this page",
+  // so there's always a way in (#3). Clicking it either proceeds (already allowed) or
   // shows the card.
   function showStartPrompt() {
     updatePill();
@@ -1997,8 +2007,9 @@ async function start() {
     const create = document.createElement("button");
     create.type = "button";
     create.className = "start-link";
-    create.textContent = "+ Lesson note";
-    create.addEventListener("click", () => openingFlow.clickLessonNote());
+    create.textContent = "+ New note for this page";
+    create.title = PAGE_NOTE_HINT;
+    create.addEventListener("click", () => openingFlow.newNoteForPage());
     wrap.appendChild(create);
 
     noteEl.appendChild(wrap);
@@ -2020,7 +2031,7 @@ async function start() {
 
     const why = document.createElement("p");
     why.textContent =
-      "So your note opens with the page, and “+ Lesson note” can use the page's title and address as the note's Source.";
+      "So your notes open with the page, and “New note for this page” can use the page's title and address.";
     card.appendChild(why);
 
     const never = document.createElement("p");

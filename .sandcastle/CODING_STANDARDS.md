@@ -24,8 +24,8 @@ Glacier's rules come from its ADRs (`docs/adr/`) and glossary (`CONTEXT.md`). Th
 
 ## Domain language and data
 
-- Use the glossary's words exactly: Lesson Note, Concept Note, Course, Source, Link, Missing Link, Backlink, Sketch, Theme, Font Override, Notes Repo, Sync, Conflict Copy, Export. Don't use the synonyms it lists as "avoid".
-- Note files are Obsidian-compatible: filename = title, YAML frontmatter (`type`, `course`, `source`, `created`), titles unique across the whole Notebook (ADR 0005).
+- Use the glossary's words exactly: Note (with an optional page and Course; no Lesson Note or Concept Note, ADR 0010), Course, Source, Link, Missing Link, Backlink, Sketch, Theme, Font Override, Notes Repo, Sync, Conflict Copy, Export. Don't use the synonyms it lists as "avoid".
+- Note files are Obsidian-compatible: filename = title, YAML frontmatter (`course`, `source`, `created`, `edited`), `courses/<Course>/` or `notes/`, titles unique across the whole Notebook (ADR 0005, ADR 0010).
 - A sync conflict creates a Conflict Copy and never overwrites (ADR 0004).
 - The GitHub token stays in the browser's extension storage and is **never** written into notes, files, logs or commits (ADR 0003).
 - The optional host permission is only requested after a click, and the extension never reads, stores or sends page content (ADR 0008).

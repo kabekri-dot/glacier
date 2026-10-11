@@ -10,14 +10,12 @@ import { memoryRemote } from "../src/memory-remote.mjs";
 // `archive/` in the Notes Repo.
 
 const margins = {
-  type: "concept",
   title: "Margins",
   created: "2026-10-02T10:00:00.000Z",
   body: "Space outside the border.",
 };
 
 const boxModel = {
-  type: "lesson",
   title: "Box model",
   course: "TOP Foundations",
   source: "https://odin.example/foundations/box-model",
@@ -39,7 +37,7 @@ test("an archived note leaves the Notebook list, search and recent notes", async
   const notebook = await syncedBrowser(memoryRemote(filesOf(margins, boxModel)));
   notebook.markOpened("Margins");
   notebook.archiveNote("Margins");
-  assert.deepEqual(notebook.outline().concepts, []);
+  assert.deepEqual(notebook.outline().uncategorised, []);
   assert.deepEqual(notebook.search("Space outside"), []);
   assert.deepEqual(notebook.recentNotes(), []);
 });
@@ -51,7 +49,7 @@ test("an archived note is listed under the archive", async () => {
   assert.deepEqual(notebook.outline().courses, []);
 });
 
-test("unarchive puts a Lesson Note back in the same Course", async () => {
+test("unarchive puts a note back in the same Course", async () => {
   const notebook = await syncedBrowser(memoryRemote(filesOf(margins, boxModel)));
   notebook.archiveNote("Box model");
   assert.deepEqual(notebook.courses(), []);
@@ -60,10 +58,10 @@ test("unarchive puts a Lesson Note back in the same Course", async () => {
   assert.deepEqual(notebook.archivedNotes(), []);
 });
 
-test("a page whose Lesson Note is archived gets the lesson form", async () => {
+test("a page whose note is archived gets the empty paper", async () => {
   const notebook = await syncedBrowser(memoryRemote(filesOf(margins, boxModel)));
   notebook.archiveNote("Box model");
-  assert.equal(notebook.lessonNoteForSource(boxModel.source), undefined);
+  assert.equal(notebook.noteForPage(boxModel.source), undefined);
 });
 
 test("a Link to an archived note still opens it", async () => {
@@ -81,7 +79,7 @@ test("an archived note's file moves under archive/ as one commit", async () => {
   notebook.archiveNote("Box model");
   await notebook.sync(remote);
   const paths = (await remote.listFiles()).map((file) => file.path).sort();
-  assert.deepEqual(paths, ["archive/courses/TOP Foundations/Box model.md", "concepts/Margins.md"]);
+  assert.deepEqual(paths, ["archive/courses/TOP Foundations/Box model.md", "notes/Margins.md"]);
   assert.equal(remote.commits().length, before + 1);
 });
 
@@ -93,7 +91,7 @@ test("unarchive moves the file back out of archive/", async () => {
   notebook.unarchiveNote("Margins");
   await notebook.sync(remote);
   const paths = (await remote.listFiles()).map((file) => file.path).sort();
-  assert.deepEqual(paths, ["concepts/Margins.md", "courses/TOP Foundations/Box model.md"]);
+  assert.deepEqual(paths, ["courses/TOP Foundations/Box model.md", "notes/Margins.md"]);
 });
 
 test("another browser sees the note archived, without a Conflict Copy", async () => {

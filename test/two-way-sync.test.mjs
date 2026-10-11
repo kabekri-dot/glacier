@@ -9,15 +9,13 @@ import { memoryRemote } from "../src/memory-remote.mjs";
 // changes in and pushes its own out. Two Notebooks sharing one in-memory
 // remote stand in for Chrome and Firefox.
 
-const concept = {
-  type: "concept",
+const margins = {
   title: "Margins",
   created: "2026-10-02T10:00:00.000Z",
   body: "Space outside the border.",
 };
 
-const lesson = {
-  type: "lesson",
+const boxModel = {
   title: "Box model",
   course: "TOP Foundations",
   source: "https://odin.example/foundations/box-model",
@@ -38,22 +36,23 @@ function browserWith(...notes) {
 
 test("a note written here is pushed to the Notes Repo", async () => {
   const remote = memoryRemote({});
-  const notebook = browserWith(concept);
+  const notebook = browserWith(margins);
   await notebook.sync(remote);
-  assert.deepEqual(remote.files(), fileOf(concept));
+  assert.deepEqual(remote.files(), fileOf(margins));
 });
 
 test("an edit here is pushed over the Notes Repo's older version", async () => {
-  const remote = memoryRemote(fileOf(concept));
+  const remote = memoryRemote(fileOf(margins));
   const notebook = browserWith();
   await notebook.firstSync(remote);
   notebook.saveBody("Margins", "Edited here.");
   await notebook.sync(remote);
-  assert.deepEqual(remote.files(), fileOf({ ...concept, body: "Edited here." }));
+  assert.equal(notebook.note("Margins").body, "Edited here.");
+  assert.deepEqual(remote.files(), fileOf(notebook.note("Margins")));
 });
 
 test("a note edited in one browser appears in the other after its next sync", async () => {
-  const remote = memoryRemote(fileOf(concept));
+  const remote = memoryRemote(fileOf(margins));
   const chrome = browserWith();
   const firefox = browserWith();
   await chrome.firstSync(remote);
@@ -67,17 +66,17 @@ test("a note edited in one browser appears in the other after its next sync", as
 
 test("a new note from the other browser comes in, with its Backlinks", async () => {
   const remote = memoryRemote({});
-  const chrome = browserWith(concept, lesson);
+  const chrome = browserWith(margins, boxModel);
   const firefox = browserWith();
   await chrome.sync(remote);
   await firefox.sync(remote);
-  assert.deepEqual(firefox.note("Box model"), lesson);
+  assert.deepEqual(firefox.note("Box model"), boxModel);
   assert.deepEqual(firefox.backlinks("Margins").map((note) => note.title), ["Box model"]);
 });
 
 test("a sync with nothing changed writes nothing", async () => {
   const remote = memoryRemote({});
-  const notebook = browserWith(concept);
+  const notebook = browserWith(margins);
   await notebook.sync(remote);
   const result = await notebook.sync(remote);
   assert.equal(result.pushed, 0);
@@ -86,7 +85,7 @@ test("a sync with nothing changed writes nothing", async () => {
 
 test("a rename moves the note's file in the Notes Repo", async () => {
   const remote = memoryRemote({});
-  const notebook = browserWith(concept, lesson);
+  const notebook = browserWith(margins, boxModel);
   await notebook.sync(remote);
   notebook.renameNote("Margins", "Outer space");
   await notebook.sync(remote);
@@ -97,7 +96,7 @@ test("a rename moves the note's file in the Notes Repo", async () => {
 
 test("a rename in one browser renames the note in the other", async () => {
   const remote = memoryRemote({});
-  const chrome = browserWith(concept);
+  const chrome = browserWith(margins);
   const firefox = browserWith();
   await chrome.sync(remote);
   await firefox.sync(remote);
@@ -108,7 +107,7 @@ test("a rename in one browser renames the note in the other", async () => {
 });
 
 test("a note changed in both browsers keeps both texts: the incoming one as a Conflict Copy", async () => {
-  const remote = memoryRemote(fileOf(concept));
+  const remote = memoryRemote(fileOf(margins));
   const chrome = browserWith();
   const firefox = browserWith();
   await chrome.firstSync(remote);
@@ -125,17 +124,17 @@ test("a note changed in both browsers keeps both texts: the incoming one as a Co
 
 test("offline, edits stay in this browser and are pushed by a later sync", async () => {
   const remote = memoryRemote({});
-  const notebook = browserWith(concept);
+  const notebook = browserWith(margins);
   remote.failWith("offline");
   await assert.rejects(notebook.sync(remote), (error) => error.reason === "offline");
-  assert.equal(notebook.note("Margins").body, concept.body);
+  assert.equal(notebook.note("Margins").body, margins.body);
   remote.failWith(null);
   await notebook.sync(remote);
-  assert.deepEqual(remote.files(), fileOf(concept));
+  assert.deepEqual(remote.files(), fileOf(margins));
 });
 
 test("a sync remembers when it last finished", async () => {
-  const notebook = browserWith(concept);
+  const notebook = browserWith(margins);
   assert.equal(notebook.lastSynced(), undefined);
   await notebook.sync(memoryRemote({}));
   assert.ok(!Number.isNaN(Date.parse(notebook.lastSynced())));

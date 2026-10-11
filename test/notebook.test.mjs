@@ -14,43 +14,42 @@ test("a new Notebook is empty", () => {
   assert.deepEqual(notebook.notes(), []);
 });
 
-test("a page without a Lesson Note has none (the '+ Lesson note' prompt)", () => {
+test("a page without a note has none (the empty paper)", () => {
   const notebook = createNotebook({ storage: memoryStorage() });
   assert.equal(
-    notebook.lessonNoteForSource("https://example.com/lesson-1"),
+    notebook.noteForPage("https://example.com/lesson-1"),
     undefined,
   );
 });
 
-test("a new Lesson Note takes the page title and remembers the page as its Source", () => {
+test("a new note for a page takes the page title and remembers the page as its Source", () => {
   const notebook = createNotebook({ storage: memoryStorage() });
-  const note = notebook.createLessonNote({
+  const note = notebook.createNote({
     title: "Introduction",
     source: "https://odin.example/foundations/intro",
     course: "TOP Foundations",
   });
-  assert.equal(note.type, "lesson");
   assert.equal(note.title, "Introduction");
   assert.equal(note.course, "TOP Foundations");
   assert.equal(
-    notebook.lessonNoteForSource("https://odin.example/foundations/intro"),
+    notebook.noteForPage("https://odin.example/foundations/intro"),
     note,
   );
 });
 
 test("Source matching ignores the #fragment and known tracking parameters", () => {
   const notebook = createNotebook({ storage: memoryStorage() });
-  notebook.createLessonNote({
+  notebook.createNote({
     title: "Lesson",
     source: "https://khan.example/algebra/lesson",
     course: "Khan Algebra 1",
   });
   // A tracking parameter (utm_*, fbclid, gclid, ref…) and a #fragment are not
-  // part of the lesson, so the same Lesson Note is found.
-  const viaCampaign = notebook.lessonNoteForSource(
+  // part of the lesson, so the same note is found.
+  const viaCampaign = notebook.noteForPage(
     "https://khan.example/algebra/lesson?utm_source=mail",
   );
-  const viaFragment = notebook.lessonNoteForSource(
+  const viaFragment = notebook.noteForPage(
     "https://khan.example/algebra/lesson#part-2",
   );
   assert.equal(viaCampaign?.title, "Lesson");
@@ -59,12 +58,12 @@ test("Source matching ignores the #fragment and known tracking parameters", () =
 
 test("Source matching keeps the query parameter that identifies the lesson", () => {
   const notebook = createNotebook({ storage: memoryStorage() });
-  const a = notebook.createLessonNote({
+  const a = notebook.createNote({
     title: "Video A",
     source: "https://youtube.example/watch?v=A",
     course: "A Course",
   });
-  const b = notebook.createLessonNote({
+  const b = notebook.createNote({
     title: "Video B",
     source: "https://youtube.example/watch?v=B",
     course: "A Course",
@@ -73,29 +72,29 @@ test("Source matching keeps the query parameter that identifies the lesson", () 
   assert.equal(a.title, "Video A");
   assert.equal(b.title, "Video B");
   assert.equal(
-    notebook.lessonNoteForSource("https://youtube.example/watch?v=A")?.title,
+    notebook.noteForPage("https://youtube.example/watch?v=A")?.title,
     "Video A",
   );
   assert.equal(
-    notebook.lessonNoteForSource("https://youtube.example/watch?v=B")?.title,
+    notebook.noteForPage("https://youtube.example/watch?v=B")?.title,
     "Video B",
   );
 });
 
 test("Source matching doesn't care about parameter order", () => {
   const notebook = createNotebook({ storage: memoryStorage() });
-  notebook.createLessonNote({
+  notebook.createNote({
     title: "Module",
     source: "https://lms.example/course?unit=3&lesson=7",
     course: "A Course",
   });
-  const found = notebook.lessonNoteForSource(
+  const found = notebook.noteForPage(
     "https://lms.example/course?lesson=7&unit=3",
   );
   assert.equal(found?.title, "Module");
 });
 
-test("Lesson Notes stored before this change (path-only Source) still match", () => {
+test("notes stored before this change (path-only Source) still match", () => {
   // A note created under the old rule kept only origin+path as its Source.
   // Visiting that path again — even with a tracking parameter — must still
   // find it, so no stored Source is orphaned by the new matching.
@@ -109,15 +108,15 @@ test("Lesson Notes stored before this change (path-only Source) still match", ()
     body: "",
   });
   const notebook = createNotebook({ storage });
-  const found = notebook.lessonNoteForSource(
+  const found = notebook.noteForPage(
     "https://odin.example/foundations/intro?utm_campaign=newsletter",
   );
   assert.equal(found?.title, "Old Note");
 });
 
-test("a Lesson Note without a Source doesn't make the lookup throw", () => {
-  // A stored Lesson Note can lack a Source (e.g. a half-created or imported
-  // note). Looking up the Lesson Note for a page must skip it, not throw.
+test("a note without a Source doesn't make the lookup throw", () => {
+  // A stored note can lack a Source (a blank note, or an imported one).
+  // Looking up the note for a page must skip it, not throw.
   const storage = memoryStorage();
   storage.putNote({
     type: "lesson",
@@ -130,18 +129,18 @@ test("a Lesson Note without a Source doesn't make the lookup throw", () => {
 
   let found;
   assert.doesNotThrow(() => {
-    found = notebook.lessonNoteForSource("https://example.com/lesson-1");
+    found = notebook.noteForPage("https://example.com/lesson-1");
   });
   assert.equal(found, undefined);
 
   // A real match alongside the sourceless note is still found.
-  const real = notebook.createLessonNote({
+  const real = notebook.createNote({
     title: "Real",
     source: "https://example.com/lesson-1",
     course: "A Course",
   });
   assert.equal(
-    notebook.lessonNoteForSource("https://example.com/lesson-1"),
+    notebook.noteForPage("https://example.com/lesson-1"),
     real,
   );
 });
@@ -149,13 +148,13 @@ test("a Lesson Note without a Source doesn't make the lookup throw", () => {
 test("the last-used Course is remembered for the picker", () => {
   const notebook = createNotebook({ storage: memoryStorage() });
   assert.equal(notebook.lastCourse(), undefined);
-  notebook.createLessonNote({
+  notebook.createNote({
     title: "A",
     source: "https://e.example/a",
     course: "TOP Foundations",
   });
   assert.equal(notebook.lastCourse(), "TOP Foundations");
-  notebook.createLessonNote({
+  notebook.createNote({
     title: "B",
     source: "https://e.example/b",
     course: "Khan Algebra 1",
@@ -163,29 +162,28 @@ test("the last-used Course is remembered for the picker", () => {
   assert.equal(notebook.lastCourse(), "Khan Algebra 1");
 });
 
-test("the Course picker lists every Course once, in order, from the Lesson Notes", () => {
-  // The "+ Lesson note" picker offers the Courses that already exist so a note
-  // joins one by a click, with the last-used one preselected (issue #3). A
-  // Course shows once however many Lesson Notes it holds; Concept Notes, which
-  // have no Course, add nothing.
+test("the Course picker lists every Course once, in order, from the notes", () => {
+  // The Course line offers the Courses that already exist so a note joins one
+  // by a click, with the last-used one first (issue #3, #61). A Course shows
+  // once however many notes it holds; notes without a Course add nothing.
   const notebook = createNotebook({ storage: memoryStorage() });
   assert.deepEqual(notebook.courses(), []);
-  notebook.createLessonNote({
+  notebook.createNote({
     title: "Intro",
     source: "https://e.example/intro",
     course: "TOP Foundations",
   });
-  notebook.createLessonNote({
+  notebook.createNote({
     title: "Arrays",
     source: "https://e.example/arrays",
     course: "Khan Algebra 1",
   });
-  notebook.createLessonNote({
+  notebook.createNote({
     title: "Objects",
     source: "https://e.example/objects",
     course: "TOP Foundations",
   });
-  notebook.createConceptNote({ title: "Box model" });
+  notebook.createNote({ title: "Box model" });
   assert.deepEqual(notebook.courses(), ["Khan Algebra 1", "TOP Foundations"]);
 });
 
@@ -195,7 +193,7 @@ test("notes and the last-used Course survive a restart (same storage, new Notebo
   // every note and the last-used Course again.
   const storage = memoryStorage();
   const first = createNotebook({ storage });
-  first.createLessonNote({
+  first.createNote({
     title: "Variables",
     source: "https://odin.example/foundations/variables",
     course: "TOP Foundations",
@@ -210,7 +208,7 @@ test("notes and the last-used Course survive a restart (same storage, new Notebo
 test("editing a note's body saves it and survives a restart", () => {
   const storage = memoryStorage();
   const first = createNotebook({ storage });
-  first.createLessonNote({
+  first.createNote({
     title: "Loops",
     source: "https://odin.example/foundations/loops",
     course: "TOP Foundations",
@@ -239,24 +237,77 @@ test("typing on an empty Notebook is never turned into a stray note", () => {
   assert.deepEqual(notebook.notes(), []);
 });
 
-// Concept Notes and Links (#8). A Concept Note captures one idea, belongs to
-// no Course and is shared across Courses. A [[Title]] Link points to a note by
-// its unique title; a Link to a note that doesn't exist yet is a Missing Link,
-// and following it creates a Concept Note with that title.
+// One kind of note (#68, ADR 0010). A page and a Course are both optional, and
+// a page can have several notes. A [[Title]] Link points to a note by its
+// unique title; a Link to a note that doesn't exist yet is a Missing Link, and
+// following it creates a note with that title.
 
-test("a Concept Note has no Course and no Source", () => {
+test("a note without a page or Course is a valid note", () => {
   const notebook = createNotebook({ storage: memoryStorage() });
-  const note = notebook.createConceptNote({ title: "Box model" });
-  assert.equal(note.type, "concept");
+  const note = notebook.createNote({ title: "Box model" });
   assert.equal(note.title, "Box model");
   assert.equal(note.course, undefined);
   assert.equal(note.source, undefined);
+  assert.equal(note.type, undefined);
   assert.equal(notebook.note("Box model"), note);
+  assert.deepEqual(notebook.outline().uncategorised, ["Box model"]);
+});
+
+test("a blank note leaves the last used Course alone", () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  notebook.createNote({ title: "Grid", source: "https://e.example/grid", course: "CSS" });
+  notebook.createNote({ title: "Idea" });
+  assert.equal(notebook.lastCourse(), "CSS");
+});
+
+function twoNotesForOnePage() {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  const page = "https://odin.example/flexbox";
+  notebook.createNote({ title: "Flexbox", source: page, course: "TOP", created: "2026-10-01T09:00:00.000Z" });
+  notebook.createNote({ title: "Flexbox questions", source: `${page}?utm_source=x`, created: "2026-10-02T09:00:00.000Z" });
+  notebook.createNote({ title: "Grid", source: "https://odin.example/grid", created: "2026-10-03T09:00:00.000Z" });
+  return { notebook, page };
+}
+
+test("several notes can share one page, each under its own unique title", () => {
+  const { notebook, page } = twoNotesForOnePage();
+  const third = notebook.createNote({ title: "Flexbox", source: page, course: "TOP" });
+  assert.equal(third.title, "Flexbox (TOP)");
+  assert.deepEqual(
+    notebook.notesForPage(page).map((note) => note.title).sort(),
+    ["Flexbox", "Flexbox (TOP)", "Flexbox questions"],
+  );
+});
+
+test("a page opens its most recently made note", () => {
+  const { notebook, page } = twoNotesForOnePage();
+  assert.equal(notebook.noteForPage(page).title, "Flexbox questions");
+});
+
+test("a page opens its most recently edited note", () => {
+  const { notebook, page } = twoNotesForOnePage();
+  notebook.saveBody("Flexbox", "Main axis first.");
+  assert.equal(notebook.noteForPage(`${page}#top`).title, "Flexbox");
+});
+
+test("the notes for a page are listed newest edit first, without other pages or archived notes", () => {
+  const { notebook, page } = twoNotesForOnePage();
+  notebook.createNote({ title: "Old idea", source: page, created: "2026-09-01T09:00:00.000Z" });
+  notebook.archiveNote("Old idea");
+  assert.deepEqual(notebook.notesForPage(page).map((note) => note.title), ["Flexbox questions", "Flexbox"]);
+  notebook.saveBody("Flexbox", "Main axis first.");
+  assert.deepEqual(notebook.notesForPage(page).map((note) => note.title), ["Flexbox", "Flexbox questions"]);
+});
+
+test("saving the same text again doesn't count as an edit", () => {
+  const { notebook, page } = twoNotesForOnePage();
+  notebook.saveBody("Flexbox", "");
+  assert.equal(notebook.noteForPage(page).title, "Flexbox questions");
 });
 
 test("outgoing Links of a note are found correctly, distinct and in order", () => {
   const notebook = createNotebook({ storage: memoryStorage() });
-  notebook.createLessonNote({
+  notebook.createNote({
     title: "Layout",
     source: "https://e.example/layout",
     course: "CSS",
@@ -270,7 +321,7 @@ test("outgoing Links of a note are found correctly, distinct and in order", () =
 
 test("a note with no body or no Links has no outgoing Links", () => {
   const notebook = createNotebook({ storage: memoryStorage() });
-  notebook.createLessonNote({
+  notebook.createNote({
     title: "Empty",
     source: "https://e.example/empty",
     course: "CSS",
@@ -279,14 +330,14 @@ test("a note with no body or no Links has no outgoing Links", () => {
   assert.deepEqual(notebook.outgoingLinks("No such note"), []);
 });
 
-test("following a Missing Link creates a Concept Note with that title and opens it", () => {
+test("following a Missing Link creates a note with that title, without a page or Course", () => {
   const notebook = createNotebook({ storage: memoryStorage() });
   assert.equal(notebook.isMissingLink("Flow"), true);
 
   const opened = notebook.openLink("Flow");
-  assert.equal(opened.type, "concept");
   assert.equal(opened.title, "Flow");
   assert.equal(opened.course, undefined);
+  assert.equal(opened.source, undefined);
   // It now exists, so it is no longer a Missing Link.
   assert.equal(notebook.isMissingLink("Flow"), false);
   assert.equal(notebook.note("Flow"), opened);
@@ -294,7 +345,7 @@ test("following a Missing Link creates a Concept Note with that title and opens 
 
 test("following a Link to an existing note opens it without creating a new one", () => {
   const notebook = createNotebook({ storage: memoryStorage() });
-  const existing = notebook.createLessonNote({
+  const existing = notebook.createNote({
     title: "Variables",
     source: "https://e.example/vars",
     course: "TOP Foundations",
@@ -306,12 +357,12 @@ test("following a Link to an existing note opens it without creating a new one",
 
 test("a clashing title gets the Course added so titles stay unique", () => {
   const notebook = createNotebook({ storage: memoryStorage() });
-  notebook.createLessonNote({
+  notebook.createNote({
     title: "Introduction",
     source: "https://e.example/top",
     course: "TOP Foundations",
   });
-  const second = notebook.createLessonNote({
+  const second = notebook.createNote({
     title: "Introduction",
     source: "https://e.example/khan",
     course: "Khan Algebra 1",
@@ -323,22 +374,22 @@ test("a clashing title gets the Course added so titles stay unique", () => {
 
 function notebookWithNotes() {
   const notebook = createNotebook({ storage: memoryStorage() });
-  notebook.createLessonNote({
+  notebook.createNote({
     title: "Introduction",
     source: "https://e.example/intro",
     course: "TOP Foundations",
   });
-  notebook.createLessonNote({
+  notebook.createNote({
     title: "Variables",
     source: "https://e.example/vars",
     course: "TOP Foundations",
   });
-  notebook.createLessonNote({
+  notebook.createNote({
     title: "Fractions",
     source: "https://k.example/fractions",
     course: "Khan Algebra 1",
   });
-  notebook.createConceptNote({ title: "Box model" });
+  notebook.createNote({ title: "Box model" });
   return notebook;
 }
 
@@ -346,7 +397,6 @@ test("search finds notes by title, ignoring case", () => {
   const notebook = notebookWithNotes();
   const results = notebook.search("BOX");
   assert.deepEqual(results.map((r) => r.title), ["Box model"]);
-  assert.equal(results[0].type, "concept");
 });
 
 test("search finds notes by their text and shows the match in a snippet", () => {
@@ -393,19 +443,19 @@ test("searching for nothing or for something absent finds nothing", () => {
   assert.deepEqual(notebook.search("zzz"), []);
 });
 
-test("the outline lists Courses with their Lesson Notes, then the Concept Notes", () => {
+test("the outline lists Courses with their notes, then the notes without a Course", () => {
   const notebook = notebookWithNotes();
   const outline = notebook.outline();
   assert.deepEqual(outline.courses, [
     { course: "Khan Algebra 1", titles: ["Fractions"] },
     { course: "TOP Foundations", titles: ["Introduction", "Variables"] },
   ]);
-  assert.deepEqual(outline.concepts, ["Box model"]);
+  assert.deepEqual(outline.uncategorised, ["Box model"]);
 });
 
-test("a Lesson Note without a Course is listed apart from the Courses", () => {
+test("a note for a page without a Course is listed apart from the Courses", () => {
   const notebook = createNotebook({ storage: memoryStorage() });
-  notebook.createLessonNote({ title: "Loose", source: undefined, course: undefined });
+  notebook.createNote({ title: "Loose", source: "https://e.example/loose" });
   const outline = notebook.outline();
   assert.deepEqual(outline.courses, []);
   assert.deepEqual(outline.uncategorised, ["Loose"]);
@@ -436,10 +486,10 @@ test("recent notes are capped and skip notes that no longer exist", () => {
 
 test("Backlinks list exactly the notes containing [[This Title]]", () => {
   const notebook = createNotebook({ storage: memoryStorage() });
-  notebook.createConceptNote({ title: "Box model" });
-  notebook.createLessonNote({ title: "Layout", source: "https://e.example/l", course: "CSS" });
-  notebook.createLessonNote({ title: "Margins", source: "https://e.example/m", course: "CSS" });
-  notebook.createLessonNote({ title: "Colours", source: "https://e.example/c", course: "CSS" });
+  notebook.createNote({ title: "Box model" });
+  notebook.createNote({ title: "Layout", source: "https://e.example/l", course: "CSS" });
+  notebook.createNote({ title: "Margins", source: "https://e.example/m", course: "CSS" });
+  notebook.createNote({ title: "Colours", source: "https://e.example/c", course: "CSS" });
   notebook.saveBody("Layout", "The [[Box model]] and again [[Box model]].");
   notebook.saveBody("Margins", "Part of the [[Box model]]");
   notebook.saveBody("Colours", "Nothing here, only [[Box model 2]] and [Box model].");
@@ -452,20 +502,20 @@ test("Backlinks list exactly the notes containing [[This Title]]", () => {
 
 test("a note nobody links to has no Backlinks", () => {
   const notebook = createNotebook({ storage: memoryStorage() });
-  notebook.createConceptNote({ title: "Alone" });
+  notebook.createNote({ title: "Alone" });
   assert.deepEqual(notebook.backlinks("Alone"), []);
 });
 
 function renameFixture() {
   const notebook = createNotebook({ storage: memoryStorage() });
-  const box = notebook.createConceptNote({ title: "Box model" });
-  const lesson = notebook.createLessonNote({
+  const box = notebook.createNote({ title: "Box model" });
+  const lesson = notebook.createNote({
     title: "CSS basics",
     source: "https://example.com/css",
     course: "TOP",
   });
   notebook.saveBody(lesson.title, "See [[Box model]] and [[Box model 2]] and [[Box model]].");
-  notebook.createConceptNote({ title: "Box model 2" });
+  notebook.createNote({ title: "Box model 2" });
   return { notebook, box, lesson };
 }
 
@@ -484,7 +534,7 @@ test("a renamed note has its new title and the old one is gone", () => {
   const result = notebook.renameNote("Box model", "Boxes");
   assert.equal(result.note.title, "Boxes");
   assert.equal(notebook.note("Box model"), undefined);
-  assert.equal(notebook.note("Boxes").type, "concept");
+  assert.equal(notebook.note("Boxes").source, undefined);
 });
 
 test("rename rewrites Links inside the renamed note itself", () => {
@@ -512,10 +562,10 @@ test("a taken title is refused and a free alternative suggested", () => {
   assert.equal(notebook.note(result.suggestion), undefined);
 });
 
-test("the suggestion for a taken title adds the Course of a Lesson Note", () => {
+test("the suggestion for a taken title adds the note's Course", () => {
   const { notebook } = renameFixture();
-  notebook.createLessonNote({ title: "Intro", source: "https://e.com/a", course: "TOP" });
-  const other = notebook.createLessonNote({ title: "Other", source: "https://e.com/b", course: "Khan" });
+  notebook.createNote({ title: "Intro", source: "https://e.com/a", course: "TOP" });
+  const other = notebook.createNote({ title: "Other", source: "https://e.com/b", course: "Khan" });
   const result = notebook.renameNote(other.title, "Intro");
   assert.equal(result.suggestion, "Intro (Khan)");
 });

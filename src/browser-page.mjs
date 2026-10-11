@@ -36,7 +36,7 @@ export function createBrowserPage(api) {
     },
 
     // The link to the lesson (#61): switch to the tab where that lesson is
-    // already open, in any window, matched like a Lesson Note's Source (#26).
+    // already open, in any window, matched like a note's Source (#26).
     // Only when no tab has it, or the tabs can't be read, open a new tab.
     async openSource(source) {
       const wanted = normalizeSource(source);

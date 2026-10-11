@@ -9,14 +9,12 @@ import { memoryRemote } from "../src/memory-remote.mjs";
 // removes its file from the Notes Repo for good.
 
 const margins = {
-  type: "concept",
   title: "Margins",
   created: "2026-10-02T10:00:00.000Z",
   body: "Space outside the border.",
 };
 
 const boxModel = {
-  type: "lesson",
   title: "Box model",
   course: "TOP Foundations",
   source: "https://odin.example/foundations/box-model",
@@ -41,7 +39,7 @@ test("a deleted note is gone from the Notebook, search and recent notes", async 
   assert.equal(notebook.note("Margins"), undefined);
   assert.deepEqual(notebook.search("Space outside").map((hit) => hit.title), []);
   assert.deepEqual(notebook.recentNotes().map((note) => note.title), []);
-  assert.deepEqual(notebook.outline().concepts, []);
+  assert.deepEqual(notebook.outline().uncategorised, []);
 });
 
 test("a deleted note no longer counts as a backlink", async () => {

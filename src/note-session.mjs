@@ -28,7 +28,7 @@ function titleFromText(body) {
 
 export function createNoteSession({ notebook, onSaveError, onCreate, ...timers }) {
   let openTitle = null;
-  // The fresh page on screen: { type: "lesson" | "concept", title, source }.
+  // The fresh page on screen: { title, source }, `source` only for a page.
   let draft = null;
 
   const scheduler = createSaveScheduler({
@@ -46,15 +46,13 @@ export function createNoteSession({ notebook, onSaveError, onCreate, ...timers }
     scheduler.flush();
   }
 
-  // Turn the fresh page into a note. A Lesson note takes the last used Course;
-  // one made by hand has no Source.
+  // Turn the fresh page into a note. A note for a page takes the last used
+  // Course; a blank note has no page and no Course (#68).
   function createFromDraft(title) {
-    const { type, source } = draft;
+    const { source } = draft;
     draft = null;
-    const note =
-      type === "concept"
-        ? notebook.createConceptNote({ title })
-        : notebook.createLessonNote({ title, source, course: notebook.lastCourse() });
+    const course = source ? notebook.lastCourse() : undefined;
+    const note = notebook.createNote({ title, source, course });
     openTitle = note.title;
     onCreate?.(note);
     return note;
@@ -66,10 +64,10 @@ export function createNoteSession({ notebook, onSaveError, onCreate, ...timers }
       draft = null;
       openTitle = note.title;
     },
-    openDraft({ type, title = "", source }) {
+    openDraft({ title = "", source }) {
       flush();
       openTitle = null;
-      draft = { type, title, source };
+      draft = { title, source };
     },
     // The title typed in the pill, confirmed with Enter. An empty title is
     // refused (null), so the pill can ask for one.

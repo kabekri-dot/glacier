@@ -78,14 +78,17 @@ function rewriteLinks(body, oldTitle, newTitle) {
 // --- Note files (ADR 0005, #13) ---------------------------------------------
 //
 // In the Notes Repo and in an Export every note is a Markdown file named after
-// its title: `courses/<Course>/<Title>.md` for a Lesson Note and
-// `concepts/<Title>.md` for a Concept Note. A small YAML frontmatter keeps
-// `type`, `course`, `source` and `created`, then the Markdown body follows.
+// its title: `courses/<Course>/<Title>.md` for a note with a Course and
+// `notes/<Title>.md` for every other note (ADR 0010). A small YAML frontmatter
+// keeps `course`, `source` (the page), `created` and `edited`, then the
+// Markdown body follows. Files written before ADR 0010 also had a `type` line
+// and a `concepts/` folder; both are still read.
 
 // Characters Windows, macOS or Obsidian refuse in a file or folder name.
 const UNSAFE_IN_NAMES = /[\\/:*?"<>|]/g;
-// Keys written in this order; any other key in a file is ignored on Import.
-const FRONTMATTER_KEYS = ["type", "title", "course", "source", "created"];
+// Keys written in this order; any other key in a file (an old `type`) is
+// ignored when it is read.
+const FRONTMATTER_KEYS = ["title", "course", "source", "created", "edited"];
 
 function safeName(name) {
   return name.replace(UNSAFE_IN_NAMES, "-");
@@ -116,9 +119,7 @@ function readYamlValue(raw) {
 }
 
 function folderFor(note) {
-  if (note.type === "concept") return "concepts";
-  if (note.course) return `courses/${safeName(note.course)}`;
-  return "courses";
+  return note.course ? `courses/${safeName(note.course)}` : "notes";
 }
 
 // An archived note keeps its path below `archive/`, so Unarchive knows where it
@@ -168,8 +169,9 @@ function splitFrontmatter(text) {
 }
 
 // A note from its file. The frontmatter wins; without it the folder tells the
-// kind of note and its Course, and the filename gives the title. A file that
-// isn't in a Course folder becomes a Concept Note.
+// Course, and the filename gives the title. The page and the Course are both
+// optional, so a file in `notes/` or an old `concepts/` file is a note without
+// a Course.
 export function noteFromFile(path, text) {
   const archived = path.startsWith(ARCHIVE_FOLDER);
   const parts = (archived ? path.slice(ARCHIVE_FOLDER.length) : path).split("/");
@@ -177,14 +179,12 @@ export function noteFromFile(path, text) {
   const parent = parts.at(-2);
   const grandparent = parts.at(-3);
   const { fields, body } = splitFrontmatter(text);
-  const inCourse = grandparent === "courses" || parent === "courses";
-  let type = inCourse ? "lesson" : "concept";
-  if (fields.type === "lesson" || fields.type === "concept") type = fields.type;
-  const note = { type, title: fields.title || stem };
+  const note = { title: fields.title || stem };
   const course = fields.course || (grandparent === "courses" ? parent : undefined);
-  if (type === "lesson" && course) note.course = course;
-  if (type === "lesson" && fields.source) note.source = fields.source;
+  if (course) note.course = course;
+  if (fields.source) note.source = fields.source;
   note.created = fields.created || new Date().toISOString();
+  if (fields.edited) note.edited = fields.edited;
   note.body = body;
   if (archived) note.archived = true;
   return note;
@@ -192,7 +192,7 @@ export function noteFromFile(path, text) {
 
 function sameNote(a, b, { ignoreArchived = false } = {}) {
   return (
-    ["type", "course", "source", "body"].every((key) => (a[key] ?? "") === (b[key] ?? "")) &&
+    ["course", "source", "body"].every((key) => (a[key] ?? "") === (b[key] ?? "")) &&
     (ignoreArchived || Boolean(a.archived) === Boolean(b.archived))
   );
 }
@@ -255,10 +255,18 @@ export function syncErrorMessage(error, repo) {
   }
 }
 
-// Only Markdown files in the two note folders are notes; a README, an
-// `.obsidian` folder or pictures in the Notes Repo are left alone.
+// Only Markdown files in the note folders are notes (`concepts/` from before
+// ADR 0010 too); a README, an `.obsidian` folder or pictures in the Notes Repo
+// are left alone.
 function isNoteFile(path) {
-  return /^(archive\/)?(courses|concepts)\/.+\.md$/i.test(path);
+  return /^(archive\/)?(courses|notes|concepts)\/.+\.md$/i.test(path);
+}
+
+// When a note was last written in, for "the page opens its most recently
+// edited note" (#68). A note nobody has written in yet counts from when it
+// was made.
+function lastEdited(note) {
+  return note.edited ?? note.created ?? "";
 }
 
 export function createNotebook({ storage }) {
@@ -266,8 +274,8 @@ export function createNotebook({ storage }) {
     throw new Error("createNotebook needs a storage plug-in");
   }
 
-  // The Course a Lesson Note was last filed under, so the Course picker can
-  // preselect it. It is kept in storage (not just memory) so it survives a
+  // The Course a note was last filed under, so the Course line can offer it
+  // first. It is kept in storage (not just memory) so it survives a
   // browser restart (ADR 0003), alongside the notes themselves.
   const LAST_COURSE = "lastCourse";
   // Titles of the notes opened lately, newest first, kept in storage too.
@@ -301,8 +309,8 @@ export function createNotebook({ storage }) {
 
   // Titles are unique across the whole Notebook (ADR 0005). On a clash we add
   // the Course, e.g. "Introduction (TOP Foundations)"; if that is taken too we
-  // add a number so the new note still lands on a free title. A Concept Note
-  // has no Course, so there we fall straight back to a number.
+  // add a number so the new note still lands on a free title. A note without a
+  // Course falls straight back to a number.
   function uniqueTitle(title, course) {
     if (!titleTaken(title)) {
       return title;
@@ -318,17 +326,17 @@ export function createNotebook({ storage }) {
     return `${base} ${n}`;
   }
 
-  // A Concept Note captures one idea, independent of any Course, so it carries
-  // no Course and no Source (CONTEXT.md). Its title is made unique like any
-  // note's. Following a Missing Link is the main way one is born.
-  function makeConceptNote({ title, created }) {
-    const note = {
-      type: "concept",
-      title: uniqueTitle(title, undefined),
-      created: created ?? new Date().toISOString(),
-      body: "",
-    };
+  // Every note is just a Note (ADR 0010): its page (Source) and its Course are
+  // both optional. The title is made unique, and a Course given becomes the
+  // last used one.
+  function makeNote({ title, source, course, created }) {
+    const made = created ?? new Date().toISOString();
+    const note = { title: uniqueTitle(title, course) };
+    if (course) note.course = course;
+    if (source) note.source = normalizeSource(source);
+    Object.assign(note, { created: made, edited: made, body: "" });
     storage.putNote(note);
+    if (course) storage.putMeta(LAST_COURSE, course);
     return note;
   }
 
@@ -342,10 +350,12 @@ export function createNotebook({ storage }) {
     return copy;
   }
 
-  // Whether this note is still as it was when its file was last synced.
+  // Whether this note is still as it was when its file was last synced. The
+  // note is compared with what the file said, not with its text, so a file
+  // only written the old way (ADR 0010) still counts as unchanged.
   function unchangedSince(note, entry, path) {
-    const file = noteToFile(note);
-    return file.path === path && file.text === entry.text;
+    const was = noteFromFile(path, entry.text);
+    return note.title === was.title && sameNote(note, was);
   }
 
   // Bring one changed or new Notes Repo file into this browser. A note that
@@ -500,13 +510,12 @@ export function createNotebook({ storage }) {
       return storage.getMeta(LAST_COURSE);
     },
 
-    // Every Course that has at least one Lesson Note, each once, sorted so the
-    // "+ Lesson note" picker can offer them (the last-used one preselected).
-    // Concept Notes have no Course and add nothing.
+    // Every Course that has at least one note, each once, sorted. Notes
+    // without a Course add nothing.
     courses() {
       const seen = new Set();
       for (const note of listed()) {
-        if (note.type === "lesson" && note.course) {
+        if (note.course) {
           seen.add(note.course);
         }
       }
@@ -521,52 +530,39 @@ export function createNotebook({ storage }) {
       return last ? [last, ...rest] : rest;
     },
 
-    // Move a Lesson Note to another Course, picked or typed on the line above
-    // the text (#61). It becomes the last used Course, and the note's file
-    // moves to the Course's folder on the next sync, like a rename.
+    // Move a note to another Course, picked or typed on the line above the
+    // text (#61). It becomes the last used Course, and the note's file moves
+    // to the Course's folder on the next sync, like a rename.
     moveToCourse(title, course) {
       const note = storage.getNote(title);
       const name = (course ?? "").trim();
-      if (!note || note.type !== "lesson" || !name) return note;
+      if (!note || !name) return note;
       const moved = { ...note, course: name };
       storage.putNote(moved);
       storage.putMeta(LAST_COURSE, name);
       return moved;
     },
 
-    // The Lesson Note for the page you're on, matched by Source, or undefined
-    // when the page has none yet (the "+ Lesson note" prompt).
-    lessonNoteForSource(url) {
+    // Every note for this page, matched by Source, the most recently edited
+    // first (#68). Archived notes are left out.
+    notesForPage(url) {
       const key = normalizeSource(url);
-      return listed().find(
-        (note) =>
-          note.type === "lesson" &&
-          note.source &&
-          normalizeSource(note.source) === key,
-      );
+      return listed()
+        .filter((note) => note.source && normalizeSource(note.source) === key)
+        .sort((a, b) => lastEdited(b).localeCompare(lastEdited(a)));
     },
 
-    // Start a Lesson Note for the page you're on: it takes the page title
-    // (made unique) and remembers the page as its Source. The chosen Course
-    // becomes the last-used one.
-    createLessonNote({ title, source, course, created }) {
-      const note = {
-        type: "lesson",
-        title: uniqueTitle(title, course),
-        course,
-        source: normalizeSource(source),
-        created: created ?? new Date().toISOString(),
-        body: "",
-      };
-      storage.putNote(note);
-      storage.putMeta(LAST_COURSE, course);
-      return note;
+    // The note a page opens: its most recently edited one, or undefined when
+    // the page has none yet (the empty paper, #61).
+    noteForPage(url) {
+      return this.notesForPage(url)[0];
     },
 
-    // Make a Concept Note with the given title (made unique). Concept Notes
-    // have no Course, so one idea can be linked from lessons of many Courses.
-    createConceptNote({ title, created } = {}) {
-      return makeConceptNote({ title, created });
+    // Make a note. `source` (the page) and `course` are both optional: a note
+    // for a page takes its title and remembers it as the Source; a blank note
+    // has neither.
+    createNote({ title, source, course, created } = {}) {
+      return makeNote({ title, source, course, created });
     },
 
     // The titles this note links to, in order of first appearance and without
@@ -605,15 +601,15 @@ export function createNotebook({ storage }) {
       return storage.getNote(title) === undefined;
     },
 
-    // Follow a `[[Title]]` Link: open the note it names, or — when it is a
-    // Missing Link — create a Concept Note with that title and open that. The
-    // note to show is returned either way.
+    // Follow a `[[Title]]` Link: open the note it names, or, when it is a
+    // Missing Link, create a note with that title (no page, no Course) and
+    // open that. The note to show is returned either way.
     openLink(title) {
       const existing = storage.getNote(title);
       if (existing) {
         return existing;
       }
-      return makeConceptNote({ title });
+      return makeNote({ title });
     },
 
     // Simple substring search over titles and text, ignoring case. Notes whose
@@ -628,7 +624,7 @@ export function createNotebook({ storage }) {
       const inText = [];
       for (const note of listed()) {
         if (note.title.toLowerCase().includes(needle)) {
-          inTitle.push({ title: note.title, type: note.type });
+          inTitle.push({ title: note.title });
           continue;
         }
         const body = note.body ?? "";
@@ -636,7 +632,6 @@ export function createNotebook({ storage }) {
         if (at !== -1) {
           inText.push({
             title: note.title,
-            type: note.type,
             snippet: snippetAround(body, at, needle.length),
           });
         }
@@ -644,16 +639,13 @@ export function createNotebook({ storage }) {
       return [...inTitle, ...inText];
     },
 
-    // The Notebook as the menu lists it: Courses (sorted) with their Lesson
-    // Notes (sorted), Lesson Notes that have no Course, and the Concept Notes.
+    // The Notebook as the menu lists it: Courses (sorted) with their notes
+    // (sorted), then the notes that have no Course.
     outline() {
       const byCourse = new Map();
       const uncategorised = [];
-      const concepts = [];
       for (const note of listed()) {
-        if (note.type === "concept") {
-          concepts.push(note.title);
-        } else if (note.course) {
+        if (note.course) {
           if (!byCourse.has(note.course)) {
             byCourse.set(note.course, []);
           }
@@ -668,7 +660,6 @@ export function createNotebook({ storage }) {
           .sort((a, b) => a.localeCompare(b))
           .map((course) => ({ course, titles: sorted(byCourse.get(course)) })),
         uncategorised: sorted(uncategorised),
-        concepts: sorted(concepts),
       };
     },
 
@@ -736,7 +727,7 @@ export function createNotebook({ storage }) {
       if (note && !note.archived) storage.putNote({ ...note, archived: true });
     },
 
-    // Put an archived note back where it was: same Course, same type.
+    // Put an archived note back where it was: same Course, same page.
     unarchiveNote(title) {
       const note = storage.getNote(title);
       if (!note || !note.archived) return;
@@ -755,12 +746,16 @@ export function createNotebook({ storage }) {
     // Save the note's Markdown body. The editor calls this as you type, so
     // there is no save button (the write-through storage keeps IndexedDB in
     // step). Unknown titles are ignored rather than creating a stray note.
+    // New text marks the note as just edited, so its page opens it first.
     saveBody(title, body) {
       const note = storage.getNote(title);
       if (!note) {
         return undefined;
       }
-      const updated = { ...note, body };
+      if ((note.body ?? "") === body) {
+        return note;
+      }
+      const updated = { ...note, body, edited: new Date().toISOString() };
       storage.putNote(updated);
       return updated;
     },
@@ -771,9 +766,9 @@ export function createNotebook({ storage }) {
       return zipNotes(storage.allNotes());
     },
 
-    // The same zip with only one Course's Lesson Notes.
+    // The same zip with only one Course's notes.
     exportCourseZip(course) {
-      return zipNotes(listed().filter((note) => note.type === "lesson" && note.course === course));
+      return zipNotes(listed().filter((note) => note.course === course));
     },
 
     // The same zip with only the archived notes.

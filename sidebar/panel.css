@@ -412,7 +412,7 @@ html[data-art="aurora"] {
 
 /* A Link to another note: the accent colour, underlined on hover so it reads
    as clickable. A Missing Link (no such note yet) shows red; following it
-   creates the Concept Note (#8). */
+   creates the note (#8). */
 .md-link {
   color: var(--accent);
   cursor: pointer;
@@ -914,6 +914,36 @@ code {
   font-size: 0.7rem;
   color: var(--accent);
   white-space: nowrap;
+}
+
+/* "1 of 3": the page has more notes (#68). */
+.pill-count {
+  border: none;
+  background: none;
+  padding: 0 0.15rem;
+  font: inherit;
+  font-size: 0.7rem;
+  color: var(--accent);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pill-count:hover {
+  text-decoration: underline;
+}
+
+/* "+ New note for this page" under the page's notes: quiet, like a list item. */
+.menu-new.menu-new-for-page {
+  display: block;
+  width: 100%;
+  border: none;
+  padding: 0.2rem 0;
+  text-align: left;
+}
+
+/* The open note in Notes for this page. */
+.menu-item.is-current {
+  font-weight: bold;
 }
 
 .menu-archive summary {

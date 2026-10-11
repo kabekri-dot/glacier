@@ -13,9 +13,9 @@
 //   { type: "freshPage", title, source, editTitle }  an empty page that
 //       becomes a note at the first character or a confirmed title.
 //   { type: "startPrompt" } or { type: "permissionCard" }
-//   { type: "followPage", lessonNote? }  no note any more: the Opening flow
-//       decides (`lessonNote` is the "+ Lesson note" click).
-//   { type: "pageChanged" }  a pulled Lesson note may belong to this page.
+//   { type: "followPage", newForPage? }  no note any more: the Opening flow
+//       decides (`newForPage` is the "New note for this page" click).
+//   { type: "pageChanged" }  a pulled note may belong to this page.
 //   { type: "backlinks" }    only the Backlinks may have changed.
 //   { type: "titleRefused", suggestion? }  the title in the pill is refused.
 //
@@ -31,7 +31,7 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
   // Whether the page opened the note, so a later page change may replace it
   // (only with the "keep a note I opened myself" setting, ADR 0009).
   let openedByPage = false;
-  // The fresh page on screen: { type: "lesson" | "concept", title, source }.
+  // The fresh page on screen: { title, source }, `source` only for a page.
   let freshPage = null;
   // The note on screen when a fresh page took its place, so Esc can go back.
   let before = null;
@@ -67,15 +67,16 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
     if (note) before = { note, openedByPage };
   }
 
-  // `type` is "lesson" or "concept"; a Lesson note without `source` is made by
-  // hand. `editTitle` asks for the title in the pill to be edited at once.
-  function startFreshPage({ type, title = "", source, editTitle = false }) {
+  // A fresh page with a `source` becomes a note for that page; without one it
+  // becomes a blank note. `editTitle` asks for the title in the pill to be
+  // edited at once.
+  function startFreshPage({ title = "", source, editTitle = false }) {
     rememberNoteBefore();
     beforeLeave();
-    session.openDraft({ type, title, source });
+    session.openDraft({ title, source });
     note = null;
     openedByPage = false;
-    freshPage = { type, title, source };
+    freshPage = { title, source };
     return { type: "freshPage", title, source, editTitle };
   }
 
@@ -107,15 +108,14 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
       switch (view.type) {
         case "open":
           return showNote(view.note, { byPage: true });
-        case "lessonDraft":
+        case "pageDraft":
           return startFreshPage({
-            type: "lesson",
             title: view.page.title,
             source: view.page.url,
             editTitle: view.editTitle,
           });
-        case "byHandDraft":
-          return startFreshPage({ type: "lesson" });
+        case "blankDraft":
+          return startFreshPage({});
         default:
           showNothing();
           return { type: view.type };
@@ -123,18 +123,19 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
     },
 
     // A note the user opened: from the menu, a Link, the recent notes. A
-    // menu entry passes `byPage` for a Lesson note with a Source.
+    // menu entry passes `byPage` for a note with a page.
     open(next, { byPage = false } = {}) {
       return showNote(next, { byPage });
     },
 
     startFreshPage,
 
-    // "+ Lesson note": the page decides between its note and a fresh page.
-    startLessonNote() {
+    // "New note for this page": the Opening flow reads the page for a fresh
+    // page, or asks for the permission first.
+    startNoteForPage() {
       rememberNoteBefore();
       showNothing();
-      return { type: "followPage", lessonNote: true };
+      return { type: "followPage", newForPage: true };
     },
 
     // The text changed. The first character on a fresh page makes the note.
@@ -210,8 +211,8 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
     // A pull changed these notes.
     pulled(titles) {
       if (!note) {
-        const lessonCameIn = titles.some((title) => notebook.note(title)?.source);
-        return lessonCameIn ? { type: "pageChanged" } : null;
+        const pageNoteCameIn = titles.some((title) => notebook.note(title)?.source);
+        return pageNoteCameIn ? { type: "pageChanged" } : null;
       }
       if (!titles.includes(note.title)) return { type: "backlinks" };
       const found = notebook.note(note.title);

@@ -46,19 +46,19 @@ function setup({ onSaveError = () => {}, notebook = createNotebook({ storage: me
 function withNotes() {
   const context = setup();
   const { notebook } = context;
-  const first = notebook.createConceptNote({ title: "First" });
-  const second = notebook.createConceptNote({ title: "Second" });
-  const lesson = notebook.createLessonNote({ title: "Grid", source: "https://odin.example/grid", course: "TOP" });
-  return { ...context, first, second, lesson };
+  const first = notebook.createNote({ title: "First" });
+  const second = notebook.createNote({ title: "Second" });
+  const grid = notebook.createNote({ title: "Grid", source: "https://odin.example/grid", course: "TOP" });
+  return { ...context, first, second, grid };
 }
 
 // --- Opening notes, by the page or by the user (ADR 0009) -----------------
 
 test("a note opened by the page is on screen as opened by the page", () => {
-  const { screen, lesson } = withNotes();
-  const view = screen.show({ type: "open", note: lesson });
-  assert.deepEqual(view, { type: "note", note: lesson, reload: true });
-  assert.deepEqual(screen.onScreen(), { current: lesson, openedByPage: true });
+  const { screen, grid } = withNotes();
+  const view = screen.show({ type: "open", note: grid });
+  assert.deepEqual(view, { type: "note", note: grid, reload: true });
+  assert.deepEqual(screen.onScreen(), { current: grid, openedByPage: true });
 });
 
 test("a note opened by the user is on screen as not opened by the page", () => {
@@ -95,30 +95,29 @@ test("the start prompt and the permission card show no note", () => {
 
 test("a fresh page for a website makes no note until you type", () => {
   const { notebook, screen } = setup();
-  const view = screen.show({ type: "lessonDraft", page });
+  const view = screen.show({ type: "pageDraft", page });
   assert.deepEqual(view, { type: "freshPage", title: "Flexbox", source: page.url, editTitle: false });
-  assert.deepEqual(screen.freshPage(), { type: "lesson", title: "Flexbox", source: page.url });
+  assert.deepEqual(screen.freshPage(), { title: "Flexbox", source: page.url });
   assert.equal(screen.edit(""), null);
   assert.deepEqual(notebook.notes(), []);
 });
 
 test("clicking on a fresh page or leaving it without typing makes nothing", () => {
   const { notebook, screen, first } = withNotes();
-  screen.show({ type: "lessonDraft", page });
+  screen.show({ type: "pageDraft", page });
   screen.open(first);
-  screen.startFreshPage({ type: "concept" });
+  screen.startFreshPage({});
   screen.show({ type: "startPrompt" });
   assert.deepEqual(notebook.notes().map((n) => n.title).sort(), ["First", "Grid", "Second"]);
 });
 
-test("the first character makes a Lesson note with the page title, Source and last Course", () => {
+test("the first character makes a note for the page with its title, Source and last Course", () => {
   const { notebook, screen } = withNotes();
-  screen.show({ type: "lessonDraft", page });
+  screen.show({ type: "pageDraft", page });
   const view = screen.edit("F");
   screen.flush();
   const note = notebook.note("Flexbox");
-  assert.deepEqual(view, { type: "note", note: { ...note, body: "" }, reload: false, changed: true });
-  assert.equal(note.type, "lesson");
+  assert.deepEqual(view, { type: "note", note: { ...note, body: "", edited: view.note.created }, reload: false, changed: true });
   assert.equal(note.source, "https://odin.example/lesson");
   assert.equal(note.course, "TOP");
   assert.equal(note.body, "F");
@@ -126,9 +125,18 @@ test("the first character makes a Lesson note with the page title, Source and la
   assert.deepEqual(screen.onScreen(), { current: view.note, openedByPage: true });
 });
 
+test("a page that has a note can get a second one, under a free title", () => {
+  const { notebook, screen } = withNotes();
+  screen.show({ type: "open", note: notebook.createNote({ title: "Flexbox", source: page.url, course: "TOP", created: "2026-10-01T09:00:00.000Z" }) });
+  screen.show({ type: "pageDraft", page });
+  const view = screen.edit("More");
+  assert.equal(view.note.title, "Flexbox (TOP)");
+  assert.deepEqual(notebook.notesForPage(page.url).map((note) => note.title), ["Flexbox (TOP)", "Flexbox"]);
+});
+
 test("typing more after the first character keeps one note", () => {
   const { notebook, screen } = setup();
-  screen.show({ type: "lessonDraft", page });
+  screen.show({ type: "pageDraft", page });
   screen.edit("F");
   assert.equal(screen.edit("Fl"), null);
   screen.flush();
@@ -139,19 +147,18 @@ test("typing more after the first character keeps one note", () => {
 test("a note made on a fresh page can be gone back to with ←", () => {
   const { screen, first } = withNotes();
   screen.open(first);
-  screen.startFreshPage({ type: "concept", title: "Idea" });
+  screen.startFreshPage({ title: "Idea" });
   screen.edit("x");
   assert.equal(screen.previous(), "First");
   assert.equal(screen.back().note.title, "First");
 });
 
-test("confirming the title makes exactly one Concept note", () => {
+test("confirming the title makes exactly one note", () => {
   const { notebook, screen } = setup();
-  screen.startFreshPage({ type: "concept", editTitle: true });
+  screen.startFreshPage({ editTitle: true });
   const view = screen.confirmTitle("  Box model ");
   assert.equal(view.type, "note");
   assert.equal(view.note.title, "Box model");
-  assert.equal(view.note.type, "concept");
   screen.edit("idea");
   screen.flush();
   assert.equal(notebook.notes().length, 1);
@@ -160,7 +167,7 @@ test("confirming the title makes exactly one Concept note", () => {
 
 test("an empty title is refused and makes nothing", () => {
   const { notebook, screen } = setup();
-  screen.startFreshPage({ type: "concept" });
+  screen.startFreshPage({});
   assert.deepEqual(screen.confirmTitle("   "), { type: "titleRefused" });
   assert.deepEqual(notebook.notes(), []);
   assert.notEqual(screen.freshPage(), null);
@@ -168,14 +175,14 @@ test("an empty title is refused and makes nothing", () => {
 
 test("a confirmed title that is taken gets the Course added", () => {
   const { notebook, screen } = setup();
-  notebook.createLessonNote({ title: "Introduction", course: "TOP" });
-  screen.show({ type: "lessonDraft", page: { url: page.url, title: "Introduction" } });
+  notebook.createNote({ title: "Introduction", course: "TOP" });
+  screen.show({ type: "pageDraft", page: { url: page.url, title: "Introduction" } });
   assert.equal(screen.confirmTitle("Introduction").note.title, "Introduction (TOP)");
 });
 
-test("a note made by hand has no Source and is not opened by the page", () => {
-  const { notebook, screen } = setup();
-  assert.deepEqual(screen.show({ type: "byHandDraft" }), {
+test("a blank note has no page or Course and is not opened by the page", () => {
+  const { notebook, screen } = withNotes();
+  assert.deepEqual(screen.show({ type: "blankDraft" }), {
     type: "freshPage",
     title: "",
     source: undefined,
@@ -183,12 +190,13 @@ test("a note made by hand has no Source and is not opened by the page", () => {
   });
   screen.confirmTitle("Reading notes");
   assert.equal(notebook.note("Reading notes").source, undefined);
+  assert.equal(notebook.note("Reading notes").course, undefined);
   assert.equal(screen.onScreen().openedByPage, false);
 });
 
-test("a Concept note made by writing first takes its title from the first line", () => {
+test("a note made by writing first takes its title from the first line", () => {
   const { notebook, screen } = setup();
-  screen.startFreshPage({ type: "concept" });
+  screen.startFreshPage({});
   const view = screen.edit("# Box model basics and more words here\nSecond line");
   screen.flush();
   assert.equal(view.note.title, "Box model basics and more");
@@ -197,27 +205,27 @@ test("a Concept note made by writing first takes its title from the first line",
 
 test("a title taken from the first line that clashes gets a free name", () => {
   const { notebook, screen } = setup();
-  notebook.createConceptNote({ title: "Margins" });
-  screen.startFreshPage({ type: "concept" });
+  notebook.createNote({ title: "Margins" });
+  screen.startFreshPage({});
   assert.notEqual(screen.edit("Margins").note.title, "Margins");
   assert.equal(notebook.notes().length, 2);
 });
 
 test("a first line with no words falls back to a plain default", () => {
   const { screen } = setup();
-  screen.startFreshPage({ type: "concept" });
+  screen.startFreshPage({});
   assert.equal(screen.edit("***").note.title, "New note");
 });
 
 test("a fresh page from the menu can ask for the title to be edited", () => {
   const { screen } = setup();
-  assert.deepEqual(screen.startFreshPage({ type: "concept", title: "Box", editTitle: true }), {
+  assert.deepEqual(screen.startFreshPage({ title: "Box", editTitle: true }), {
     type: "freshPage",
     title: "Box",
     source: undefined,
     editTitle: true,
   });
-  assert.equal(screen.show({ type: "lessonDraft", page, editTitle: true }).editTitle, true);
+  assert.equal(screen.show({ type: "pageDraft", page, editTitle: true }).editTitle, true);
 });
 
 // --- Esc on a fresh page ---------------------------------------------------
@@ -225,49 +233,49 @@ test("a fresh page from the menu can ask for the title to be edited", () => {
 test("cancelling a fresh page goes back to the note from before", () => {
   const { screen, first } = withNotes();
   screen.open(first);
-  screen.startFreshPage({ type: "concept" });
+  screen.startFreshPage({});
   assert.deepEqual(screen.cancel(), { type: "note", note: first, reload: true });
   assert.deepEqual(screen.onScreen(), { current: first, openedByPage: false });
 });
 
 test("cancelling keeps whether the note before was opened by the page", () => {
-  const { screen, lesson } = withNotes();
-  screen.show({ type: "open", note: lesson });
-  screen.show({ type: "lessonDraft", page });
+  const { screen, grid } = withNotes();
+  screen.show({ type: "open", note: grid });
+  screen.show({ type: "pageDraft", page });
   screen.cancel();
-  assert.deepEqual(screen.onScreen(), { current: lesson, openedByPage: true });
+  assert.deepEqual(screen.onScreen(), { current: grid, openedByPage: true });
 });
 
 test("cancelling with no note before asks the page what to show", () => {
   const { screen } = setup();
-  screen.show({ type: "byHandDraft" });
+  screen.show({ type: "blankDraft" });
   assert.deepEqual(screen.cancel(), { type: "followPage" });
 });
 
 test("cancelling after the note before was deleted asks the page", () => {
   const { notebook, screen, first } = withNotes();
   screen.open(first);
-  screen.startFreshPage({ type: "concept" });
+  screen.startFreshPage({});
   notebook.deleteNote("First");
   assert.deepEqual(screen.cancel(), { type: "followPage" });
 });
 
-test("+ Lesson note remembers the note on screen, through the permission card", () => {
+test("New note for this page remembers the note on screen, through the permission card", () => {
   const { screen, first } = withNotes();
   screen.open(first);
-  assert.deepEqual(screen.startLessonNote(), { type: "followPage", lessonNote: true });
+  assert.deepEqual(screen.startNoteForPage(), { type: "followPage", newForPage: true });
   assert.equal(screen.note(), null);
   screen.show({ type: "permissionCard" });
-  screen.show({ type: "byHandDraft" });
+  screen.show({ type: "blankDraft" });
   assert.equal(screen.cancel().note.title, "First");
 });
 
 test("a note made on the fresh page forgets the note before", () => {
   const { screen, first } = withNotes();
   screen.open(first);
-  screen.startFreshPage({ type: "concept" });
+  screen.startFreshPage({});
   screen.edit("x");
-  screen.startFreshPage({ type: "concept" });
+  screen.startFreshPage({});
   assert.equal(screen.cancel().note.title, "x");
 });
 
@@ -282,20 +290,20 @@ test("there is no previous note at the start", () => {
 });
 
 test("← steps back through earlier notes in order", () => {
-  const { screen, first, second, lesson } = withNotes();
-  for (const note of [first, second, lesson]) screen.open(note);
+  const { screen, first, second, grid } = withNotes();
+  for (const note of [first, second, grid]) screen.open(note);
   assert.equal(screen.previous(), "Second");
   assert.equal(screen.back().note.title, "Second");
   assert.equal(screen.back().note.title, "First");
   assert.equal(screen.back(), null);
 });
 
-test("← opens a Lesson note with a Source as opened by the page", () => {
-  const { screen, first, lesson } = withNotes();
-  screen.open(lesson);
+test("← opens a note with a page as opened by the page", () => {
+  const { screen, first, grid } = withNotes();
+  screen.open(grid);
   screen.open(first);
   screen.back();
-  assert.deepEqual(screen.onScreen(), { current: lesson, openedByPage: true });
+  assert.deepEqual(screen.onScreen(), { current: grid, openedByPage: true });
 });
 
 test("showing the same note again adds no step", () => {
@@ -308,11 +316,11 @@ test("showing the same note again adds no step", () => {
 });
 
 test("a new note after going back drops the forward steps", () => {
-  const { screen, first, second, lesson } = withNotes();
-  for (const note of [first, second, lesson]) screen.open(note);
+  const { screen, first, second, grid } = withNotes();
+  for (const note of [first, second, grid]) screen.open(note);
   screen.back();
   screen.back();
-  screen.open(lesson);
+  screen.open(grid);
   assert.equal(screen.back().note.title, "First");
   assert.equal(screen.back(), null);
 });
@@ -327,8 +335,8 @@ test("going back and opening that note again does not add a step", () => {
 });
 
 test("← skips a note that has gone", () => {
-  const { notebook, screen, first, second, lesson } = withNotes();
-  for (const note of [first, second, lesson]) screen.open(note);
+  const { notebook, screen, first, second, grid } = withNotes();
+  for (const note of [first, second, grid]) screen.open(note);
   notebook.deleteNote("Second");
   assert.equal(screen.back().note.title, "First");
 });
@@ -336,8 +344,8 @@ test("← skips a note that has gone", () => {
 // --- This note: rename, Course, archive, delete ------------------------------
 
 test("renaming keeps the note open under its new name", () => {
-  const { notebook, screen, lesson } = withNotes();
-  screen.show({ type: "open", note: lesson });
+  const { notebook, screen, grid } = withNotes();
+  screen.show({ type: "open", note: grid });
   const view = screen.rename("Grid layout");
   assert.equal(view.type, "note");
   assert.equal(view.reload, true);
@@ -366,8 +374,8 @@ test("text typed just before a rename is kept in the renamed note", () => {
 });
 
 test("moving to another Course keeps the note open", () => {
-  const { notebook, screen, lesson } = withNotes();
-  screen.open(lesson);
+  const { notebook, screen, grid } = withNotes();
+  screen.open(grid);
   screen.edit("text");
   const view = screen.moveToCourse("Khan");
   assert.equal(view.type, "note");
@@ -381,8 +389,8 @@ test("moving to another Course keeps the note open", () => {
 });
 
 test("archiving leaves no note on screen and asks the page what to show", () => {
-  const { notebook, screen, lesson } = withNotes();
-  screen.open(lesson);
+  const { notebook, screen, grid } = withNotes();
+  screen.open(grid);
   screen.edit("last words");
   assert.deepEqual(screen.archive(), { type: "followPage", changed: true });
   assert.equal(screen.note(), null);
@@ -412,8 +420,8 @@ test("deleting leaves no note on screen and asks the page what to show", () => {
 });
 
 test("keeping a note after the delete question shows it again as it was", () => {
-  const { notebook, screen, lesson } = withNotes();
-  screen.show({ type: "open", note: lesson });
+  const { notebook, screen, grid } = withNotes();
+  screen.show({ type: "open", note: grid });
   screen.edit("kept");
   screen.flush();
   const view = screen.reopen();
@@ -447,7 +455,7 @@ test("a pull that removed the open note asks the page what to show", () => {
   assert.equal(screen.note(), null);
 });
 
-test("with no note open, a pulled Lesson note may be the one for this page", () => {
+test("with no note open, a pulled note with a page may be the one for this page", () => {
   const { screen } = withNotes();
   assert.deepEqual(screen.pulled(["Grid"]), { type: "pageChanged" });
   assert.equal(screen.pulled(["First"]), null);
@@ -522,7 +530,7 @@ test("a failing save reaches the save-error callback", () => {
   const errors = [];
   const boom = new Error("disk full");
   const notebook = createNotebook({ storage: memoryStorage() });
-  const first = notebook.createConceptNote({ title: "First" });
+  const first = notebook.createNote({ title: "First" });
   notebook.saveBody = () => {
     throw boom;
   };
