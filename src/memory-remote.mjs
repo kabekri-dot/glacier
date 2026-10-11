@@ -10,6 +10,7 @@ export function memoryRemote(initialFiles = {}) {
   const versions = new Map([...files.keys()].map((path) => [path, "v0"]));
   let written = 0;
   let failure = null;
+  let beforeWrite = null;
 
   // Every call fails the same way while a failure is set, like GitHub
   // refusing a wrong token or repo.
@@ -40,6 +41,11 @@ export function memoryRemote(initialFiles = {}) {
     // `version` is the one this browser last saw, or undefined for a new file.
     async writeFile(path, text, version) {
       check();
+      if (beforeWrite) {
+        const hook = beforeWrite;
+        beforeWrite = null;
+        await hook();
+      }
       checkVersion(path, version);
       written += 1;
       files.set(path, text);
@@ -57,6 +63,11 @@ export function memoryRemote(initialFiles = {}) {
     // "not-found", "forbidden" or "offline"), or null to work again.
     failWith(reason) {
       failure = reason;
+    },
+    // For tests: run this once just before the next write, e.g. another
+    // browser syncing in between, so that write names a stale version.
+    beforeNextWrite(hook) {
+      beforeWrite = hook;
     },
     // For tests: the files as they are now, path to text.
     files() {

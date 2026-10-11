@@ -54,7 +54,10 @@ export function createAutoSync({
     setStatus({ state: "syncing" });
     try {
       const result = await notebook.sync(connection.remote);
-      setStatus({ state: result.conflicts > 0 ? "conflict" : "synced" });
+      // The conflict shows until every Conflict Copy is gone (merged by hand,
+      // then renamed or removed from the Notes Repo), not just this once.
+      const conflicts = notebook.conflictCopies();
+      setStatus(conflicts.length > 0 ? { state: "conflict", conflicts } : { state: "synced" });
       if (result.pulled.length > 0) onPulled(result.pulled);
     } catch (error) {
       console.error("Glacier: sync failed", error);
@@ -135,7 +138,7 @@ export function syncStatusText(status, now = new Date()) {
     case "conflict":
       return {
         label: "Conflict",
-        detail: `A note changed in two places. Glacier kept both: the other one is marked conflict with the date. ${last}`,
+        detail: `A note changed in two places. Glacier kept both: the other version is in ${status.conflicts?.join(", ") ?? "the note marked conflict with the date"}. Merge them by hand, then rename that note or delete its file from your Notes repo. ${last}`,
       };
     case "error":
       return {

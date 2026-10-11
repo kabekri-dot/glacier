@@ -58,6 +58,18 @@ Connect the same Notes repo in Chrome and in Firefox first (see #14).
 - [ ] Revoke or delete the token on GitHub, then type or press "Sync now": the dot turns red and the message says GitHub no longer accepts your token, it may have expired, and to paste a new one in Notes repo. Pasting a new token there makes it sync again.
 - [ ] Without a Notes repo connected, the dot stays as before, hovering it says "Saved in this browser", and there is no "Sync now".
 
+### Conflict Copies (#16)
+
+Connect the same Notes repo in Chrome and in Firefox first (see #14).
+
+- [ ] Turn the network off in Firefox (devtools, Offline). Change the same note in both browsers, with different text. Turn Firefox's network on again and let it sync. Both texts are kept: the note has Firefox's text, and a second note "Title (conflict date)" with today's date has Chrome's text. Both files are on GitHub.
+- [ ] The dot turns orange. Hovering it says "Conflict" and names the note marked conflict. The Sync line in the pill menu says the same.
+- [ ] Type something or press "Sync now": the dot stays orange while the copy is there.
+- [ ] Open Chrome's sidebar: it also has both notes and an orange dot.
+- [ ] Rename the copy by clicking its title in the pill (for example to "Margins old"). A few seconds later the dot turns green.
+- [ ] Make another conflict, then delete the copy's file on GitHub and press "Sync now": the copy is gone from the menu and the dot turns green.
+- [ ] Change the same note in both browsers to exactly the same text: no copy appears.
+
 ## 2. Everything
 
 ### Opening Glacier
