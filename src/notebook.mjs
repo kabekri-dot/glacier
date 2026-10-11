@@ -496,11 +496,11 @@ export function createNotebook({ storage }) {
     lessonNoteForSource(url) {
       const key = normalizeSource(url);
       return listed().find(
-          (note) =>
-            note.type === "lesson" &&
-            note.source &&
-            normalizeSource(note.source) === key,
-        );
+        (note) =>
+          note.type === "lesson" &&
+          note.source &&
+          normalizeSource(note.source) === key,
+      );
     },
 
     // Start a Lesson Note for the page you're on: it takes the page title
