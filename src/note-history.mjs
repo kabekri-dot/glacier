@@ -1,6 +1,7 @@
-// The history behind the pill's ← button (issue #52): the titles of the notes
-// that have been on screen, in order, like a browser's back button. It lives
-// for the sidebar session only and is never saved.
+// The history behind the pill's ← button (issue #52), kept by the Screen
+// (#65): the titles of the notes that have been on screen, in order, like a
+// browser's back button. It lives for the sidebar session only and is never
+// saved.
 //
 //   visit(title)  the note on screen changed (a tab switch, the menu, a Link,
 //                 a new note); steps forward from a "back" are dropped

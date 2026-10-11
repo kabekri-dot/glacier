@@ -11,7 +11,19 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
-Nothing right now.
+### One module owns what's on screen (#65)
+
+Nothing should look or work differently. Reload with ↻ first, then run these groups from section 2 again:
+
+- [ ] Switching tabs
+- [ ] The pill at the top
+- [ ] Saving
+- [ ] Making a note: write straight away, no form
+- [ ] Two menus: Notebook and This note
+- [ ] Archive
+- [ ] Delete this note
+- [ ] Rename by clicking the title
+- [ ] The Course and site line
 
 ## 2. Everything
 

@@ -18,7 +18,7 @@
 // `getOpenNote()` returns { current, openedByPage } for the note on screen,
 // `lessonNoteForSource(url)` returns a Lesson Note or null, and `show(view)`
 // draws one of: { type: "startPrompt" }, { type: "permissionCard" },
-// { type: "open", note, openedByPage? }, { type: "lessonDraft", page, editTitle? }
+// { type: "open", note }, { type: "lessonDraft", page, editTitle? }
 // (a fresh page for the website's Lesson Note) or { type: "byHandDraft" } (a
 // fresh page for a note by hand, with no Source).
 //
@@ -106,18 +106,6 @@ export function createOpeningFlow({
     async onWebsite() {
       if (!(await page.hasPermission())) return true;
       return (await readLessonPage()) !== null;
-    },
-
-    // Esc on a fresh page before a note was made: back to the note that was
-    // open before, else whatever the page shows (its note, or the empty paper
-    // for it), else the start prompt.
-    async cancelDraft(previous) {
-      if (previous) {
-        show({ type: "open", note: previous.note, openedByPage: previous.openedByPage });
-        return;
-      }
-      if (await page.hasPermission()) await followCurrentPage();
-      else show({ type: "startPrompt" });
     },
 
     // Start listening for page changes from the port.

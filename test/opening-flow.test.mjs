@@ -256,36 +256,6 @@ test("on a page that is not a website a fresh page by hand shows when chosen", a
   assert.deepEqual(shown, [{ type: "byHandDraft" }]);
 });
 
-test("Esc on a fresh page goes back to the note from before", async () => {
-  const { flow, shown, state } = setup({ permission: true, pages: [lessonA] });
-  state.tab = { url: lessonA.source, title: "Lesson A" };
-  const before = { title: "Earlier", body: "" };
-  await flow.cancelDraft({ note: before, openedByPage: false });
-  assert.deepEqual(shown, [{ type: "open", note: before, openedByPage: false }]);
-});
-
-test("Esc on a fresh page with no earlier note opens the page's note", async () => {
-  const { flow, shown, state } = setup({ permission: true, pages: [lessonA] });
-  state.tab = { url: lessonA.source, title: "Lesson A" };
-  await flow.cancelDraft(null);
-  assert.deepEqual(shown, [{ type: "open", note: lessonA }]);
-});
-
-test("Esc on a fresh page for a website with no note keeps the empty paper for it", async () => {
-  const { flow, shown, state } = setup({ permission: true });
-  state.tab = { url: "https://new.test/x", title: "New" };
-  await flow.cancelDraft(null);
-  assert.deepEqual(shown, [
-    { type: "lessonDraft", page: { url: "https://new.test/x", title: "New" } },
-  ]);
-});
-
-test("Esc on a fresh page without permission shows the start prompt", async () => {
-  const { flow, shown } = setup();
-  await flow.cancelDraft(null);
-  assert.deepEqual(shown, [{ type: "startPrompt" }]);
-});
-
 test("+ Lesson note for this page opens a fresh page with the title ready to edit", async () => {
   const { flow, shown, state } = setup({ permission: true });
   state.tab = { url: "https://new.test/x", title: "New" };

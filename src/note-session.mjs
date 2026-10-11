@@ -1,6 +1,6 @@
 // The Note session owns saving the open note. Each edit is bound to the note it
 // was typed in, so a delayed save always lands there, even if another note has
-// been opened since. Opening another note, closing, or flush() (the panel
+// been opened since. Opening another note, closing, or flush() (the Screen
 // calls it when the sidebar hides) writes a pending edit straight away.
 //
 // The save scheduler (one write per typing pause, issue #25) is an internal
@@ -9,7 +9,7 @@
 // A new note starts as a fresh page (openDraft, #61): nothing is made until
 // the first character is typed or the title is confirmed, so a click alone or
 // leaving without typing leaves nothing behind. `onCreate(note)` tells the
-// panel the moment the note exists.
+// Screen the moment the note exists. It lives behind the Screen (#65).
 
 import { createSaveScheduler } from "./save-scheduler.mjs";
 
