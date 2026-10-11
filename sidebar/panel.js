@@ -442,7 +442,7 @@ async function start() {
     });
     actions.append(newLesson, newConcept);
 
-    menuPanelEl.append(search, actions, body, exportImportRow(refresh));
+    menuPanelEl.append(search, actions, body, backupSection(refresh));
     menuPanelEl.hidden = false;
     pillMenuEl.setAttribute("aria-expanded", "true");
     search.focus();
@@ -469,7 +469,7 @@ async function start() {
     return button;
   }
 
-  function exportImportRow(refresh) {
+  function backupSection(refresh) {
     const today = new Date().toISOString().slice(0, 10);
     const section = document.createElement("div");
     section.className = "menu-files";
