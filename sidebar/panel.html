@@ -10,12 +10,14 @@
     <!-- Zen layout: only the page, plus one pill on top that opens the menu. -->
     <div class="pill-bar">
       <button type="button" class="pill-side pill-back" aria-label="Previous note" hidden>&larr;</button>
-      <button type="button" class="pill" aria-haspopup="true" aria-expanded="false">
-        <span class="pill-title">Glacier</span>
+      <div class="pill">
+        <span class="pill-title" role="button" tabindex="0" title="Click to rename">Glacier</span>
+        <button type="button" class="pill-menu" aria-haspopup="true" aria-expanded="false" aria-label="Open the menu" title="Open the menu">&#9662;</button>
         <span class="sync-dot" title="Saved in this browser"></span>
-      </button>
+      </div>
       <button type="button" class="pill-side pill-new" aria-haspopup="true" aria-expanded="false" aria-label="New note">+</button>
     </div>
+    <p class="rename-hint" role="status" hidden></p>
     <div class="new-menu" hidden></div>
     <div class="menu" hidden></div>
     <!-- The note's Course and Source, instead of its frontmatter (#13). -->

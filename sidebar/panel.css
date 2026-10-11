@@ -651,16 +651,49 @@ code {
   background: rgba(63, 120, 196, 0.1);
 }
 
-.rename-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.4rem 0;
+.pill-title {
+  cursor: text;
 }
 
-.rename-message {
+.pill-title-input {
+  min-width: 0;
+  width: 14rem;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.pill-menu {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.rename-hint {
+  position: fixed;
+  top: 2.6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
   margin: 0;
-  font-size: 0.9rem;
+  padding: 0.2rem 0.65rem;
+  border: 1px solid var(--glacier-rule);
+  border-radius: 999px;
+  background: var(--glacier-paper);
+  color: var(--glacier-ink);
+  font-size: 0.85rem;
+}
+
+.rename-hint[hidden] {
+  display: none;
 }
 
 .rename-suggestion {
