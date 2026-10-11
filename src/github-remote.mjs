@@ -42,7 +42,7 @@ function contentsPath(path) {
 export function githubRemote({ repo, token, fetch = globalThis.fetch }) {
   let branch = null;
 
-  async function get(path, { method = "GET", body } = {}) {
+  async function request(path, { method = "GET", body } = {}) {
     try {
       return await fetch(`${API}/repos/${repo}${path}`, {
         method,
@@ -62,7 +62,7 @@ export function githubRemote({ repo, token, fetch = globalThis.fetch }) {
   }
 
   async function getJson(path, options) {
-    const response = await get(path, options);
+    const response = await request(path, options);
     if (!response.ok) throw failure(response.status);
     return response.json();
   }
@@ -76,7 +76,7 @@ export function githubRemote({ repo, token, fetch = globalThis.fetch }) {
     // Every file in the repo, with its version (the blob's sha). A repo with
     // no commits yet answers 409 (or 404 for the branch) and has no files.
     async listFiles() {
-      const response = await get(`/git/trees/${encodeURIComponent(branch)}?recursive=1`);
+      const response = await request(`/git/trees/${encodeURIComponent(branch)}?recursive=1`);
       if (response.status === 409 || response.status === 404) return [];
       if (!response.ok) throw failure(response.status);
       const { tree } = await response.json();
