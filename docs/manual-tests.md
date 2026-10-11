@@ -11,7 +11,15 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
-Nothing right now.
+### Rename by clicking the title (#54)
+
+- [ ] Click the title in the pill. It becomes a text field with the whole title selected. Hovering the title shows "Click to rename".
+- [ ] Type a new name and press Enter: the pill shows it, the note stays open, and links in other notes follow.
+- [ ] Click the title, change it, then click elsewhere on the page: it is saved too.
+- [ ] Click the title, change it, press Esc: the old title comes back.
+- [ ] Rename to a name another note has: the field stays open and a hint under the pill says "That name is taken. Use ...?". Clicking the suggested name fills it in and saves.
+- [ ] Clear the field and press Enter: the hint says "Type a name for this note."
+- [ ] The small ▾ after the title opens the menu, and so does Ctrl+K and a click on the bare part of the pill. The menu has no Rename item.
 
 ## 2. Everything
 
@@ -46,7 +54,7 @@ Nothing right now.
 ### The pill at the top
 
 - [ ] The pill shows the note's title and a sync dot.
-- [ ] Clicking the pill, or Ctrl+K, opens the menu with the search box ready.
+- [ ] Clicking the ▾ after the title, the bare part of the pill, or pressing Ctrl+K, opens the menu with the search box ready.
 - [ ] Search finds words in titles and in the text, with the match highlighted. Clicking a result opens it and closes the menu.
 - [ ] Recent notes are listed, including notes made by hand.
 - [ ] The Notebook is listed: Courses with their Lesson notes, and Concepts.
@@ -126,7 +134,7 @@ Nothing right now.
 
 ### Renaming
 
-- [ ] Pill menu, **Rename**, give B a new name. In A the link now shows the new name.
+- [ ] Click the title in the pill, give B a new name and press Enter. In A the link now shows the new name.
 - [ ] Renaming to a name that's already taken is refused, and a free name is suggested.
 - [ ] After a rename the note stays open and its backlinks still work.
 

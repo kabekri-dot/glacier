@@ -48,6 +48,8 @@ const noteEl = document.querySelector(".note");
 const saveErrorEl = document.querySelector(".save-error");
 const pillEl = document.querySelector(".pill");
 const pillTitleEl = document.querySelector(".pill-title");
+const pillMenuEl = document.querySelector(".pill-menu");
+const renameHintEl = document.querySelector(".rename-hint");
 const backlinksButtonEl = document.querySelector(".backlinks-button");
 const backlinksListEl = document.querySelector(".backlinks-list");
 const backEl = document.querySelector(".pill-back");
@@ -206,6 +208,7 @@ async function start() {
   // (search, recentNotes, outline); this only draws it. Esc closes it.
 
   function updatePill() {
+    stopTitleEdit();
     pillTitleEl.textContent = current ? current.title : "Glacier";
     const previous = history.previous();
     backEl.hidden = previous === null;
@@ -282,7 +285,7 @@ async function start() {
     if (!menuIsOpen()) return;
     menuPanelEl.hidden = true;
     menuPanelEl.replaceChildren();
-    pillEl.setAttribute("aria-expanded", "false");
+    pillMenuEl.setAttribute("aria-expanded", "false");
   }
 
   // Close the menu and put the caret back in the note.
@@ -437,18 +440,11 @@ async function start() {
       const typed = search.value.trim();
       openNote(notebook.createConceptNote({ title: typed || "Untitled" }));
     });
-    const rename = document.createElement("button");
-    rename.type = "button";
-    rename.className = "menu-new";
-    rename.textContent = "Rename";
-    rename.title = "Change this note's title and every Link to it";
-    rename.hidden = current === null;
-    rename.addEventListener("click", () => showRename(actions, body));
-    actions.append(newLesson, newConcept, rename);
+    actions.append(newLesson, newConcept);
 
     menuPanelEl.append(search, actions, body, exportImportRow(refresh));
     menuPanelEl.hidden = false;
-    pillEl.setAttribute("aria-expanded", "true");
+    pillMenuEl.setAttribute("aria-expanded", "true");
     search.focus();
   }
 
@@ -505,57 +501,91 @@ async function start() {
     return row;
   }
 
-  // Rename (#11): a title box replaces the menu body. A taken title is refused
-  // with a free suggestion that one click puts in the box. The renamed note
-  // stays open; the Notebook rewrites the Links.
-  function showRename(actions, body) {
-    actions.hidden = true;
-    const form = document.createElement("form");
-    form.className = "rename-form";
-    const input = document.createElement("input");
-    input.type = "text";
-    input.className = "menu-search";
-    input.value = current.title;
-    input.setAttribute("aria-label", "New title");
-    const message = document.createElement("p");
-    message.className = "rename-message";
-    message.hidden = true;
-    const save = document.createElement("button");
-    save.type = "submit";
-    save.className = "menu-new";
-    save.textContent = "Rename";
-    form.append(input, save, message);
-    form.addEventListener("submit", (event) => {
-      event.preventDefault();
-      session.flush();
-      const result = notebook.renameNote(current.title, input.value);
-      if (result.ok) {
-        openNote(result.note, { byPage: openedByPage });
-        return;
-      }
-      message.hidden = false;
-      message.replaceChildren();
-      if (!result.suggestion) {
-        message.textContent = "Type a title for this note.";
-        return;
-      }
-      message.append("That title is taken. Try ");
+  // Rename by clicking the title (#54): the title becomes a text field in
+  // the pill. Enter or clicking away saves, Esc puts the old title back. A
+  // refused title keeps the field open with a hint under the pill. The
+  // Notebook does the renaming and rewrites the Links (#11).
+  let titleEdit = null;
+
+  function stopTitleEdit() {
+    if (!titleEdit) return;
+    const { input } = titleEdit;
+    titleEdit = null;
+    input.remove();
+    pillTitleEl.hidden = false;
+    renameHintEl.hidden = true;
+    renameHintEl.replaceChildren();
+  }
+
+  function showRenameHint(input, result) {
+    renameHintEl.replaceChildren();
+    if (!result.suggestion) {
+      renameHintEl.textContent = "Type a name for this note.";
+    } else {
+      renameHintEl.append("That name is taken. Use ");
       const use = document.createElement("button");
       use.type = "button";
       use.className = "rename-suggestion";
       use.textContent = result.suggestion;
+      // Keep the focus in the field, or the click away would save first.
+      use.addEventListener("mousedown", (event) => event.preventDefault());
       use.addEventListener("click", () => {
         input.value = result.suggestion;
-        form.requestSubmit();
+        saveTitleEdit();
       });
-      message.append(use);
+      renameHintEl.append(use, "?");
+    }
+    renameHintEl.hidden = false;
+  }
+
+  function saveTitleEdit() {
+    if (!titleEdit) return;
+    const { input } = titleEdit;
+    session.flush();
+    const result = notebook.renameNote(current.title, input.value);
+    if (result.ok) openNote(result.note, { byPage: openedByPage });
+    else showRenameHint(input, result);
+  }
+
+  function startTitleEdit() {
+    if (titleEdit || !current) return;
+    closeMenu();
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "pill-title-input";
+    input.value = current.title;
+    input.setAttribute("aria-label", "Note title");
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        saveTitleEdit();
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        stopTitleEdit();
+        if (current) render();
+      }
     });
-    body.replaceChildren(form);
+    input.addEventListener("blur", saveTitleEdit);
+    titleEdit = { input };
+    pillTitleEl.hidden = true;
+    pillTitleEl.after(input);
     input.focus();
     input.select();
   }
 
-  pillEl.addEventListener("click", () => {
+  pillTitleEl.addEventListener("click", startTitleEdit);
+  pillTitleEl.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      startTitleEdit();
+    }
+  });
+
+  // The ▾ and any bare part of the pill open the menu; the title renames and
+  // the sync dot does nothing.
+  pillEl.addEventListener("click", (event) => {
+    if (event.target.closest(".pill-title, .pill-title-input, .sync-dot")) return;
     if (menuIsOpen()) dismissMenuPanel();
     else openMenu();
   });
