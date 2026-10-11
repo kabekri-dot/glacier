@@ -61,12 +61,12 @@ test("without a search the menu starts with the recent notes", () => {
   ]);
 });
 
-test("the Notebook lists Courses with their notes, then the notes without a Course", () => {
+test("the Notebook lists Collections with their notes, then the notes without a Collection", () => {
   const menu = notebookMenu(notebookWith(), "");
   assert.deepEqual(menu, [
     { kind: "heading", text: "Notebook", hint: null },
-    { kind: "group", label: "TOP Foundations", hint: "Notes in this Course", open: true, archive: false, titles: ["Box model", "Flexbox"], download: "Download the Course 'TOP Foundations'" },
-    { kind: "heading", text: "No Course", hint: "Notes not in any Course" },
+    { kind: "group", label: "TOP Foundations", hint: "Notes in this Collection", open: true, archive: false, titles: ["Box model", "Flexbox"], download: "Download the Collection 'TOP Foundations'" },
+    { kind: "heading", text: "No Collection", hint: "Notes not in any Collection" },
     { kind: "notes", titles: ["Loose page", "Margins"] },
   ]);
 });

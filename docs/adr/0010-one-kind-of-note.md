@@ -22,3 +22,9 @@ The sidebar still follows the tab and keeps the open note on browser pages (ADR 
 - **Keep both kinds and rename them**: still asks people to choose a kind before writing, which was the confusing part.
 - **Keep `concepts/` for notes without a page**: the folder name would keep the old idea alive, and a note's folder would change when a page is added or removed.
 - **Keep the edited time only in this browser**: simpler files, but two browsers could open different notes for the same page, and an Export would lose it.
+
+## Addition: Course becomes Collection (#73, 2026-10-12)
+
+With one kind of note, "Course" only fit learning paths, so it is now called **Collection** (CONTEXT.md; "Folder" was turned down as not fitting Glacier). Notes in a Collection sit in `collections/<Collection>/<Title>.md` and the frontmatter key is `collection`. Old `courses/` files, `course:` lines and old Export zips still load, and the next sync moves them to `collections/` as one commit, like the `concepts/` move above. Inside the code a note's Collection is still kept as `course`, so notes already stored in a browser need no change.
+
+Collection names ignore capital letters. Two that differ only in capitals are one Collection, spelled like the one with the most notes (on a tie, the one with the oldest note), and their files move into that one folder in the same commit. Typing a name in other capitals picks the existing Collection.

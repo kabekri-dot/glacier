@@ -13,7 +13,7 @@
 const DB_NAME = "glacier";
 const DB_VERSION = 1;
 const NOTES = "notes"; // keyed by title
-const META = "meta"; // key/value settings, e.g. the last-used Course
+const META = "meta"; // key/value settings, e.g. the last-used Collection
 
 function openDatabase(indexedDB) {
   return new Promise((resolve, reject) => {

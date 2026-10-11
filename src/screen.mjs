@@ -9,7 +9,7 @@
 //
 //   { type: "note", note, reload, changed? }  the note on screen. `reload`
 //       puts its text in the editor with the caret at the top; without it the
-//       text stays as typed and only the pill, Course line and Backlinks change.
+//       text stays as typed and only the pill, Collection line and Backlinks change.
 //   { type: "freshPage", title, source, editTitle }  an empty page that
 //       becomes a note at the first character or a confirmed title.
 //   { type: "startPrompt" } or { type: "permissionCard" }

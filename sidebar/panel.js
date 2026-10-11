@@ -274,10 +274,10 @@ async function start() {
 
   // --- The note's header (#13, #61) ----------------------------------------
   //
-  // The note's file keeps its Course and Source in a frontmatter (ADR 0005),
+  // The note's file keeps its Collection and Source in a frontmatter (ADR 0005),
   // but the editor never shows that YAML: every note gets a small
-  // "Course · site ↗" line above its text instead, without the site when the
-  // note has no page (#68). Clicking the Course opens a small list right there
+  // "Collection · site ↗" line above its text instead, without the site when the
+  // note has no page (#68). Clicking the Collection opens a small list right there
   // to move the note; the site switches to the page's tab, or opens it in a
   // new one.
 
@@ -329,8 +329,8 @@ async function start() {
     button.type = "button";
     button.className = "note-meta-course";
     button.classList.toggle("is-empty", !note.course);
-    button.textContent = note.course || "No course";
-    button.title = "Click to move this note to another course";
+    button.textContent = note.course || "No collection";
+    button.title = "Move to another collection";
     button.addEventListener("click", () => {
       if (noteMetaEl.querySelector(".course-list")) updateNoteMeta();
       else openCourseList();
@@ -338,7 +338,7 @@ async function start() {
     return button;
   }
 
-  // The Courses, the last used one first, and "New course" at the bottom.
+  // The Collections, the last used one first, and "+ New collection" at the bottom.
   function openCourseList() {
     const list = document.createElement("div");
     list.className = "course-list";
@@ -353,7 +353,7 @@ async function start() {
     const fresh = document.createElement("button");
     fresh.type = "button";
     fresh.className = "course-choice is-new";
-    fresh.textContent = "New course";
+    fresh.textContent = "+ New collection";
     fresh.addEventListener("click", showCourseInput);
     list.appendChild(fresh);
     noteMetaEl.classList.add("is-picking");
@@ -361,14 +361,15 @@ async function start() {
     list.querySelector("button").focus();
   }
 
-  // "New course" turns the Course into a text field on the same line. Enter
-  // or clicking away moves the note; Esc or an empty field changes nothing.
+  // "+ New collection" turns the Collection into a text field on the same line.
+  // Enter or clicking away moves the note (a name that matches a Collection in
+  // other capitals picks that one, #73); Esc or an empty field changes nothing.
   function showCourseInput() {
     const input = document.createElement("input");
     input.type = "text";
     input.className = "course-input";
-    input.placeholder = "New course";
-    input.setAttribute("aria-label", "New course");
+    input.placeholder = "New collection";
+    input.setAttribute("aria-label", "New collection");
     let done = false;
     const finish = (keep) => {
       if (done) return;
@@ -401,7 +402,7 @@ async function start() {
     render();
   }
 
-  // A click anywhere else, or Esc, closes the Course list.
+  // A click anywhere else, or Esc, closes the Collection list.
   document.addEventListener("mousedown", (event) => {
     if (!noteMetaEl.querySelector(".course-list")) return;
     if (event.target.closest(".course-list, .note-meta-course")) return;
@@ -795,7 +796,7 @@ async function start() {
     setTimeout(() => URL.revokeObjectURL(link.href), 10000);
   }
 
-  // Download a note or a Course in the chosen format (#71). Markdown gives
+  // Download a note or a Collection in the chosen format (#71). Markdown gives
   // the file or a zip; PDF opens the browser's print window with the notes
   // laid out on their own, where the user picks Save as PDF.
   function printWindow(notes) {
@@ -1403,7 +1404,7 @@ async function start() {
 
   // Follow a `[[Title]]` Link: save any pending edits to the note we're leaving
   // first, then open the note the Link names in place. A Missing Link creates a
-  // note with that title, without a page or Course, and opens that (#8, #68).
+  // note with that title, without a page or Collection, and opens that (#8, #68).
   function openLink(title) {
     if (notebook.isMissingLink(title)) autoSync.changed();
     openNote(notebook.openLink(title));

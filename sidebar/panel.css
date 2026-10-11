@@ -115,7 +115,7 @@ body {
   line-height: var(--line-height);
 }
 
-/* The note's "Course · source" line (#13) sits on the first ruled line, and
+/* The note's "Collection · source" line (#13) sits on the first ruled line, and
    the text starts one line lower so it stays on the rules. */
 .note-meta {
   position: absolute;
@@ -138,7 +138,7 @@ body {
   color: var(--accent);
 }
 
-/* The Course on that line is a quiet button that opens a small list right
+/* The Collection on that line is a quiet button that opens a small list right
    there (#61). The line is allowed to show the list below it. */
 .note-meta.is-picking {
   z-index: 15;
@@ -1145,7 +1145,7 @@ code {
   cursor: pointer;
 }
 
-/* Above a second version's text (#70), under the Course line. */
+/* Above a second version's text (#70), under the Collection line. */
 .second-version-bar {
   position: absolute;
   top: calc(var(--note-top) + var(--line-height));
@@ -1558,7 +1558,7 @@ html.beside .shortcuts-tab {
   font-weight: 700;
 }
 
-/* Hover icons on note rows and Course headings, and the Download choice (#71). */
+/* Hover icons on note rows and Collection headings, and the Download choice (#71). */
 .menu-row {
   display: flex;
   align-items: center;
