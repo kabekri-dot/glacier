@@ -521,6 +521,43 @@ code {
   background: var(--glacier-accent);
 }
 
+/* The sync status (#15): the dot's colour tells the state, hovering it
+   tells it in words. Not connected keeps the plain accent dot. */
+.sync-dot[data-state="synced"] {
+  background: #3a9a5b;
+}
+
+.sync-dot[data-state="syncing"] {
+  background: var(--glacier-accent);
+  animation: sync-pulse 1s ease-in-out infinite alternate;
+}
+
+.sync-dot[data-state="offline"] {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px #8a8f99;
+}
+
+.sync-dot[data-state="conflict"] {
+  background: #d98a1c;
+}
+
+.sync-dot[data-state="error"] {
+  background: #c8443a;
+}
+
+@keyframes sync-pulse {
+  to {
+    opacity: 0.3;
+  }
+}
+
+.menu-sync-status {
+  margin: 0 0 0.3rem;
+  font-size: 0.8rem;
+  opacity: 0.75;
+  line-height: 1.4;
+}
+
 .menu {
   position: fixed;
   top: 2.6rem;

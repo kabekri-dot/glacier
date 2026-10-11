@@ -16,6 +16,7 @@
 import { createNotebook, importSummary, notesRepoName, syncErrorMessage } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { githubRemote } from "../src/github-remote.mjs";
+import { createAutoSync, syncStatusText } from "../src/auto-sync.mjs";
 import { createNoteSession } from "../src/note-session.mjs";
 import { isOpenedByPage } from "../src/page-open.mjs";
 import { createNoteHistory } from "../src/note-history.mjs";
@@ -50,6 +51,7 @@ const saveErrorEl = document.querySelector(".save-error");
 const pillEl = document.querySelector(".pill");
 const pillTitleEl = document.querySelector(".pill-title");
 const pillMenuEl = document.querySelector(".pill-menu");
+const syncDotEl = document.querySelector(".sync-dot");
 const renameHintEl = document.querySelector(".rename-hint");
 const backlinksButtonEl = document.querySelector(".backlinks-button");
 const backlinksListEl = document.querySelector(".backlinks-list");
@@ -61,7 +63,7 @@ const noteMetaEl = document.querySelector(".note-meta");
 
 // A write to this browser's copy failed (aborted or threw). Tell the user so
 // they don't trust a save that didn't happen (issue #25); their text is still
-// on screen to copy out, and Sync (a later slice) is the cross-browser backup.
+// on screen to copy out, and Sync is the cross-browser backup.
 function reportSaveError(error) {
   console.error("Glacier: could not save", error);
   if (saveErrorEl) {
@@ -85,8 +87,7 @@ async function start() {
     notebook = createNotebook({ storage });
   } catch (error) {
     // Without storage there is nowhere to save, so the page stays read-only
-    // rather than inviting text that can't be kept. Sync (a later slice) is
-    // the cross-browser backup.
+    // rather than inviting text that can't be kept.
     console.error("Glacier: could not open storage", error);
     return;
   }
@@ -110,8 +111,24 @@ async function start() {
   // the opening of notes (openNote); a text change is forwarded to the Note
   // session, which owns saving the open note.
   const session = createNoteSession({ notebook, onSaveError: reportSaveError });
+  // Sync with the Notes Repo runs by itself (#15): a pull when the sidebar
+  // opens and a push a few seconds after typing stops. When to sync is
+  // auto-sync's; this connects it to GitHub and draws the status.
+  const autoSync = createAutoSync({
+    notebook,
+    connect: async () => {
+      const { repo, token } = await loadConnection();
+      return repo && token ? { remote: githubRemote({ repo, token }), repo } : null;
+    },
+    beforeSync: () => session.flush(),
+    onStatus: drawSyncStatus,
+    onPulled: showPulled,
+  });
   const editor = createEditorSession({
-    onChange: (body) => session.edit(body),
+    onChange: (body) => {
+      session.edit(body);
+      autoSync.changed();
+    },
     titles: () => notebook.notes().map((note) => note.title),
   });
 
@@ -261,7 +278,10 @@ async function start() {
         else if (choice.kind === "byHand") {
           session.close();
           showNewNoteForm();
-        } else openNote(notebook.createConceptNote({ title: "Untitled" }));
+        } else {
+          openNote(notebook.createConceptNote({ title: "Untitled" }));
+          autoSync.changed();
+        }
       });
       newMenuEl.appendChild(button);
     }
@@ -440,6 +460,7 @@ async function start() {
     newConcept.addEventListener("click", () => {
       const typed = search.value.trim();
       openNote(notebook.createConceptNote({ title: typed || "Untitled" }));
+      autoSync.changed();
     });
     actions.append(newLesson, newConcept);
 
@@ -514,6 +535,7 @@ async function start() {
       try {
         const result = await notebook.importZip(new Uint8Array(await file.arrayBuffer()));
         showNotice(importSummary(result));
+        autoSync.changed();
         if (menuIsOpen()) refresh();
       } catch (error) {
         console.error("Glacier: could not import", error);
@@ -556,24 +578,72 @@ async function start() {
       closeMenu();
       showSettings();
     }));
-    section.append(menuHeading("Sync"), row);
+    const status = document.createElement("p");
+    status.className = "menu-sync-status";
+    status.textContent = syncStatusText(autoSync.status()).detail;
+    if (autoSync.status().state !== "off") {
+      row.append(menuButton("Sync now", "Pull and push your notes right away", async () => {
+        const result = syncStatusText(await autoSync.syncNow());
+        status.textContent = result.detail;
+        showNotice(result.label === "Synced" ? "Synced just now." : result.detail, 4000);
+      }));
+    }
+    section.append(menuHeading("Sync"), status, row);
     return section;
+  }
+
+  // The sync dot in the pill shows the state by its colour; hovering it
+  // gives the state in words with the last sync.
+  function drawSyncStatus(status) {
+    const { label, detail } = syncStatusText(status);
+    syncDotEl.dataset.state = status.state;
+    syncDotEl.title = status.state === "off" ? label : `${label}. ${detail}`;
+    syncDotEl.setAttribute("aria-label", label);
+  }
+
+  // A pull changed notes. When the open note is one of them, it is shown
+  // again with the incoming text; when it is gone (renamed in the other
+  // browser), the sidebar opens what the page asks for. With no note open, a
+  // Lesson Note that came in may be the one for this page.
+  function showPulled(titles) {
+    if (menuIsOpen()) closeMenu();
+    if (!current) {
+      const lessonCameIn = titles.some((title) => notebook.note(title)?.source);
+      if (lessonCameIn && !inSettings) openingFlow.pageChanged();
+      return;
+    }
+    if (!titles.includes(current.title)) {
+      updateBacklinks();
+      return;
+    }
+    const note = notebook.note(current.title);
+    if (note) openNote(note, { byPage: openedByPage, fromHistory: true });
+    else {
+      session.close();
+      current = null;
+      openingFlow.start();
+    }
   }
 
   // The note that was open when settings opened, to go back to afterwards.
   let settingsBack = null;
+  // Whether the settings or the first sync are on screen, so a pull doesn't
+  // replace them.
+  let inSettings = false;
 
   // Leave the settings or the first sync and go back to that note, or to
   // what the page asks for when none was open.
   function leaveSettings() {
     const note = settingsBack && notebook.note(settingsBack);
     settingsBack = null;
+    inSettings = false;
     if (note) openNote(note, { byPage: isOpenedByPage(note), fromHistory: true });
     else openingFlow.start();
   }
 
   async function showSettings({ repo, error } = {}) {
     if (current) settingsBack = current.title;
+    inSettings = true;
     session.flush();
     session.close();
     current = null;
@@ -701,6 +771,7 @@ async function start() {
       return;
     }
     await extensionStorage.set({ notesRepo: repo, githubToken: token });
+    autoSync.syncNow();
     if (!screen.isConnected) {
       showNotice(`Your notes from ${repo} are here.`);
       return;
@@ -761,8 +832,10 @@ async function start() {
     const { input } = titleEdit;
     session.flush();
     const result = notebook.renameNote(current.title, input.value);
-    if (result.ok) openNote(result.note, { byPage: openedByPage });
-    else showRenameHint(input, result);
+    if (result.ok) {
+      openNote(result.note, { byPage: openedByPage });
+      autoSync.changed();
+    } else showRenameHint(input, result);
   }
 
   function startTitleEdit() {
@@ -838,6 +911,7 @@ async function start() {
   // first, then open the note the Link names in place. A Missing Link creates a
   // Concept Note with that title and opens that instead (#8).
   function openLink(title) {
+    if (notebook.isMissingLink(title)) autoSync.changed();
     openNote(notebook.openLink(title));
   }
 
@@ -1601,6 +1675,7 @@ async function start() {
         course: course.input.value.trim() || undefined,
       });
       openNote(note, { byPage: isOpenedByPage(note) });
+      autoSync.changed();
     });
 
     noteEl.appendChild(form);
@@ -1734,11 +1809,19 @@ async function start() {
 
   openingFlow.listen();
   openingFlow.start();
+  autoSync.syncNow();
 
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") session.flush();
+    if (document.visibilityState === "hidden") {
+      session.flush();
+      autoSync.flush();
+    } else autoSync.syncNow();
   });
-  window.addEventListener("pagehide", () => session.flush());
+  window.addEventListener("pagehide", () => {
+    session.flush();
+    autoSync.flush();
+  });
+  window.addEventListener("online", () => autoSync.syncNow());
 
   keepBackgroundInformed(session);
 }
