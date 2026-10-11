@@ -33,49 +33,13 @@
       Couldn't save your last changes to this browser. Your text is still here.
       Copy it somewhere safe.
     </p>
-    <!-- Settings (#18): the round glacier button opens them inside the sidebar.
-         The button, the settings header and the toolbar share the glacier art (#19). -->
+    <!-- Settings (#18): the round glacier button opens them, beside the
+         sidebar or inside it (#21). The button, the settings header and the
+         toolbar share the glacier art (#19). settings-view.js draws settings
+         and the Shortcuts panel (#20) next to this button. -->
     <button type="button" class="glacier-button" aria-label="Settings" title="Settings" aria-expanded="false" aria-controls="settings">
       <img src="../icons/glacier.svg" alt="" />
     </button>
-    <!-- Shortcuts panel (#20): a cheat sheet that folds into a slim tab. -->
-    <aside class="shortcuts" aria-label="Shortcuts" hidden>
-      <header class="shortcuts-header">
-        <h1 class="shortcuts-title">Shortcuts</h1>
-        <button type="button" class="shortcuts-fold" aria-label="Fold the shortcuts" title="Fold the shortcuts">&rsaquo;</button>
-      </header>
-      <div class="shortcuts-body"></div>
-    </aside>
-    <button type="button" class="shortcuts-tab" aria-label="Open the shortcuts" title="Open the shortcuts" hidden>Shortcuts</button>
-    <aside class="settings" id="settings" aria-label="Settings" hidden>
-      <header class="settings-header">
-        <h1 class="settings-title">
-          <img class="settings-icon" src="../icons/glacier.svg" alt="" />
-          Settings
-        </h1>
-        <button type="button" class="settings-close" aria-label="Close settings" title="Close settings">&times;</button>
-      </header>
-      <details class="settings-section" data-section="paper" open>
-        <summary>Paper</summary>
-        <div class="settings-body paper-body"></div>
-      </details>
-      <details class="settings-section" data-section="writing" open>
-        <summary>Writing</summary>
-        <div class="settings-body writing-body"></div>
-      </details>
-      <details class="settings-section" data-section="tabs">
-        <summary>Tabs and notes</summary>
-        <div class="settings-body tabs-body"></div>
-      </details>
-      <details class="settings-section" data-section="shortcuts">
-        <summary>Shortcuts panel</summary>
-        <div class="settings-body shortcuts-setting-body"></div>
-      </details>
-      <details class="settings-section" data-section="notes-repo">
-        <summary>Notes repo</summary>
-        <div class="settings-body repo-body"></div>
-      </details>
-    </aside>
     <script type="module" src="panel.js"></script>
   </body>
 </html>

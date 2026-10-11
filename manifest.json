@@ -16,8 +16,15 @@
       "32": "icons/glacier-32.png"
     }
   },
-  "permissions": ["sidePanel", "storage"],
+  "permissions": ["sidePanel", "storage", "scripting"],
   "optional_permissions": ["tabs"],
+  "optional_host_permissions": ["<all_urls>"],
+  "web_accessible_resources": [
+    {
+      "resources": ["sidebar/beside.html"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "background": {
     "service_worker": "background.js",
     "scripts": ["background.js"],

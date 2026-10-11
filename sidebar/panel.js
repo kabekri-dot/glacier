@@ -13,7 +13,7 @@
 // draws editor.state and editor.menu. The pill that switches notes arrives in a
 // later slice (#12).
 
-import { createNotebook, importSummary, notesRepoName, syncErrorMessage } from "../src/notebook.mjs";
+import { createNotebook, importSummary, syncErrorMessage } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { githubRemote } from "../src/github-remote.mjs";
 import { createAutoSync, syncStatusText } from "../src/auto-sync.mjs";
@@ -29,8 +29,11 @@ import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
 import { readTabSettings } from "../src/tab-settings.mjs";
-import { SHORTCUT_GROUPS, readShortcutsPanel } from "../src/shortcuts-panel.mjs";
-import { PAPERS, paperGroups, FONT_OVERRIDES, TEXT_SIZE, readLook, lookStyle, wholeRows } from "../src/look.mjs";
+import { readShortcutsPanel } from "../src/shortcuts-panel.mjs";
+import { readLook, lookStyle, wholeRows } from "../src/look.mjs";
+import { BESIDE_PERMISSION, readPanelPlace, decidePanelPlace } from "../src/panel-place.mjs";
+import { createSettingsView, createShortcutsView, field, menuButton, syncStatusRow } from "./settings-view.js";
+import { drawBesideFrames } from "./beside-frames.js";
 import {
   blockRanges,
   copiedMessage,
@@ -64,21 +67,11 @@ const newMenuEl = document.querySelector(".new-menu");
 const menuPanelEl = document.querySelector(".menu");
 const noteMetaEl = document.querySelector(".note-meta");
 const glacierButtonEl = document.querySelector(".glacier-button");
-const settingsEl = document.querySelector(".settings");
-const settingsCloseEl = document.querySelector(".settings-close");
-const paperBodyEl = document.querySelector(".paper-body");
-const writingBodyEl = document.querySelector(".writing-body");
-const tabsBodyEl = document.querySelector(".tabs-body");
-const repoBodyEl = document.querySelector(".repo-body");
-const shortcutsEl = document.querySelector(".shortcuts");
-const shortcutsBodyEl = document.querySelector(".shortcuts-body");
-const shortcutsFoldEl = document.querySelector(".shortcuts-fold");
-const shortcutsTabEl = document.querySelector(".shortcuts-tab");
-const shortcutsSettingBodyEl = document.querySelector(".shortcuts-setting-body");
 
 // This browser's own extension storage: the Notes Repo connection and the
 // chosen look. Neither is ever written into the Notebook (ADR 0003).
-const extensionStorage = (typeof browser !== "undefined" ? browser : chrome).storage.local;
+const api = typeof browser !== "undefined" ? browser : chrome;
+const extensionStorage = api.storage.local;
 
 // The paper, font and text size (#18). Drawn by setting the custom
 // properties from src/look.mjs on the page; the stylesheet does the rest.
@@ -127,6 +120,10 @@ let tabSettings = readTabSettings(undefined);
 // you change it.
 let shortcutsPanel = readShortcutsPanel(undefined);
 
+// Where settings and the Shortcuts panel open (#21): "ask" until the
+// explanation card has been answered.
+let panelPlace = readPanelPlace(undefined);
+
 async function start() {
   if (!noteEl) return;
 
@@ -145,8 +142,12 @@ async function start() {
   } catch (error) {
     console.warn("Glacier: could not read the shortcuts panel", error);
   }
+  try {
+    panelPlace = readPanelPlace((await extensionStorage.get("panelPlace")).panelPlace);
+  } catch (error) {
+    console.warn("Glacier: could not read where the panels open", error);
+  }
   drawLook();
-  drawShortcutsPanel();
   document.fonts?.addEventListener("loadingdone", fitRows);
 
   // Keep the page read-only until the Notebook has loaded (issue #23). Making
@@ -547,24 +548,15 @@ async function start() {
   }
 
   // Export and Restore (#13, #55). The file format lives in the Notebook
-  // core; this only downloads and picks files. "Download this note" stays in
-  // the pill menu; the rest live in Settings, under Notes repo (#18).
+  // core; this only downloads. "Download this note" stays in the pill menu;
+  // the rest live in Settings, under Notes repo (#18). The sidebar always does
+  // the download, also for settings beside it (#21).
   function download(data, type, name) {
     const link = document.createElement("a");
     link.href = URL.createObjectURL(new Blob([data], { type }));
     link.download = name;
     link.click();
     setTimeout(() => URL.revokeObjectURL(link.href), 10000);
-  }
-
-  function menuButton(text, hint, onClick) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "menu-new";
-    button.textContent = text;
-    button.title = hint;
-    button.addEventListener("click", onClick);
-    return button;
   }
 
   function downloadNoteSection() {
@@ -583,89 +575,14 @@ async function start() {
     return section;
   }
 
-  function backupControls() {
-    const today = new Date().toISOString().slice(0, 10);
-
-    const courseSelect = document.createElement("select");
-    courseSelect.className = "menu-course-pick";
-    courseSelect.setAttribute("aria-label", "Course to export");
-    for (const course of notebook.courses()) courseSelect.add(new Option(course, course));
-    const exportCourse = menuButton("Export a course", "Download the Lesson notes of the chosen Course as a zip", () => {
-      if (!courseSelect.value) return;
-      session.flush();
-      download(notebook.exportCourseZip(courseSelect.value), "application/zip", `${courseSelect.value} ${today}.zip`);
-    });
-    exportCourse.disabled = !courseSelect.options.length;
-    const courseRow = document.createElement("div");
-    courseRow.className = "menu-actions";
-    courseRow.append(courseSelect, exportCourse);
-
-    const exportAll = menuButton("Export everything", "Download every note as a zip of Markdown files", () => {
-      session.flush();
-      download(notebook.exportZip(), "application/zip", `Glacier notes ${today}.zip`);
-    });
-
-    const picker = document.createElement("input");
-    picker.type = "file";
-    picker.accept = ".zip,application/zip";
-    picker.hidden = true;
-    picker.addEventListener("change", async () => {
-      const file = picker.files?.[0];
-      if (!file) return;
-      session.flush();
-      try {
-        const result = await notebook.importZip(new Uint8Array(await file.arrayBuffer()));
-        showNotice(importSummary(result));
-        autoSync.changed();
-        updateBacklinks();
-      } catch (error) {
-        console.error("Glacier: could not import", error);
-        showNotice("Couldn't read that zip file");
-      }
-      picker.value = "";
-    });
-    const restore = menuButton(
-      "Restore from backup file",
-      "Bring back notes from an Export zip. Notes you already have are never overwritten",
-      () => picker.click(),
-    );
-    const restoreRow = document.createElement("div");
-    restoreRow.className = "menu-actions";
-    restoreRow.append(exportAll, restore, picker);
-
-    const heading = document.createElement("h2");
-    heading.className = "settings-subheading";
-    heading.textContent = "Backup";
-    return [heading, courseRow, restoreRow];
-  }
-
   // --- The Notes Repo: connecting GitHub and the first sync (#14) -----------
   //
   // The connection lives in Settings, under Notes repo (#18). The repo name
   // and token are kept only in this browser's extension storage, never in the
-  // Notebook or the Notes Repo (ADR 0003). The Notebook core does the first
-  // sync through the GitHub remote; this only draws the form and the steps.
+  // Notebook or the Notes Repo (ADR 0003).
   async function loadConnection() {
     const { notesRepo, githubToken } = await extensionStorage.get(["notesRepo", "githubToken"]);
     return { repo: notesRepo ?? "", token: githubToken ?? "" };
-  }
-
-  // The sync status line and "Sync now", in the pill menu and in Settings.
-  function syncRow(...buttons) {
-    const row = document.createElement("div");
-    row.className = "menu-actions";
-    row.append(...buttons);
-    const status = document.createElement("p");
-    status.className = "menu-sync-status";
-    status.textContent = syncStatusText(autoSync.status()).detail;
-    if (autoSync.status().state !== "off") {
-      row.append(menuButton("Sync now", "Pull and push your notes right away", async () => {
-        const result = syncStatusText(await autoSync.syncNow());
-        status.textContent = result.detail;
-        showNotice(result.label === "Synced" ? "Synced just now." : result.detail, 4000);
-      }));
-    }
-    return [status, row];
   }
 
   function notesRepoSection() {
@@ -675,7 +592,8 @@ async function start() {
       closeMenu();
       openSettings("notes-repo");
     });
-    section.append(menuHeading("Sync"), ...syncRow(repoButton));
+    const sync = { status: autoSync.status(), syncNow: autoSync.syncNow, notice: showNotice };
+    section.append(menuHeading("Sync"), ...syncStatusRow(sync, repoButton));
     return section;
   }
 
@@ -712,357 +630,143 @@ async function start() {
     }
   }
 
-  // The Notes repo section of Settings: the connection form, the sync status
-  // and the Backup buttons.
-  async function drawNotesRepo({ repo, error } = {}) {
-    const saved = await loadConnection();
+  // What the Notes repo section of Settings asks of the Notebook, wherever
+  // settings are drawn (see settings-view.js). The first sync goes through the
+  // GitHub remote; the repo and token are saved only once GitHub has accepted
+  // them. With settings closed meanwhile, a notice says how it went.
+  const repoActions = {
+    connection: loadConnection,
+    status: async () => autoSync.status(),
+    syncNow: () => autoSync.syncNow(),
+    courses: async () => notebook.courses(),
 
-    const form = document.createElement("form");
-    form.className = "create-form";
-
-    const about = document.createElement("p");
-    about.className = "settings-text";
-    about.textContent = saved.repo
-      ? `Connected to ${saved.repo}. Change the repo or paste a new token, then sync again.`
-      : "Sync your notes through a private GitHub repo, so Chrome and Firefox share them.";
-
-    const repoInput = document.createElement("input");
-    repoInput.type = "text";
-    repoInput.className = "create-input repo-input";
-    repoInput.placeholder = "yourname/notes";
-    repoInput.value = repo ?? saved.repo;
-
-    const tokenInput = document.createElement("input");
-    tokenInput.type = "password";
-    tokenInput.className = "create-input";
-    tokenInput.autocomplete = "off";
-    tokenInput.placeholder = saved.token ? "Saved. Paste a new one to change it" : "Paste your token";
-
-    const tokenHelp = document.createElement("p");
-    tokenHelp.className = "settings-hint";
-    tokenHelp.textContent =
-      "Make a fine grained token on GitHub for this one repo, with Contents access set to read and write. It stays in this browser and never goes into your notes.";
-
-    const errorEl = document.createElement("p");
-    errorEl.className = "settings-error";
-    errorEl.setAttribute("role", "alert");
-    errorEl.hidden = !error;
-    errorEl.textContent = error ?? "";
-
-    const submit = document.createElement("button");
-    submit.type = "submit";
-    submit.className = "create-submit";
-    submit.textContent = "Connect and sync";
-
-    form.addEventListener("submit", (event) => {
-      event.preventDefault();
-      const name = notesRepoName(repoInput.value);
-      const token = tokenInput.value.trim() || saved.token;
-      let problem = null;
-      if (!name) problem = "Type the repo as owner and name with a slash between, for example yourname/notes.";
-      else if (!token) problem = "Paste your token from GitHub.";
-      if (problem) {
-        errorEl.textContent = problem;
-        errorEl.hidden = false;
-        return;
+    async firstSync(repo, token, onProgress) {
+      let result;
+      try {
+        result = await notebook.firstSync(githubRemote({ repo, token }), onProgress);
+      } catch (error) {
+        console.error("Glacier: first sync failed", error);
+        if (!settingsWanted) showNotice(syncErrorMessage(error, repo), 8000);
+        return { error: syncErrorMessage(error, repo) };
       }
-      showFirstSync(name, token);
-    });
+      await extensionStorage.set({ notesRepo: repo, githubToken: token });
+      autoSync.syncNow();
+      if (!current) openingFlow.start();
+      else updateBacklinks();
+      if (!settingsWanted) showNotice(`Your notes from ${repo} are here.`);
+      return { notes: result.notes };
+    },
 
-    form.append(about, field("Repo", repoInput), field("Token", tokenInput), tokenHelp, errorEl, submit);
-    const sync = autoSync.status().state === "off" ? [] : syncRow();
-    repoBodyEl.replaceChildren(form, ...sync, ...backupControls());
+    exportCourse(course) {
+      session.flush();
+      download(notebook.exportCourseZip(course), "application/zip", `${course} ${today()}.zip`);
+    },
+
+    exportAll() {
+      session.flush();
+      download(notebook.exportZip(), "application/zip", `Glacier notes ${today()}.zip`);
+    },
+
+    async restore(bytes) {
+      session.flush();
+      try {
+        const result = await notebook.importZip(bytes);
+        showNotice(importSummary(result));
+        autoSync.changed();
+        updateBacklinks();
+      } catch (error) {
+        console.error("Glacier: could not import", error);
+        showNotice("Couldn't read that zip file");
+      }
+    },
+
+    notice: (text, ms) => showNotice(text, ms),
+  };
+
+  function today() {
+    return new Date().toISOString().slice(0, 10);
   }
 
-  // The first sync's progress, in place of the form: connecting, downloading
-  // n of N notes, linking, ready, then a confirmation. The repo and token are
-  // saved only once GitHub has accepted them; a wrong one goes back to the
-  // form with a clear message.
-  let firstSyncRunning = false;
-
-  async function showFirstSync(repo, token) {
-    const screen = document.createElement("div");
-    screen.className = "perm-card";
-    const heading = document.createElement("h2");
-    heading.className = "settings-subheading";
-    heading.textContent = "First sync";
-    const list = document.createElement("ol");
-    list.className = "sync-steps";
-    const steps = {};
-    for (const [step, text] of [
-      ["connecting", "Connecting to GitHub"],
-      ["downloading", "Downloading notes"],
-      ["linking", "Linking notes"],
-      ["ready", "Ready"],
-    ]) {
-      steps[step] = document.createElement("li");
-      steps[step].textContent = text;
-      list.append(steps[step]);
-    }
-    screen.append(heading, list);
-    repoBodyEl.replaceChildren(screen);
-
-    const order = Object.keys(steps);
-    const showStep = (progress) => {
-      const at = order.indexOf(progress.step);
-      order.forEach((step, i) => {
-        steps[step].className = i < at ? "sync-step-done" : i === at ? "sync-step-now" : "";
-      });
-      if (progress.step === "downloading") {
-        steps.downloading.textContent = `Downloading ${progress.done} of ${progress.total} notes`;
-      }
-      if (progress.step === "ready") steps.ready.className = "sync-step-done";
-    };
-
-    let result;
-    firstSyncRunning = true;
-    try {
-      result = await notebook.firstSync(githubRemote({ repo, token }), showStep);
-    } catch (error) {
-      console.error("Glacier: first sync failed", error);
-      firstSyncRunning = false;
-      // Closing settings meanwhile leaves the form behind; then a notice says it.
-      if (settingsEl.hidden) showNotice(syncErrorMessage(error, repo), 8000);
-      drawNotesRepo({ repo, error: syncErrorMessage(error, repo) });
-      return;
-    }
-    firstSyncRunning = false;
-    await extensionStorage.set({ notesRepo: repo, githubToken: token });
-    autoSync.syncNow();
-    if (!current) openingFlow.start();
-    else updateBacklinks();
-    if (settingsEl.hidden) {
-      showNotice(`Your notes from ${repo} are here.`);
-      drawNotesRepo();
-      return;
-    }
-
-    const done = document.createElement("p");
-    done.className = "settings-text";
-    const notes = result.notes === 1 ? "1 note" : `${result.notes} notes`;
-    done.textContent = `Your notes are here. Brought in ${notes} from ${repo}.`;
-    const ok = document.createElement("button");
-    ok.type = "button";
-    ok.className = "create-submit";
-    ok.textContent = "Start writing";
-    ok.addEventListener("click", () => {
-      closeSettings();
-      drawNotesRepo();
-    });
-    screen.append(done, ok);
-    ok.focus();
-  }
-
-  // --- Settings (#18) --------------------------------------------------------
+  // --- Settings (#18) and the Shortcuts panel (#20) -------------------------
   //
-  // The round glacier button opens and closes them. Inside the sidebar for
-  // now, over the lower part of the note, so the note above shows each change
-  // live. Sections fold open and closed. The look is kept per browser.
+  // The round glacier button opens and closes settings. They open beside the
+  // sidebar, over the edge of the web page, when the "all websites"
+  // permission allows it, and inside the sidebar otherwise (#21, ADR 0008):
+  // over the lower part of the note, so the note above shows each change live.
+  // The Shortcuts panel goes wherever settings go. The choices are kept per
+  // browser, and a change made beside the sidebar arrives through storage.
 
-  function saveLook(change) {
-    look = readLook({ ...look, ...change });
-    drawLook();
-    extensionStorage.set({ look }).catch((error) => {
-      console.warn("Glacier: could not keep the chosen look", error);
-    });
-  }
-
-  // The papers in their two groups, Nature and Classics (#19). A Nature
-  // paper's swatch shows a corner of its panorama.
-  function drawPapers() {
-    const groups = paperGroups().map(({ group, papers }) => {
-      const list = document.createElement("div");
-      list.className = "paper-list";
-      list.setAttribute("role", "radiogroup");
-      list.setAttribute("aria-label", group);
-      const heading = document.createElement("h2");
-      heading.className = "settings-subheading";
-      heading.textContent = group;
-      list.append(heading, ...papers.map(paperChoice));
-      return list;
-    });
-    paperBodyEl.replaceChildren(...groups);
-  }
-
-  function paperChoice(paper) {
-    const label = document.createElement("label");
-    label.className = "paper-choice";
-    const radio = document.createElement("input");
-    radio.type = "radio";
-    radio.name = "paper";
-    radio.value = paper.name;
-    radio.checked = paper.name === look.paper;
-    radio.addEventListener("change", () => {
-      saveLook({ paper: paper.name });
-      drawWriting();
-    });
-    const swatch = document.createElement("span");
-    swatch.className = "paper-swatch";
-    swatch.style.backgroundColor = paper.paper;
-    if (paper.art) swatch.style.backgroundImage = `url("../art/${paper.art}.svg")`;
-    else swatch.style.boxShadow = `inset 0 -0.35rem 0 -0.25rem ${paper.pattern === "none" ? paper.paper : paper.rule}`;
-    const name = document.createElement("span");
-    name.textContent = paper.dark ? `${paper.name} (dark)` : paper.name;
-    label.append(radio, swatch, name);
-    return label;
-  }
-
-  // The Font Override and the text size. "Theme default" names the paper's
-  // own font, so it is clear what it gives; a new paper redraws this.
-  function drawWriting() {
-    const themeFont = PAPERS.find((paper) => paper.name === look.paper).font;
-    const font = document.createElement("select");
-    for (const name of FONT_OVERRIDES) {
-      const text = name === "Theme default" ? `Theme default (${themeFont})` : name;
-      font.add(new Option(text, name, false, name === look.font));
-    }
-    font.addEventListener("change", () => saveLook({ font: font.value }));
-
-    const size = document.createElement("input");
-    size.type = "range";
-    size.min = String(TEXT_SIZE.min);
-    size.max = String(TEXT_SIZE.max);
-    size.step = String(TEXT_SIZE.step);
-    size.value = String(look.textSize);
-    const shown = document.createElement("output");
-    shown.className = "text-size-value";
-    shown.textContent = `${look.textSize} %`;
-    // Live while dragging; kept when let go.
-    size.addEventListener("input", () => {
-      look = readLook({ ...look, textSize: size.value });
-      shown.textContent = `${look.textSize} %`;
+  const prefs = {
+    look: () => look,
+    // Live while dragging the text size; kept when let go.
+    saveLook(change, { keep = true } = {}) {
+      look = readLook({ ...look, ...change });
       drawLook();
-    });
-    size.addEventListener("change", () => saveLook({ textSize: size.value }));
-    const sizeRow = document.createElement("div");
-    sizeRow.className = "text-size-row";
-    sizeRow.append(size, shown);
+      if (!keep) return;
+      extensionStorage.set({ look }).catch((error) => {
+        console.warn("Glacier: could not keep the chosen look", error);
+      });
+    },
+    tabSettings: () => tabSettings,
+    saveTabSettings(change) {
+      tabSettings = readTabSettings({ ...tabSettings, ...change });
+      updatePill();
+      extensionStorage.set({ tabSettings }).catch((error) => {
+        console.warn("Glacier: could not keep the tab settings", error);
+      });
+    },
+    shortcutsPanel: () => shortcutsPanel,
+    saveShortcutsPanel(change) {
+      shortcutsPanel = readShortcutsPanel({ ...shortcutsPanel, ...change });
+      placePanels();
+      extensionStorage.set({ shortcutsPanel }).catch((error) => {
+        console.warn("Glacier: could not keep the shortcuts panel", error);
+      });
+    },
+    panelPlace: () => panelPlace,
+    // Choosing beside asks the browser first, straight from the change.
+    choosePanelPlace(place) {
+      if (place !== "beside") return Promise.resolve(savePanelPlace("inside"));
+      return requestBeside().then((granted) => savePanelPlace(granted ? "beside" : "inside"));
+    },
+  };
 
-    writingBodyEl.replaceChildren(field("Font", font), field("Text size", sizeRow));
-  }
+  const settingsView = createSettingsView({ prefs, repo: repoActions, onClose: () => closeSettings() });
+  const shortcutsView = createShortcutsView({
+    onFold: () => prefs.saveShortcutsPanel({ folded: true }),
+    onUnfold: () => prefs.saveShortcutsPanel({ folded: false }),
+  });
+  glacierButtonEl.before(shortcutsView.sheet, shortcutsView.tab, settingsView.el);
 
-  function saveTabSettings(change) {
-    tabSettings = readTabSettings({ ...tabSettings, ...change });
-    updatePill();
-    extensionStorage.set({ tabSettings }).catch((error) => {
-      console.warn("Glacier: could not keep the tab settings", error);
-    });
-  }
-
-  // "Tabs and notes": three choices, each one taking effect at once.
-  function drawTabs() {
-    const choice = (labelText, options, value, onChange) => {
-      const select = document.createElement("select");
-      for (const [optionValue, text] of options) {
-        select.add(new Option(text, optionValue, false, optionValue === value));
-      }
-      select.addEventListener("change", () => onChange(select.value));
-      return field(labelText, select);
-    };
-    tabsBodyEl.replaceChildren(
-      choice(
-        "When I switch tabs",
-        [
-          ["follow", "Show the note of the tab I'm on"],
-          ["keep", "Keep a note I opened myself"],
-        ],
-        tabSettings.keepUserOpenedNotes ? "keep" : "follow",
-        (value) => saveTabSettings({ keepUserOpenedNotes: value === "keep" }),
-      ),
-      choice(
-        "On a page that isn't a website",
-        [
-          ["keep", "Keep the open note"],
-          ["newNoteForm", "Show a new note form"],
-        ],
-        tabSettings.onNonWebsite,
-        (value) => saveTabSettings({ onNonWebsite: value }),
-      ),
-      choice(
-        "Previous note button",
-        [
-          ["shown", "Shown"],
-          ["hidden", "Hidden"],
-        ],
-        tabSettings.showPreviousButton ? "shown" : "hidden",
-        (value) => saveTabSettings({ showPreviousButton: value === "shown" }),
-      ),
-    );
-  }
-
-  // The cheat sheet, or its slim tab when folded, or nothing when switched off.
-  function drawShortcutsPanel() {
-    shortcutsEl.hidden = !shortcutsPanel.on || shortcutsPanel.folded;
-    shortcutsTabEl.hidden = !shortcutsPanel.on || !shortcutsPanel.folded;
-    if (shortcutsBodyEl.childElementCount) return;
-    const groups = SHORTCUT_GROUPS.map(({ title, entries }) => {
-      const heading = document.createElement("h2");
-      heading.className = "settings-subheading";
-      heading.textContent = title;
-      const list = document.createElement("dl");
-      list.className = "shortcuts-list";
-      for (const [keys, does] of entries) {
-        const term = document.createElement("dt");
-        const code = document.createElement("code");
-        code.textContent = keys;
-        term.append(code);
-        const description = document.createElement("dd");
-        description.textContent = does;
-        list.append(term, description);
-      }
-      return [heading, list];
-    });
-    shortcutsBodyEl.replaceChildren(...groups.flat());
-  }
-
-  function saveShortcutsPanel(change) {
-    shortcutsPanel = readShortcutsPanel({ ...shortcutsPanel, ...change });
-    drawShortcutsPanel();
-    extensionStorage.set({ shortcutsPanel }).catch((error) => {
-      console.warn("Glacier: could not keep the shortcuts panel", error);
-    });
-  }
-
-  function drawShortcutsSetting() {
-    const select = document.createElement("select");
-    select.add(new Option("Off", "off", false, !shortcutsPanel.on));
-    select.add(new Option("On", "on", false, shortcutsPanel.on));
-    select.addEventListener("change", () => saveShortcutsPanel({ on: select.value === "on" }));
-    shortcutsSettingBodyEl.replaceChildren(field("Shortcuts panel", select));
-  }
-
-  shortcutsFoldEl.addEventListener("click", () => saveShortcutsPanel({ folded: true }));
-  shortcutsTabEl.addEventListener("click", () => saveShortcutsPanel({ folded: false }));
+  // Whether settings are open, wherever they are drawn, and the section they
+  // opened at.
+  let settingsWanted = false;
+  let settingsSection = null;
 
   function openSettings(section) {
     closeMenu();
     closeNewMenu();
     closeBacklinks();
     session.flush();
-    drawPapers();
-    drawWriting();
-    drawTabs();
-    drawShortcutsSetting();
-    settingsEl.hidden = false;
+    if (panelPlace === "ask") {
+      showPanelsCard(section);
+      return;
+    }
+    settingsWanted = true;
+    settingsSection = section ?? null;
     glacierButtonEl.setAttribute("aria-expanded", "true");
-    settingsCloseEl.focus();
-    // A first sync still running keeps its progress on screen.
-    const repoDrawn = firstSyncRunning ? Promise.resolve() : drawNotesRepo();
-    const target = section && settingsEl.querySelector(`[data-section="${section}"]`);
-    if (!target) return;
-    target.open = true;
-    repoDrawn.then(() => {
-      settingsEl.scrollTop = target.offsetTop - settingsEl.querySelector(".settings-header").offsetHeight;
-      target.querySelector(".repo-input")?.focus();
-    });
+    placePanels();
   }
 
   // Closing puts the caret back in the note, unless a click on the note is
   // about to place it there itself.
   function closeSettings({ redraw = true } = {}) {
-    if (settingsEl.hidden) return;
-    settingsEl.hidden = true;
+    closePanelsCard();
+    if (!settingsWanted) return;
+    settingsWanted = false;
+    settingsSection = null;
     glacierButtonEl.setAttribute("aria-expanded", "false");
+    placePanels();
     if (redraw && current) render();
   }
 
@@ -1072,16 +776,251 @@ async function start() {
   newButtonEl.addEventListener("click", () => closeSettings({ redraw: false }), true);
 
   glacierButtonEl.addEventListener("click", () => {
-    if (settingsEl.hidden) openSettings();
-    else closeSettings();
+    if (settingsWanted || panelsCardEl) closeSettings();
+    else openSettings();
   });
-  settingsCloseEl.addEventListener("click", closeSettings);
-  settingsEl.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      closeSettings();
+
+  // --- Panels beside the sidebar (#21, ADR 0008) -----------------------------
+  //
+  // Drawing beside the sidebar needs the optional "all websites" permission.
+  // The first time settings open, Glacier's own card explains it, and the
+  // browser's prompt appears only after Allow. Declined, both panels open
+  // inside the sidebar. Where they go is decided by src/panel-place.mjs;
+  // sidebar/beside-frames.js draws the frames on the page.
+
+  function savePanelPlace(place) {
+    panelPlace = readPanelPlace(place);
+    placePanels();
+    extensionStorage.set({ panelPlace }).catch((error) => {
+      console.warn("Glacier: could not keep where the panels open", error);
+    });
+    return panelPlace;
+  }
+
+  // Must be called straight from a click: both browsers require it.
+  function requestBeside() {
+    return api.permissions.request(BESIDE_PERMISSION).catch(() => false);
+  }
+
+  async function hasBesidePermission() {
+    try {
+      return await api.permissions.contains(BESIDE_PERMISSION);
+    } catch {
+      return false;
+    }
+  }
+
+  async function activeTab() {
+    try {
+      const [tab] = await api.tabs.query({ active: true, currentWindow: true });
+      return tab ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  // This sidebar's name in its frames' messages, so a second window's
+  // sidebar leaves them alone.
+  const besideLink = crypto.randomUUID();
+
+  function besideAddress(panel) {
+    const params = new URLSearchParams({ panel, link: besideLink });
+    if (panel === "settings" && settingsSection) params.set("section", settingsSection);
+    return api.runtime.getURL(`sidebar/beside.html?${params}`);
+  }
+
+  // Draw (or with no addresses, remove) the frames in a tab's page. False
+  // when the browser doesn't let Glacier draw there.
+  async function drawBeside(tabId, { settings = null, shortcuts = null } = {}) {
+    try {
+      await api.scripting.executeScript({
+        target: { tabId },
+        func: drawBesideFrames,
+        args: [{ origin: location.origin, settings, shortcuts, folded: shortcutsPanel.folded, sidebarX: window.mozInnerScreenX }],
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // The tab whose page holds the frames now, if any.
+  let besideTabId = null;
+  let latestPlacing = 0;
+
+  // Put settings and the Shortcuts panel where they belong now: beside the
+  // sidebar in the page you're on, or inside the sidebar. Run again whenever
+  // the page, a panel or the choice changes; the latest run wins.
+  async function placePanels() {
+    const run = (latestPlacing += 1);
+    const shortcutsWanted = shortcutsPanel.on;
+    const tab = await activeTab();
+    const granted = await hasBesidePermission();
+    if (run !== latestPlacing) return;
+
+    const place = decidePanelPlace({ choice: panelPlace, granted, url: tab?.url });
+    const besideWanted = place === "beside" && (settingsWanted || shortcutsWanted);
+    if (besideTabId !== null && (!besideWanted || besideTabId !== tab.id)) {
+      drawBeside(besideTabId);
+      besideTabId = null;
+    }
+    let beside = false;
+    if (besideWanted) {
+      beside = await drawBeside(tab.id, {
+        settings: settingsWanted ? besideAddress("settings") : null,
+        shortcuts: shortcutsWanted ? besideAddress("shortcuts") : null,
+      });
+      if (beside) besideTabId = tab.id;
+      if (run !== latestPlacing) return;
+    }
+
+    shortcutsView.draw(shortcutsPanel, !beside);
+    if (settingsWanted && !beside) {
+      if (!settingsView.isOpen()) settingsView.open(settingsSection);
+    } else settingsView.close();
+  }
+
+  // Glacier's own card before the browser's prompt (ADR 0008): what drawing
+  // on the page is for, and what it is never used for. Then settings open,
+  // beside the sidebar or inside it.
+  let panelsCardEl = null;
+
+  function closePanelsCard() {
+    if (!panelsCardEl) return;
+    panelsCardEl.remove();
+    panelsCardEl = null;
+    glacierButtonEl.setAttribute("aria-expanded", "false");
+  }
+
+  function showPanelsCard(section) {
+    closePanelsCard();
+    const answer = (place) => {
+      closePanelsCard();
+      savePanelPlace(place);
+      openSettings(section);
+    };
+
+    const sheet = document.createElement("aside");
+    sheet.className = "panels-card";
+    sheet.setAttribute("aria-label", "Where settings open");
+    const card = document.createElement("div");
+    card.className = "perm-card";
+
+    const title = document.createElement("h1");
+    title.className = "create-heading";
+    title.textContent = "Open settings beside the sidebar";
+
+    const why = document.createElement("p");
+    why.textContent =
+      "Settings and the shortcuts panel can open next to the sidebar, over the edge of the page you're on. Your note keeps its full width and shows each change as you make it. For that, Glacier needs to draw on the pages you visit.";
+
+    const never = document.createElement("p");
+    never.className = "perm-never";
+    never.textContent = "Glacier never reads, saves or sends anything from the pages you visit.";
+
+    const next = document.createElement("p");
+    next.className = "perm-next";
+    next.textContent =
+      "Your browser will ask to confirm, in its own words about your data on all websites. If you decline, both panels open inside the sidebar. You can change this later in settings, under Panels.";
+
+    const buttons = document.createElement("div");
+    buttons.className = "perm-buttons";
+    const allow = document.createElement("button");
+    allow.type = "button";
+    allow.className = "create-submit";
+    allow.textContent = "Allow";
+    allow.addEventListener("click", () => {
+      requestBeside().then((granted) => answer(granted ? "beside" : "inside"));
+    });
+    const notNow = document.createElement("button");
+    notNow.type = "button";
+    notNow.className = "perm-cancel";
+    notNow.textContent = "Not now, open them inside";
+    notNow.addEventListener("click", () => answer("inside"));
+    buttons.append(allow, notNow);
+
+    card.append(title, why, never, next, buttons);
+    sheet.append(card);
+    sheet.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closePanelsCard();
+      }
+    });
+    glacierButtonEl.before(sheet);
+    panelsCardEl = sheet;
+    glacierButtonEl.setAttribute("aria-expanded", "true");
+    allow.focus();
+  }
+
+  // A frame beside the sidebar asks the sidebar that drew it. The answer is
+  // wrapped in { value }, so the frame can tell "no sidebar" from "nothing".
+  const besideCalls = {
+    ping: () => true,
+    closeSettings: () => closeSettings(),
+    notice: repoActions.notice,
+    status: repoActions.status,
+    syncNow: repoActions.syncNow,
+    courses: repoActions.courses,
+    firstSync: (repo, token) =>
+      repoActions.firstSync(repo, token, (progress) => {
+        api.runtime.sendMessage({ glacier: "progress", link: besideLink, progress }).catch(() => {});
+      }),
+    exportCourse: repoActions.exportCourse,
+    exportAll: repoActions.exportAll,
+    restore: (text) => repoActions.restore(Uint8Array.from(atob(text), (c) => c.charCodeAt(0))),
+  };
+
+  api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.glacier !== "beside" || message.link !== besideLink) return false;
+    const call = besideCalls[message.call];
+    if (!call) return false;
+    Promise.resolve()
+      .then(() => call(...(message.args ?? [])))
+      .then(
+        (value) => sendResponse({ value: value ?? null }),
+        (error) => {
+          console.error("Glacier: a panel beside the sidebar failed", error);
+          sendResponse({ value: null });
+        },
+      );
+    return true;
+  });
+
+  // A choice made beside the sidebar, or in another window, arrives here.
+  api.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local") return;
+    if (changes.look) {
+      look = readLook(changes.look.newValue);
+      drawLook();
+    }
+    if (changes.tabSettings) {
+      tabSettings = readTabSettings(changes.tabSettings.newValue);
+      updatePill();
+    }
+    if (changes.shortcutsPanel || changes.panelPlace) {
+      if (changes.shortcutsPanel) shortcutsPanel = readShortcutsPanel(changes.shortcutsPanel.newValue);
+      if (changes.panelPlace) panelPlace = readPanelPlace(changes.panelPlace.newValue);
+      placePanels();
     }
   });
+
+  // The frames follow you to another tab, and come back after the page
+  // loads again.
+  function followTabs(windowId) {
+    const somethingOpen = () => settingsWanted || shortcutsPanel.on;
+    api.tabs.onActivated.addListener((info) => {
+      if (info.windowId === windowId && somethingOpen()) placePanels();
+    });
+    api.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+      if (changeInfo.status === "complete" && tab.active && tab.windowId === windowId && somethingOpen()) placePanels();
+    });
+  }
+  api.windows
+    .getCurrent()
+    .then((browserWindow) => followTabs(browserWindow.id))
+    .catch((error) => console.warn("Glacier: could not follow the tabs", error));
+  placePanels();
 
   // Rename by clicking the title (#54): the title becomes a text field in
   // the pill. Enter or clicking away saves, Esc puts the old title back. A
@@ -1869,7 +1808,7 @@ async function start() {
     // With settings open the focus stays in them; closing puts it back here.
     if (focused) {
       focusedEl = focused;
-      if (settingsEl.hidden) {
+      if (!settingsWanted) {
         focused.focus();
         placeCaret(focused, editor.caretOffset());
       }
@@ -1888,25 +1827,12 @@ async function start() {
   // makes a Lesson Note from a typed title and a picked Course, with no Source.
 
   const openingFlow = createOpeningFlow({
-    page: createBrowserPage(
-      typeof browser !== "undefined" ? browser : chrome,
-    ),
+    page: createBrowserPage(api),
     getOpenNote: () => ({ current, openedByPage }),
     lessonNoteForSource: (url) => notebook.lessonNoteForSource(url),
     show: showOpeningView,
     getTabSettings: () => tabSettings,
   });
-
-  // Build a labelled control row for the create form.
-  function field(labelText, control) {
-    const label = document.createElement("label");
-    label.className = "create-field";
-    const span = document.createElement("span");
-    span.className = "create-label";
-    span.textContent = labelText;
-    label.append(span, control);
-    return label;
-  }
 
   // The Course picker: a text box with the existing Courses as suggestions
   // (so one is joined by a click) and the last-used Course filled in, while
@@ -2129,7 +2055,6 @@ async function start() {
 // can ask the panel to close itself. Reconnects if the service worker
 // restarted. Firefox toggles its sidebar without this.
 async function keepBackgroundInformed(session) {
-  const api = typeof browser !== "undefined" ? browser : chrome;
   if (!api.sidePanel || !api.windows) return;
   try {
     const { id: windowId } = await api.windows.getCurrent();

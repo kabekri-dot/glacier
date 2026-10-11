@@ -44,6 +44,22 @@ test("tabs is optional, so installing shows no permission warning (ADR 0008)", (
   );
 });
 
+test("installing Glacier shows no warning for the panels beside the sidebar (ADR 0008)", () => {
+  // Drawing beside the sidebar needs "all websites". It is optional, asked for
+  // behind Glacier's own card the first time a panel opens (#21). The
+  // scripting permission alone shows no warning, and does nothing without it.
+  const required = [...(manifest.permissions ?? []), ...(manifest.host_permissions ?? [])];
+  assert.ok(!required.some((permission) => permission.includes("://") || permission === "<all_urls>"));
+  assert.ok(!("content_scripts" in manifest), "no content script may run on pages by itself");
+  assert.deepEqual(manifest.optional_host_permissions, ["<all_urls>"]);
+  assert.ok((manifest.permissions ?? []).includes("scripting"));
+});
+
+test("only the page drawn beside the sidebar can be framed by a website", () => {
+  const exposed = (manifest.web_accessible_resources ?? []).flatMap((entry) => entry.resources);
+  assert.deepEqual(exposed, ["sidebar/beside.html"]);
+});
+
 test("the default shortcut avoids Firefox's built-in Ctrl+Shift+Y", () => {
   const key = manifest.commands["open-glacier"].suggested_key.default;
   assert.notEqual(key, "Ctrl+Shift+Y");
