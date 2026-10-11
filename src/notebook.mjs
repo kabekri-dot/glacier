@@ -105,13 +105,13 @@ function readYamlValue(raw) {
   return value;
 }
 
+function folderFor(note) {
+  if (note.type === "concept") return "concepts";
+  if (note.course) return `courses/${safeName(note.course)}`;
+  return "courses";
+}
+
 function fileFor(note, stem) {
-  const folder =
-    note.type === "concept"
-      ? "concepts"
-      : note.course
-        ? `courses/${safeName(note.course)}`
-        : "courses";
   // The title only goes into the frontmatter when the filename can't hold it
   // as it is (e.g. it has a `/`), so the round trip still gives it back.
   const fields = { ...note, title: stem === note.title ? undefined : note.title };
@@ -122,7 +122,7 @@ function fileFor(note, stem) {
     }
   }
   text += "---\n" + (note.body ?? "");
-  return { path: `${folder}/${stem}.md`, text };
+  return { path: `${folderFor(note)}/${stem}.md`, text };
 }
 
 // A note as its file: `{ path, text }`.
@@ -163,12 +163,8 @@ export function noteFromFile(path, text) {
   const grandparent = parts.at(-3);
   const { fields, body } = splitFrontmatter(text);
   const inCourse = grandparent === "courses" || parent === "courses";
-  const type =
-    fields.type === "lesson" || fields.type === "concept"
-      ? fields.type
-      : inCourse
-        ? "lesson"
-        : "concept";
+  let type = inCourse ? "lesson" : "concept";
+  if (fields.type === "lesson" || fields.type === "concept") type = fields.type;
   const note = { type, title: fields.title || stem };
   const course = fields.course || (grandparent === "courses" ? parent : undefined);
   if (type === "lesson" && course) note.course = course;
