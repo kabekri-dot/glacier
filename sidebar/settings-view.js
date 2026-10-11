@@ -16,7 +16,7 @@ import { notesRepoName } from "../src/notebook.mjs";
 import { SHORTCUT_GROUPS } from "../src/shortcuts-panel.mjs";
 import { PAPERS, paperGroups, FONT_OVERRIDES, TEXT_SIZE } from "../src/look.mjs";
 
-// A labelled control row, for the settings and the create forms.
+// A labelled control row, for the settings.
 export function field(labelText, control) {
   const label = document.createElement("label");
   label.className = "form-field";

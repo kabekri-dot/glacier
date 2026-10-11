@@ -2,8 +2,9 @@
 //
 // It decides between the start prompt, the permission card (ADR 0008), the
 // page's Lesson Note, a fresh page that becomes a note when you write (#61),
-// or keeping the open note (decidePageOpen, #29, #50): the sidebar always shows the note of the
-// website tab you are on, and a non-website page keeps the open note. It owns
+// or keeping the open note (decidePageOpen, #29, #50): the sidebar always shows
+// the note of the website tab you are on, and a non-website page keeps the
+// open note. It owns
 // "is this a lesson page" (http or https only) and the latest-change-wins rule
 // for quick tab switches.
 //
