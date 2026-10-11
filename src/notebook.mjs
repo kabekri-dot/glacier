@@ -268,8 +268,8 @@ export function syncErrorMessage(error, repo) {
 }
 
 // Only Markdown files in the note folders are notes (`concepts/` from before
-// ADR 0010 and `courses/` from before #73 too); a README, an `.obsidian` folder or pictures in the Notes Repo
-// are left alone.
+// ADR 0010 and `courses/` from before #73 too); a README, an `.obsidian`
+// folder or pictures in the Notes Repo are left alone.
 function isNoteFile(path) {
   return /^(archive\/)?(collections|courses|notes|concepts)\/.+\.md$/i.test(path);
 }
