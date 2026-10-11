@@ -59,13 +59,16 @@ Reload with ↻ first. You need a connected Notes repo for the last two checks.
 - [ ] If you had "Testing Test" and "Testing test" before this change: after the reload they show as one Collection, spelled like the one with more notes.
 - [ ] Sync, then open the Notes repo on GitHub: the notes sit in `collections/`, the old `courses/` folder is gone, and both spellings ended up in one folder. The history shows the move as one commit.
 
-### Shortcuts panel always on the left edge (#72)
+### Shortcuts panel on the right, inside the sidebar (#76)
 
 Reload with ↻ first. Turn the Shortcuts panel on in settings.
 
-- [ ] On a website, the cheat sheet sits beside the sidebar, against the sidebar's left edge. Fold it: the small tab is at the top, level with the note title. Unfold it: the sheet comes back.
-- [ ] On a new tab (where beside is not allowed), the cheat sheet is a narrow strip over the left part of the note inside the sidebar. Fold it: the tab is at the top left, covering only a little of the title at the edge, never the title text.
-- [ ] Close and reopen the sidebar: the panel is still open or folded as you left it.
+- [ ] On a website and on a new tab, a small tab with a question mark sits top right, next to the + button.
+- [ ] Click the tab: the cheat sheet slides in from the right edge of the sidebar over the right part of the note. The pill and the tab stay visible above it.
+- [ ] Click in the note: the cheat sheet closes. Click the tab to open it, then the tab again: it closes. The arrow in its header closes it too.
+- [ ] Close and reopen the sidebar: the cheat sheet is still open or closed as you left it.
+- [ ] On a website, open Settings: it still opens beside the sidebar on the left. On a new tab, Settings open inside the sidebar with the line about the page not allowing panels. The cheat sheet shows no such line.
+- [ ] Under Panels in settings, the choice is named "Settings open". Choosing Inside the sidebar or Beside the sidebar moves only Settings.
 
 ### Hover actions on note rows; download as .md or PDF (#71)
 
@@ -169,7 +172,7 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 - [ ] Click it: Glacier's own card explains the permission. **Allow** shows the browser's prompt, and then the page's note or the empty paper for it.
 - [ ] **Not now** leads to the empty paper, where typing makes a note without a page.
 - [ ] Installing shows no permission warning. The first time settings open, Glacier's own card explains drawing beside the sidebar, and the browser asks only after **Allow** (#21).
-- [ ] Allowed, settings and the cheat sheet open beside the sidebar on websites and inside it on browser pages. Declined, they open inside. Settings, Panels changes it later.
+- [ ] Allowed, settings open beside the sidebar on websites and inside it on browser pages. Declined, they open inside. Settings, Panels changes it later.
 
 ### Notes for the page you're on
 
@@ -422,10 +425,10 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 ### Shortcuts panel
 
 - [ ] Open settings, then Shortcuts panel. It starts as Off, and no cheat sheet shows.
-- [ ] Choose On: a Shortcuts sheet appears on the right edge of the sidebar (or beside it, with "Beside the sidebar" chosen under Panels, #21). It lists the start of a line (/, #, ##, ###, -, three backticks), anything in a line ([[Title]], bold, code) and the keys (Enter, Backspace, up and down, Esc, Ctrl A twice, Ctrl C, Ctrl K).
-- [ ] Click the arrow in its header: it folds into a slim tab on the edge. Click the tab: the sheet opens again.
+- [ ] Choose On: a small tab appears top right next to +. Click it: a Shortcuts sheet slides in from the right edge of the sidebar. It lists the start of a line (/, #, ##, ###, -, three backticks), anything in a line ([[Title]], bold, code) and the keys (Enter, Backspace, up and down, Esc, Ctrl A twice, Ctrl C, Ctrl K).
+- [ ] Click the arrow in its header, click in the note, or click the tab: the sheet closes. Click the tab: the sheet opens again.
 - [ ] Fold it, close and reopen the sidebar: it is still folded. Open it, reopen the sidebar: it is still open.
-- [ ] Choose Off in settings: the sheet and the tab both go away. Choose On again: it comes back as you left it.
+- [ ] Choose Off in settings: the sheet and the tab both go away. Choose On again: the tab comes back, and the sheet is open or closed as you left it.
 
 ### Panels beside the sidebar
 
@@ -434,16 +437,14 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 - [ ] Press Esc on the card: it closes and nothing is chosen. Click the glacier button again: the card shows again.
 - [ ] Click Allow: now the browser's prompt shows. Accept it: settings open next to the sidebar, over the right edge of the web page. The note in the sidebar keeps its full width.
 - [ ] With settings beside the sidebar, change the paper, the font and drag the text size: the note changes at once, also while you drag.
-- [ ] Change "Tabs and notes", the previous note button and the Shortcuts panel beside the sidebar: each one works at once in the sidebar.
-- [ ] Turn the Shortcuts panel on: the cheat sheet shows beside the sidebar too, to the left of settings. Close settings: the cheat sheet moves to the edge of the page.
-- [ ] Fold the cheat sheet with its arrow: a slim Shortcuts tab stays on the edge of the page. Click the tab: it opens again.
+- [ ] Change "Tabs and notes", and the previous note button beside the sidebar: each one works at once in the sidebar.
 - [ ] Close settings with the ×, with Esc, with the glacier button and by clicking in the note. Each way closes them.
 - [ ] Under Notes repo beside the sidebar: Sync now, Export a collection, Export everything and Restore from backup file all work, and the downloads and messages show in the sidebar. With no repo connected, connecting one shows the first sync steps beside the sidebar.
-- [ ] Switch to another website tab with settings or the cheat sheet open: they go with you. Go back: they are there and not left behind on the other tab.
-- [ ] Follow a link in the page: after it loads, the panels come back beside the sidebar.
+- [ ] Switch to another website tab with settings open: they go with you. Go back: they are there and not left behind on the other tab.
+- [ ] Follow a link in the page: after it loads, settings come back beside the sidebar.
 - [ ] On a new tab, a browser settings page (`chrome://settings` or `about:preferences`) and a PDF, open settings: they open inside the sidebar. Switch back to a website: they move beside it.
-- [ ] Close the sidebar with settings or the cheat sheet beside it: within a few seconds they are gone from the page.
-- [ ] In settings, under Panels, choose "Inside the sidebar": settings and the cheat sheet move inside at once. Choose "Beside the sidebar": they move out again.
+- [ ] Close the sidebar with settings beside it: within a few seconds they are gone from the page.
+- [ ] In settings, under Panels, choose "Inside the sidebar": settings move inside at once. Choose "Beside the sidebar": they move out again.
 - [ ] Take the permission back in the browser (Chrome: Details, Site access; Firefox: Permissions tab of the add-on). Open settings: they open inside the sidebar. Choose "Beside the sidebar" under Panels: the browser asks again.
 - [ ] Fresh start again, and this time click "Not now, open them inside" on the card: settings open inside the sidebar, no browser prompt shows, and everything else works as before. Reopen the sidebar: the card doesn't come back.
 - [ ] Fresh start, decline the browser's prompt after Allow: settings open inside the sidebar.
@@ -489,8 +490,7 @@ Make a conflict first (see Conflict Copies, #16).
 Reload the extension with the reload button first. In Settings, Panels, choose "Beside the sidebar".
 
 - [ ] On a new tab, open Settings: it opens inside the sidebar with the line "This page doesn't allow panels beside the sidebar, so it opens here." at its top.
-- [ ] On a new tab, open the shortcuts panel: it shows the same line at its top.
-- [ ] On a website such as the Odin Project, Settings and the shortcuts panel open beside the sidebar with no line.
+- [ ] On a website such as the Odin Project, Settings open beside the sidebar with no line.
 - [ ] Choose "Inside the sidebar": on a website and on a new tab, no line shows.
 - [ ] Take the permission back in the browser's extension settings: no line shows on a new tab.
 

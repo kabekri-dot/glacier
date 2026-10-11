@@ -299,18 +299,18 @@ export function createSettingsView({ prefs, repo, onClose }) {
     );
   }
 
-  // Where settings and the Shortcuts panel open (ADR 0008). Choosing beside
+  // Where settings open (ADR 0008). Choosing beside
   // asks the browser straight from the change, as both browsers require.
   function drawPanels() {
     const place = prefs.panelPlace() === "beside" ? "beside" : "inside";
     const hint = element(
       "p",
       "settings-hint",
-      "Beside the sidebar, they sit over the edge of the page and your note keeps its full width. On browser pages, such as a new tab, they open inside the sidebar. Glacier never reads, saves or sends anything from the pages you visit.",
+      "Beside the sidebar, settings sit over the edge of the page and your note keeps its full width. On browser pages, such as a new tab, they open inside the sidebar. Glacier never reads, saves or sends anything from the pages you visit.",
     );
     bodies.panels.replaceChildren(
       choice(
-        "Settings and shortcuts open",
+        "Settings open",
         [
           ["beside", "Beside the sidebar"],
           ["inside", "Inside the sidebar"],
@@ -526,7 +526,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
   };
 }
 
-// The cheat sheet, or its slim tab when folded, or nothing when switched off.
+// The cheat sheet drawer and its small tab, or nothing when switched off.
 export function createShortcutsView({ onFold, onUnfold }) {
   const sheet = element("aside", "shortcuts");
   sheet.setAttribute("aria-label", "Shortcuts");
@@ -548,15 +548,13 @@ export function createShortcutsView({ onFold, onUnfold }) {
     }
     body.append(element("h2", "settings-subheading", title), list);
   }
-  const insideNote = element("p", "panel-note", INSIDE_NOTE);
-  insideNote.hidden = true;
-  sheet.append(header, insideNote, body);
+  sheet.append(header, body);
 
-  const tab = element("button", "shortcuts-tab", "Shortcuts");
+  const tab = element("button", "shortcuts-tab", "?");
   tab.type = "button";
   tab.setAttribute("aria-label", "Open the shortcuts");
   tab.title = "Open the shortcuts";
-  tab.addEventListener("click", () => onUnfold());
+  tab.addEventListener("click", () => (sheet.hidden ? onUnfold() : onFold()));
   sheet.hidden = true;
   tab.hidden = true;
 
@@ -564,15 +562,12 @@ export function createShortcutsView({ onFold, onUnfold }) {
     sheet,
     tab,
 
-    // `state` is the saved { on, folded }; `shown` false hides both, for when
-    // the panel is drawn elsewhere.
-    draw(state, shown = true) {
-      sheet.hidden = !shown || !state.on || state.folded;
-      tab.hidden = !shown || !state.on || !state.folded;
-    },
-
-    showInsideNote(shown) {
-      insideNote.hidden = !shown;
+    // `state` is the saved { on, folded }. The tab shows whenever the panel
+    // is on; the sheet slides in from the right edge when it is open.
+    draw(state) {
+      sheet.hidden = !state.on || state.folded;
+      tab.hidden = !state.on;
+      tab.setAttribute("aria-expanded", String(state.on && !state.folded));
     },
   };
 }

@@ -1,4 +1,4 @@
-// Settings or the Shortcuts panel beside the sidebar (#21, ADR 0008). This
+// Settings beside the sidebar (#21, ADR 0008). This
 // page runs in a frame that beside-frames.js draws over the edge of the web
 // page; it never sees the page. The choices kept per browser are written to
 // extension storage, where the sidebar picks them up at once, so the note
@@ -8,12 +8,11 @@ import { readLook, applyLook } from "../src/look.mjs";
 import { readTabSettings } from "../src/tab-settings.mjs";
 import { readShortcutsPanel } from "../src/shortcuts-panel.mjs";
 import { readPanelPlace, BESIDE_PERMISSION } from "../src/panel-place.mjs";
-import { createSettingsView, createShortcutsView } from "./settings-view.js";
+import { createSettingsView } from "./settings-view.js";
 
 const api = typeof browser !== "undefined" ? browser : chrome;
 const storage = api.storage.local;
 const params = new URLSearchParams(location.search);
-const panel = params.get("panel");
 const channel = params.get("channel");
 
 let look = readLook(undefined);
@@ -101,12 +100,6 @@ const repo = {
   notice: (text, ms) => ask("notice", text, ms),
 };
 
-let shortcutsView = null;
-
-function drawShortcuts() {
-  shortcutsView.draw(shortcutsPanel);
-}
-
 async function start() {
   const saved = await storage.get(["look", "tabSettings", "shortcutsPanel", "panelPlace"]);
   look = readLook(saved.look);
@@ -115,18 +108,9 @@ async function start() {
   panelPlace = readPanelPlace(saved.panelPlace);
   drawLook();
 
-  if (panel === "settings") {
-    const view = createSettingsView({ prefs, repo, onClose: () => ask("closeSettings") });
-    document.body.append(view.el);
-    view.open(params.get("section"));
-  } else {
-    shortcutsView = createShortcutsView({
-      onFold: () => prefs.saveShortcutsPanel({ folded: true }),
-      onUnfold: () => prefs.saveShortcutsPanel({ folded: false }),
-    });
-    document.body.append(shortcutsView.sheet, shortcutsView.tab);
-    drawShortcuts();
-  }
+  const view = createSettingsView({ prefs, repo, onClose: () => ask("closeSettings") });
+  document.body.append(view.el);
+  view.open(params.get("section"));
 
   storage.onChanged.addListener((changes, area) => {
     if (area !== "local") return;
@@ -136,10 +120,7 @@ async function start() {
     }
     if (changes.tabSettings) tabSettings = readTabSettings(changes.tabSettings.newValue);
     if (changes.panelPlace) panelPlace = readPanelPlace(changes.panelPlace.newValue);
-    if (changes.shortcutsPanel) {
-      shortcutsPanel = readShortcutsPanel(changes.shortcutsPanel.newValue);
-      if (shortcutsView) drawShortcuts();
-    }
+    if (changes.shortcutsPanel) shortcutsPanel = readShortcutsPanel(changes.shortcutsPanel.newValue);
   });
 }
 

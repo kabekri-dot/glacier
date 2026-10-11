@@ -1438,23 +1438,29 @@ code {
   font: inherit;
 }
 
-/* The Shortcuts panel (#20) inside the sidebar, when it can't open beside it
-   (#21). A narrow sheet on the left edge (#72) that folds into a slim vertical
-   tab at the top left. */
+/* The Shortcuts panel (#20, #76): a drawer on the sidebar's right edge, under
+   the pill bar so its tab stays reachable. It slides in over the right part
+   of the note. */
 .shortcuts {
   position: fixed;
-  left: 0.5rem;
-  top: 3.6rem;
-  bottom: 4rem;
+  right: 0;
+  top: 3rem;
+  bottom: 0;
   z-index: 26;
-  width: min(15rem, 70%);
+  width: min(15rem, 80%);
   overflow-y: auto;
   background: var(--paper);
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-  box-shadow: 0 6px 20px var(--shadow);
+  border-left: 1px solid var(--rule);
+  box-shadow: -6px 0 20px var(--shadow);
   font-size: 0.9rem;
   line-height: 1.4;
+  animation: shortcuts-slide-in 0.18s ease-out;
+}
+
+@keyframes shortcuts-slide-in {
+  from {
+    transform: translateX(100%);
+  }
 }
 
 .shortcuts[hidden],
@@ -1503,22 +1509,21 @@ code {
   margin: 0;
 }
 
+/* The small tab in the pill bar, next to +. */
 .shortcuts-tab {
-  position: fixed;
-  left: 0;
-  top: 0.5rem;
-  z-index: 26;
-  padding: 0.6rem 0.25rem;
-  writing-mode: vertical-rl;
+  flex: none;
+  width: 1.5rem;
+  height: 1.9rem;
+  padding: 0;
   border: 1px solid var(--rule);
-  border-left: none;
-  border-radius: 0 8px 8px 0;
+  border-radius: 8px;
   background: var(--paper);
   color: var(--ink);
   font: inherit;
   font-size: 0.85rem;
+  line-height: 1;
   cursor: pointer;
-  box-shadow: 0 2px 10px var(--shadow);
+  box-shadow: 0 2px 8px var(--shadow);
 }
 
 .panels-card {
@@ -1532,20 +1537,11 @@ html.beside body {
   background: var(--paper);
 }
 
-html.beside .settings,
-html.beside .shortcuts {
+html.beside .settings {
   inset: 0;
   width: auto;
   border: 0;
   border-left: 1px solid var(--rule);
-  border-radius: 0;
-  box-shadow: none;
-}
-
-html.beside .shortcuts-tab {
-  inset: 0;
-  border: 1px solid var(--rule);
-  border-right: none;
   border-radius: 0;
   box-shadow: none;
 }

@@ -21,14 +21,12 @@ function fakeBrowser({ refuse = false } = {}) {
 
 test("the frames are drawn in the tab with this sidebar's channel and the section", async () => {
   const { panels, scripts } = fakeBrowser();
-  assert.equal(await panels.drawFrames(7, { settings: { section: "look" }, shortcuts: { folded: true } }), true);
+  assert.equal(await panels.drawFrames(7, { settings: { section: "look" } }), true);
   assert.equal(scripts[0].target.tabId, 7);
   assert.deepEqual(scripts[0].args, [
     {
       origin: "ext://glacier",
       settings: "ext://glacier/sidebar/beside.html?panel=settings&channel=abc&section=look",
-      shortcuts: "ext://glacier/sidebar/beside.html?panel=shortcuts&channel=abc",
-      folded: true,
       sidebarX: 40,
     },
   ]);
@@ -36,5 +34,5 @@ test("the frames are drawn in the tab with this sidebar's channel and the sectio
 
 test("a page the browser won't let Glacier draw on reports a refusal", async () => {
   const { panels } = fakeBrowser({ refuse: true });
-  assert.equal(await panels.drawFrames(7, { settings: { section: null }, shortcuts: null }), false);
+  assert.equal(await panels.drawFrames(7, { settings: { section: null } }), false);
 });
