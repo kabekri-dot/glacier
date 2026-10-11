@@ -31,9 +31,8 @@ export function githubRemote({ repo, token, fetch = globalThis.fetch }) {
   let branch = null;
 
   async function get(path) {
-    let response;
     try {
-      response = await fetch(`${API}/repos/${repo}${path}`, {
+      return await fetch(`${API}/repos/${repo}${path}`, {
         headers: {
           Accept: "application/vnd.github+json",
           Authorization: `Bearer ${token}`,
@@ -43,7 +42,6 @@ export function githubRemote({ repo, token, fetch = globalThis.fetch }) {
     } catch (error) {
       throw Object.assign(new Error("Couldn't reach GitHub", { cause: error }), { reason: "offline" });
     }
-    return response;
   }
 
   async function getJson(path) {

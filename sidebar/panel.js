@@ -636,11 +636,9 @@ async function start() {
       event.preventDefault();
       const name = notesRepoName(repoInput.value);
       const token = tokenInput.value.trim() || saved.token;
-      const problem = !name
-        ? "Type the repo as owner and name with a slash between, for example yourname/notes."
-        : !token
-          ? "Paste your token from GitHub."
-          : null;
+      let problem = null;
+      if (!name) problem = "Type the repo as owner and name with a slash between, for example yourname/notes.";
+      else if (!token) problem = "Paste your token from GitHub.";
       if (problem) {
         errorEl.textContent = problem;
         errorEl.hidden = false;
