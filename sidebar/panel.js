@@ -30,8 +30,9 @@ import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
 import { readTabSettings } from "../src/tab-settings.mjs";
 import { readShortcutsPanel } from "../src/shortcuts-panel.mjs";
-import { readLook, lookStyle, wholeRows } from "../src/look.mjs";
-import { BESIDE_PERMISSION, readPanelPlace, decidePanelPlace, explainsInside } from "../src/panel-place.mjs";
+import { readLook, lookStyle, wholeRows, applyLook } from "../src/look.mjs";
+import { readPanelPlace, createPanelPlacement } from "../src/panel-place.mjs";
+import { createBrowserPanels } from "../src/browser-panels.mjs";
 import { createSettingsView, createShortcutsView, menuButton, syncStatusRow } from "./settings-view.js";
 import { drawBesideFrames } from "./beside-frames.js";
 import {
@@ -85,14 +86,12 @@ let look = readLook(undefined);
 let lookDrawn = lookStyle(look);
 
 function drawLook() {
-  lookDrawn = lookStyle(look);
   const root = document.documentElement;
-  for (const [name, value] of Object.entries(lookDrawn.vars)) root.style.setProperty(name, value);
+  lookDrawn = applyLook(root, look);
   root.dataset.pattern = lookDrawn.pattern;
   // A Nature paper's panorama (#19); the stylesheet picks the picture.
   if (lookDrawn.art) root.dataset.art = lookDrawn.art;
   else delete root.dataset.art;
-  root.style.colorScheme = lookDrawn.dark ? "dark" : "light";
   fitRows();
 }
 
@@ -126,9 +125,9 @@ let tabSettings = readTabSettings(undefined);
 // you change it.
 let shortcutsPanel = readShortcutsPanel(undefined);
 
-// Where settings and the Shortcuts panel open (#21): "ask" until the
-// explanation card has been answered.
-let panelPlace = readPanelPlace(undefined);
+// Where settings and the Shortcuts panel open (#21), as saved: "ask" until
+// the explanation card has been answered. The Panel placement keeps it after.
+let savedPanelPlace = readPanelPlace(undefined);
 
 async function start() {
   if (!noteEl) return;
@@ -149,7 +148,7 @@ async function start() {
     console.warn("Glacier: could not read the shortcuts panel", error);
   }
   try {
-    panelPlace = readPanelPlace((await extensionStorage.get("panelPlace")).panelPlace);
+    savedPanelPlace = readPanelPlace((await extensionStorage.get("panelPlace")).panelPlace);
   } catch (error) {
     console.warn("Glacier: could not read where the panels open", error);
   }
@@ -881,14 +880,14 @@ async function start() {
         result = await notebook.firstSync(githubRemote({ repo, token }), onProgress);
       } catch (error) {
         console.error("Glacier: first sync failed", error);
-        if (!settingsWanted) showNotice(syncErrorMessage(error, repo), 8000);
+        if (!panels.settingsOpen()) showNotice(syncErrorMessage(error, repo), 8000);
         return { error: syncErrorMessage(error, repo) };
       }
       await extensionStorage.set({ notesRepo: repo, githubToken: token });
       autoSync.syncNow();
       if (!screen.note()) openingFlow.start();
       else updateBacklinks();
-      if (!settingsWanted) showNotice(`Your notes from ${repo} are here.`);
+      if (!panels.settingsOpen()) showNotice(`Your notes from ${repo} are here.`);
       return { notes: result.notes };
     },
 
@@ -958,17 +957,13 @@ async function start() {
     shortcutsPanel: () => shortcutsPanel,
     saveShortcutsPanel(change) {
       shortcutsPanel = readShortcutsPanel({ ...shortcutsPanel, ...change });
-      placePanels();
+      panels.setShortcuts(shortcutsPanel);
       extensionStorage.set({ shortcutsPanel }).catch((error) => {
         console.warn("Glacier: could not keep the shortcuts panel", error);
       });
     },
-    panelPlace: () => panelPlace,
-    // Choosing beside asks the browser first, straight from the change.
-    choosePanelPlace(place) {
-      if (place !== "beside") return Promise.resolve(savePanelPlace("inside"));
-      return requestBeside().then((granted) => savePanelPlace(granted ? "beside" : "inside"));
-    },
+    panelPlace: () => panels.choice(),
+    choosePanelPlace: (place) => panels.choosePlace(place),
   };
 
   const settingsView = createSettingsView({ prefs, repo: repoActions, onClose: () => closeSettings() });
@@ -978,35 +973,58 @@ async function start() {
   });
   glacierButtonEl.before(shortcutsView.sheet, shortcutsView.tab, settingsView.el);
 
-  // Whether settings are open, wherever they are drawn, and the section they
-  // opened at.
-  let settingsWanted = false;
-  let settingsSection = null;
+  // --- Panels beside the sidebar (#21, ADR 0008) -----------------------------
+  //
+  // Where settings and the Shortcuts panel open, the explanation card before
+  // the browser's prompt and the frames on the page are all decided by the
+  // Panel placement (src/panel-place.mjs). This only draws what it shows
+  // inside the sidebar; sidebar/beside-frames.js draws the frames.
+
+  // This sidebar's name in its frames' messages, so a second window's
+  // sidebar leaves them alone.
+  const besideChannel = crypto.randomUUID();
+
+  const panels = createPanelPlacement({
+    browser: createBrowserPanels(api, {
+      channel: besideChannel,
+      origin: location.origin,
+      drawBesideFrames,
+      sidebarX: () => window.mozInnerScreenX,
+    }),
+    show: drawPanels,
+    keepChoice(panelPlace) {
+      extensionStorage.set({ panelPlace }).catch((error) => {
+        console.warn("Glacier: could not keep where the panels open", error);
+      });
+    },
+    choice: savedPanelPlace,
+    shortcuts: shortcutsPanel,
+  });
+
+  function drawPanels(view) {
+    if (view.card) showPanelsCard();
+    else closePanelsCard();
+    glacierButtonEl.setAttribute("aria-expanded", String(view.open));
+    settingsView.showInsideNote(view.explain);
+    shortcutsView.showInsideNote(view.explain);
+    shortcutsView.draw(shortcutsPanel, view.shortcuts === "inside");
+    if (view.settings === "inside") {
+      if (!settingsView.isOpen()) settingsView.open(view.section);
+    } else settingsView.close();
+  }
 
   function openSettings(section) {
     closeMenu();
     closeNewMenu();
     closeBacklinks();
     screen.flush();
-    if (panelPlace === "ask") {
-      showPanelsCard(section);
-      return;
-    }
-    settingsWanted = true;
-    settingsSection = section ?? null;
-    glacierButtonEl.setAttribute("aria-expanded", "true");
-    placePanels();
+    panels.openSettings(section);
   }
 
   // Closing puts the caret back in the note, unless a click on the note is
   // about to place it there itself.
   function closeSettings({ redraw = true } = {}) {
-    closePanelsCard();
-    if (!settingsWanted) return;
-    settingsWanted = false;
-    settingsSection = null;
-    glacierButtonEl.setAttribute("aria-expanded", "false");
-    placePanels();
+    if (!panels.closeSettings()) return;
     if (redraw && (screen.note() || screen.freshPage())) render();
   }
 
@@ -1016,113 +1034,9 @@ async function start() {
   newButtonEl.addEventListener("click", () => closeSettings({ redraw: false }), true);
 
   glacierButtonEl.addEventListener("click", () => {
-    if (settingsWanted || panelsCardEl) closeSettings();
+    if (panels.isOpen()) closeSettings();
     else openSettings();
   });
-
-  // --- Panels beside the sidebar (#21, ADR 0008) -----------------------------
-  //
-  // Drawing beside the sidebar needs the optional "all websites" permission.
-  // The first time settings open, Glacier's own card explains it, and the
-  // browser's prompt appears only after Allow. Declined, both panels open
-  // inside the sidebar. Where they go is decided by src/panel-place.mjs;
-  // sidebar/beside-frames.js draws the frames on the page.
-
-  function savePanelPlace(place) {
-    panelPlace = readPanelPlace(place);
-    placePanels();
-    extensionStorage.set({ panelPlace }).catch((error) => {
-      console.warn("Glacier: could not keep where the panels open", error);
-    });
-    return panelPlace;
-  }
-
-  // Must be called straight from a click: both browsers require it.
-  function requestBeside() {
-    return api.permissions.request(BESIDE_PERMISSION).catch(() => false);
-  }
-
-  async function hasBesidePermission() {
-    try {
-      return await api.permissions.contains(BESIDE_PERMISSION);
-    } catch {
-      return false;
-    }
-  }
-
-  async function activeTab() {
-    try {
-      const [tab] = await api.tabs.query({ active: true, currentWindow: true });
-      return tab ?? null;
-    } catch {
-      return null;
-    }
-  }
-
-  // This sidebar's name in its frames' messages, so a second window's
-  // sidebar leaves them alone.
-  const besideLink = crypto.randomUUID();
-
-  function besideAddress(panel) {
-    const params = new URLSearchParams({ panel, link: besideLink });
-    if (panel === "settings" && settingsSection) params.set("section", settingsSection);
-    return api.runtime.getURL(`sidebar/beside.html?${params}`);
-  }
-
-  // Draw (or with no addresses, remove) the frames in a tab's page. False
-  // when the browser doesn't let Glacier draw there.
-  async function drawBeside(tabId, { settings = null, shortcuts = null } = {}) {
-    try {
-      await api.scripting.executeScript({
-        target: { tabId },
-        func: drawBesideFrames,
-        args: [{ origin: location.origin, settings, shortcuts, folded: shortcutsPanel.folded, sidebarX: window.mozInnerScreenX }],
-      });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  // The tab whose page holds the frames now, if any.
-  let besideTabId = null;
-  let latestPlacing = 0;
-
-  // Put settings and the Shortcuts panel where they belong now: beside the
-  // sidebar in the page you're on, or inside the sidebar. Run again whenever
-  // the page, a panel or the choice changes; the latest run wins.
-  async function placePanels() {
-    const run = (latestPlacing += 1);
-    const shortcutsWanted = shortcutsPanel.on;
-    const tab = await activeTab();
-    const granted = await hasBesidePermission();
-    if (run !== latestPlacing) return;
-
-    const place = decidePanelPlace({ choice: panelPlace, granted, url: tab?.url });
-    const besideWanted = place === "beside" && (settingsWanted || shortcutsWanted);
-    if (besideTabId !== null && (!besideWanted || besideTabId !== tab.id)) {
-      drawBeside(besideTabId);
-      besideTabId = null;
-    }
-    let beside = false;
-    if (besideWanted) {
-      beside = await drawBeside(tab.id, {
-        settings: settingsWanted ? besideAddress("settings") : null,
-        shortcuts: shortcutsWanted ? besideAddress("shortcuts") : null,
-      });
-      if (beside) besideTabId = tab.id;
-      if (run !== latestPlacing) return;
-    }
-
-    const refused = besideWanted && !beside;
-    const explain = !beside && explainsInside({ choice: panelPlace, granted, url: tab?.url, refused });
-    settingsView.showInsideNote(explain);
-    shortcutsView.showInsideNote(explain);
-    shortcutsView.draw(shortcutsPanel, !beside);
-    if (settingsWanted && !beside) {
-      if (!settingsView.isOpen()) settingsView.open(settingsSection);
-    } else settingsView.close();
-  }
 
   // Glacier's own card before the browser's prompt (ADR 0008): what drawing
   // on the page is for, and what it is never used for. Then settings open,
@@ -1133,17 +1047,10 @@ async function start() {
     if (!panelsCardEl) return;
     panelsCardEl.remove();
     panelsCardEl = null;
-    glacierButtonEl.setAttribute("aria-expanded", "false");
   }
 
-  function showPanelsCard(section) {
-    closePanelsCard();
-    const answer = (place) => {
-      closePanelsCard();
-      savePanelPlace(place);
-      openSettings(section);
-    };
-
+  function showPanelsCard() {
+    if (panelsCardEl) return;
     const sheet = document.createElement("aside");
     sheet.className = "panels-card";
     sheet.setAttribute("aria-label", "Where settings open");
@@ -1173,14 +1080,12 @@ async function start() {
     allow.type = "button";
     allow.className = "card-button";
     allow.textContent = "Allow";
-    allow.addEventListener("click", () => {
-      requestBeside().then((granted) => answer(granted ? "beside" : "inside"));
-    });
+    allow.addEventListener("click", () => panels.answerCard(true));
     const notNow = document.createElement("button");
     notNow.type = "button";
     notNow.className = "perm-cancel";
     notNow.textContent = "Not now, open them inside";
-    notNow.addEventListener("click", () => answer("inside"));
+    notNow.addEventListener("click", () => panels.answerCard(false));
     buttons.append(allow, notNow);
 
     card.append(title, why, never, next, buttons);
@@ -1188,12 +1093,11 @@ async function start() {
     sheet.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        closePanelsCard();
+        closeSettings();
       }
     });
     glacierButtonEl.before(sheet);
     panelsCardEl = sheet;
-    glacierButtonEl.setAttribute("aria-expanded", "true");
     allow.focus();
   }
 
@@ -1208,7 +1112,7 @@ async function start() {
     courses: repoActions.courses,
     firstSync: (repo, token) =>
       repoActions.firstSync(repo, token, (progress) => {
-        api.runtime.sendMessage({ glacier: "progress", link: besideLink, progress }).catch(() => {});
+        api.runtime.sendMessage({ glacier: "progress", channel: besideChannel, progress }).catch(() => {});
       }),
     exportCourse: repoActions.exportCourse,
     exportAll: repoActions.exportAll,
@@ -1216,7 +1120,7 @@ async function start() {
   };
 
   api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message?.glacier !== "beside" || message.link !== besideLink) return false;
+    if (message?.glacier !== "beside" || message.channel !== besideChannel) return false;
     const call = besideCalls[message.call];
     if (!call) return false;
     Promise.resolve()
@@ -1242,29 +1146,16 @@ async function start() {
       tabSettings = readTabSettings(changes.tabSettings.newValue);
       updatePill();
     }
-    if (changes.shortcutsPanel || changes.panelPlace) {
-      if (changes.shortcutsPanel) shortcutsPanel = readShortcutsPanel(changes.shortcutsPanel.newValue);
-      if (changes.panelPlace) panelPlace = readPanelPlace(changes.panelPlace.newValue);
-      placePanels();
+    if (changes.shortcutsPanel) {
+      shortcutsPanel = readShortcutsPanel(changes.shortcutsPanel.newValue);
+      panels.setShortcuts(shortcutsPanel);
     }
+    if (changes.panelPlace) panels.setChoice(changes.panelPlace.newValue);
   });
 
   // The frames follow you to another tab, and come back after the page
   // loads again.
-  function followTabs(windowId) {
-    const somethingOpen = () => settingsWanted || shortcutsPanel.on;
-    api.tabs.onActivated.addListener((info) => {
-      if (info.windowId === windowId && somethingOpen()) placePanels();
-    });
-    api.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
-      if (changeInfo.status === "complete" && tab.active && tab.windowId === windowId && somethingOpen()) placePanels();
-    });
-  }
-  api.windows
-    .getCurrent()
-    .then((browserWindow) => followTabs(browserWindow.id))
-    .catch((error) => console.warn("Glacier: could not follow the tabs", error));
-  placePanels();
+  panels.start();
 
   // Rename by clicking the title (#54): the title becomes a text field in
   // the pill. Enter or clicking away saves, Esc puts the old title back. A
@@ -2074,7 +1965,7 @@ async function start() {
     // With settings open the focus stays in them; closing puts it back here.
     if (focused) {
       focusedEl = focused;
-      if (!settingsWanted) {
+      if (!panels.settingsOpen()) {
         focused.focus();
         placeCaret(focused, editor.caretOffset());
       }

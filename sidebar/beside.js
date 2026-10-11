@@ -3,8 +3,8 @@
 // page; it never sees the page. The choices kept per browser are written to
 // extension storage, where the sidebar picks them up at once, so the note
 // shows each change live. Anything that needs the Notebook (the Notes repo
-// section) is asked of the sidebar that opened this frame, named by `link`.
-import { readLook, lookStyle } from "../src/look.mjs";
+// section) is asked of the sidebar that opened this frame, named by `channel`.
+import { readLook, applyLook } from "../src/look.mjs";
 import { readTabSettings } from "../src/tab-settings.mjs";
 import { readShortcutsPanel } from "../src/shortcuts-panel.mjs";
 import { readPanelPlace, BESIDE_PERMISSION } from "../src/panel-place.mjs";
@@ -14,7 +14,7 @@ const api = typeof browser !== "undefined" ? browser : chrome;
 const storage = api.storage.local;
 const params = new URLSearchParams(location.search);
 const panel = params.get("panel");
-const link = params.get("link");
+const channel = params.get("channel");
 
 let look = readLook(undefined);
 let tabSettings = readTabSettings(undefined);
@@ -25,7 +25,7 @@ let panelPlace = readPanelPlace(undefined);
 // has closed) can be told apart from an empty one.
 async function ask(call, ...args) {
   try {
-    return await api.runtime.sendMessage({ glacier: "beside", link, call, args });
+    return await api.runtime.sendMessage({ glacier: "beside", channel, call, args });
   } catch {
     return undefined;
   }
@@ -37,10 +37,7 @@ async function askValue(call, ...args) {
 
 // Only the paper's colours and font: the frame has no note to rule.
 function drawLook() {
-  const style = lookStyle(look);
-  const root = document.documentElement;
-  for (const [name, value] of Object.entries(style.vars)) root.style.setProperty(name, value);
-  root.style.colorScheme = style.dark ? "dark" : "light";
+  applyLook(document.documentElement, look);
 }
 
 const prefs = {
@@ -76,7 +73,7 @@ const prefs = {
 // The first sync's steps arrive from the sidebar as it goes.
 let onFirstSyncProgress = () => {};
 api.runtime.onMessage.addListener((message) => {
-  if (message?.glacier === "progress" && message.link === link) onFirstSyncProgress(message.progress);
+  if (message?.glacier === "progress" && message.channel === channel) onFirstSyncProgress(message.progress);
 });
 
 // Bytes travel as text: Chrome sends messages as JSON.

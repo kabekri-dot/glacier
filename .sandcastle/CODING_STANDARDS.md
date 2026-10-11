@@ -18,7 +18,7 @@ Glacier's rules come from its ADRs (`docs/adr/`) and glossary (`CONTEXT.md`). Th
 ## Testing
 
 - Test-first (red → green → refactor), with **`node --test` only**: no test frameworks, no npm.
-- Test through these seams only: the **Notebook core's public actions** (with in-memory stand-ins for storage and GitHub), the **editor-model functions**, and the **Screen** (`src/screen.mjs`: what the sidebar shows, the fresh page, ← and saving the open note, through its public interface with the in-memory storage and injected timers; the Note session and the ← history sit behind it), and the **Opening flow** (what the sidebar shows for the current page, through its public interface with a fake browser page). Never test private helpers or the DOM.
+- Test through these seams only: the **Notebook core's public actions** (with in-memory stand-ins for storage and GitHub), the **editor-model functions**, and the **Screen** (`src/screen.mjs`: what the sidebar shows, the fresh page, ← and saving the open note, through its public interface with the in-memory storage and injected timers; the Note session and the ← history sit behind it), the **Opening flow** (what the sidebar shows for the current page, through its public interface with a fake browser page), and the **Panel placement** (`src/panel-place.mjs`: where settings, the Shortcuts panel and the explanation card show, the frames beside the sidebar and the "page doesn't allow" line, through its public interface with a fake browser port). Never test private helpers or the DOM.
 - One behaviour per test, named the way a user would describe it.
 - The UI is checked by hand, so don't add browser test tools.
 

@@ -11,6 +11,15 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Panel placement behind a browser port (#66)
+
+Nothing should look or work differently. Reload with ↻ first, then run these groups from section 2 again:
+
+- [ ] Settings, Classic papers and handwriting
+- [ ] Shortcuts panel
+- [ ] Panels beside the sidebar
+- [ ] Why a panel opens inside the sidebar
+
 ### One module owns what's on screen (#65)
 
 Nothing should look or work differently. Reload with ↻ first, then run these groups from section 2 again:

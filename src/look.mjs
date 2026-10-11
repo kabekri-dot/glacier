@@ -258,3 +258,12 @@ function rgb(hex) {
   const n = Number.parseInt(hex.slice(1), 16);
   return `${n >> 16}, ${(n >> 8) & 255}, ${n & 255}`;
 }
+
+// Sets the look's custom properties and colour scheme on a page's root
+// element, for the sidebar and the panels beside it alike. Returns the style.
+export function applyLook(root, look) {
+  const style = lookStyle(look);
+  for (const [name, value] of Object.entries(style.vars)) root.style.setProperty(name, value);
+  root.style.colorScheme = style.dark ? "dark" : "light";
+  return style;
+}
