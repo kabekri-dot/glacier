@@ -25,6 +25,7 @@ import {
   LESSON_NOTE_HINT,
   CONCEPT_NOTE_HINT,
 } from "../src/new-note-choices.mjs";
+import { noteActions } from "../src/note-actions.mjs";
 import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
@@ -421,6 +422,7 @@ async function start() {
     pillTitleEl.classList.toggle("is-draft", Boolean(draft));
     pillTitleEl.title = draft ? "Click to name this note" : "Click to rename";
     pillArchivedEl.hidden = !current?.archived;
+    updateNoteMenuButton();
     const previous = history.previous();
     backEl.hidden = previous === null || !tabSettings.showPreviousButton;
     backEl.title = previous === null ? "" : `Back to: ${previous}`;
@@ -483,6 +485,7 @@ async function start() {
     if (!newMenuEl.hidden) closeNewMenu();
     else {
       closeMenu();
+      closeNoteMenu();
       openNewMenu();
     }
   });
@@ -618,6 +621,7 @@ async function start() {
 
   function openMenu() {
     closeSettings({ redraw: false });
+    closeNoteMenu();
     if (menuIsOpen()) {
       menuPanelEl.querySelector(".menu-search").focus();
       return;
@@ -662,14 +666,14 @@ async function start() {
     });
     actions.append(newLesson, newConcept);
 
-    menuPanelEl.append(search, actions, body, downloadNoteSection(), notesRepoSection());
+    menuPanelEl.append(search, actions, body, notesRepoSection());
     menuPanelEl.hidden = false;
     pillMenuEl.setAttribute("aria-expanded", "true");
     search.focus();
   }
 
   // Export and Restore (#13, #55). The file format lives in the Notebook
-  // core; this only downloads. "Download this note" stays in the pill menu;
+  // core; this only downloads. "Download as a file" is in the ⋯ menu;
   // the rest live in Settings, under Notes repo (#18). The sidebar always does
   // the download, also for settings beside it (#21).
   function download(data, type, name) {
@@ -680,37 +684,54 @@ async function start() {
     setTimeout(() => URL.revokeObjectURL(link.href), 10000);
   }
 
-  function downloadNoteSection() {
-    const section = document.createElement("div");
-    section.className = "menu-files";
-    const downloadNote = menuButton("Download this note", "Save this note as a Markdown file", () => {
-      if (!current) return;
-      session.flush();
-      const file = notebook.exportNote(current.title);
-      download(file.text, "text/markdown", file.path.split("/").pop());
-    });
-    const noteRow = document.createElement("div");
-    noteRow.className = "menu-actions";
-    const deleteThisNote = menuButton("Delete this note", "Remove this note for good", () => {
-      if (!current) return;
-      closeMenu();
-      showDeleteQuestion();
-    });
-    const archiveThisNote = current?.archived
-      ? menuButton("Unarchive", "Put this note back in your lists", () => {
-          if (!current) return;
-          closeMenu();
-          unarchiveCurrentNote();
-        })
-      : menuButton("Archive this note", "Hide this note from your lists. You can bring it back any time", () => {
-          if (!current) return;
-          closeMenu();
-          archiveCurrentNote();
-        });
-    noteRow.append(downloadNote, archiveThisNote, deleteThisNote);
-    section.append(noteRow);
-    return section;
+  // The ⋯ "This note" menu (#63): the actions for the open note only, under
+  // the note's name. What it offers is decided by noteActions.
+  const noteMenuButtonEl = document.querySelector(".pill-note-menu");
+  const noteMenuEl = document.querySelector(".note-menu");
+
+  function closeNoteMenu() {
+    noteMenuEl.hidden = true;
+    noteMenuEl.replaceChildren();
+    noteMenuButtonEl.setAttribute("aria-expanded", "false");
   }
+
+  function updateNoteMenuButton() {
+    noteMenuButtonEl.hidden = !current;
+    if (!current) closeNoteMenu();
+  }
+
+  function openNoteMenu() {
+    const menu = noteActions(current);
+    if (!menu) return;
+    closeMenu();
+    session.flush();
+    noteMenuEl.replaceChildren();
+    const heading = document.createElement("p");
+    heading.className = "note-menu-heading";
+    heading.textContent = menu.heading;
+    noteMenuEl.appendChild(heading);
+    for (const action of menu.actions) {
+      noteMenuEl.appendChild(
+        menuButton(action.label, action.hint, () => {
+          closeNoteMenu();
+          if (action.kind === "download") {
+            const file = notebook.exportNote(current.title);
+            download(file.text, "text/markdown", file.path.split("/").pop());
+          } else if (action.kind === "archive") archiveCurrentNote();
+          else if (action.kind === "unarchive") unarchiveCurrentNote();
+          else showDeleteQuestion();
+        }),
+      );
+    }
+    noteMenuEl.hidden = false;
+    noteMenuButtonEl.setAttribute("aria-expanded", "true");
+    noteMenuEl.querySelector("button").focus();
+  }
+
+  noteMenuButtonEl.addEventListener("click", () => {
+    if (!noteMenuEl.hidden) closeNoteMenu();
+    else openNoteMenu();
+  });
 
   // Archive (#58): the note leaves the lists, and the Opening flow decides
   // what the sidebar shows next (a page with no Lesson note gets a fresh page).
@@ -1379,7 +1400,7 @@ async function start() {
   // The ▾ and any bare part of the pill open the menu; the title renames and
   // the sync dot does nothing.
   pillEl.addEventListener("click", (event) => {
-    if (event.target.closest(".pill-title, .pill-title-input, .sync-dot")) return;
+    if (event.target.closest(".pill-title, .pill-title-input, .sync-dot, .pill-note-menu")) return;
     if (menuIsOpen()) dismissMenuPanel();
     else openMenu();
   });
@@ -1397,6 +1418,10 @@ async function start() {
         event.preventDefault();
         event.stopPropagation();
         closeNewMenu();
+      } else if (event.key === "Escape" && !noteMenuEl.hidden) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeNoteMenu();
       } else if (event.key === "Escape" && menuIsOpen()) {
         event.preventDefault();
         event.stopPropagation();
