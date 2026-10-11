@@ -28,6 +28,7 @@ import {
 import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
+import { PAPERS, FONT_OVERRIDES, TEXT_SIZE, readLook, lookStyle, wholeRows } from "../src/look.mjs";
 import {
   blockRanges,
   copiedMessage,
@@ -60,6 +61,43 @@ const newButtonEl = document.querySelector(".pill-new");
 const newMenuEl = document.querySelector(".new-menu");
 const menuPanelEl = document.querySelector(".menu");
 const noteMetaEl = document.querySelector(".note-meta");
+const glacierButtonEl = document.querySelector(".glacier-button");
+const settingsEl = document.querySelector(".settings");
+const settingsCloseEl = document.querySelector(".settings-close");
+const paperBodyEl = document.querySelector(".paper-body");
+const writingBodyEl = document.querySelector(".writing-body");
+const repoBodyEl = document.querySelector(".repo-body");
+
+// This browser's own extension storage: the Notes Repo connection and the
+// chosen look. Neither is ever written into the Notebook (ADR 0003).
+const extensionStorage = (typeof browser !== "undefined" ? browser : chrome).storage.local;
+
+// The paper, font and text size (#18). Drawn by setting the custom
+// properties from src/look.mjs on the page; the stylesheet does the rest.
+let look = readLook(undefined);
+let lookDrawn = lookStyle(look);
+
+function drawLook() {
+  lookDrawn = lookStyle(look);
+  const root = document.documentElement;
+  for (const [name, value] of Object.entries(lookDrawn.vars)) root.style.setProperty(name, value);
+  root.dataset.pattern = lookDrawn.pattern;
+  root.style.colorScheme = lookDrawn.dark ? "dark" : "light";
+  fitRows();
+}
+
+// A block that isn't a whole number of rows tall is padded down to the next
+// ruled line, so the text after it is still on the lines (#18).
+function fitRows() {
+  if (!noteEl || !noteEl.querySelector(".block, .line-row, .md-code")) return;
+  const blocks = [...noteEl.children];
+  for (const block of blocks) block.style.minHeight = "";
+  const heights = blocks.map((block) => block.getBoundingClientRect().height);
+  blocks.forEach((block, i) => {
+    const padded = wholeRows(heights[i], lookDrawn.lineHeight);
+    if (padded > heights[i] + 0.5) block.style.minHeight = `${padded}px`;
+  });
+}
 
 // A write to this browser's copy failed (aborted or threw). Tell the user so
 // they don't trust a save that didn't happen (issue #25); their text is still
@@ -73,6 +111,14 @@ function reportSaveError(error) {
 
 async function start() {
   if (!noteEl) return;
+
+  try {
+    look = readLook((await extensionStorage.get("look")).look);
+  } catch (error) {
+    console.warn("Glacier: could not read the chosen look", error);
+  }
+  drawLook();
+  document.fonts?.addEventListener("loadingdone", fitRows);
 
   // Keep the page read-only until the Notebook has loaded (issue #23). Making
   // it editable first lost text two ways: keystrokes typed before the load
@@ -418,6 +464,7 @@ async function start() {
   }
 
   function openMenu() {
+    closeSettings({ redraw: false });
     if (menuIsOpen()) {
       menuPanelEl.querySelector(".menu-search").focus();
       return;
@@ -464,7 +511,7 @@ async function start() {
     });
     actions.append(newLesson, newConcept);
 
-    menuPanelEl.append(search, actions, body, backupSection(refresh), notesRepoSection());
+    menuPanelEl.append(search, actions, body, downloadNoteSection(), notesRepoSection());
     menuPanelEl.hidden = false;
     pillMenuEl.setAttribute("aria-expanded", "true");
     search.focus();
@@ -472,7 +519,7 @@ async function start() {
 
   // Export and Restore (#13, #55). The file format lives in the Notebook
   // core; this only downloads and picks files. "Download this note" stays in
-  // the pill menu. The rest sit under "Backup" until settings exist (#18).
+  // the pill menu; the rest live in Settings, under Notes repo (#18).
   function download(data, type, name) {
     const link = document.createElement("a");
     link.href = URL.createObjectURL(new Blob([data], { type }));
@@ -491,11 +538,9 @@ async function start() {
     return button;
   }
 
-  function backupSection(refresh) {
-    const today = new Date().toISOString().slice(0, 10);
+  function downloadNoteSection() {
     const section = document.createElement("div");
     section.className = "menu-files";
-
     const downloadNote = menuButton("Download this note", "Save this note as a Markdown file", () => {
       if (!current) return;
       session.flush();
@@ -505,8 +550,12 @@ async function start() {
     const noteRow = document.createElement("div");
     noteRow.className = "menu-actions";
     noteRow.append(downloadNote);
+    section.append(noteRow);
+    return section;
+  }
 
-    const heading = menuHeading("Backup");
+  function backupControls() {
+    const today = new Date().toISOString().slice(0, 10);
 
     const courseSelect = document.createElement("select");
     courseSelect.className = "menu-course-pick";
@@ -518,6 +567,9 @@ async function start() {
       download(notebook.exportCourseZip(courseSelect.value), "application/zip", `${courseSelect.value} ${today}.zip`);
     });
     exportCourse.disabled = !courseSelect.options.length;
+    const courseRow = document.createElement("div");
+    courseRow.className = "menu-actions";
+    courseRow.append(courseSelect, exportCourse);
 
     const exportAll = menuButton("Export everything", "Download every note as a zip of Markdown files", () => {
       session.flush();
@@ -536,7 +588,7 @@ async function start() {
         const result = await notebook.importZip(new Uint8Array(await file.arrayBuffer()));
         showNotice(importSummary(result));
         autoSync.changed();
-        if (menuIsOpen()) refresh();
+        updateBacklinks();
       } catch (error) {
         console.error("Glacier: could not import", error);
         showNotice("Couldn't read that zip file");
@@ -548,36 +600,32 @@ async function start() {
       "Bring back notes from an Export zip. Notes you already have are never overwritten",
       () => picker.click(),
     );
+    const restoreRow = document.createElement("div");
+    restoreRow.className = "menu-actions";
+    restoreRow.append(exportAll, restore, picker);
 
-    const backupRow = document.createElement("div");
-    backupRow.className = "menu-actions";
-    backupRow.append(courseSelect, exportCourse, exportAll, restore, picker);
-    section.append(noteRow, heading, backupRow);
-    return section;
+    const heading = document.createElement("h2");
+    heading.className = "settings-subheading";
+    heading.textContent = "Backup";
+    return [heading, courseRow, restoreRow];
   }
 
   // --- The Notes Repo: connecting GitHub and the first sync (#14) -----------
   //
-  // Settings sit inside the sidebar for now (#18 moves them). The repo name
+  // The connection lives in Settings, under Notes repo (#18). The repo name
   // and token are kept only in this browser's extension storage, never in the
   // Notebook or the Notes Repo (ADR 0003). The Notebook core does the first
   // sync through the GitHub remote; this only draws the form and the steps.
-  const extensionStorage = (typeof browser !== "undefined" ? browser : chrome).storage.local;
-
   async function loadConnection() {
     const { notesRepo, githubToken } = await extensionStorage.get(["notesRepo", "githubToken"]);
     return { repo: notesRepo ?? "", token: githubToken ?? "" };
   }
 
-  function notesRepoSection() {
-    const section = document.createElement("div");
-    section.className = "menu-files";
+  // The sync status line and "Sync now", in the pill menu and in Settings.
+  function syncRow(...buttons) {
     const row = document.createElement("div");
     row.className = "menu-actions";
-    row.append(menuButton("Notes repo", "Connect your GitHub repo, or change the repo or token", () => {
-      closeMenu();
-      showSettings();
-    }));
+    row.append(...buttons);
     const status = document.createElement("p");
     status.className = "menu-sync-status";
     status.textContent = syncStatusText(autoSync.status()).detail;
@@ -588,7 +636,17 @@ async function start() {
         showNotice(result.label === "Synced" ? "Synced just now." : result.detail, 4000);
       }));
     }
-    section.append(menuHeading("Sync"), status, row);
+    return [status, row];
+  }
+
+  function notesRepoSection() {
+    const section = document.createElement("div");
+    section.className = "menu-files";
+    const repoButton = menuButton("Notes repo", "Connect your GitHub repo, or change the repo or token", () => {
+      closeMenu();
+      openSettings("notes-repo");
+    });
+    section.append(menuHeading("Sync"), ...syncRow(repoButton));
     return section;
   }
 
@@ -609,7 +667,7 @@ async function start() {
     if (menuIsOpen()) closeMenu();
     if (!current) {
       const lessonCameIn = titles.some((title) => notebook.note(title)?.source);
-      if (lessonCameIn && !inSettings) openingFlow.pageChanged();
+      if (lessonCameIn) openingFlow.pageChanged();
       return;
     }
     if (!titles.includes(current.title)) {
@@ -625,40 +683,13 @@ async function start() {
     }
   }
 
-  // The note that was open when settings opened, to go back to afterwards.
-  let settingsBack = null;
-  // Whether the settings or the first sync are on screen, so a pull doesn't
-  // replace them.
-  let inSettings = false;
-
-  // Leave the settings or the first sync and go back to that note, or to
-  // what the page asks for when none was open.
-  function leaveSettings() {
-    const note = settingsBack && notebook.note(settingsBack);
-    settingsBack = null;
-    inSettings = false;
-    if (note) openNote(note, { byPage: isOpenedByPage(note), fromHistory: true });
-    else openingFlow.start();
-  }
-
-  async function showSettings({ repo, error } = {}) {
-    if (current) settingsBack = current.title;
-    inSettings = true;
-    session.flush();
-    session.close();
-    current = null;
-    openedByPage = false;
-    updatePill();
-    updateNoteMeta();
-    updateBacklinks();
+  // The Notes repo section of Settings: the connection form, the sync status
+  // and the Backup buttons.
+  async function drawNotesRepo({ repo, error } = {}) {
     const saved = await loadConnection();
 
     const form = document.createElement("form");
     form.className = "create-form";
-
-    const heading = document.createElement("h1");
-    heading.className = "create-heading";
-    heading.textContent = "Notes repo";
 
     const about = document.createElement("p");
     about.className = "settings-text";
@@ -668,7 +699,7 @@ async function start() {
 
     const repoInput = document.createElement("input");
     repoInput.type = "text";
-    repoInput.className = "create-input";
+    repoInput.className = "create-input repo-input";
     repoInput.placeholder = "yourname/notes";
     repoInput.value = repo ?? saved.repo;
 
@@ -693,14 +724,6 @@ async function start() {
     submit.type = "submit";
     submit.className = "create-submit";
     submit.textContent = "Connect and sync";
-    const cancel = document.createElement("button");
-    cancel.type = "button";
-    cancel.className = "perm-cancel";
-    cancel.textContent = "Back to my notes";
-    cancel.addEventListener("click", leaveSettings);
-    const buttons = document.createElement("div");
-    buttons.className = "perm-buttons";
-    buttons.append(submit, cancel);
 
     form.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -717,20 +740,22 @@ async function start() {
       showFirstSync(name, token);
     });
 
-    form.append(heading, about, field("Repo", repoInput), field("Token", tokenInput), tokenHelp, errorEl, buttons);
-    noteEl.replaceChildren(form);
-    repoInput.focus();
+    form.append(about, field("Repo", repoInput), field("Token", tokenInput), tokenHelp, errorEl, submit);
+    const sync = autoSync.status().state === "off" ? [] : syncRow();
+    repoBodyEl.replaceChildren(form, ...sync, ...backupControls());
   }
 
-  // The first sync's progress screen: connecting, downloading n of N notes,
-  // linking, ready, then a confirmation. The repo and token are saved only
-  // once GitHub has accepted them; a wrong one goes back to the form with a
-  // clear message.
+  // The first sync's progress, in place of the form: connecting, downloading
+  // n of N notes, linking, ready, then a confirmation. The repo and token are
+  // saved only once GitHub has accepted them; a wrong one goes back to the
+  // form with a clear message.
+  let firstSyncRunning = false;
+
   async function showFirstSync(repo, token) {
     const screen = document.createElement("div");
     screen.className = "perm-card";
-    const heading = document.createElement("h1");
-    heading.className = "create-heading";
+    const heading = document.createElement("h2");
+    heading.className = "settings-subheading";
     heading.textContent = "First sync";
     const list = document.createElement("ol");
     list.className = "sync-steps";
@@ -746,7 +771,7 @@ async function start() {
       list.append(steps[step]);
     }
     screen.append(heading, list);
-    noteEl.replaceChildren(screen);
+    repoBodyEl.replaceChildren(screen);
 
     const order = Object.keys(steps);
     const showStep = (progress) => {
@@ -761,19 +786,25 @@ async function start() {
     };
 
     let result;
+    firstSyncRunning = true;
     try {
       result = await notebook.firstSync(githubRemote({ repo, token }), showStep);
     } catch (error) {
       console.error("Glacier: first sync failed", error);
-      // Switching tabs may have replaced this screen; then a notice says it.
-      if (screen.isConnected) showSettings({ repo, error: syncErrorMessage(error, repo) });
-      else showNotice(syncErrorMessage(error, repo), 8000);
+      firstSyncRunning = false;
+      // Closing settings meanwhile leaves the form behind; then a notice says it.
+      if (settingsEl.hidden) showNotice(syncErrorMessage(error, repo), 8000);
+      drawNotesRepo({ repo, error: syncErrorMessage(error, repo) });
       return;
     }
+    firstSyncRunning = false;
     await extensionStorage.set({ notesRepo: repo, githubToken: token });
     autoSync.syncNow();
-    if (!screen.isConnected) {
+    if (!current) openingFlow.start();
+    else updateBacklinks();
+    if (settingsEl.hidden) {
       showNotice(`Your notes from ${repo} are here.`);
+      drawNotesRepo();
       return;
     }
 
@@ -785,10 +816,137 @@ async function start() {
     ok.type = "button";
     ok.className = "create-submit";
     ok.textContent = "Start writing";
-    ok.addEventListener("click", leaveSettings);
+    ok.addEventListener("click", () => {
+      closeSettings();
+      drawNotesRepo();
+    });
     screen.append(done, ok);
     ok.focus();
   }
+
+  // --- Settings (#18) --------------------------------------------------------
+  //
+  // The round glacier button opens and closes them. Inside the sidebar for
+  // now, over the lower part of the note, so the note above shows each change
+  // live. Sections fold open and closed. The look is kept per browser.
+
+  function saveLook(change) {
+    look = readLook({ ...look, ...change });
+    drawLook();
+    extensionStorage.set({ look }).catch((error) => {
+      console.warn("Glacier: could not keep the chosen look", error);
+    });
+  }
+
+  function drawPapers() {
+    const list = document.createElement("div");
+    list.className = "paper-list";
+    list.setAttribute("role", "radiogroup");
+    list.setAttribute("aria-label", "Paper");
+    for (const paper of PAPERS) {
+      const label = document.createElement("label");
+      label.className = "paper-choice";
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = "paper";
+      radio.value = paper.name;
+      radio.checked = paper.name === look.paper;
+      radio.addEventListener("change", () => {
+        saveLook({ paper: paper.name });
+        drawWriting();
+      });
+      const swatch = document.createElement("span");
+      swatch.className = "paper-swatch";
+      swatch.style.background = paper.paper;
+      swatch.style.boxShadow = `inset 0 -0.35rem 0 -0.25rem ${paper.pattern === "none" ? paper.paper : paper.rule}`;
+      const name = document.createElement("span");
+      name.textContent = paper.dark ? `${paper.name} (dark)` : paper.name;
+      label.append(radio, swatch, name);
+      list.append(label);
+    }
+    paperBodyEl.replaceChildren(list);
+  }
+
+  // The Font Override and the text size. "Theme default" names the paper's
+  // own font, so it is clear what it gives; a new paper redraws this.
+  function drawWriting() {
+    const themeFont = PAPERS.find((paper) => paper.name === look.paper).font;
+    const font = document.createElement("select");
+    for (const name of FONT_OVERRIDES) {
+      const text = name === "Theme default" ? `Theme default (${themeFont})` : name;
+      font.add(new Option(text, name, false, name === look.font));
+    }
+    font.addEventListener("change", () => saveLook({ font: font.value }));
+
+    const size = document.createElement("input");
+    size.type = "range";
+    size.min = String(TEXT_SIZE.min);
+    size.max = String(TEXT_SIZE.max);
+    size.step = String(TEXT_SIZE.step);
+    size.value = String(look.textSize);
+    const shown = document.createElement("output");
+    shown.className = "text-size-value";
+    shown.textContent = `${look.textSize} %`;
+    // Live while dragging; kept when let go.
+    size.addEventListener("input", () => {
+      look = readLook({ ...look, textSize: size.value });
+      shown.textContent = `${look.textSize} %`;
+      drawLook();
+    });
+    size.addEventListener("change", () => saveLook({ textSize: size.value }));
+    const sizeRow = document.createElement("div");
+    sizeRow.className = "text-size-row";
+    sizeRow.append(size, shown);
+
+    writingBodyEl.replaceChildren(field("Font", font), field("Text size", sizeRow));
+  }
+
+  function openSettings(section) {
+    closeMenu();
+    closeNewMenu();
+    closeBacklinks();
+    session.flush();
+    drawPapers();
+    drawWriting();
+    settingsEl.hidden = false;
+    glacierButtonEl.setAttribute("aria-expanded", "true");
+    settingsCloseEl.focus();
+    // A first sync still running keeps its progress on screen.
+    const repoDrawn = firstSyncRunning ? Promise.resolve() : drawNotesRepo();
+    const target = section && settingsEl.querySelector(`[data-section="${section}"]`);
+    if (!target) return;
+    target.open = true;
+    repoDrawn.then(() => {
+      settingsEl.scrollTop = target.offsetTop - settingsEl.querySelector(".settings-header").offsetHeight;
+      target.querySelector(".repo-input")?.focus();
+    });
+  }
+
+  // Closing puts the caret back in the note, unless a click on the note is
+  // about to place it there itself.
+  function closeSettings({ redraw = true } = {}) {
+    if (settingsEl.hidden) return;
+    settingsEl.hidden = true;
+    glacierButtonEl.setAttribute("aria-expanded", "false");
+    if (redraw && current) render();
+  }
+
+  // Writing again, or opening the menus, closes settings.
+  noteEl.addEventListener("mousedown", () => closeSettings({ redraw: false }), true);
+  pillEl.addEventListener("click", () => closeSettings({ redraw: false }), true);
+  newButtonEl.addEventListener("click", () => closeSettings({ redraw: false }), true);
+
+  glacierButtonEl.addEventListener("click", () => {
+    if (settingsEl.hidden) openSettings();
+    else closeSettings();
+  });
+  settingsCloseEl.addEventListener("click", closeSettings);
+  settingsEl.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeSettings();
+    }
+  });
 
   // Rename by clicking the title (#54): the title becomes a text field in
   // the pill. Enter or clicking away saves, Esc puts the old title back. A
@@ -1572,10 +1730,14 @@ async function start() {
       }
     }
 
+    fitRows();
+    // With settings open the focus stays in them; closing puts it back here.
     if (focused) {
       focusedEl = focused;
-      focused.focus();
-      placeCaret(focused, editor.caretOffset());
+      if (settingsEl.hidden) {
+        focused.focus();
+        placeCaret(focused, editor.caretOffset());
+      }
     }
 
     // Draw the `/` menu against the fresh line (the + button opens it just

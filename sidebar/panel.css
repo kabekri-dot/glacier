@@ -1,18 +1,95 @@
-/* Glacier paper: the default Theme. Pale ice-blue page with faint blue
-   ruled lines and a soft sky tint at the top. Pixel-art panorama, bundled
-   fonts and the other Themes arrive in later slices. */
+/* The paper. Its colours, pattern, font and text size come from the chosen
+   look (src/look.mjs, #18), which the panel sets as the custom properties
+   below. These defaults are Glacier at 100 %, shown until the look loads. */
+
+/* All fonts are bundled, so Glacier looks the same offline (#18). */
+@font-face {
+  font-family: "Shantell Sans";
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/shantell-sans-400.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Shantell Sans";
+  font-weight: 700;
+  font-display: swap;
+  src: url("../fonts/shantell-sans-700.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Patrick Hand";
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/patrick-hand-400.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Kalam";
+  font-weight: 300;
+  font-display: swap;
+  src: url("../fonts/kalam-300.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Kalam";
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/kalam-400.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Kalam";
+  font-weight: 700;
+  font-display: swap;
+  src: url("../fonts/kalam-700.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Caveat";
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/caveat-400.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Caveat";
+  font-weight: 700;
+  font-display: swap;
+  src: url("../fonts/caveat-700.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Architects Daughter";
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/architects-daughter-400.woff2") format("woff2");
+}
 
 :root {
-  --glacier-paper: #eef4fb;
-  --glacier-sky: #dcebfb;
-  --glacier-rule: #c7dcf2;
-  --glacier-ink: #1b2a4a;
-  --glacier-accent: #3f78c4;
-  --glacier-line-height: 1.8rem;
+  --paper: #eef4fb;
+  --paper-top: #dcebfb;
+  --rule: #c7dcf2;
+  --rule-major: #c7dcf2;
+  --margin-line: #c7dcf2;
+  --ink: #1b2a4a;
+  --accent: #3f78c4;
+  --tint: rgba(27, 42, 74, 0.07);
+  --shadow: rgba(27, 42, 74, 0.18);
+  --field: rgba(255, 255, 255, 0.7);
+  --missing: #b3261e;
+  --font-family: "Shantell Sans", "Comic Sans MS", cursive, sans-serif;
+  --font-weight: 400;
+  --text-size: 16.8px;
+  /* One ruled row, in whole pixels so the rules never drift from the text. */
+  --line-height: 29px;
   /* How far the ruled lines move up from the bottom of each text row, so the
      writing sits ON the line (just under the letters) instead of floating
      above it, as on real paper. */
-  --glacier-rule-shift: 0.15rem;
+  --rule-shift: 6px;
+  /* Where the first row starts, and the text's left edge. */
+  --note-top: 3.25rem;
+  --note-left: 1.25rem;
 }
 
 * {
@@ -26,24 +103,24 @@ body {
 }
 
 body {
-  background: linear-gradient(var(--glacier-sky), var(--glacier-paper) 12rem);
-  color: var(--glacier-ink);
-  /* Shantell Sans is bundled in a later slice; fall back to a handwritten feel. */
-  font-family: "Shantell Sans", "Comic Sans MS", "Segoe Print", cursive, sans-serif;
-  font-size: 1.05rem;
-  line-height: var(--glacier-line-height);
+  background: linear-gradient(var(--paper-top), var(--paper) 12rem) var(--paper);
+  color: var(--ink);
+  font-family: var(--font-family);
+  font-weight: var(--font-weight);
+  font-size: var(--text-size);
+  line-height: var(--line-height);
 }
 
 /* The note's "Course · source" line (#13) sits on the first ruled line, and
    the text starts one line lower so it stays on the rules. */
 .note-meta {
   position: absolute;
-  top: 3.25rem;
-  left: 1.25rem;
+  top: var(--note-top);
+  left: var(--note-left);
   right: 1.25rem;
   overflow: hidden;
-  font-size: 0.8rem;
-  line-height: var(--glacier-line-height);
+  font-size: 0.8em;
+  line-height: var(--line-height);
   white-space: nowrap;
   text-overflow: ellipsis;
   opacity: 0.7;
@@ -54,25 +131,85 @@ body {
 }
 
 .note-meta a {
-  color: var(--glacier-accent);
+  color: var(--accent);
 }
 
 .note.has-meta {
-  padding-top: calc(3.25rem + var(--glacier-line-height));
+  padding-top: calc(var(--note-top) + var(--line-height));
 }
 
 /* The note fills the sidebar and must stay usable from about 260px wide. */
 .note {
   min-height: 100%;
-  padding: 3.25rem 1.25rem 1.5rem;
-  /* Faint ruled lines, like a real notebook. */
+  padding: var(--note-top) 1.25rem 1.5rem var(--note-left);
+  background-position: 0 calc(var(--note-top) - var(--rule-shift));
+}
+
+/* The paper's pattern, drawn on each row's last pixel and lifted by
+   --rule-shift so it runs just under the letters. */
+html[data-pattern="ruled"] .note,
+html[data-pattern="margin"] .note {
   background-image: repeating-linear-gradient(
-    var(--glacier-paper),
-    var(--glacier-paper) calc(var(--glacier-line-height) - 1px),
-    var(--glacier-rule) calc(var(--glacier-line-height) - 1px),
-    var(--glacier-rule) var(--glacier-line-height)
+    transparent,
+    transparent calc(var(--line-height) - 1px),
+    var(--rule) calc(var(--line-height) - 1px),
+    var(--rule) var(--line-height)
   );
-  background-position: 0 calc(3.25rem - var(--glacier-rule-shift));
+}
+
+/* School Notebook: a red margin line left of the text. */
+html[data-pattern="margin"] {
+  --note-left: 2.6rem;
+}
+
+html[data-pattern="margin"] .note {
+  background-image:
+    linear-gradient(
+      to right,
+      transparent 2.05rem,
+      var(--margin-line) 2.05rem,
+      var(--margin-line) calc(2.05rem + 1px),
+      transparent calc(2.05rem + 1px)
+    ),
+    repeating-linear-gradient(
+      transparent,
+      transparent calc(var(--line-height) - 1px),
+      var(--rule) calc(var(--line-height) - 1px),
+      var(--rule) var(--line-height)
+    );
+  background-position: 0 0, 0 calc(var(--note-top) - var(--rule-shift));
+}
+
+/* Engineer: a square grid, one row a square, darker every fifth line. */
+html[data-pattern="grid"] .note {
+  background-image:
+    repeating-linear-gradient(
+      transparent,
+      transparent calc(5 * var(--line-height) - 1px),
+      var(--rule-major) calc(5 * var(--line-height) - 1px),
+      var(--rule-major) calc(5 * var(--line-height))
+    ),
+    repeating-linear-gradient(
+      to right,
+      transparent,
+      transparent calc(5 * var(--line-height) - 1px),
+      var(--rule-major) calc(5 * var(--line-height) - 1px),
+      var(--rule-major) calc(5 * var(--line-height))
+    ),
+    repeating-linear-gradient(
+      transparent,
+      transparent calc(var(--line-height) - 1px),
+      var(--rule) calc(var(--line-height) - 1px),
+      var(--rule) var(--line-height)
+    ),
+    repeating-linear-gradient(
+      to right,
+      transparent,
+      transparent calc(var(--line-height) - 1px),
+      var(--rule) calc(var(--line-height) - 1px),
+      var(--rule) var(--line-height)
+    );
+  background-position: 0 calc(var(--note-top) - var(--rule-shift));
 }
 
 /* Each line is its own block. Rendered blocks and the current line share the
@@ -82,7 +219,7 @@ body {
   /* Keep runs of spaces and wrap long lines, as paper does. */
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  min-height: var(--glacier-line-height);
+  min-height: var(--line-height);
 }
 
 /* The current line, edited in place and styled as you type (#37). It is
@@ -90,10 +227,10 @@ body {
    the page. Its text is the raw Markdown, so runs of spaces are kept. */
 .md-edit {
   position: relative;
-  min-height: var(--glacier-line-height);
+  min-height: var(--line-height);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  caret-color: var(--glacier-ink);
+  caret-color: var(--ink);
 }
 
 .md-edit:focus {
@@ -119,7 +256,7 @@ body {
 }
 
 .md-list > .md-mark:first-child {
-  color: var(--glacier-accent);
+  color: var(--accent);
   opacity: 0.6;
 }
 
@@ -128,10 +265,13 @@ body {
   opacity: 0.85;
 }
 
-/* Headings keep their line height a multiple of the ruling so following text
-   stays on the lines (issue #18 tunes this per font and size). */
+/* Bigger letters and other fonts inside a line take no height of their own
+   (line-height 0), so every row stays exactly one ruled row and their
+   baseline stays on the line: the text after a heading or a bit of code is
+   still on the rules, at every font and text size (#18). */
 .md-h {
   font-weight: 700;
+  line-height: 0;
 }
 
 .md-h1 {
@@ -149,14 +289,14 @@ body {
 .md-bullet-dot {
   display: inline-block;
   width: 1.2em;
-  color: var(--glacier-accent);
+  color: var(--accent);
 }
 
 /* A Link to another note: the accent colour, underlined on hover so it reads
    as clickable. A Missing Link (no such note yet) shows red; following it
    creates the Concept Note (#8). */
 .md-link {
-  color: var(--glacier-accent);
+  color: var(--accent);
   cursor: pointer;
   text-decoration: none;
 }
@@ -166,13 +306,13 @@ body {
 }
 
 .md-link-missing {
-  color: #b3261e;
+  color: var(--missing);
 }
 
 /* A web link `[text](address)`: its text, underlined. It is not followed on
    click; clicking puts the caret there like any other text. */
 .md-url {
-  color: var(--glacier-accent);
+  color: var(--accent);
   text-decoration: underline;
 }
 
@@ -187,16 +327,17 @@ code,
   /* No vertical padding: every line of code stays exactly one ruled row, so the
      text after a code block stays on the lines too. */
   padding: 0 0.6rem;
-  line-height: var(--glacier-line-height);
-  background: rgba(27, 42, 74, 0.06);
+  line-height: var(--line-height);
+  background: var(--tint);
   border-radius: 4px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
 code {
+  line-height: 0;
   padding: 0 0.2em;
-  background: rgba(27, 42, 74, 0.08);
+  background: var(--tint);
   border-radius: 3px;
 }
 
@@ -212,13 +353,13 @@ code {
   left: -1.15rem;
   top: 0;
   width: 1.1rem;
-  height: var(--glacier-line-height);
+  height: var(--line-height);
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--glacier-accent);
+  color: var(--accent);
   font: inherit;
-  line-height: var(--glacier-line-height);
+  line-height: var(--line-height);
   cursor: pointer;
   opacity: 0.35;
 }
@@ -241,10 +382,10 @@ code {
   min-width: 14rem;
   max-height: 16rem;
   overflow-y: auto;
-  background: var(--glacier-paper);
-  border: 1px solid var(--glacier-rule);
+  background: var(--paper);
+  border: 1px solid var(--rule);
   border-radius: 8px;
-  box-shadow: 0 6px 20px rgba(27, 42, 74, 0.18);
+  box-shadow: 0 6px 20px var(--shadow);
   font-size: 0.95rem;
 }
 
@@ -259,11 +400,11 @@ code {
 }
 
 .slash-item.is-selected {
-  background: rgba(63, 120, 196, 0.15);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 .slash-md {
-  color: var(--glacier-accent);
+  color: var(--accent);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 0.85em;
   white-space: pre;
@@ -306,9 +447,9 @@ code {
 .create-input {
   width: 100%;
   padding: 0.4rem 0.55rem;
-  border: 1px solid var(--glacier-rule);
+  border: 1px solid var(--rule);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--field);
   color: inherit;
   font: inherit;
   font-size: 1rem;
@@ -316,7 +457,7 @@ code {
 
 .create-input:focus {
   outline: none;
-  border-color: var(--glacier-accent);
+  border-color: var(--accent);
 }
 
 .create-submit {
@@ -324,8 +465,8 @@ code {
   padding: 0.45rem 0.9rem;
   border: 0;
   border-radius: 6px;
-  background: var(--glacier-accent);
-  color: #fff;
+  background: var(--accent);
+  color: var(--paper);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
@@ -362,7 +503,7 @@ code {
 
 .perm-cancel {
   padding: 0.45rem 0.9rem;
-  border: 1px solid var(--glacier-rule);
+  border: 1px solid var(--rule);
   border-radius: 6px;
   background: transparent;
   color: inherit;
@@ -373,7 +514,7 @@ code {
 .perm-cancel:hover,
 .perm-cancel:focus {
   outline: none;
-  border-color: var(--glacier-accent);
+  border-color: var(--accent);
 }
 
 /* The Notes Repo settings and the first sync's steps (#14). */
@@ -391,7 +532,7 @@ code {
 
 .settings-error {
   margin: 0;
-  color: #b3261e;
+  color: var(--missing);
   line-height: 1.4;
 }
 
@@ -457,15 +598,15 @@ code {
   align-items: center;
   gap: 0.5rem;
   padding: 0.2rem 0.8rem;
-  border: 1px solid var(--glacier-rule);
+  border: 1px solid var(--rule);
   border-radius: 999px;
-  background: var(--glacier-paper);
-  color: var(--glacier-ink);
+  background: var(--paper);
+  color: var(--ink);
   font: inherit;
   font-size: 0.9rem;
   line-height: 1.4rem;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(27, 42, 74, 0.12);
+  box-shadow: 0 2px 8px var(--shadow);
 }
 
 .pill-side {
@@ -473,15 +614,15 @@ code {
   width: 1.9rem;
   height: 1.9rem;
   padding: 0;
-  border: 1px solid var(--glacier-rule);
+  border: 1px solid var(--rule);
   border-radius: 50%;
-  background: var(--glacier-paper);
-  color: var(--glacier-ink);
+  background: var(--paper);
+  color: var(--ink);
   font: inherit;
   font-size: 1rem;
   line-height: 1;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(27, 42, 74, 0.12);
+  box-shadow: 0 2px 8px var(--shadow);
 }
 
 .pill-side[hidden] {
@@ -497,10 +638,10 @@ code {
   flex-direction: column;
   gap: 0.25rem;
   padding: 0.4rem;
-  background: var(--glacier-paper);
-  border: 1px solid var(--glacier-rule);
+  background: var(--paper);
+  border: 1px solid var(--rule);
   border-radius: 10px;
-  box-shadow: 0 6px 20px rgba(27, 42, 74, 0.18);
+  box-shadow: 0 6px 20px var(--shadow);
 }
 
 .new-menu[hidden] {
@@ -518,7 +659,7 @@ code {
   width: 0.55rem;
   height: 0.55rem;
   border-radius: 50%;
-  background: var(--glacier-accent);
+  background: var(--accent);
 }
 
 /* The sync status (#15): the dot's colour tells the state, hovering it
@@ -528,7 +669,7 @@ code {
 }
 
 .sync-dot[data-state="syncing"] {
-  background: var(--glacier-accent);
+  background: var(--accent);
   animation: sync-pulse 1s ease-in-out infinite alternate;
 }
 
@@ -569,10 +710,10 @@ code {
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.6rem;
-  background: var(--glacier-paper);
-  border: 1px solid var(--glacier-rule);
+  background: var(--paper);
+  border: 1px solid var(--rule);
   border-radius: 10px;
-  box-shadow: 0 6px 20px rgba(27, 42, 74, 0.18);
+  box-shadow: 0 6px 20px var(--shadow);
   font-size: 0.95rem;
 }
 
@@ -583,10 +724,10 @@ code {
 .menu-search {
   width: 100%;
   padding: 0.4rem 0.55rem;
-  border: 1px solid var(--glacier-rule);
+  border: 1px solid var(--rule);
   border-radius: 6px;
-  background: #fff;
-  color: var(--glacier-ink);
+  background: var(--field);
+  color: var(--ink);
   font: inherit;
 }
 
@@ -598,22 +739,22 @@ code {
 .menu-new {
   flex: 1;
   padding: 0.3rem 0.5rem;
-  border: 1px solid var(--glacier-accent);
+  border: 1px solid var(--accent);
   border-radius: 6px;
   background: transparent;
-  color: var(--glacier-accent);
+  color: var(--accent);
   font: inherit;
   cursor: pointer;
 }
 
 .menu-files {
   display: block;
-  border-top: 1px solid var(--glacier-rule);
+  border-top: 1px solid var(--rule);
   padding-top: 0.5rem;
 }
 
 .menu-new:hover {
-  background: rgba(63, 120, 196, 0.1);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .menu-body {
@@ -625,7 +766,7 @@ code {
   margin: 0.6rem 0 0.2rem;
   font-size: 0.75rem;
   font-weight: normal;
-  color: var(--glacier-accent);
+  color: var(--accent);
 }
 
 .menu-course summary {
@@ -644,7 +785,7 @@ code {
   border: 0;
   border-radius: 5px;
   background: transparent;
-  color: var(--glacier-ink);
+  color: var(--ink);
   font: inherit;
   text-align: left;
   overflow: hidden;
@@ -655,7 +796,7 @@ code {
 
 .menu-item:hover,
 .menu-item:focus {
-  background: rgba(63, 120, 196, 0.12);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
   outline: none;
 }
 
@@ -670,7 +811,7 @@ code {
 }
 
 .menu mark {
-  background: rgba(63, 120, 196, 0.28);
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
   color: inherit;
   border-radius: 2px;
 }
@@ -687,10 +828,10 @@ code {
   bottom: 0.5rem;
   z-index: 10;
   padding: 0.2rem 0.55rem;
-  border: 1px solid var(--glacier-rule);
+  border: 1px solid var(--rule);
   border-radius: 999px;
-  background: var(--glacier-paper);
-  color: var(--glacier-accent);
+  background: var(--paper);
+  color: var(--accent);
   font: inherit;
   font-size: 0.85rem;
   cursor: pointer;
@@ -711,24 +852,24 @@ code {
   max-width: calc(100% - 1rem);
   max-height: 50%;
   overflow-y: auto;
-  background: var(--glacier-paper);
-  border: 1px solid var(--glacier-rule);
+  background: var(--paper);
+  border: 1px solid var(--rule);
   border-radius: 8px;
-  box-shadow: 0 6px 20px rgba(27, 42, 74, 0.18);
+  box-shadow: 0 6px 20px var(--shadow);
 }
 
 .backlinks-item {
   padding: 0.4rem 0.7rem;
   border: 0;
   background: transparent;
-  color: var(--glacier-ink);
+  color: var(--ink);
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
 
 .backlinks-item:hover {
-  background: rgba(63, 120, 196, 0.1);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .pill-title {
@@ -765,10 +906,10 @@ code {
   z-index: 25;
   margin: 0;
   padding: 0.2rem 0.65rem;
-  border: 1px solid var(--glacier-rule);
+  border: 1px solid var(--rule);
   border-radius: 999px;
-  background: var(--glacier-paper);
-  color: var(--glacier-ink);
+  background: var(--paper);
+  color: var(--ink);
   font-size: 0.85rem;
 }
 
@@ -780,28 +921,188 @@ code {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--glacier-accent);
+  color: var(--accent);
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
 }
 
-/* The confirmation after a copy (#7): bottom right, clear of the Backlinks button. */
+/* The confirmation after a copy (#7): bottom right, clear of the Backlinks
+   button and the glacier button. */
 .copied {
   position: fixed;
-  right: 0.5rem;
+  right: 3.6rem;
   bottom: 0.5rem;
   z-index: 10;
   margin: 0;
   padding: 0.2rem 0.65rem;
-  border: 1px solid var(--glacier-rule);
+  border: 1px solid var(--rule);
   border-radius: 999px;
-  background: var(--glacier-paper);
-  color: var(--glacier-ink);
+  background: var(--paper);
+  color: var(--ink);
   font-size: 0.85rem;
   pointer-events: none;
 }
 
 .copied[hidden] {
   display: none;
+}
+
+/* The round glacier button (#18): bottom right, opens and closes settings. */
+.glacier-button {
+  position: fixed;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  z-index: 30;
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--paper);
+  cursor: pointer;
+  box-shadow: 0 2px 10px var(--shadow);
+}
+
+.glacier-button svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.glacier-button:hover,
+.glacier-button:focus-visible,
+.glacier-button[aria-expanded="true"] {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Settings, inside the sidebar for now (#18; #21 moves them beside it). A
+   sheet over the lower part of the page, so the top of the note stays in
+   view and shows each change live. The header stays on top while the
+   sections scroll. */
+.settings {
+  position: fixed;
+  left: 0.5rem;
+  right: 0.5rem;
+  top: 38%;
+  bottom: 3.7rem;
+  z-index: 28;
+  overflow-y: auto;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  box-shadow: 0 6px 20px var(--shadow);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.settings[hidden] {
+  display: none;
+}
+
+.settings-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.75rem;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+.settings-title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.settings-close {
+  padding: 0 0.4rem;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.settings-section {
+  border-bottom: 1px solid var(--rule);
+}
+
+.settings-section > summary {
+  padding: 0.5rem 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0 0.75rem 0.9rem;
+}
+
+.settings-subheading {
+  margin: 0.3rem 0 0;
+  font-size: 0.85rem;
+  font-weight: normal;
+  color: var(--accent);
+}
+
+.paper-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.paper-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.2rem 0.3rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.paper-choice:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.paper-swatch {
+  flex: none;
+  width: 1.6rem;
+  height: 1.1rem;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+}
+
+.text-size-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.text-size-row input {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+
+.text-size-value {
+  min-width: 3.2rem;
+  text-align: right;
+}
+
+.settings select {
+  max-width: 100%;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
 }
