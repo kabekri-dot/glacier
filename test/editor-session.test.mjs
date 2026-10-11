@@ -902,10 +902,84 @@ test("Shift+Enter leaves a list item's start alone", () => {
   assert.deepEqual(editor.state.lines, ["- **key**", "****"]);
 });
 
-test("Shift+Enter outside formatting is left to the browser", () => {
+test("Shift+Enter outside formatting makes a plain new line", () => {
   const { editor } = editorWithHistory("plain");
-  assert.equal(editor.lineBreak("plain", 3, 3), false);
-  assert.deepEqual(editor.state.lines, ["plain"]);
+  assert.equal(editor.lineBreak("plain", 3, 3), true);
+  assert.deepEqual(editor.state.lines, ["pla", "in"]);
+  assert.deepEqual(editor.state.focus, { line: 1, col: 0 });
+});
+
+test("Shift+Enter in a bullet line starts no new bullet", () => {
+  const { editor } = editorWithHistory("- item");
+  assert.equal(editor.lineBreak("- item", 6, 6), true);
+  assert.deepEqual(editor.state.lines, ["- item", ""]);
+  assert.deepEqual(editor.state.focus, { line: 1, col: 0 });
+});
+
+test("Shift+Enter in a code block is left to the browser", () => {
+  const { editor } = editorWithHistory("```\ncode\n```");
+  editor.moveTo(1, 2);
+  assert.equal(editor.lineBreak("```\ncode\n```", 6, 6), false);
+  assert.deepEqual(editor.state.lines, ["```", "code", "```"]);
+});
+
+test("Shift+Enter outside formatting undoes as one step", () => {
+  const { editor } = editorWithHistory("- item");
+  editor.lineBreak("- item", 6, 6);
+  editor.undo();
+  assert.deepEqual(editor.state.lines, ["- item"]);
+});
+
+// Enter right after a formatting shortcut (#78): the selection it left is
+// collapsed past the closing marks, nothing is deleted.
+
+test("Ctrl+B then Enter keeps the word and starts a new list item", () => {
+  const { editor } = editorWithHistory("- a word");
+  editor.moveTo(0, 0);
+  const sel = editor.format("bold", "- a word", 4, 8);
+  editor.enter("- a **word**", sel.start, sel.end);
+  assert.deepEqual(editor.state.lines, ["- a **word**", "- "]);
+  assert.deepEqual(editor.state.focus, { line: 1, col: 2 });
+});
+
+test("Ctrl+I then Enter and Ctrl+E then Enter keep the word", () => {
+  for (const [kind, mark] of [["italic", "*"], ["code", "`"]]) {
+    const { editor } = editorWithHistory("a word");
+    const sel = editor.format(kind, "a word", 2, 6);
+    editor.enter(`a ${mark}word${mark}`, sel.start, sel.end);
+    assert.deepEqual(editor.state.lines, [`a ${mark}word${mark}`, ""]);
+  }
+});
+
+test("Enter on an ordinary selection still replaces it", () => {
+  const { editor } = editorWithHistory("a word");
+  editor.enter("a word", 2, 6);
+  assert.deepEqual(editor.state.lines, ["a ", ""]);
+});
+
+test("Enter after the formatted selection was changed replaces it", () => {
+  const { editor } = editorWithHistory("a word");
+  editor.format("bold", "a word", 2, 6);
+  editor.enter("a **word**", 2, 8);
+  assert.deepEqual(editor.state.lines, ["a ", "**"]);
+});
+
+test("Enter after Ctrl+B and typing replaces the selection as usual", () => {
+  const { editor } = editorWithHistory("a word");
+  const sel = editor.format("bold", "a word", 2, 6);
+  editor.edit("a **xyz**", 6);
+  editor.enter("a **xyz**", sel.start, sel.end);
+  assert.deepEqual(editor.state.lines, ["a **", "*"]);
+});
+
+test("Ctrl+B then Enter undoes in two steps", () => {
+  const { editor } = editorWithHistory("a word");
+  const sel = editor.format("bold", "a word", 2, 6);
+  editor.enter("a **word**", sel.start, sel.end);
+  editor.undo();
+  assert.deepEqual(editor.state.lines, ["a **word**"]);
+  editor.undo();
+  assert.deepEqual(editor.state.lines, ["a word"]);
 });
 
 test("Shift+Enter inside formatting undoes as one step", () => {
