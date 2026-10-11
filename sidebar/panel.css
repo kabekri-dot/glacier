@@ -528,6 +528,7 @@ code {
 }
 
 .menu-files {
+  display: block;
   border-top: 1px solid var(--glacier-rule);
   padding-top: 0.5rem;
 }
