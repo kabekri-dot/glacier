@@ -11,6 +11,16 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Two menus: Notebook and This note (#63)
+
+- [ ] Reload the extension with the reload button first. Open a note: the pill shows the title, ▾, ⋯ and the dot. Hovering ⋯ shows "Actions for this note".
+- [ ] Open ▾ (or press Ctrl+K): it has only notebook things (search, recent notes, the lists, Archive, Sync). There is no Download, Archive or Delete for the open note.
+- [ ] Open ⋯: the first line is the open note's name, then "Download as a file", "Archive" and "Delete". Each works on the open note.
+- [ ] On an archived note, ⋯ shows "Unarchive" instead of "Archive".
+- [ ] Click Delete: the question names the note, with Delete and Keep.
+- [ ] With no note open (empty paper for a new note), ⋯ is not shown.
+- [ ] Esc closes either menu. Opening ▾ closes ⋯, and opening ⋯ closes ▾.
+
 ### Sync cut off when the sidebar closes (#62)
 
 - [ ] Reload the extension with the reload button, then press "Clear all" in the errors list.
@@ -56,15 +66,15 @@ Make a conflict first (see Conflict Copies, #16).
 - [ ] The dot in the pill is orange while the line shows.
 - [ ] Hover Show them: "Open a copy, move over what you need, then delete or archive it."
 - [ ] Click Show them: the pill menu opens with only the conflict copies, each with its original under it. Click one to open it.
-- [ ] Delete the last copy (pill menu, "Delete this note"): the line goes away and the dot turns normal.
+- [ ] Delete the last copy (the ⋯ menu, "Delete"): the line goes away and the dot turns normal.
 - [ ] Make another conflict and archive the copy instead: the line goes away and the dot turns normal.
 
 ### Archive (#58)
 
-- [ ] Open a note and open the pill menu: "Archive this note" is there, and hovering shows "Hide this note from your lists. You can bring it back any time".
+- [ ] Open a note and open the ⋯ menu after the title: "Archive" is there, and hovering shows "Hide this note from your lists. You can bring it back any time".
 - [ ] Click it: the note leaves the Notebook list, recent notes and search. On a page that had it as its Lesson note, the empty paper for a new note shows.
 - [ ] Open the pill menu: an "Archive" section is at the bottom, folded shut. Open it and the archived note is listed.
-- [ ] Click the archived note: a small "Archived" label shows in the pill, and the menu has "Unarchive" instead of "Archive this note".
+- [ ] Click the archived note: a small "Archived" label shows in the pill, and the ⋯ menu has "Unarchive" instead of "Archive".
 - [ ] Click Unarchive: the label goes, and the note is back in its Course (or Concepts) in the list.
 - [ ] A link to an archived note in another note still opens it.
 - [ ] After a sync, the archived note's file is under the archive folder on GitHub (for example archive/courses/Course name/Title.md), and it moves back out after Unarchive and a sync.
@@ -73,7 +83,7 @@ Make a conflict first (see Conflict Copies, #16).
 
 ### Delete this note (#57)
 
-- [ ] Open a note and open the pill menu: "Delete this note" is there, and hovering shows "Remove this note for good".
+- [ ] Open a note and open the ⋯ menu after the title: "Delete" is there, and hovering shows "Remove this note for good".
 - [ ] Click it: the sidebar asks "Delete 'title'? It is also removed from your Notes repo." with Delete and Keep. No browser dialog shows.
 - [ ] Click Keep: the note comes back as it was. Do it again and press Esc: same result.
 - [ ] Click Delete: the sidebar shows the note of the tab you are on, or the empty paper for a new note if that page has none.
@@ -164,8 +174,8 @@ Make a conflict first (see Conflict Copies, #16).
 
 ### Export: this note, a course, or everything (#55)
 
-- [ ] Open the pill menu: "Download this note" sits at the bottom. Open settings (the round glacier button), then Notes repo: under a small "Backup" heading are a Course list, "Export a course", "Export everything" and "Restore from backup file". Hovering each shows what it does.
-- [ ] "Download this note" saves one `.md` file named after the note's title, with its text.
+- [ ] Open the ⋯ menu after the title: "Download as a file" is there. Open settings (the round glacier button), then Notes repo: under a small "Backup" heading are a Course list, "Export a course", "Export everything" and "Restore from backup file". Hovering each shows what it does.
+- [ ] "Download as a file" saves one `.md` file named after the note's title, with its text.
 - [ ] Pick a Course and press "Export a course": the zip has only that Course's notes.
 - [ ] "Export everything" downloads a zip of every note, as before.
 - [ ] "Restore from backup file" works as before (see section 2).
