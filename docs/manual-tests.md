@@ -11,6 +11,13 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Shortcuts panel lists every key (#79)
+
+- [ ] Reload the extension with the ↻ button first. Open the Shortcuts panel. Start of a line lists `/`, `#`, `##`, `###`, `-`, `>` and the code block.
+- [ ] Anywhere in a line lists the note link, the web link, bold, both italics, bold italic and inline code.
+- [ ] Keys lists Enter, Shift Enter, Backspace, Delete, Ctrl B, Ctrl I, Ctrl E (with "press again to remove"), undo, redo, Tab or Enter for the list, Ctrl K and //, Alt Shift G, Esc and a line about Cmd on a Mac.
+- [ ] Every line is short and readable, with no dashes or capitals shouting.
+
 ### Sync lives in the dot; the Notebook menu holds only notes (#75)
 
 - [ ] Reload the extension with the ↻ button first. Click the sync dot in the pill: a small box opens under it with the status in words (for example "Up to date") and a quiet line "Last synced 2 minutes ago". Leave it open for a minute: the time moves on by itself.

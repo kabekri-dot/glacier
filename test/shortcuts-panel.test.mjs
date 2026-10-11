@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SHORTCUT_GROUPS, readShortcutsPanel } from "../src/shortcuts-panel.mjs";
+import { SLASH_COMMANDS } from "../src/editor-model.mjs";
+import { HANDLED_KEYS, SHORTCUT_GROUPS, readShortcutsPanel } from "../src/shortcuts-panel.mjs";
 
 const everyEntry = () => SHORTCUT_GROUPS.flatMap((group) => group.entries.map(([keys]) => keys));
 
@@ -26,6 +27,33 @@ test("the cheat sheet lists the start of a line, anywhere and key shortcuts", ()
 test("the cheat sheet lists every shortcut the editor has", () => {
   const keys = everyEntry();
   for (const wanted of ["/", "#", "##", "###", "-", "```", "[[Title]]", "**bold**", "`code`", "Enter", "Backspace", "Esc", "Ctrl A twice", "Ctrl C", "Ctrl K"]) {
+    assert.ok(keys.includes(wanted), `missing ${wanted}`);
+  }
+});
+
+test("every key the sidebar handles is in the panel", () => {
+  const keys = everyEntry();
+  for (const [handled] of HANDLED_KEYS) assert.ok(keys.includes(handled), `missing ${handled}`);
+});
+
+test("the list of handled keys names the keys Glacier reacts to", () => {
+  const handled = HANDLED_KEYS.map(([keys]) => keys);
+  for (const wanted of ["Enter", "Shift Enter", "Delete", "Ctrl B", "Ctrl I", "Ctrl E", "Ctrl Z", "Ctrl Shift Z or Ctrl Y", "Tab or Enter", "Alt Shift G", "Ctrl K", "//", "Esc", "Cmd"]) {
+    assert.ok(handled.includes(wanted), `missing ${wanted}`);
+  }
+});
+
+test("every command in the / menu is in the cheat sheet", () => {
+  const keys = everyEntry();
+  for (const { markdown } of SLASH_COMMANDS) {
+    const shown = markdown === "[[ ]]" ? "[[Title]]" : markdown;
+    assert.ok(keys.includes(shown), `missing ${markdown}`);
+  }
+});
+
+test("the cheat sheet teaches quotes, italics, bold italic and web links", () => {
+  const keys = everyEntry();
+  for (const wanted of [">", "*italic*", "_italic_", "***bold italic***", "[text](https://...)"]) {
     assert.ok(keys.includes(wanted), `missing ${wanted}`);
   }
 });

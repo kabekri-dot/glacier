@@ -10,6 +10,30 @@ export function readShortcutsPanel(saved) {
   };
 }
 
+// Every key the sidebar handles, in one list. The Keys group below is built from
+// it, and a test checks the list against the panel, so a new key cannot be left
+// out. Each entry is [what you press, what it does].
+export const HANDLED_KEYS = [
+  ["Enter", "New line, or a new list item. Inside bold or italic, steps out of it"],
+  ["Shift Enter", "A plain new line, with no new bullet"],
+  ["Backspace", "At the start of a line, removes its formatting or joins it to the line above"],
+  ["Delete", "At the end of a line, pulls the next line up"],
+  ["Up and down", "Move between lines"],
+  ["Ctrl B", "Bold the selection. Press again to remove it"],
+  ["Ctrl I", "Italic the selection. Press again to remove it"],
+  ["Ctrl E", "Code the selection. Press again to remove it"],
+  ["Ctrl Z", "Undo"],
+  ["Ctrl Shift Z or Ctrl Y", "Redo"],
+  ["Ctrl A twice", "Select the line, then the whole note"],
+  ["Ctrl C", "Copy the selection as Markdown"],
+  ["Tab or Enter", "Pick a note from the [[ list"],
+  ["Ctrl K", "Search your notes"],
+  ["//", "In the search, search inside notes"],
+  ["Alt Shift G", "Open or close Glacier"],
+  ["Esc", "Close a menu"],
+  ["Cmd", "On a Mac, use Cmd instead of Ctrl"],
+];
+
 // Each entry is [what you type or press, what it does].
 export const SHORTCUT_GROUPS = [
   {
@@ -20,6 +44,7 @@ export const SHORTCUT_GROUPS = [
       ["##", "Heading 2"],
       ["###", "Heading 3"],
       ["-", "Bullet list"],
+      [">", "Quote"],
       ["```", "Code block"],
     ],
   },
@@ -27,20 +52,13 @@ export const SHORTCUT_GROUPS = [
     title: "Anywhere in a line",
     entries: [
       ["[[Title]]", "Link to a note"],
+      ["[text](https://...)", "Link to a web page"],
       ["**bold**", "Bold"],
+      ["*italic*", "Italic"],
+      ["_italic_", "Italic"],
+      ["***bold italic***", "Bold and italic"],
       ["`code`", "Inline code"],
     ],
   },
-  {
-    title: "Keys",
-    entries: [
-      ["Enter", "New line, or a new list item"],
-      ["Backspace", "At the start of a line, removes its formatting or joins it to the line above"],
-      ["Up and down", "Move between lines"],
-      ["Esc", "Close a menu"],
-      ["Ctrl A twice", "Select the line, then the whole note"],
-      ["Ctrl C", "Copy the selection as Markdown"],
-      ["Ctrl K", "Search your notes"],
-    ],
-  },
+  { title: "Keys", entries: HANDLED_KEYS },
 ];
