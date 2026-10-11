@@ -4,10 +4,12 @@ import assert from "node:assert/strict";
 import { createNotebook } from "../src/notebook.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
-import { notebookMenu, noteMenu, pageNoteCount, deleteCollectionQuestion, archivedNotice, secondVersionBar } from "../src/menu-contents.mjs";
+import { notebookMenu, noteMenu, pageNoteCount, deleteCollectionQuestion, archivedNotice, secondVersionBar, rowActions, noteOrigin, lastNotesBox } from "../src/menu-contents.mjs";
 
 // What the ▾ Notebook and ⋯ This note menus list (#67), as plain data the
 // sidebar only has to draw.
+
+const SEVERAL = "These notes were changed in two places before they synced, so Glacier kept every version. Open one, copy what you want to keep into the original, then delete or archive the others.";
 
 function notebookWith() {
   const notebook = createNotebook({ storage: memoryStorage() });
@@ -150,35 +152,35 @@ test("archived notes are listed only under a folded Archive", () => {
   assert.deepEqual(notebookMenu(notebook, "outside"), [{ kind: "empty", text: "No notes match" }]);
 });
 
-test("Two versions tops the menu with each original and its second version", () => {
+test("Several versions tops the menu with each original and its second version", () => {
   const notebook = notebookWith();
   notebook.createNote({ title: "Margins (conflict 2026-10-02)" });
   notebook.createNote({ title: "Gone (conflict 2026-10-02)" });
   assert.deepEqual(notebookMenu(notebook, "").slice(0, 3), [
-    { kind: "heading", text: "Two versions (2)", hint: null },
+    { kind: "heading", text: "Several versions (2)", hint: SEVERAL },
     {
       kind: "pair",
       notes: [
-        { title: "Margins", label: "Margins" },
-        { title: "Margins (conflict 2026-10-02)", label: "Margins (conflict 2026-10-02)" },
+        { title: "Margins", label: "Margins", actions: rowActions("Margins") },
+        { title: "Margins (conflict 2026-10-02)", label: "Margins (conflict 2026-10-02)", actions: rowActions("Margins (conflict 2026-10-02)") },
       ],
     },
-    { kind: "pair", notes: [{ title: "Gone (conflict 2026-10-02)", label: "Gone (conflict 2026-10-02)" }] },
+    { kind: "pair", notes: [{ title: "Gone (conflict 2026-10-02)", label: "Gone (conflict 2026-10-02)", actions: rowActions("Gone (conflict 2026-10-02)") }] },
   ]);
 });
 
-test("Two versions comes before the notes for this page", () => {
+test("Several versions comes before the notes for this page", () => {
   const notebook = notebookWith();
   notebook.createNote({ title: "Margins (conflict 2026-10-02)" });
   const headings = notebookMenu(notebook, "", notebook.note("Flexbox"))
     .filter((part) => part.kind === "heading")
     .map((part) => part.text);
-  assert.deepEqual(headings.slice(0, 2), ["Two versions (1)", "Notes for this page"]);
+  assert.deepEqual(headings.slice(0, 2), ["Several versions (1)", "Notes for this page"]);
 });
 
-test("without notes that have two versions the menu has no Two versions", () => {
+test("without notes that have two versions the menu has no Several versions", () => {
   const texts = notebookMenu(notebookWith(), "").map((part) => part.text);
-  assert.equal(texts.some((text) => text?.startsWith("Two versions")), false);
+  assert.equal(texts.some((text) => text?.startsWith("Several versions")), false);
 });
 
 test("no note open means no This note menu", () => {
@@ -267,4 +269,10 @@ test("the delete question names the Collection and the count", () => {
     "Delete the collection 'Testing' and its 12 notes? They're also removed from your Notes repo.",
   );
   assert.equal(archivedNotice(12), "Archived 12 notes.");
+});
+
+test("a note with a page is from a website and one without is your own", () => {
+  const notebook = notebookWith();
+  assert.deepEqual(noteOrigin(notebook, "Flexbox"), { kind: "website", hint: "From a website" });
+  assert.deepEqual(noteOrigin(notebook, "Margins"), { kind: "own", hint: "Your own note" });
 });

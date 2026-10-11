@@ -617,3 +617,28 @@ test("the title that follows the first line is the one the history and recent no
   assert.equal(notebook.recentNotes()[0].title, "Box");
   assert.equal(notebook.recentNotes().filter((n) => n.title === "B").length, 0);
 });
+
+test("the ← box lists the last 3 notes you were on, newest first", () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  const { screen } = setup({ notebook });
+  const titles = ["A", "B", "C", "D", "E"];
+  for (const title of titles) screen.open(notebook.createNote({ title }));
+  assert.deepEqual(screen.lastNotes(), ["D", "C", "B"]);
+});
+
+test("the ← box leaves out the open note, repeats and notes that are gone", () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  const { screen } = setup({ notebook });
+  const [a, b, c] = ["A", "B", "C"].map((title) => notebook.createNote({ title }));
+  screen.open(a);
+  screen.open(b);
+  screen.open(a);
+  screen.open(c);
+  notebook.deleteNote("B");
+  assert.deepEqual(screen.lastNotes(), ["A"]);
+});
+
+test("the ← box is empty at the start", () => {
+  const { screen } = setup();
+  assert.deepEqual(screen.lastNotes(), []);
+});

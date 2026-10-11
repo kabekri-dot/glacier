@@ -16,12 +16,12 @@
 import { createNotebook, importSummary, sourceLabel, syncErrorMessage } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { githubRemote } from "../src/github-remote.mjs";
-import { createAutoSync, syncDotText, syncStatusText, syncBox, syncResultText } from "../src/auto-sync.mjs";
+import { createAutoSync, syncDotText, syncStatusText, syncBox, syncResultText, JUST_SYNCED } from "../src/auto-sync.mjs";
 import { printHtml } from "../src/print-layout.mjs";
 import { createScreen } from "../src/screen.mjs";
 import { isOpenedByPage } from "../src/page-open.mjs";
 import { newNoteChoices, NEW_NOTE_HINT, PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
-import { notebookMenu, noteMenu, rowActions, archivedNotice, deleteCollectionQuestion, pageNoteCount, secondVersionBar } from "../src/menu-contents.mjs";
+import { notebookMenu, noteMenu, rowActions, archivedNotice, deleteCollectionQuestion, pageNoteCount, secondVersionBar, noteOrigin, lastNotesBox, BACK_BUTTON_HINT } from "../src/menu-contents.mjs";
 import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
@@ -30,7 +30,7 @@ import { readShortcutsPanel } from "../src/shortcuts-panel.mjs";
 import { readLook, lookStyle, wholeRows, applyLook } from "../src/look.mjs";
 import { readPanelPlace, createPanelPlacement } from "../src/panel-place.mjs";
 import { createBrowserPanels } from "../src/browser-panels.mjs";
-import { createSettingsView, createShortcutsView, menuButton, iconButton, askFormat } from "./settings-view.js";
+import { createSettingsView, createShortcutsView, menuButton, iconButton, originIcon, askFormat } from "./settings-view.js";
 import { drawBesideFrames } from "./beside-frames.js";
 import {
   blockRanges,
@@ -284,7 +284,7 @@ async function start() {
     noteMetaEl.classList.remove("is-picking");
     const note = screen.note();
     if (note) noteMetaEl.append(courseButton(note));
-    if (note?.source) noteMetaEl.append(" · ", sourceLink(note.source));
+    if (note?.source) noteMetaEl.append(" · ", originIcon(noteOrigin(notebook, note.title)), sourceLink(note.source));
     noteMetaEl.hidden = !note;
     noteEl.classList.toggle("has-meta", Boolean(note));
     updateSecondVersionBar();
@@ -493,15 +493,70 @@ async function start() {
     updateNoteMenuButton();
     const previous = screen.previous();
     backEl.hidden = previous === null || !tabSettings.showPreviousButton;
-    backEl.title = previous === null ? "" : `Back to: ${previous}`;
+    if (previous === null) closeBackBox();
   }
 
-  // ← opens the note that was on screen before, skipping any that are gone.
+  // ← opens a small box with the last notes you were on, newest first (#81).
+  // A click on one opens it. Esc or a click outside closes the box, and
+  // ↑/↓ and Enter work too.
+  const backBoxEl = document.querySelector(".back-box");
+  backEl.title = BACK_BUTTON_HINT;
+
+  function closeBackBox() {
+    backBoxEl.hidden = true;
+    backBoxEl.replaceChildren();
+    backEl.setAttribute("aria-expanded", "false");
+  }
+
+  function openBackBox() {
+    backBoxEl.replaceChildren();
+    for (const { title, origin } of lastNotesBox(screen, notebook)) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "menu-item";
+      button.append(originIcon(origin), title);
+      button.addEventListener("click", () => {
+        closeBackBox();
+        const found = notebook.note(title);
+        if (found) openNote(found, { byPage: isOpenedByPage(found) });
+      });
+      backBoxEl.append(button);
+    }
+    backBoxEl.hidden = false;
+    backEl.setAttribute("aria-expanded", "true");
+    backBoxEl.querySelector("button")?.focus();
+  }
+
   backEl.addEventListener("click", () => {
-    const view = screen.back();
-    if (view) draw(view);
-    else updatePill();
+    if (backBoxEl.hidden) {
+      closeMenu();
+      closeNewMenu();
+      closeNoteMenu();
+      openBackBox();
+    } else closeBackBox();
   });
+  document.addEventListener("click", (event) => {
+    if (!backBoxEl.hidden && !event.target.closest(".back-box, .pill-back")) closeBackBox();
+  });
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (backBoxEl.hidden) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        closeBackBox();
+        return;
+      }
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+      event.preventDefault();
+      const buttons = [...backBoxEl.querySelectorAll("button")];
+      const at = buttons.indexOf(document.activeElement);
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      buttons[(at + step + buttons.length) % buttons.length]?.focus();
+    },
+    true,
+  );
 
   // + opens a small menu: New note (blank) always, and on a website New note
   // for this page (#68).
@@ -632,6 +687,7 @@ async function start() {
     for (const title of titles) {
       const button = noteButton(title);
       button.textContent = title;
+      button.prepend(originIcon(noteOrigin(notebook, title)));
       if (title === current) {
         button.classList.add("is-current");
         button.setAttribute("aria-current", "true");
@@ -666,6 +722,7 @@ async function start() {
     const button = noteButton(title, "menu-item menu-result");
     const titleEl = document.createElement("span");
     titleEl.className = "menu-result-title";
+    button.append(originIcon(noteOrigin(notebook, title)));
     if (titleMark) {
       button.append(marked(titleEl, titleMark));
       return noteRow(button, title);
@@ -795,7 +852,8 @@ async function start() {
     for (const { title, label } of notes) {
       const button = noteButton(title);
       button.textContent = label;
-      row.append(button);
+      button.prepend(originIcon(noteOrigin(notebook, title)));
+      row.append(noteRow(button, title));
     }
     return row;
   }
@@ -837,6 +895,7 @@ async function start() {
   function openMenu() {
     closeSettings({ redraw: false });
     closeNoteMenu();
+    closeBackBox();
     if (menuIsOpen()) {
       menuPanelEl.querySelector(".menu-search").focus();
       return;
@@ -1050,6 +1109,8 @@ async function start() {
   const syncBoxEl = document.querySelector(".sync-box");
   let syncBoxTimer = null;
   let syncResultShown = null;
+  let justSynced = false;
+  let justSyncedWritten = false;
   let syncResultTimer = null;
   let syncing = false;
 
@@ -1089,14 +1150,20 @@ async function start() {
         const result = await autoSync.syncNow();
         syncing = false;
         syncResultShown = syncResultText(result);
+        justSynced = syncResultShown === JUST_SYNCED;
+        justSyncedWritten = false;
         clearTimeout(syncResultTimer);
         syncResultTimer = setTimeout(() => {
           syncResultShown = null;
+          justSynced = false;
           if (!syncBoxEl.hidden) drawSyncBox();
         }, 4000);
         if (!syncBoxEl.hidden) drawSyncBox();
       },
     );
+    // The writing plays once; a redraw while the words stay shows them as written.
+    if (justSynced) button.classList.add(justSyncedWritten ? "is-just-synced-still" : "is-just-synced");
+    justSyncedWritten = justSynced;
     const parts = [...lines, button];
     if (box.conflicts) {
       const check = menuButton(box.conflicts, "See each note next to its second version", showConflictCopies);

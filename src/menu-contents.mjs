@@ -12,11 +12,13 @@
 //                                  one per Collection: { course, titles, actions }
 //   { kind: "empty", text }               a quiet line when nothing is listed
 //   { kind: "result", title, titleMark, snippet }           a search result
-//   { kind: "pair", notes: [{ title, label }] }             a Conflict Copy and its original
+//   { kind: "pair", notes: [{ title, label, actions }] }   a Conflict Copy and its original, with the row icons
 import { PAGE_NOTE_HINT } from "./new-note-choices.mjs";
 
 const CONFLICT_SUFFIX = / \(conflict \d{4}-\d{2}-\d{2}\)( \d+)?$/;
 const ARCHIVE_HINT = "Notes you hid from your lists. Open one to bring it back";
+const SEVERAL_VERSIONS_HINT =
+  "These notes were changed in two places before they synced, so Glacier kept every version. Open one, copy what you want to keep into the original, then delete or archive the others.";
 const PAGE_NOTES_HINT = "Every note for this page, the latest first";
 
 function heading(text, hint = null) {
@@ -108,17 +110,21 @@ function browse(notebook, openNote) {
   return parts;
 }
 
-// Two versions (n), at the top of the ▾ menu only while there are any (#75):
+// Several versions (n), at the top of the ▾ menu only while there are any (#75):
 // each original with its second version (Conflict Copy) under it. The
 // original is left out when it is gone.
+function versionRow(title) {
+  return { title, label: title, actions: rowActions(title) };
+}
+
 function twoVersions(notebook) {
   const pairs = notebook.conflictCopyPairs();
   if (pairs.length === 0) return [];
   return [
-    heading(`Two versions (${pairs.length})`),
+    heading(`Several versions (${pairs.length})`, SEVERAL_VERSIONS_HINT),
     ...pairs.map(({ copy, original }) => ({
       kind: "pair",
-      notes: [...(original ? [{ title: original, label: original }] : []), { title: copy, label: copy }],
+      notes: [...(original ? [versionRow(original)] : []), versionRow(copy)],
     })),
   ];
 }
@@ -203,4 +209,19 @@ export function archivedNotice(count) {
 
 export function deleteCollectionQuestion(course, count) {
   return `Delete the collection '${course}' and its ${noteCount(count)}? They're also removed from your Notes repo.`;
+}
+
+// The small icon before a note's title (#81): a globe for a note that belongs
+// to a website, a pencil for one you made yourself.
+export function noteOrigin(notebook, title) {
+  return notebook.note(title)?.source
+    ? { kind: "website", hint: "From a website" }
+    : { kind: "own", hint: "Your own note" };
+}
+
+export const BACK_BUTTON_HINT = "Your last notes";
+
+// The box under ← (#81): the last notes you were on, newest first.
+export function lastNotesBox(screen, notebook) {
+  return screen.lastNotes().map((title) => ({ title, origin: noteOrigin(notebook, title) }));
 }
