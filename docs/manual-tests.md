@@ -11,6 +11,14 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Shortcuts panel always on the left edge (#72)
+
+Reload with ↻ first. Turn the Shortcuts panel on in settings.
+
+- [ ] On a website, the cheat sheet sits beside the sidebar, against the sidebar's left edge. Fold it: the small tab is at the top, level with the note title. Unfold it: the sheet comes back.
+- [ ] On a new tab (where beside is not allowed), the cheat sheet is a narrow strip over the left part of the note inside the sidebar. Fold it: the tab is at the top left, covering only a little of the title at the edge, never the title text.
+- [ ] Close and reopen the sidebar: the panel is still open or folded as you left it.
+
 ### Hover actions on note rows; download as .md or PDF (#71)
 
 Reload with ↻ first.
