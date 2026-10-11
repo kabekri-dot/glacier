@@ -1,31 +1,30 @@
-// Where settings and the Shortcuts panel open (#21, ADR 0008): beside the
-// sidebar, over the edge of the web page, or inside the sidebar. Beside needs
+// Where settings open (#21, ADR 0008): beside the sidebar, over the edge of
+// the web page, or inside the sidebar. The Shortcuts panel lives inside the
+// sidebar on its right edge and is not placed here (#76). Beside needs
 // the optional "all websites" permission, asked for behind Glacier's own
 // explanation card the first time settings open.
 //
 // The Panel placement owns that whole decision (#66). panel.js tells it what
-// is wanted (settings open at a section, the Shortcuts panel on and folded)
-// and draws what it shows. The browser is plugged in as a port, so tests use
+// is wanted (settings open at a section) and draws what it shows. The browser is plugged in as a port, so tests use
 // a fake one (src/browser-panels.mjs is the real one):
 //   browser.activeTab()          -> { id, url } of the tab behind the sidebar, or null
 //   browser.hasPermission()      -> whether the "all websites" permission is granted
 //   browser.requestPermission()  -> asks for it; must be called straight from a click
-//   browser.drawFrames(tabId, { settings, shortcuts })
-//                                -> draws the frames in that tab's page, or with
-//                                   both null takes them away; false when the
-//                                   browser refuses. `settings` is { section },
-//                                   `shortcuts` is { folded }.
+//   browser.drawFrames(tabId, { settings })
+//                                -> draws the settings frame in that tab's page, or
+//                                   with null takes it away; false when the
+//                                   browser refuses. `settings` is { section }.
 //   browser.onTabChange(fn)      -> calls fn when another tab shows or the page loads again
 //
-// `show(view)` draws one of these, where `settings` and `shortcuts` say where
-// each panel is drawn ("beside", "inside", or null for settings closed):
-//   { card, open, settings, section, shortcuts, explain }
+// `show(view)` draws one of these, where `settings` says where they are drawn
+// ("beside", "inside", or null for closed):
+//   { card, open, settings, section, explain }
 // `card` is the explanation card, `open` whether settings or the card are
-// open (for the glacier button), `explain` whether a panel inside the
-// sidebar shows the "page doesn't allow" line (#60).
+// open (for the glacier button), `explain` whether settings inside the
+// sidebar show the "page doesn't allow" line (#60).
 // `keepChoice(place)` keeps "beside" or "inside" for this browser.
 
-// The permission the panels need to draw Glacier's own frames on the page.
+// The permission the settings frame needs to draw Glacier's own frames on the page.
 // The scripting permission itself is required, as it shows no warning and
 // does nothing without this one.
 export const BESIDE_PERMISSION = { origins: ["<all_urls>"] };
@@ -50,7 +49,7 @@ function wantsBeside({ choice, granted, url }) {
   return choice !== "inside" && granted && canDrawBeside(url);
 }
 
-// A panel inside the sidebar says why when the permission is granted and
+// Settings inside the sidebar say why when the permission is granted and
 // inside wasn't chosen, but this page can't be drawn on, or the browser
 // `refused` when Glacier tried. A declined permission or a choice of inside
 // needs no explanation.
@@ -58,9 +57,8 @@ function explainsInside({ choice, granted, url, refused }) {
   return choice !== "inside" && granted && (refused || !canDrawBeside(url));
 }
 
-export function createPanelPlacement({ browser, show, keepChoice = () => {}, choice = "ask", shortcuts = { on: false, folded: false } }) {
+export function createPanelPlacement({ browser, show, keepChoice = () => {}, choice = "ask" }) {
   let panelPlace = readPanelPlace(choice);
-  let shortcutsPanel = shortcuts;
   let settingsWanted = false;
   let settingsSection = null;
   // The section settings open at once the card is answered, while it shows.
@@ -77,14 +75,13 @@ export function createPanelPlacement({ browser, show, keepChoice = () => {}, cho
       open: card !== null || settingsWanted,
       settings: settingsWanted ? (placed.beside ? "beside" : "inside") : null,
       section: settingsSection,
-      shortcuts: placed.beside ? "beside" : "inside",
       explain: placed.explain,
     });
   }
 
-  // Put settings and the Shortcuts panel where they belong now: beside the
-  // sidebar in the page you're on, or inside the sidebar. Run again whenever
-  // the page, a panel or the choice changes; the latest run wins.
+  // Put settings where they belong now: beside the sidebar in the page
+  // you're on, or inside the sidebar. Run again whenever the page, settings or
+  // the choice change; the latest run wins.
   async function place() {
     const run = (latestPlacing += 1);
     const tab = await browser.activeTab();
@@ -92,17 +89,15 @@ export function createPanelPlacement({ browser, show, keepChoice = () => {}, cho
     if (run !== latestPlacing) return;
 
     const url = tab?.url;
-    const shortcutsWanted = shortcutsPanel.on;
-    const besideWanted = wantsBeside({ choice: panelPlace, granted, url }) && (settingsWanted || shortcutsWanted);
+    const besideWanted = wantsBeside({ choice: panelPlace, granted, url }) && settingsWanted;
     if (besideTabId !== null && (!besideWanted || besideTabId !== tab.id)) {
-      browser.drawFrames(besideTabId, { settings: null, shortcuts: null });
+      browser.drawFrames(besideTabId, { settings: null });
       besideTabId = null;
     }
     let beside = false;
     if (besideWanted) {
       beside = await browser.drawFrames(tab.id, {
-        settings: settingsWanted ? { section: settingsSection } : null,
-        shortcuts: shortcutsWanted ? { folded: shortcutsPanel.folded } : null,
+        settings: { section: settingsSection },
       });
       if (beside) besideTabId = tab.id;
       if (run !== latestPlacing) return;
@@ -132,10 +127,9 @@ export function createPanelPlacement({ browser, show, keepChoice = () => {}, cho
   }
 
   return {
-    // Draws the Shortcuts panel where it belongs, and follows you to another
-    // tab while something is open.
+    // Follows you to another tab while settings are open.
     start() {
-      browser.onTabChange(() => (settingsWanted || shortcutsPanel.on ? place() : undefined));
+      browser.onTabChange(() => (settingsWanted ? place() : undefined));
       return place();
     },
 
@@ -183,11 +177,6 @@ export function createPanelPlacement({ browser, show, keepChoice = () => {}, cho
     // A choice made beside the sidebar, or in another window.
     setChoice(saved) {
       panelPlace = readPanelPlace(saved);
-      return place();
-    },
-
-    setShortcuts(state) {
-      shortcutsPanel = state;
       return place();
     },
   };

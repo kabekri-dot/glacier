@@ -1438,23 +1438,256 @@ code {
   font: inherit;
 }
 
-/* The Shortcuts panel (#20) inside the sidebar, when it can't open beside it
-   (#21). A narrow sheet on the left edge (#72) that folds into a slim vertical
-   tab at the top left. */
+/* The Shortcuts panel (#20, #76): a drawer on the sidebar's right edge, under
+   the pill bar so its tab stays reachable. It slides in over the right part
+   of the note. */
 .shortcuts {
   position: fixed;
-  left: 0.5rem;
-  top: 3.6rem;
-  bottom: 4rem;
+  right: 0;
+  top: 3rem;
+  bottom: 0;
   z-index: 26;
-  width: min(15rem, 70%);
+  width: min(15rem, 80%);
+  overflow-y: auto;
+  background: var(--paper);
+  border-left: 1px solid var(--rule);
+  box-shadow: -6px 0 20px var(--shadow);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  animation: shortcuts-slide-in 0.18s ease-out;
+}
+
+@keyframes shortcuts-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+.shortcuts[hidden],
+.shortcuts-tab[hidden] {
+  display: none;
+}
+
+.shortcuts-header {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.7rem;
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+}
+
+.shortcuts-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.shortcuts-fold {
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+
+.shortcuts-body {
+  padding: 0.3rem 0.7rem 0.7rem;
+}
+
+.shortcuts-list {
+  margin: 0;
+}
+
+.shortcuts-list dt {
+  margin-top: 0.4rem;
+}
+
+.shortcuts-list dd {
+  margin: 0;
+}
+
+/* The small tab in the pill bar, next to +. */
+.shortcuts-tab {
+  flex: none;
+  width: 1.5rem;
+  height: 1.9rem;
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 8px var(--shadow);
+}
+
+.panels-card {
+  position: fixed;
+  left: 0.5rem;
+  right: 0.5rem;
+  top: 38%;
+  bottom: 3.7rem;
+  z-index: 28;
   overflow-y: auto;
   background: var(--paper);
   border: 1px solid var(--rule);
   border-radius: 10px;
   box-shadow: 0 6px 20px var(--shadow);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.settings[hidden] {
+  display: none;
+}
+
+.settings-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.75rem;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+.settings-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+/* The same glacier art as the round button and the toolbar icon (#19). */
+.settings-icon {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  image-rendering: pixelated;
+}
+
+.settings-close {
+  padding: 0 0.4rem;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.settings-section {
+  border-bottom: 1px solid var(--rule);
+}
+
+.settings-section > summary {
+  padding: 0.5rem 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0 0.75rem 0.9rem;
+}
+
+.settings-subheading {
+  margin: 0.3rem 0 0;
+  font-size: 0.85rem;
+  font-weight: normal;
+  color: var(--accent);
+}
+
+.paper-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.paper-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.2rem 0.3rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.paper-choice:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.paper-swatch {
+  flex: none;
+  background-position: left bottom;
+  background-size: auto 100%;
+  background-repeat: no-repeat;
+  width: 1.6rem;
+  height: 1.1rem;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+}
+
+.text-size-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.text-size-row input {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+
+.text-size-value {
+  min-width: 3.2rem;
+  text-align: right;
+}
+
+.settings select {
+  max-width: 100%;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+/* The Shortcuts panel (#20, #76): a drawer on the sidebar's right edge, under
+   the pill bar so its tab stays reachable. It slides in over the right part
+   of the note. */
+.shortcuts {
+  position: fixed;
+  right: 0;
+  top: 3rem;
+  bottom: 0;
+  z-index: 26;
+  width: min(15rem, 80%);
+  overflow-y: auto;
+  background: var(--paper);
+  border-left: 1px solid var(--rule);
+  box-shadow: -6px 0 20px var(--shadow);
   font-size: 0.9rem;
   line-height: 1.4;
+  animation: shortcuts-slide-in 0.18s ease-out;
+}
+
+@keyframes shortcuts-slide-in {
+  from {
+    transform: translateX(100%);
+  }
 }
 
 .shortcuts[hidden],
@@ -1532,20 +1765,11 @@ html.beside body {
   background: var(--paper);
 }
 
-html.beside .settings,
-html.beside .shortcuts {
+html.beside .settings {
   inset: 0;
   width: auto;
   border: 0;
   border-left: 1px solid var(--rule);
-  border-radius: 0;
-  box-shadow: none;
-}
-
-html.beside .shortcuts-tab {
-  inset: 0;
-  border: 1px solid var(--rule);
-  border-right: none;
   border-radius: 0;
   box-shadow: none;
 }

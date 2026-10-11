@@ -1229,7 +1229,7 @@ async function start() {
   // sidebar, over the edge of the web page, when the "all websites"
   // permission allows it, and inside the sidebar otherwise (#21, ADR 0008):
   // over the lower part of the note, so the note above shows each change live.
-  // The Shortcuts panel goes wherever settings go. The choices are kept per
+  // The Shortcuts panel stays inside the sidebar (#76). The choices are kept per
   // browser, and a change made beside the sidebar arrives through storage.
 
   const prefs = {
@@ -1254,7 +1254,7 @@ async function start() {
     shortcutsPanel: () => shortcutsPanel,
     saveShortcutsPanel(change) {
       shortcutsPanel = readShortcutsPanel({ ...shortcutsPanel, ...change });
-      panels.setShortcuts(shortcutsPanel);
+      shortcutsView.draw(shortcutsPanel);
       extensionStorage.set({ shortcutsPanel }).catch((error) => {
         console.warn("Glacier: could not keep the shortcuts panel", error);
       });
@@ -1268,7 +1268,11 @@ async function start() {
     onFold: () => prefs.saveShortcutsPanel({ folded: true }),
     onUnfold: () => prefs.saveShortcutsPanel({ folded: false }),
   });
-  glacierButtonEl.before(shortcutsView.sheet, shortcutsView.tab, settingsView.el);
+  // The tab sits in the pill bar next to +, the drawer on the sidebar's right
+  // edge (#76).
+  newButtonEl.after(shortcutsView.tab);
+  glacierButtonEl.before(shortcutsView.sheet, settingsView.el);
+  shortcutsView.draw(shortcutsPanel);
 
   // --- Panels beside the sidebar (#21, ADR 0008) -----------------------------
   //
@@ -1295,7 +1299,6 @@ async function start() {
       });
     },
     choice: savedPanelPlace,
-    shortcuts: shortcutsPanel,
   });
 
   function drawPanels(view) {
@@ -1303,8 +1306,6 @@ async function start() {
     else closePanelsCard();
     glacierButtonEl.setAttribute("aria-expanded", String(view.open));
     settingsView.showInsideNote(view.explain);
-    shortcutsView.showInsideNote(view.explain);
-    shortcutsView.draw(shortcutsPanel, view.shortcuts === "inside");
     if (view.settings === "inside") {
       if (!settingsView.isOpen()) settingsView.open(view.section);
     } else settingsView.close();
@@ -1327,6 +1328,9 @@ async function start() {
 
   // Writing again, or opening the menus, closes settings.
   noteEl.addEventListener("mousedown", () => closeSettings({ redraw: false }), true);
+  noteEl.addEventListener("mousedown", () => {
+    if (shortcutsPanel.on && !shortcutsPanel.folded) prefs.saveShortcutsPanel({ folded: true });
+  }, true);
   pillEl.addEventListener("click", () => closeSettings({ redraw: false }), true);
   newButtonEl.addEventListener("click", () => closeSettings({ redraw: false }), true);
 
@@ -1360,7 +1364,7 @@ async function start() {
 
     const why = document.createElement("p");
     why.textContent =
-      "Settings and the shortcuts panel can open next to the sidebar, over the edge of the page you're on. Your note keeps its full width and shows each change as you make it. For that, Glacier needs to draw on the pages you visit.";
+      "Settings can open next to the sidebar, over the edge of the page you're on. Your note keeps its full width and shows each change as you make it. For that, Glacier needs to draw on the pages you visit.";
 
     const never = document.createElement("p");
     never.className = "perm-never";
@@ -1445,7 +1449,7 @@ async function start() {
     }
     if (changes.shortcutsPanel) {
       shortcutsPanel = readShortcutsPanel(changes.shortcutsPanel.newValue);
-      panels.setShortcuts(shortcutsPanel);
+      shortcutsView.draw(shortcutsPanel);
     }
     if (changes.panelPlace) panels.setChoice(changes.panelPlace.newValue);
   });

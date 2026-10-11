@@ -1,4 +1,4 @@
-// Draws settings and the Shortcuts panel beside the sidebar (#21, ADR 0008).
+// Draws settings beside the sidebar (#21, ADR 0008).
 //
 // The sidebar runs drawBesideFrames in the web page behind it with
 // scripting.executeScript, so the browser copies the function's text and
@@ -9,14 +9,10 @@
 // `state`:
 //   origin      the extension's origin, so only its frames can say "gone"
 //   settings    the settings frame's address, or null for none
-//   shortcuts   the shortcuts frame's address, or null for none
-//   folded      whether the shortcuts frame is the slim tab
-//   sidebarX    in Firefox, where the sidebar starts on screen, so the
-//               panels go on the side of the page next to it
+//   sidebarX    in Firefox, where the sidebar starts on screen, so
+//               settings go on the side of the page next to it
 export function drawBesideFrames(state) {
   const SETTINGS_WIDTH = 360;
-  const SHORTCUTS_WIDTH = 260;
-  const TAB = { width: 34, height: 120, top: 8 };
 
   const remove = () => {
     if (window.glacierBeside) window.glacierBeside.host.remove();
@@ -32,7 +28,7 @@ export function drawBesideFrames(state) {
   }
   window.glacierBesideOrigin = state.origin;
 
-  if (!state.settings && !state.shortcuts) {
+  if (!state.settings) {
     remove();
     return true;
   }
@@ -59,7 +55,7 @@ export function drawBesideFrames(state) {
     }
     if (!frame) {
       frame = drawn.frames[name] = document.createElement("iframe");
-      frame.title = name === "settings" ? "Glacier settings" : "Glacier shortcuts";
+      frame.title = "Glacier settings";
       drawn.root.append(frame);
     }
     if (frame.getAttribute("src") !== src) frame.setAttribute("src", src);
@@ -79,13 +75,5 @@ export function drawBesideFrames(state) {
   };
 
   place("settings", state.settings, { offset: 0, top: 0, width: SETTINGS_WIDTH, shadow: true });
-  const offset = state.settings ? SETTINGS_WIDTH : 0;
-  place(
-    "shortcuts",
-    state.shortcuts,
-    state.folded
-      ? { offset, top: TAB.top, width: TAB.width, height: TAB.height }
-      : { offset, top: 0, width: SHORTCUTS_WIDTH, shadow: true },
-  );
   return true;
 }

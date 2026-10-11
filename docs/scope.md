@@ -14,7 +14,7 @@ What goes into which version. Terms are defined in [CONTEXT.md](../CONTEXT.md), 
 - Collections were called Courses until #73; their names ignore capital letters, so two that differ only in capitals show and sync as one
 - Live-preview writing: no Edit/Preview switch, the cursor lands in the note when it opens, and Markdown shows as formatting while you write, including on the current line, where the Markdown marks stay visible but faded (see [ADR 0006](adr/0006-live-preview-block-editor.md)). A plain click follows a Link. Frontmatter hidden and shown as a small header (Collection · site ↗, the site switching to the page's tab when it's open; no site for a note without a page)
 - `/` command menu at the start of a line, showing the Markdown for each command. A small + at the left of the current line opens the same menu
-- Shortcuts panel (Markdown cheat sheet): docked to the left of the sidebar like settings, outside the notebook. Folds into a slim vertical tab on the sidebar's edge and stays open or folded until you change it. Switched on or off in settings. Nothing extra in the note's top bar, which is kept for the title
+- Shortcuts panel (Markdown cheat sheet): a drawer inside the sidebar on its right edge, on every page. Folded, it is a small tab in the top right corner next to +. Open, it slides in over the right part of the note; a click on the note or the tab closes it. It stays open or folded until you change it. Switched on or off in settings. Nothing extra in the note's top bar, which is kept for the title
 - `[[` autocomplete for Links
 - Selecting and copying across paragraphs: drag-select works over several lines (a plain click starts editing). Ctrl+A selects the line, Ctrl+A again the whole note. Copy keeps the Markdown, so it pastes back intact
 - Renaming rewrites every Link. Missing Links render red, and clicking one creates a note without a page or Collection
@@ -29,7 +29,7 @@ What goes into which version. Terms are defined in [CONTEXT.md](../CONTEXT.md), 
 - The sidebar is resizable (Chrome and Firefox both let you drag the sidebar wider). Layouts must work from about 260 px up
 - Font Override: Theme default / Shantell Sans / Patrick Hand / Kalam Light / Caveat / Architects Daughter. Fonts bundled
 - Glacier icon: pixel-art ice on smooth sky and water. Used as the toolbar icon in Chrome and Firefox, and as a large round button floating in the bottom-right corner of the sidebar. It opens settings as a panel that expands to the left of the sidebar, over the web page. The notebook keeps its size and shows changes live. Settings sections fold open and closed: Paper, Writing (font + text size), Shortcuts panel, Tabs and notes, Notes repo (token, Sync, Export, Restore from backup file)
-- Panels beside the sidebar use an optional permission, asked for only when settings or shortcuts first open, behind Glacier's own explanation card. Declined: both panels open inside the sidebar instead ([ADR 0008](adr/0008-optional-on-demand-host-permission.md))
+- Settings beside the sidebar use an optional permission, asked for only when settings first open, behind Glacier's own explanation card. Declined: settings open inside the sidebar instead ([ADR 0008](adr/0008-optional-on-demand-host-permission.md))
 
 ### Themes
 

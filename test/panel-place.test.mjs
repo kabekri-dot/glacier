@@ -5,9 +5,9 @@ import { readPanelPlace, createPanelPlacement } from "../src/panel-place.mjs";
 // The Panel placement through its public interface, with a fake browser port.
 
 const article = "https://example.com/lesson-1";
-const NO_FRAMES = { settings: null, shortcuts: null };
+const NO_FRAMES = { settings: null };
 
-function setup({ choice = "ask", granted = false, url = article, grantOnRequest = true, shortcuts } = {}) {
+function setup({ choice = "ask", granted = false, url = article, grantOnRequest = true } = {}) {
   const state = { tab: { id: 1, url }, granted, refuse: false, slow: 0, onTabChange: null };
   const drawn = [];
   const views = [];
@@ -37,7 +37,6 @@ function setup({ choice = "ask", granted = false, url = article, grantOnRequest 
     show: (view) => views.push(view),
     keepChoice: (place) => kept.push(place),
     choice,
-    shortcuts,
   });
   const switchTab = (tab) => {
     state.tab = tab;
@@ -76,7 +75,7 @@ test("Allow on the card, on a website, opens settings beside the sidebar", async
   await placement.start();
   await placement.openSettings();
   await placement.answerCard(true);
-  assert.deepEqual(drawn, [[1, { settings: { section: null }, shortcuts: null }]]);
+  assert.deepEqual(drawn, [[1, { settings: { section: null } }]]);
   assert.deepEqual(kept, ["beside"]);
   assert.equal(last().card, false);
   assert.equal(last().settings, "beside");
@@ -160,24 +159,18 @@ test("a permission taken back in the browser puts the panels inside without the 
   assert.equal(last().explain, false);
 });
 
-test("when the browser already allows it, the Shortcuts panel opens beside before the card was answered", async () => {
-  const { placement, drawn, last } = setup({ granted: true, shortcuts: { on: true, folded: true } });
-  await placement.start();
-  assert.deepEqual(drawn, [[1, { settings: null, shortcuts: { folded: true } }]]);
-  assert.equal(last().shortcuts, "beside");
-});
-
-test("with the permission granted but never answered, a browser page shows the line", async () => {
-  const { placement, last } = setup({ granted: true, url: "chrome://settings/", shortcuts: { on: true, folded: false } });
-  await placement.start();
-  assert.equal(last().shortcuts, "inside");
-  assert.equal(last().explain, true);
-});
-
-test("settings and the Shortcuts panel are drawn beside together", async () => {
-  const { placement, drawn } = setup({ choice: "beside", granted: true, shortcuts: { on: true, folded: false } });
+test("settings are drawn beside with their section", async () => {
+  const { placement, drawn } = setup({ choice: "beside", granted: true });
   await placement.openSettings("look");
-  assert.deepEqual(drawn.at(-1), [1, { settings: { section: "look" }, shortcuts: { folded: false } }]);
+  assert.deepEqual(drawn.at(-1), [1, { settings: { section: "look" } }]);
+});
+
+test("the Shortcuts panel does not move settings or draw frames", async () => {
+  const { placement, drawn, last } = setup({ choice: "beside", granted: true });
+  await placement.start();
+  assert.deepEqual(drawn, []);
+  assert.equal(last().settings, null);
+  assert.equal("shortcuts" in last(), false);
 });
 
 test("closing settings takes their frame away", async () => {
@@ -200,13 +193,13 @@ test("closing the card leaves settings closed", async () => {
   assert.equal(last().open, false);
 });
 
-test("switching tabs moves the frames to the new page", async () => {
-  const { placement, drawn, switchTab, last } = setup({ choice: "beside", granted: true, shortcuts: { on: true, folded: true } });
+test("switching tabs moves settings to the new page", async () => {
+  const { placement, drawn, switchTab } = setup({ choice: "beside", granted: true });
   await placement.start();
+  await placement.openSettings();
   await switchTab({ id: 2, url: "https://example.com/lesson-2" });
-  const frames = { settings: null, shortcuts: { folded: true } };
+  const frames = { settings: { section: null } };
   assert.deepEqual(drawn, [[1, frames], [1, NO_FRAMES], [2, frames]]);
-  assert.equal(last().shortcuts, "beside");
 });
 
 test("switching to a browser page takes the frames away and shows the panels inside with the line", async () => {
@@ -254,9 +247,3 @@ test("choosing inside under Panels moves open settings inside at once", async ()
   assert.equal(last().settings, "inside");
 });
 
-test("folding the Shortcuts panel beside the sidebar redraws it folded", async () => {
-  const { placement, drawn } = setup({ choice: "beside", granted: true, shortcuts: { on: true, folded: false } });
-  await placement.start();
-  await placement.setShortcuts({ on: true, folded: true });
-  assert.deepEqual(drawn.at(-1), [1, { settings: null, shortcuts: { folded: true } }]);
-});

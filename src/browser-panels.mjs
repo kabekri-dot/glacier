@@ -9,8 +9,8 @@
 import { BESIDE_PERMISSION } from "./panel-place.mjs";
 
 export function createBrowserPanels(api, { channel, origin, drawBesideFrames, sidebarX = () => undefined }) {
-  function frameAddress(panel, section) {
-    const params = new URLSearchParams({ panel, channel });
+  function frameAddress(section) {
+    const params = new URLSearchParams({ panel: "settings", channel });
     if (section) params.set("section", section);
     return api.runtime.getURL(`sidebar/beside.html?${params}`);
   }
@@ -38,7 +38,7 @@ export function createBrowserPanels(api, { channel, origin, drawBesideFrames, si
       return api.permissions.request(BESIDE_PERMISSION).catch(() => false);
     },
 
-    async drawFrames(tabId, { settings, shortcuts }) {
+    async drawFrames(tabId, { settings }) {
       try {
         await api.scripting.executeScript({
           target: { tabId },
@@ -46,9 +46,7 @@ export function createBrowserPanels(api, { channel, origin, drawBesideFrames, si
           args: [
             {
               origin,
-              settings: settings ? frameAddress("settings", settings.section) : null,
-              shortcuts: shortcuts ? frameAddress("shortcuts") : null,
-              folded: Boolean(shortcuts?.folded),
+              settings: settings ? frameAddress(settings.section) : null,
               sidebarX: sidebarX(),
             },
           ],
