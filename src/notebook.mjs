@@ -111,6 +111,10 @@ function folderFor(note) {
   return "courses";
 }
 
+// An archived note keeps its path below `archive/`, so Unarchive knows where it
+// goes back to (#58). Obsidian still reads it as a normal note.
+const ARCHIVE_FOLDER = "archive/";
+
 function fileFor(note, stem) {
   // The title only goes into the frontmatter when the filename can't hold it
   // as it is (e.g. it has a `/`), so the round trip still gives it back.
@@ -122,7 +126,7 @@ function fileFor(note, stem) {
     }
   }
   text += "---\n" + (note.body ?? "");
-  return { path: `${folderFor(note)}/${stem}.md`, text };
+  return { path: `${note.archived ? ARCHIVE_FOLDER : ""}${folderFor(note)}/${stem}.md`, text };
 }
 
 // A note as its file: `{ path, text }`.
@@ -157,7 +161,8 @@ function splitFrontmatter(text) {
 // kind of note and its Course, and the filename gives the title. A file that
 // isn't in a Course folder becomes a Concept Note.
 export function noteFromFile(path, text) {
-  const parts = path.split("/");
+  const archived = path.startsWith(ARCHIVE_FOLDER);
+  const parts = (archived ? path.slice(ARCHIVE_FOLDER.length) : path).split("/");
   const stem = parts.at(-1).replace(/\.md$/i, "");
   const parent = parts.at(-2);
   const grandparent = parts.at(-3);
@@ -171,11 +176,15 @@ export function noteFromFile(path, text) {
   if (type === "lesson" && fields.source) note.source = fields.source;
   note.created = fields.created || new Date().toISOString();
   note.body = body;
+  if (archived) note.archived = true;
   return note;
 }
 
-function sameNote(a, b) {
-  return ["type", "course", "source", "body"].every((key) => (a[key] ?? "") === (b[key] ?? ""));
+function sameNote(a, b, { ignoreArchived = false } = {}) {
+  return (
+    ["type", "course", "source", "body"].every((key) => (a[key] ?? "") === (b[key] ?? "")) &&
+    (ignoreArchived || Boolean(a.archived) === Boolean(b.archived))
+  );
 }
 
 // Note files for these notes, zipped. Two titles that only differ in
@@ -239,7 +248,7 @@ export function syncErrorMessage(error, repo) {
 // Only Markdown files in the two note folders are notes; a README, an
 // `.obsidian` folder or pictures in the Notes Repo are left alone.
 function isNoteFile(path) {
-  return /^(courses|concepts)\/.+\.md$/i.test(path);
+  return /^(archive\/)?(courses|concepts)\/.+\.md$/i.test(path);
 }
 
 export function createNotebook({ storage }) {
@@ -343,7 +352,7 @@ export function createNotebook({ storage }) {
       synced[path] = { title: note.title, version, text };
     } else if (
       unchangedSince(local, { text }, path) ||
-      (known ? unchangedSince(local, known, path) : sameNote(local, incoming))
+      (known ? unchangedSince(local, known, path) : sameNote(local, incoming, { ignoreArchived: true }))
     ) {
       if (local.title !== incoming.title) storage.deleteNote(local.title);
       storage.putNote(incoming);
@@ -446,8 +455,13 @@ export function createNotebook({ storage }) {
       .filter((title) => CONFLICT_TITLE.test(title));
   }
 
+  // The notes the lists, search and the page lookup show: not the archived ones.
+  function listed() {
+    return storage.allNotes().filter((note) => !note.archived);
+  }
+
   return {
-    // Every Note currently in the Notebook.
+    // Every Note currently in the Notebook, archived ones too.
     notes() {
       return storage.allNotes();
     },
@@ -469,7 +483,7 @@ export function createNotebook({ storage }) {
     // Concept Notes have no Course and add nothing.
     courses() {
       const seen = new Set();
-      for (const note of storage.allNotes()) {
+      for (const note of listed()) {
         if (note.type === "lesson" && note.course) {
           seen.add(note.course);
         }
@@ -481,9 +495,7 @@ export function createNotebook({ storage }) {
     // when the page has none yet (the "+ Lesson note" prompt).
     lessonNoteForSource(url) {
       const key = normalizeSource(url);
-      return storage
-        .allNotes()
-        .find(
+      return listed().find(
           (note) =>
             note.type === "lesson" &&
             note.source &&
@@ -571,7 +583,7 @@ export function createNotebook({ storage }) {
       }
       const inTitle = [];
       const inText = [];
-      for (const note of storage.allNotes()) {
+      for (const note of listed()) {
         if (note.title.toLowerCase().includes(needle)) {
           inTitle.push({ title: note.title, type: note.type });
           continue;
@@ -595,7 +607,7 @@ export function createNotebook({ storage }) {
       const byCourse = new Map();
       const uncategorised = [];
       const concepts = [];
-      for (const note of storage.allNotes()) {
+      for (const note of listed()) {
         if (note.type === "concept") {
           concepts.push(note.title);
         } else if (note.course) {
@@ -627,7 +639,7 @@ export function createNotebook({ storage }) {
     recentNotes(limit = 8) {
       return (storage.getMeta(RECENT) ?? [])
         .map((title) => storage.getNote(title))
-        .filter(Boolean)
+        .filter((note) => note && !note.archived)
         .slice(0, limit);
     },
 
@@ -673,6 +685,30 @@ export function createNotebook({ storage }) {
       if (recent) storage.putMeta(RECENT, recent.filter((t) => t !== title));
     },
 
+    // Archive (#58): hide a note from the lists, search, recent notes and the
+    // page lookup, but keep it. Links to it still open it. Its file moves under
+    // `archive/` on the next sync, as one commit like a rename.
+    archiveNote(title) {
+      const note = storage.getNote(title);
+      if (note && !note.archived) storage.putNote({ ...note, archived: true });
+    },
+
+    // Put an archived note back where it was: same Course, same type.
+    unarchiveNote(title) {
+      const note = storage.getNote(title);
+      if (!note || !note.archived) return;
+      const { archived, ...rest } = note;
+      storage.putNote(rest);
+    },
+
+    // The archived notes, sorted by title, for the menu's Archive section.
+    archivedNotes() {
+      return storage
+        .allNotes()
+        .filter((note) => note.archived)
+        .sort((a, b) => a.title.localeCompare(b.title));
+    },
+
     // Save the note's Markdown body. The editor calls this as you type, so
     // there is no save button (the write-through storage keeps IndexedDB in
     // step). Unknown titles are ignored rather than creating a stray note.
@@ -694,7 +730,12 @@ export function createNotebook({ storage }) {
 
     // The same zip with only one Course's Lesson Notes.
     exportCourseZip(course) {
-      return zipNotes(storage.allNotes().filter((note) => note.type === "lesson" && note.course === course));
+      return zipNotes(listed().filter((note) => note.type === "lesson" && note.course === course));
+    },
+
+    // The same zip with only the archived notes.
+    exportArchiveZip() {
+      return zipNotes(storage.allNotes().filter((note) => note.archived));
     },
 
     // One note as its single Markdown file, `{ path, text }`.
@@ -773,7 +814,7 @@ export function createNotebook({ storage }) {
         if (!existing) {
           storage.putNote(note);
           result.added += 1;
-        } else if (sameNote(existing, note)) {
+        } else if (sameNote(existing, note, { ignoreArchived: true })) {
           result.unchanged += 1;
         } else {
           storage.putNote({ ...note, title: uniqueTitle(`${note.title} (imported ${today})`) });

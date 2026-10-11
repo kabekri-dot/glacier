@@ -56,6 +56,7 @@ const noteEl = document.querySelector(".note");
 const saveErrorEl = document.querySelector(".save-error");
 const pillEl = document.querySelector(".pill");
 const pillTitleEl = document.querySelector(".pill-title");
+const pillArchivedEl = document.querySelector(".pill-archived");
 const pillMenuEl = document.querySelector(".pill-menu");
 const syncDotEl = document.querySelector(".sync-dot");
 const renameHintEl = document.querySelector(".rename-hint");
@@ -304,6 +305,7 @@ async function start() {
   function updatePill() {
     stopTitleEdit();
     pillTitleEl.textContent = current ? current.title : "Glacier";
+    pillArchivedEl.hidden = !current?.archived;
     const previous = history.previous();
     backEl.hidden = previous === null || !tabSettings.showPreviousButton;
     backEl.title = previous === null ? "" : `Back to: ${previous}`;
@@ -493,6 +495,16 @@ async function start() {
     if (outline.concepts.length > 0) {
       container.append(menuHeading("Concepts", CONCEPT_NOTE_HINT), titleList(outline.concepts));
     }
+    const archived = notebook.archivedNotes();
+    if (archived.length > 0) {
+      const details = document.createElement("details");
+      details.className = "menu-archive";
+      const summary = document.createElement("summary");
+      summary.textContent = `Archive (${archived.length})`;
+      summary.title = "Notes you hid from your lists. Open one to bring it back";
+      details.append(summary, titleList(archived.map((note) => note.title)));
+      container.appendChild(details);
+    }
   }
 
   function openMenu() {
@@ -577,9 +589,43 @@ async function start() {
       closeMenu();
       showDeleteQuestion();
     });
-    noteRow.append(downloadNote, deleteThisNote);
+    const archiveThisNote = current?.archived
+      ? menuButton("Unarchive", "Put this note back in your lists", () => {
+          if (!current) return;
+          closeMenu();
+          unarchiveCurrentNote();
+        })
+      : menuButton("Archive this note", "Hide this note from your lists. You can bring it back any time", () => {
+          if (!current) return;
+          closeMenu();
+          archiveCurrentNote();
+        });
+    noteRow.append(downloadNote, archiveThisNote, deleteThisNote);
     section.append(noteRow);
     return section;
+  }
+
+  // Archive (#58): the note leaves the lists, and the Opening flow decides
+  // what the sidebar shows next (a page with no Lesson note gets the form).
+  function archiveCurrentNote() {
+    session.flush();
+    notebook.archiveNote(current.title);
+    session.close();
+    current = null;
+    openedByPage = false;
+    updatePill();
+    updateNoteMeta();
+    updateBacklinks();
+    autoSync.changed();
+    openingFlow.start();
+  }
+
+  function unarchiveCurrentNote() {
+    session.flush();
+    notebook.unarchiveNote(current.title);
+    current = notebook.note(current.title);
+    updatePill();
+    autoSync.changed();
   }
 
   // Delete this note (#57): a short question in the sidebar, not a browser
@@ -731,6 +777,11 @@ async function start() {
     exportAll() {
       session.flush();
       download(notebook.exportZip(), "application/zip", `Glacier notes ${today()}.zip`);
+    },
+
+    exportArchive() {
+      session.flush();
+      download(notebook.exportArchiveZip(), "application/zip", `Glacier archive ${today()}.zip`);
     },
 
     async restore(bytes) {
