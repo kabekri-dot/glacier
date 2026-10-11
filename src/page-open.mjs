@@ -2,10 +2,11 @@
 // navigating — Glacier decides what the sidebar shows (issues #29, #50). The rule:
 //
 //   - A website (http/https) always wins: the sidebar shows its Lesson Note, or
-//     the "+ Lesson note" form for it, whatever note was open and however it
+//     a fresh page for it that becomes its Lesson Note when you type (#61), whatever note was open and however it
 //     was opened (page, pill menu, Link, made by hand).
 //   - A browser-internal page (new tab, settings, a PDF) is never a lesson, so
-//     a note that's open is kept; only an empty panel offers the by-hand form.
+//     a note that's open is kept; only an empty panel offers a fresh page for
+//     a note by hand.
 //   - The old rule stays reachable behind `keepUserOpenedNotes`: a note the
 //     user opened themselves is never thrown away, only a page-opened note, or
 //     an empty panel, follows the page. The "Tabs and notes" settings switch it on (#53).
@@ -30,14 +31,14 @@ export function decidePageOpen({
 
   if (!page) {
     // Nothing on a browser-internal page to open. Keep an open note rather than
-    // replacing it with a by-hand form; only offer the form on an empty panel.
-    // The "Tabs and notes" setting can ask for the form even then (#53).
-    return current && onNonWebsite !== "newNoteForm" ? { type: "keep" } : { type: "newNoteForm" };
+    // replacing it with a fresh page; only offer one on an empty panel. The
+    // "Tabs and notes" setting can ask for it even then (#53).
+    return current && onNonWebsite !== "newNoteForm" ? { type: "keep" } : { type: "byHandDraft" };
   }
 
   const existing = lessonNoteForSource(page.url);
   if (existing) return { type: "open", note: existing };
-  return { type: "lessonForm", page };
+  return { type: "lessonDraft", page };
 }
 
 // Whether a note counts as opened by the page: a Lesson Note has a Source, so

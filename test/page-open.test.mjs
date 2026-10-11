@@ -28,7 +28,7 @@ test("nothing open: open the page's existing Lesson Note", () => {
   assert.deepEqual(decision, { type: "open", note: lessonA });
 });
 
-test("nothing open, no note for the page: offer the Lesson Note form", () => {
+test("nothing open, no note for the page: offer a fresh page for the lesson", () => {
   const decision = decidePageOpen({
     current: null,
     openedByPage: false,
@@ -36,19 +36,19 @@ test("nothing open, no note for the page: offer the Lesson Note form", () => {
     lessonNoteForSource: notebook([]),
   });
   assert.deepEqual(decision, {
-    type: "lessonForm",
+    type: "lessonDraft",
     page: { url: "https://new.test/x", title: "New" },
   });
 });
 
-test("nothing open, browser-internal page: offer the by-hand form", () => {
+test("nothing open, browser-internal page: offer a fresh page by hand", () => {
   const decision = decidePageOpen({
     current: null,
     openedByPage: false,
     page: null,
     lessonNoteForSource: notebook([]),
   });
-  assert.deepEqual(decision, { type: "newNoteForm" });
+  assert.deepEqual(decision, { type: "byHandDraft" });
 });
 
 test("with the old option, a Concept Note opened through a Link stays put on a page change", () => {
@@ -94,12 +94,12 @@ test("a page-opened note follows to a lesson page that has no note yet", () => {
     lessonNoteForSource: notebook([lessonA]),
   });
   assert.deepEqual(decision, {
-    type: "lessonForm",
+    type: "lessonDraft",
     page: { url: "https://b.test/fresh", title: "Fresh" },
   });
 });
 
-test("a page-opened note is kept on a browser-internal page, not replaced by a form", () => {
+test("a page-opened note is kept on a browser-internal page, not replaced by a fresh page", () => {
   const decision = decidePageOpen({
     current: lessonA,
     openedByPage: true,

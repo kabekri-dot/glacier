@@ -11,6 +11,26 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Making a note: write straight away, no form (#61)
+
+Reload the extension with the reload button first.
+
+- [ ] Open a website that has no note: the sidebar shows the ruled paper with one faded line, "No note for this page yet. Just start writing." The pill shows the page's title, faded. Nothing looks like a web form: no boxes, no big buttons, no heading.
+- [ ] Click the paper and type a letter: the note exists now, with the page's title in the pill (no longer faded) and the line "Course · site ↗" above the text, with the last used Course.
+- [ ] On another website with no note, click the paper but type nothing, then switch tabs and back: no note was made (it is not in the pill menu).
+- [ ] Open a note, then + and Concept note: the pill shows "Title" faded, ready to type. Type a name and press Enter: the caret drops onto the first line. Write something, and the Concept note is in the menu under that name, never "Untitled".
+- [ ] + and Concept note again, then press Esc: the note from before comes back and nothing was made.
+- [ ] On a website with no note, + and "Lesson note for this page": the page's title is in the pill, all selected. Press Enter to keep it, and the note is made.
+- [ ] On a settings page, + and "New note": type a name, press Enter, write. The note has no site link.
+- [ ] Make a Lesson note whose title another note already has: it gets the Course in brackets after the title.
+- [ ] Hover the Course above the text: "Click to move this note to another course". Click it: a small list opens right there, the last used Course first and "New course" at the bottom. Pick another Course: the line shows it and the note is under that Course in the menu.
+- [ ] Click the Course, then "New course": the line turns into a field. Type a name and press Enter: the note moves to that new Course. Esc in the field changes nothing.
+- [ ] After a sync, the note's file moved to the new Course's folder in the Notes repo, and the old one is gone.
+- [ ] The link shows the site, for example "youtube.com ↗" (no www). Hover it: the full address shows.
+- [ ] With the lesson open in a tab (also in another window), click the link: Glacier switches to that tab. Close the lesson's tab and click again: it opens in a new tab.
+- [ ] Without the permission to see pages, the link always opens a new tab.
+- [ ] The pill menu's "+ Concept" also opens a fresh page with the title ready to type, filled in with what was in the search box.
+
 ### Why a panel opens inside the sidebar (#60)
 
 Reload the extension with the reload button first. In Settings, Panels, choose "Beside the sidebar".
@@ -35,7 +55,7 @@ Make a conflict first (see Conflict Copies, #16).
 ### Archive (#58)
 
 - [ ] Open a note and open the pill menu: "Archive this note" is there, and hovering shows "Hide this note from your lists. You can bring it back any time".
-- [ ] Click it: the note leaves the Notebook list, recent notes and search. On a page that had it as its Lesson note, the "+ Lesson note" button shows.
+- [ ] Click it: the note leaves the Notebook list, recent notes and search. On a page that had it as its Lesson note, the empty paper for a new note shows.
 - [ ] Open the pill menu: an "Archive" section is at the bottom, folded shut. Open it and the archived note is listed.
 - [ ] Click the archived note: a small "Archived" label shows in the pill, and the menu has "Unarchive" instead of "Archive this note".
 - [ ] Click Unarchive: the label goes, and the note is back in its Course (or Concepts) in the list.
@@ -49,18 +69,10 @@ Make a conflict first (see Conflict Copies, #16).
 - [ ] Open a note and open the pill menu: "Delete this note" is there, and hovering shows "Remove this note for good".
 - [ ] Click it: the sidebar asks "Delete 'title'? It is also removed from your Notes repo." with Delete and Keep. No browser dialog shows.
 - [ ] Click Keep: the note comes back as it was. Do it again and press Esc: same result.
-- [ ] Click Delete: the sidebar shows the note of the tab you are on, or the "+ Lesson note" button if that page has none.
+- [ ] Click Delete: the sidebar shows the note of the tab you are on, or the empty paper for a new note if that page has none.
 - [ ] The deleted note is gone from the menu, recent notes and search, and the previous note button skips it.
 - [ ] Another note that linked to it now shows that link as a Missing Link.
 - [ ] After a sync, the note's file is gone from the Notes repo on GitHub, and it does not come back after another sync.
-
-### A create form stays until you leave it (#56)
-
-- [ ] Open a note, then a website with no note, and click "+ Lesson note": the form shows. Click on the paper, on empty space and on the pill: the form stays.
-- [ ] Click Cancel: the note from before comes back. Do it again and press Esc: same result.
-- [ ] Open the form with no note open before it: Cancel shows the page's note if it has one, otherwise the "+ Lesson note" button.
-- [ ] Open the "New note" form from the + menu, click the paper, then Create note: the new note opens.
-- [ ] With the form open, switch to another website tab: Glacier follows the tab as before.
 
 ### Panels beside the sidebar (#21)
 
@@ -114,7 +126,7 @@ Make a conflict first (see Conflict Copies, #16).
 - [ ] Open settings and fold open "Tabs and notes". It has three choices: when I switch tabs, on a page that isn't a website, and the previous note button.
 - [ ] Leave "When I switch tabs" on "Show the note of the tab I'm on". Open a note from the menu, then switch to a website tab: the note of that tab shows.
 - [ ] Choose "Keep a note I opened myself", open a Concept Note from the menu, then switch tabs: the note stays, without reopening the sidebar.
-- [ ] Leave "On a page that isn't a website" on "Keep the open note", then switch to a new tab: the note stays. Choose "Show a new note form" and switch to a new tab again: the new note form shows.
+- [ ] Leave "On a page that isn't a website" on "Keep the open note", then switch to a new tab: the note stays. Choose "Show an empty page for a new note" and switch to a new tab again: the empty paper shows, and typing makes a note by hand.
 - [ ] Choose "Hidden" for the previous note button: the ← button leaves the pill at once. Choose "Shown": it comes back when there is a note to go back to.
 - [ ] Close the sidebar and open it again: all three choices are still as you left them.
 
@@ -213,22 +225,23 @@ Connect a Notes repo first (see #14).
 
 ### Permission and first start
 
-- [ ] Fresh start without the permission: only a "+ Lesson note" button shows.
-- [ ] Click it: Glacier's own card explains the permission. **Allow** shows the browser's prompt, and then the page's note or form.
-- [ ] **Not now** leads to a form for a note made by hand.
+- [ ] Fresh start without the permission: one faded line, "No note for this page yet.", and a quiet "+ Lesson note" under it.
+- [ ] Click it: Glacier's own card explains the permission. **Allow** shows the browser's prompt, and then the page's note or the empty paper for it.
+- [ ] **Not now** leads to the empty paper, where typing makes a note by hand.
 - [ ] Installing shows no permission warning. The first time settings open, Glacier's own card explains drawing beside the sidebar, and the browser asks only after **Allow** (#21).
 - [ ] Allowed, settings and the cheat sheet open beside the sidebar on websites and inside it on browser pages. Declined, they open inside. Settings, Panels changes it later.
 
 ### Notes for the page you're on
 
-- [ ] On a website without a note, "+ Lesson note" shows. The new note gets the page title, and the last used Course is already picked.
+- [ ] On a website without a note, the empty paper shows with "No note for this page yet. Just start writing." Typing makes the note, with the page title and the last used Course.
+- [ ] Clicking the paper without typing, or leaving, makes no note.
 - [ ] Reopening the sidebar on that page opens the same note again.
 - [ ] Two videos on the same site (different `?v=`) get different notes.
 - [ ] The same page with `#part-2` or `?utm_source=mail` at the end opens the same note.
 
 ### Switching tabs
 
-- [ ] Switching to another website shows its note, or its "+ Lesson note" form. That happens whatever note was open, including one you just made or opened from the pill.
+- [ ] Switching to another website shows its note, or the empty paper for it. That happens whatever note was open, including one you just made or opened from the pill.
 - [ ] Switching back shows the first tab's note again.
 - [ ] On a new tab or a settings page, the open note stays.
 - [ ] Switching quickly between several tabs always ends on the note of the tab you're on.
@@ -245,6 +258,7 @@ Connect a Notes repo first (see #14).
 - [ ] `←` appears after the note changed. Hovering shows "Back to: <title>". Clicking goes back one note, and clicking again goes further back.
 - [ ] `+` is always there. On a website it offers "Lesson note for this page" and "Concept note". On a settings page it offers "New note" and "Concept note".
 - [ ] Hovering over Lesson note or Concept note (in `+` and in the menu) shows a short explanation.
+- [ ] Each `+` choice opens a fresh page with the title in the pill ready to type. Enter makes the note, Esc goes back to the note from before and makes nothing.
 
 ### Saving
 
@@ -340,7 +354,8 @@ Connect a Notes repo first (see #14).
 
 ### Export and Import
 
-- [ ] A Lesson note with a Course and a website shows a small "Course · source ↗" line above its text, and no `---` lines. Clicking "source ↗" opens the lesson in a new tab.
+- [ ] A Lesson note with a Course and a website shows a small "Course · site ↗" line above its text (for example "youtube.com ↗"), and no `---` lines. Clicking the site switches to the lesson's tab when it is open, otherwise opens it in a new tab.
+- [ ] Clicking the Course opens a small list to move the note to another Course or a new one.
 - [ ] A Lesson note made by hand (no website) shows only its Course. A Concept note shows no such line.
 - [ ] Open settings, then Notes repo: "Export everything" and "Restore from backup file" sit under "Backup", and hovering shows what they do.
 - [ ] "Export everything" downloads a zip named "Glacier notes" with the date.

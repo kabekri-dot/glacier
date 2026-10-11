@@ -138,6 +138,81 @@ body {
   color: var(--accent);
 }
 
+/* The Course on that line is a quiet button that opens a small list right
+   there (#61). The line is allowed to show the list below it. */
+.note-meta.is-picking {
+  z-index: 15;
+  overflow: visible;
+}
+
+.note-meta-course {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.note-meta-course:hover,
+.note-meta-course:focus-visible {
+  outline: none;
+  text-decoration: underline dotted;
+}
+
+.note-meta-course.is-empty {
+  opacity: 0.6;
+}
+
+.course-list {
+  position: absolute;
+  top: var(--line-height);
+  left: 0;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  min-width: 10rem;
+  max-width: 100%;
+  padding: 0.3rem;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  box-shadow: 0 6px 20px var(--shadow);
+}
+
+.course-choice {
+  padding: 0.15rem 0.5rem;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.course-choice:hover,
+.course-choice:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.course-choice.is-new {
+  color: var(--accent);
+}
+
+.course-input {
+  width: 12rem;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px dotted currentColor;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
 .note.has-meta {
   padding-top: calc(var(--note-top) + var(--line-height));
 }
@@ -453,11 +528,11 @@ code {
   white-space: pre;
 }
 
-/* The way out of an empty panel and the create form (#3): shown when no note
-   is open, so Glacier is never a blank, locked page. They sit on the paper
-   like a note, in the same ink. */
-.empty-state,
-.create-form,
+/* The way in on an empty panel without the tabs permission (#3), the cards
+   (permission, delete) and the settings forms. They sit on the paper like a
+   note, in the same ink. */
+.start-prompt,
+.settings-form,
 .perm-card {
   display: flex;
   flex-direction: column;
@@ -465,29 +540,52 @@ code {
   max-width: 24rem;
 }
 
-.create-heading {
+.card-heading {
   margin: 0;
   font-size: 1.3em;
   font-weight: 700;
 }
 
-.empty-text {
-  margin: 0;
-  opacity: 0.8;
+/* The start prompt is one handwritten line on the first rule and a quiet
+   link, not a form (#61). */
+.start-prompt {
+  gap: 0;
 }
 
-.create-field {
+.start-prompt p {
+  margin: 0;
+  line-height: var(--line-height);
+  opacity: 0.6;
+}
+
+.start-link {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  line-height: var(--line-height);
+  cursor: pointer;
+}
+
+.start-link:hover,
+.start-link:focus-visible {
+  text-decoration: underline;
+}
+
+.form-field {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
 }
 
-.create-label {
+.form-label {
   font-size: 0.85rem;
   opacity: 0.75;
 }
 
-.create-input {
+.form-input {
   width: 100%;
   padding: 0.4rem 0.55rem;
   border: 1px solid var(--rule);
@@ -498,12 +596,12 @@ code {
   font-size: 1rem;
 }
 
-.create-input:focus {
+.form-input:focus {
   outline: none;
   border-color: var(--accent);
 }
 
-.create-submit {
+.card-button {
   align-self: flex-start;
   padding: 0.45rem 0.9rem;
   border: 0;
@@ -515,19 +613,8 @@ code {
   cursor: pointer;
 }
 
-.create-cancel {
-  align-self: flex-start;
-  padding: 0.45rem 0.9rem;
-  border: 1px solid var(--accent);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--accent);
-  font: inherit;
-  cursor: pointer;
-}
-
-.create-submit:hover,
-.create-submit:focus {
+.card-button:hover,
+.card-button:focus {
   outline: none;
   filter: brightness(1.08);
 }
@@ -946,6 +1033,11 @@ code {
 
 .pill-title {
   cursor: text;
+}
+
+/* A fresh page that is not a note yet shows its title faded (#61). */
+.pill-title.is-draft {
+  opacity: 0.55;
 }
 
 .pill-title-input {
