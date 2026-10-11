@@ -34,6 +34,33 @@ body {
   line-height: var(--glacier-line-height);
 }
 
+/* The note's "Course · source" line (#13) sits on the first ruled line, and
+   the text starts one line lower so it stays on the rules. */
+.note-meta {
+  position: absolute;
+  top: 3.25rem;
+  left: 1.25rem;
+  right: 1.25rem;
+  overflow: hidden;
+  font-size: 0.8rem;
+  line-height: var(--glacier-line-height);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  opacity: 0.7;
+}
+
+.note-meta[hidden] {
+  display: none;
+}
+
+.note-meta a {
+  color: var(--glacier-accent);
+}
+
+.note.has-meta {
+  padding-top: calc(3.25rem + var(--glacier-line-height));
+}
+
 /* The note fills the sidebar and must stay usable from about 260px wide. */
 .note {
   min-height: 100%;
@@ -498,6 +525,11 @@ code {
   color: var(--glacier-accent);
   font: inherit;
   cursor: pointer;
+}
+
+.menu-files {
+  border-top: 1px solid var(--glacier-rule);
+  padding-top: 0.5rem;
 }
 
 .menu-new:hover {

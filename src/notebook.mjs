@@ -4,6 +4,7 @@
 // (ADR 0003), so the core can be tested with an in-memory stand-in.
 
 import { findLinks } from "./editor-model.mjs";
+import { zipFiles, unzipFiles } from "./zip.mjs";
 
 // Query parameters that only record where a click came from, never which
 // lesson it is, so they're dropped before matching a Source (CONTEXT.md).
@@ -62,6 +63,128 @@ function rewriteLinks(body, oldTitle, newTitle) {
     }
   }
   return result + body.slice(from);
+}
+
+// --- Note files (ADR 0005, #13) ---------------------------------------------
+//
+// In the Notes Repo and in an Export every note is a Markdown file named after
+// its title: `courses/<Course>/<Title>.md` for a Lesson Note and
+// `concepts/<Title>.md` for a Concept Note. A small YAML frontmatter keeps
+// `type`, `course`, `source` and `created`, then the Markdown body follows.
+
+// Characters Windows, macOS or Obsidian refuse in a file or folder name.
+const UNSAFE_IN_NAMES = /[\\/:*?"<>|]/g;
+// Keys written in this order; any other key in a file is ignored on Import.
+const FRONTMATTER_KEYS = ["type", "title", "course", "source", "created"];
+
+function safeName(name) {
+  return name.replace(UNSAFE_IN_NAMES, "-");
+}
+
+// A value is written bare when YAML can only read it back as the same text,
+// and in double quotes (a JSON string is valid YAML) otherwise.
+function yamlValue(value) {
+  const plain = /^[A-Za-z][A-Za-z0-9 ._()&,+-]*$/.test(value) && !value.endsWith(" ");
+  const word = /^(true|false|yes|no|on|off|null)$/i.test(value);
+  const date = /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(value);
+  return (plain && !word) || date ? value : JSON.stringify(value);
+}
+
+function readYamlValue(raw) {
+  const value = raw.trim();
+  if (value.startsWith('"')) {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value.slice(1, -1);
+    }
+  }
+  if (value.startsWith("'") && value.endsWith("'")) {
+    return value.slice(1, -1).replaceAll("''", "'");
+  }
+  return value;
+}
+
+function folderFor(note) {
+  if (note.type === "concept") return "concepts";
+  if (note.course) return `courses/${safeName(note.course)}`;
+  return "courses";
+}
+
+function fileFor(note, stem) {
+  // The title only goes into the frontmatter when the filename can't hold it
+  // as it is (e.g. it has a `/`), so the round trip still gives it back.
+  const fields = { ...note, title: stem === note.title ? undefined : note.title };
+  let text = "---\n";
+  for (const key of FRONTMATTER_KEYS) {
+    if (fields[key]) {
+      text += `${key}: ${yamlValue(fields[key])}\n`;
+    }
+  }
+  text += "---\n" + (note.body ?? "");
+  return { path: `${folderFor(note)}/${stem}.md`, text };
+}
+
+// A note as its file: `{ path, text }`.
+export function noteToFile(note) {
+  return fileFor(note, safeName(note.title));
+}
+
+// Split a file into its frontmatter fields and its body. A file that doesn't
+// start with a `---` line has no frontmatter and is all body.
+function splitFrontmatter(text) {
+  const open = text.match(/^---\r?\n/);
+  if (!open) {
+    return { fields: {}, body: text };
+  }
+  const close = /^---[ \t]*(\r?\n|$)/m;
+  const rest = text.slice(open[0].length);
+  const match = close.exec(rest);
+  if (!match) {
+    return { fields: {}, body: text };
+  }
+  const fields = {};
+  for (const line of rest.slice(0, match.index).split(/\r?\n/)) {
+    const at = line.indexOf(":");
+    if (at > 0) {
+      fields[line.slice(0, at).trim()] = readYamlValue(line.slice(at + 1));
+    }
+  }
+  return { fields, body: rest.slice(match.index + match[0].length) };
+}
+
+// A note from its file. The frontmatter wins; without it the folder tells the
+// kind of note and its Course, and the filename gives the title. A file that
+// isn't in a Course folder becomes a Concept Note.
+export function noteFromFile(path, text) {
+  const parts = path.split("/");
+  const stem = parts.at(-1).replace(/\.md$/i, "");
+  const parent = parts.at(-2);
+  const grandparent = parts.at(-3);
+  const { fields, body } = splitFrontmatter(text);
+  const inCourse = grandparent === "courses" || parent === "courses";
+  let type = inCourse ? "lesson" : "concept";
+  if (fields.type === "lesson" || fields.type === "concept") type = fields.type;
+  const note = { type, title: fields.title || stem };
+  const course = fields.course || (grandparent === "courses" ? parent : undefined);
+  if (type === "lesson" && course) note.course = course;
+  if (type === "lesson" && fields.source) note.source = fields.source;
+  note.created = fields.created || new Date().toISOString();
+  note.body = body;
+  return note;
+}
+
+function sameNote(a, b) {
+  return ["type", "course", "source", "body"].every((key) => (a[key] ?? "") === (b[key] ?? ""));
+}
+
+// What an Import did, in one short sentence for the screen.
+export function importSummary({ added, unchanged, copies }) {
+  const notes = (n) => (n === 1 ? "1 note" : `${n} notes`);
+  const parts = [`Imported ${notes(added)}`];
+  if (unchanged > 0) parts.push(`${notes(unchanged)} already here`);
+  if (copies > 0) parts.push(`${notes(copies)} kept as a copy next to yours`);
+  return parts.join(", ") + ".";
 }
 
 export function createNotebook({ storage }) {
@@ -356,6 +479,51 @@ export function createNotebook({ storage }) {
       const updated = { ...note, body };
       storage.putNote(updated);
       return updated;
+    },
+
+    // Export (#13): the whole Notebook as a zip of note files, ready to open
+    // as an Obsidian vault. Two titles that only differ in characters a
+    // filename can't hold get a number, and their frontmatter keeps the title.
+    exportZip() {
+      const taken = new Set();
+      const files = [];
+      for (const note of storage.allNotes()) {
+        const base = safeName(note.title);
+        let file = fileFor(note, base);
+        for (let n = 2; taken.has(file.path.toLowerCase()); n++) {
+          file = fileFor(note, `${base} ${n}`);
+        }
+        taken.add(file.path.toLowerCase());
+        files.push(file);
+      }
+      files.sort((a, b) => a.path.localeCompare(b.path));
+      return zipFiles(files);
+    },
+
+    // Import (#13): turn such a zip back into notes. A note the Notebook
+    // doesn't have is added; one it has with the same text is left alone; one
+    // whose text differs is never overwritten (ADR 0004): the imported version
+    // is added next to it under a free title. Files that aren't `.md` (an
+    // `.obsidian` folder, pictures) are skipped. A broken zip is refused before
+    // anything changes.
+    async importZip(bytes) {
+      const files = (await unzipFiles(bytes)).filter(({ path }) => /\.md$/i.test(path));
+      const today = new Date().toISOString().slice(0, 10);
+      const result = { added: 0, unchanged: 0, copies: 0 };
+      for (const { path, text } of files) {
+        const note = noteFromFile(path, text);
+        const existing = storage.getNote(note.title);
+        if (!existing) {
+          storage.putNote(note);
+          result.added += 1;
+        } else if (sameNote(existing, note)) {
+          result.unchanged += 1;
+        } else {
+          storage.putNote({ ...note, title: uniqueTitle(`${note.title} (imported ${today})`) });
+          result.copies += 1;
+        }
+      }
+      return result;
     },
   };
 }
