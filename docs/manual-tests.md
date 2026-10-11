@@ -11,6 +11,16 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Sync lives in the dot; the Notebook menu holds only notes (#75)
+
+- [ ] Reload the extension with the ↻ button first. Click the sync dot in the pill: a small box opens under it with the status in words (for example "Up to date") and a quiet line "Last synced 2 minutes ago". Leave it open for a minute: the time moves on by itself.
+- [ ] Click "Sync now": the button reads "Syncing…", then for a few seconds the result ("Up to date", or "3 notes sent, 1 received"), then "Sync now" again. Turn the network off and try again: the result is "Offline. Your changes are kept here".
+- [ ] Press Esc, or click anywhere outside the box: it closes.
+- [ ] Make a note with two versions (see Conflict Copies below). The box shows "1 note has two versions. Check them" style text. Clicking it opens the ▾ menu with "Two versions (n)" at the very top, each original with its second version under it.
+- [ ] Click "Notes repo settings" in the box: settings open at Notes repo. Without a Notes repo connected, the box says "Not connected to GitHub" and offers "Set up sync", which opens the same place.
+- [ ] Open the ▾ menu: there is no Sync, no "Sync now" and no "Notes repo" in it. The order is search, Two versions (only while there are any), Notes for this page, Recent, Collections, Archive.
+- [ ] Nothing in the menus or the box is bold.
+
 ### Actions on a whole Collection (#74)
 
 - [ ] Reload with ↻ first. Open the ▾ menu and hover a Collection heading: Download, Archive and Delete icons show, and they also show when the heading has keyboard focus. Each hover text names the Collection and its note count, like "Archive 'Testing', 12 notes".
@@ -316,8 +326,8 @@ Connect a Notes repo first (see #14).
 Connect the same Notes repo in Chrome and in Firefox first (see #14).
 
 - [ ] Turn the network off in Firefox (devtools, Offline). Change the same note in both browsers, with different text. Turn Firefox's network on again and let it sync. Both texts are kept: the note has Firefox's text, and a second note "Title (conflict date)" with today's date has Chrome's text. Both files are on GitHub.
-- [ ] The dot turns orange. Hovering it says "A note has two versions. Click to see them". The Sync line in the pill menu says "A note has two versions. Check it".
-- [ ] Type something or press "Sync now": the dot stays orange while the copy is there.
+- [ ] The dot turns orange. Hovering it says "A note has two versions. Click to see them". Clicking it opens the sync box, which says "A note has two versions. Check it" and opens the list.
+- [ ] Type something or press "Sync now" in the dot's box: the dot stays orange while the copy is there.
 - [ ] Open Chrome's sidebar: it also has both notes and an orange dot.
 - [ ] Rename the copy by clicking its title in the pill (for example to "Margins old"). A few seconds later the dot turns green.
 - [ ] Make another conflict, then delete the copy's file on GitHub and press "Sync now": the copy is gone from the menu and the dot turns green.
@@ -333,15 +343,15 @@ Connect the same Notes repo in Chrome and in Firefox first (see #14).
 - [ ] Make a new note in Chrome, then open the sidebar in Firefox: the note is there. Rename it in Firefox, open Chrome's sidebar again: it has the new name, and on GitHub the old file is gone.
 - [ ] Turn the network off (devtools, Offline) and type. The dot becomes an empty ring and hovering it says "Offline" and that your changes are kept. Turn the network on again: the dot turns green and GitHub has the text.
 - [ ] Change the same note in both browsers while one of them is offline, then let both sync. The dot turns orange, hovering says "Conflict", and the other text is kept as "Title (conflict date)".
-- [ ] Open the pill menu: under "Sync" is a short line with the status and the last sync, and a "Sync now" button. Pressing it shows "Synced just now." for a moment.
+- [ ] Click the dot: the box has the status, the last sync and a "Sync now" button. Pressing it shows "Syncing…" and then the result for a moment.
 - [ ] Revoke or delete the token on GitHub, then type or press "Sync now": the dot turns red and the message says GitHub no longer accepts your token, it may have expired, and to paste a new one in Notes repo. Pasting a new token there makes it sync again.
-- [ ] Without a Notes repo connected, the dot stays as before, hovering it says "Saved in this browser", and there is no "Sync now".
+- [ ] Without a Notes repo connected, the dot stays as before, hovering it says "Saved in this browser", and the box offers "Set up sync" instead of "Sync now".
 
 ### Connect GitHub and the first sync
 
 You need a private GitHub repo for your notes and a fine grained token for it (GitHub, Settings, Developer settings, Fine grained tokens), limited to that repo with Contents set to read and write. Put a few notes in it first, for example from an Export zip, in `collections/` and `notes/`.
 
-- [ ] Open the pill menu: under a small "Sync" heading at the bottom there is a "Notes repo" button. It opens settings at Notes repo, with Repo and Token fields and a short text about the token.
+- [ ] Click the sync dot and then "Notes repo settings" (or "Set up sync" when not connected). It opens settings at Notes repo, with Repo and Token fields and a short text about the token.
 - [ ] The × in the settings header returns to the note that was open.
 - [ ] Type the repo as `yourname/notes` (pasting its GitHub address works too), paste the token, press "Connect and sync". A screen shows Connecting to GitHub, then Downloading 1 of N notes counting up, then Linking notes, then Ready, and says how many notes came in.
 - [ ] "Start writing" closes settings. Every note from the repo is in the menu, with its Collection, text and backlinks.

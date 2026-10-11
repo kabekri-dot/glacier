@@ -16,13 +16,13 @@
 import { createNotebook, importSummary, sourceLabel, syncErrorMessage } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { githubRemote } from "../src/github-remote.mjs";
-import { createAutoSync, syncDotText, syncStatusText } from "../src/auto-sync.mjs";
+import { createAutoSync, syncDotText, syncStatusText, syncBox, syncResultText } from "../src/auto-sync.mjs";
 import { printHtml } from "../src/print-layout.mjs";
 import { createConflictLine } from "../src/conflict-line.mjs";
 import { createScreen } from "../src/screen.mjs";
 import { isOpenedByPage } from "../src/page-open.mjs";
 import { newNoteChoices, NEW_NOTE_HINT, PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
-import { notebookMenu, conflictMenu, noteMenu, rowActions, archivedNotice, deleteCollectionQuestion, pageNoteCount, secondVersionBar } from "../src/menu-contents.mjs";
+import { notebookMenu, noteMenu, rowActions, archivedNotice, deleteCollectionQuestion, pageNoteCount, secondVersionBar } from "../src/menu-contents.mjs";
 import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
@@ -31,7 +31,7 @@ import { readShortcutsPanel } from "../src/shortcuts-panel.mjs";
 import { readLook, lookStyle, wholeRows, applyLook } from "../src/look.mjs";
 import { readPanelPlace, createPanelPlacement } from "../src/panel-place.mjs";
 import { createBrowserPanels } from "../src/browser-panels.mjs";
-import { createSettingsView, createShortcutsView, menuButton, iconButton, askFormat, syncStatusRow } from "./settings-view.js";
+import { createSettingsView, createShortcutsView, menuButton, iconButton, askFormat } from "./settings-view.js";
 import { drawBesideFrames } from "./beside-frames.js";
 import {
   blockRanges,
@@ -873,7 +873,7 @@ async function start() {
     });
     actions.append(newNote);
 
-    menuPanelEl.append(search, actions, body, notesRepoSection());
+    menuPanelEl.append(search, actions, body);
     menuPanelEl.hidden = false;
     pillMenuEl.setAttribute("aria-expanded", "true");
     search.focus();
@@ -1028,21 +1028,10 @@ async function start() {
     return { repo: notesRepo ?? "", token: githubToken ?? "" };
   }
 
-  function notesRepoSection() {
-    const section = document.createElement("div");
-    section.className = "menu-files";
-    const repoButton = menuButton("Notes repo", "Connect your GitHub repo, or change the repo or token", () => {
-      closeMenu();
-      openSettings("notes-repo");
-    });
-    const sync = { status: autoSync.status(), syncNow: autoSync.syncNow, notice: showNotice };
-    section.append(menuHeading("Sync"), ...syncStatusRow(sync, repoButton));
-    return section;
-  }
-
   // The sync dot in the pill shows the state by its colour; hovering it says
   // what the state means (#70).
   function drawSyncStatus(status) {
+    if (!syncBoxEl.hidden) drawSyncBox();
     const { label } = syncStatusText(status);
     syncDotEl.dataset.state = status.state;
     syncDotEl.title = syncDotText(status);
@@ -1061,20 +1050,117 @@ async function start() {
     if (conflictCount > 0) conflictLineEl.querySelector(".conflict-show").textContent = conflictLine.text(conflictCount);
   }
 
-  // Check them: the pill menu with only the notes that have two versions,
-  // each original with its second version under it.
+  // Check them: the ▾ menu, which lists Two versions at the top.
   function showConflictCopies() {
+    closeSyncBox();
     openMenu();
-    drawMenuParts(menuPanelEl.querySelector(".menu-body"), conflictMenu(notebook));
+    menuPanelEl.querySelector(".menu-body").scrollTop = 0;
   }
   conflictLineEl.querySelector(".conflict-show").addEventListener("click", showConflictCopies);
   conflictLineEl.querySelector(".conflict-close").addEventListener("click", () => {
     conflictLine.close(conflictCount);
     conflictLineEl.hidden = true;
   });
+
+  // The box under the sync dot (#75). What it says comes from syncBox and
+  // syncResultText; this draws it, keeps "last synced" fresh while open and
+  // shows the Sync now result in the button for a few seconds.
+  const syncBoxEl = document.querySelector(".sync-box");
+  let syncBoxTimer = null;
+  let syncResultShown = null;
+  let syncResultTimer = null;
+  let syncing = false;
+
+  function closeSyncBox() {
+    syncBoxEl.hidden = true;
+    syncBoxEl.replaceChildren();
+    syncDotEl.setAttribute("aria-expanded", "false");
+    clearInterval(syncBoxTimer);
+    syncBoxTimer = null;
+  }
+
+  function drawSyncBox() {
+    const status = autoSync.status();
+    const box = syncBox(status);
+    const lines = [];
+    const addLine = (className, text) => {
+      const line = document.createElement("p");
+      line.className = className;
+      line.textContent = text;
+      lines.push(line);
+    };
+    addLine("sync-box-status", box.status);
+    if (box.last) addLine("sync-box-last", box.last);
+
+    const button = menuButton(
+      syncing ? "Syncing…" : (syncResultShown ?? box.action),
+      status.state === "off" ? "Connect your GitHub repo" : "Pull and push your notes right away",
+      async () => {
+        if (status.state === "off") {
+          closeSyncBox();
+          openSettings("notes-repo");
+          return;
+        }
+        if (syncing) return;
+        syncing = true;
+        drawSyncBox();
+        const result = await autoSync.syncNow();
+        syncing = false;
+        syncResultShown = syncResultText(result);
+        clearTimeout(syncResultTimer);
+        syncResultTimer = setTimeout(() => {
+          syncResultShown = null;
+          if (!syncBoxEl.hidden) drawSyncBox();
+        }, 4000);
+        if (!syncBoxEl.hidden) drawSyncBox();
+      },
+    );
+    const parts = [...lines, button];
+    if (box.conflicts) {
+      const check = menuButton(box.conflicts, "See each note next to its second version", showConflictCopies);
+      parts.push(check);
+    }
+    if (status.state !== "off") {
+      const settings = document.createElement("button");
+      settings.type = "button";
+      settings.className = "sync-box-link";
+      settings.textContent = "Notes repo settings";
+      settings.title = "Change the repo or token";
+      settings.addEventListener("click", () => {
+        closeSyncBox();
+        openSettings("notes-repo");
+      });
+      parts.push(settings);
+    }
+    syncBoxEl.replaceChildren(...parts);
+  }
+
+  function openSyncBox() {
+    closeNoteMenu();
+    closeMenu();
+    drawSyncBox();
+    syncBoxEl.hidden = false;
+    syncDotEl.setAttribute("aria-expanded", "true");
+    syncBoxTimer = setInterval(drawSyncBox, 15000);
+  }
+
   syncDotEl.addEventListener("click", () => {
-    if (syncDotEl.dataset.state === "conflict") showConflictCopies();
+    if (syncBoxEl.hidden) openSyncBox();
+    else closeSyncBox();
   });
+  document.addEventListener("click", (event) => {
+    if (!syncBoxEl.hidden && !event.target.closest(".sync-box, .sync-dot")) closeSyncBox();
+  });
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (event.key !== "Escape" || syncBoxEl.hidden) return;
+      event.preventDefault();
+      event.stopPropagation();
+      closeSyncBox();
+    },
+    true,
+  );
 
   // What the Notes repo section of Settings asks of the Notebook, wherever
   // settings are drawn (see settings-view.js). The first sync goes through the

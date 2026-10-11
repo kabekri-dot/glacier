@@ -17,7 +17,7 @@
         <button type="button" class="pill-count" title="Other notes for this page" hidden></button>
         <button type="button" class="pill-menu" aria-haspopup="true" aria-expanded="false" aria-label="Open the menu" title="Open the menu">&#9662;</button>
         <button type="button" class="pill-note-menu" aria-haspopup="true" aria-expanded="false" aria-label="Actions for this note" title="Actions for this note" hidden>&#8943;</button>
-        <span class="sync-dot" title="Saved in this browser"></span>
+        <button type="button" class="sync-dot" aria-haspopup="true" aria-expanded="false" title="Saved in this browser"></button>
       </div>
       <button type="button" class="pill-side pill-new" aria-haspopup="true" aria-expanded="false" aria-label="New note">+</button>
     </div>
@@ -32,6 +32,8 @@
     <div class="new-menu" hidden></div>
     <div class="note-menu" hidden></div>
     <div class="menu" hidden></div>
+    <!-- Under the sync dot: the status, Sync now, notes with two versions (#75). -->
+    <div class="sync-box" hidden></div>
     <!-- The note's Collection and Source, instead of its frontmatter (#13). -->
     <header class="note-meta" hidden></header>
     <main class="note" aria-label="Note"></main>
