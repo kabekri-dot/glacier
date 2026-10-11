@@ -270,8 +270,12 @@ export function createSettingsView({ prefs, repo, onClose }) {
     const courseRow = element("div", "menu-actions");
     courseRow.append(courseSelect, exportCourse);
 
-    const exportAll = menuButton("Export everything", "Download every note as a zip of Markdown files", () =>
+    const exportAll = menuButton("Export everything", "Download every note, archived ones too, as a zip of Markdown files", () =>
       repo.exportAll(),
+    );
+
+    const exportArchive = menuButton("Export archive", "Download only the archived notes as a zip", () =>
+      repo.exportArchive(),
     );
 
     const picker = document.createElement("input");
@@ -290,7 +294,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
       () => picker.click(),
     );
     const restoreRow = element("div", "menu-actions");
-    restoreRow.append(exportAll, restore, picker);
+    restoreRow.append(exportAll, exportArchive, restore, picker);
 
     return [element("h2", "settings-subheading", "Backup"), courseRow, restoreRow];
   }

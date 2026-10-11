@@ -11,6 +11,18 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Archive (#58)
+
+- [ ] Open a note and open the pill menu: "Archive this note" is there, and hovering shows "Hide this note from your lists. You can bring it back any time".
+- [ ] Click it: the note leaves the Notebook list, recent notes and search. On a page that had it as its Lesson note, the "+ Lesson note" button shows.
+- [ ] Open the pill menu: an "Archive" section is at the bottom, folded shut. Open it and the archived note is listed.
+- [ ] Click the archived note: a small "Archived" label shows in the pill, and the menu has "Unarchive" instead of "Archive this note".
+- [ ] Click Unarchive: the label goes, and the note is back in its Course (or Concepts) in the list.
+- [ ] A link to an archived note in another note still opens it.
+- [ ] After a sync, the archived note's file is under the archive folder on GitHub (for example archive/courses/Course name/Title.md), and it moves back out after Unarchive and a sync.
+- [ ] In Settings, Notes repo, Backup: "Export archive" downloads a zip with only the archived notes.
+- [ ] "Export everything" includes archived notes, and "Restore from backup file" brings them back as archived.
+
 ### Delete this note (#57)
 
 - [ ] Open a note and open the pill menu: "Delete this note" is there, and hovering shows "Remove this note for good".
