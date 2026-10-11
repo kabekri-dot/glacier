@@ -10,7 +10,7 @@
 // `repo`, the Notes Repo and the Notebook, which only the sidebar holds:
 //   connection() -> { repo, token }, status(), syncNow() -> sync status,
 //   courses(), firstSync(repo, token, onProgress) -> { notes } or { error },
-//   exportCourse(course), exportAll(), restore(bytes) and notice(text, ms)
+//   exportCourse(course, format), exportAll(), restore(bytes) and notice(text, ms)
 import { syncStatusText } from "../src/auto-sync.mjs";
 import { notesRepoName } from "../src/notebook.mjs";
 import { SHORTCUT_GROUPS } from "../src/shortcuts-panel.mjs";
@@ -35,6 +35,64 @@ export function menuButton(text, hint, onClick) {
   button.title = hint;
   button.addEventListener("click", onClick);
   return button;
+}
+
+const ICONS = {
+  download: '<path d="M12 4v10M8 10l4 4 4-4M5 19h14"/>',
+  archive: '<path d="M4 6h16v4H4zM6 10v9h12v-9M10 14h4"/>',
+  unarchive: '<path d="M4 6h16v4H4zM6 10v9h12v-9M12 17v-5M9 14l3-3 3 3"/>',
+  delete: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>',
+};
+
+// A small line icon button (#71): Download, Archive, Unarchive or Delete.
+export function iconButton(kind, hint, onClick) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "icon-button";
+  button.title = hint;
+  button.setAttribute("aria-label", hint);
+  button.innerHTML =
+    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" ' +
+    `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[kind]}</svg>`;
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onClick(button);
+  });
+  return button;
+}
+
+// The small choice right where a Download was clicked (#71): Markdown or PDF.
+// Closes on a pick, on Esc or on a click anywhere else.
+export function askFormat(anchor, onPick) {
+  document.querySelector(".format-choice")?.remove();
+  const box = document.createElement("div");
+  box.className = "format-choice";
+  const close = () => {
+    box.remove();
+    document.removeEventListener("click", close, true);
+    document.removeEventListener("keydown", onKey, true);
+  };
+  const onKey = (event) => {
+    if (event.key === "Escape") close();
+  };
+  for (const [format, label] of [["md", "Markdown (.md)"], ["pdf", "PDF"]]) {
+    box.append(
+      menuButton(label, format === "pdf" ? "Opens the print window. Choose Save as PDF there" : "Save as a Markdown file", () => {
+        close();
+        onPick(format);
+      }),
+    );
+  }
+  const rect = anchor.getBoundingClientRect();
+  box.style.top = `${rect.bottom + 2}px`;
+  box.style.right = `${Math.max(4, window.innerWidth - rect.right)}px`;
+  document.body.append(box);
+  setTimeout(() => {
+    document.addEventListener("click", close, true);
+    document.addEventListener("keydown", onKey, true);
+  });
+  box.querySelector("button").focus();
 }
 
 // The sync status line and "Sync now", in the pill menu and in Settings.
@@ -265,16 +323,18 @@ export function createSettingsView({ prefs, repo, onClose }) {
   // Export and Restore (#13, #55), under Notes repo. The Notebook does the
   // files; this only picks them.
   async function backupControls() {
-    const courseSelect = document.createElement("select");
-    courseSelect.className = "menu-course-pick";
-    courseSelect.setAttribute("aria-label", "Course to export");
-    for (const course of await repo.courses()) courseSelect.add(new Option(course, course));
-    const exportCourse = menuButton("Export a course", "Download the notes of the chosen Course as a zip", () => {
-      if (courseSelect.value) repo.exportCourse(courseSelect.value);
-    });
-    exportCourse.disabled = !courseSelect.options.length;
-    const courseRow = element("div", "menu-actions");
-    courseRow.append(courseSelect, exportCourse);
+    const courseList = element("div", "course-list");
+    courseList.setAttribute("aria-label", "Courses to download");
+    for (const course of await repo.courses()) {
+      const row = element("div", "course-row");
+      row.append(
+        element("span", "course-name", course),
+        iconButton("download", `Download the Course '${course}'`, (button) =>
+          askFormat(button, (format) => repo.exportCourse(course, format)),
+        ),
+      );
+      courseList.append(row);
+    }
 
     const exportAll = menuButton("Export everything", "Download every note, archived ones too, as a zip of Markdown files", () =>
       repo.exportAll(),
@@ -302,7 +362,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
     const restoreRow = element("div", "menu-actions");
     restoreRow.append(exportAll, exportArchive, restore, picker);
 
-    return [element("h2", "settings-subheading", "Backup"), courseRow, restoreRow];
+    return [element("h2", "settings-subheading", "Backup"), courseList, restoreRow];
   }
 
   // The Notes repo section (#14): the connection form, the sync status and

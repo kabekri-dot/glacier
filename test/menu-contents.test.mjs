@@ -65,7 +65,7 @@ test("the Notebook lists Courses with their notes, then the notes without a Cour
   const menu = notebookMenu(notebookWith(), "");
   assert.deepEqual(menu, [
     { kind: "heading", text: "Notebook", hint: null },
-    { kind: "group", label: "TOP Foundations", hint: "Notes in this Course", open: true, archive: false, titles: ["Box model", "Flexbox"] },
+    { kind: "group", label: "TOP Foundations", hint: "Notes in this Course", open: true, archive: false, titles: ["Box model", "Flexbox"], download: "Download the Course 'TOP Foundations'" },
     { kind: "heading", text: "No Course", hint: "Notes not in any Course" },
     { kind: "notes", titles: ["Loose page", "Margins"] },
   ]);

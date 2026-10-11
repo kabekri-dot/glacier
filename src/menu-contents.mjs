@@ -6,7 +6,8 @@
 //   { kind: "heading", text, hint }       a small heading
 //   { kind: "notes", titles, current? }   note buttons, `current` the open one
 //   { kind: "newForPage", label, hint }   "+ New note for this page"
-//   { kind: "group", label, hint, open, archive, titles }   a foldable group
+//   { kind: "group", label, hint, open, archive, titles, download? }   a foldable group;
+//                                  `download` is the hover text of a Course's Download icon
 //   { kind: "empty", text }               a quiet line when nothing is listed
 //   { kind: "result", title, titleMark, snippet }           a search result
 //   { kind: "pair", notes: [{ title, label }] }             a Conflict Copy and its original
@@ -80,7 +81,7 @@ function browse(notebook, openNote) {
     parts.push({ kind: "empty", text: "No notes yet" });
   }
   for (const { course, titles } of outline.courses) {
-    parts.push({ kind: "group", label: course, hint: "Notes in this Course", open: true, archive: false, titles });
+    parts.push({ kind: "group", label: course, hint: "Notes in this Course", open: true, archive: false, titles, download: `Download the Course '${course}'` });
   }
   if (outline.uncategorised.length > 0) {
     parts.push(heading("No Course", "Notes not in any Course"), { kind: "notes", titles: outline.uncategorised });
@@ -141,4 +142,14 @@ export function noteMenu(note) {
       { kind: "delete", label: "Delete", hint: "Remove this note for good" },
     ],
   };
+}
+
+// The hover icons on a note row (#71): Download, Archive (Unarchive in the
+// Archive section) and Delete, each with a hover text naming the note.
+export function rowActions(title, archived = false) {
+  return [
+    { kind: "download", hint: `Download '${title}'` },
+    archived ? { kind: "unarchive", hint: `Unarchive '${title}'` } : { kind: "archive", hint: `Archive '${title}'` },
+    { kind: "delete", hint: `Delete '${title}'` },
+  ];
 }

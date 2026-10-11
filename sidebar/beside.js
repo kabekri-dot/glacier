@@ -95,7 +95,7 @@ const repo = {
     onFirstSyncProgress = onProgress;
     return (await askValue("firstSync", repoName, token)) ?? { error: "Glacier's sidebar closed. Open it and try again." };
   },
-  exportCourse: (course) => ask("exportCourse", course),
+  exportCourse: (course, format) => ask("exportCourse", course, format),
   exportAll: () => ask("exportAll"),
   restore: (bytes) => ask("restore", toBase64(bytes)),
   notice: (text, ms) => ask("notice", text, ms),
