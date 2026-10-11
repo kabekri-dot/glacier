@@ -24,7 +24,7 @@ import {
   LESSON_NOTE_HINT,
   CONCEPT_NOTE_HINT,
 } from "../src/new-note-choices.mjs";
-import { noteActions } from "../src/note-actions.mjs";
+import { notebookMenu, conflictMenu, noteMenu } from "../src/menu-contents.mjs";
 import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
@@ -556,85 +556,66 @@ async function start() {
     return list;
   }
 
-  // Search results: the title, with the match highlighted in a snippet of the
-  // text (or in the title itself when the title matched).
-  function drawResults(container, query) {
-    container.replaceChildren();
-    const results = notebook.search(query);
-    if (results.length === 0) {
-      const none = document.createElement("p");
-      none.className = "menu-empty";
-      none.textContent = "No notes match";
-      container.appendChild(none);
-      return;
-    }
-    for (const result of results) {
-      const button = noteButton(result.title, "menu-item menu-result");
-      const title = document.createElement("span");
-      title.className = "menu-result-title";
-      if (result.snippet) {
-        title.textContent = result.title;
-        const snippet = document.createElement("span");
-        snippet.className = "menu-snippet";
-        const mark = document.createElement("mark");
-        mark.textContent = result.snippet.match;
-        snippet.append(result.snippet.before, mark, result.snippet.after);
-        button.append(title, snippet);
-      } else {
-        const at = result.title.toLowerCase().indexOf(query.trim().toLowerCase());
-        const end = at + query.trim().length;
-        const mark = document.createElement("mark");
-        mark.textContent = result.title.slice(at, end);
-        title.append(result.title.slice(0, at), mark, result.title.slice(end));
-        button.append(title);
-      }
-      container.appendChild(button);
-    }
+  // A highlighted match: { before, match, after } as text with a <mark>.
+  function marked(element, { before, match, after }) {
+    const mark = document.createElement("mark");
+    mark.textContent = match;
+    element.append(before, mark, after);
+    return element;
   }
 
-  // Recent notes, then the Notebook: Courses → Lesson Notes, then Concepts.
-  function drawBrowse(container) {
+  function searchResult({ title, titleMark, snippet }) {
+    const button = noteButton(title, "menu-item menu-result");
+    const titleEl = document.createElement("span");
+    titleEl.className = "menu-result-title";
+    if (titleMark) {
+      button.append(marked(titleEl, titleMark));
+      return button;
+    }
+    titleEl.textContent = title;
+    const snippetEl = document.createElement("span");
+    snippetEl.className = "menu-snippet";
+    button.append(titleEl, marked(snippetEl, snippet));
+    return button;
+  }
+
+  function menuGroup({ label, hint, open, archive, titles }) {
+    const details = document.createElement("details");
+    details.className = archive ? "menu-archive" : "menu-course";
+    details.open = open;
+    const summary = document.createElement("summary");
+    summary.textContent = label;
+    summary.title = hint;
+    details.append(summary, titleList(titles));
+    return details;
+  }
+
+  function conflictPair({ notes }) {
+    const row = document.createElement("div");
+    row.className = "conflict-pair";
+    for (const { title, label } of notes) {
+      const button = noteButton(title);
+      button.textContent = label;
+      row.append(button);
+    }
+    return row;
+  }
+
+  // Draw the parts src/menu-contents.mjs lists for the ▾ menu.
+  function drawMenuParts(container, parts) {
     container.replaceChildren();
-    const recent = notebook.recentNotes();
-    if (recent.length > 0) {
-      container.append(
-        menuHeading("Recent"),
-        titleList(recent.map((note) => note.title)),
-      );
-    }
-    const outline = notebook.outline();
-    container.appendChild(menuHeading("Notebook"));
-    if (outline.courses.length + outline.uncategorised.length + outline.concepts.length === 0) {
-      const none = document.createElement("p");
-      none.className = "menu-empty";
-      none.textContent = "No notes yet";
-      container.appendChild(none);
-    }
-    for (const { course, titles } of outline.courses) {
-      const details = document.createElement("details");
-      details.className = "menu-course";
-      details.open = true;
-      const summary = document.createElement("summary");
-      summary.textContent = course;
-      summary.title = LESSON_NOTE_HINT;
-      details.append(summary, titleList(titles));
-      container.appendChild(details);
-    }
-    if (outline.uncategorised.length > 0) {
-      container.append(menuHeading("No Course", LESSON_NOTE_HINT), titleList(outline.uncategorised));
-    }
-    if (outline.concepts.length > 0) {
-      container.append(menuHeading("Concepts", CONCEPT_NOTE_HINT), titleList(outline.concepts));
-    }
-    const archived = notebook.archivedNotes();
-    if (archived.length > 0) {
-      const details = document.createElement("details");
-      details.className = "menu-archive";
-      const summary = document.createElement("summary");
-      summary.textContent = `Archive (${archived.length})`;
-      summary.title = "Notes you hid from your lists. Open one to bring it back";
-      details.append(summary, titleList(archived.map((note) => note.title)));
-      container.appendChild(details);
+    for (const part of parts) {
+      if (part.kind === "heading") container.append(menuHeading(part.text, part.hint));
+      else if (part.kind === "notes") container.append(titleList(part.titles));
+      else if (part.kind === "group") container.append(menuGroup(part));
+      else if (part.kind === "result") container.append(searchResult(part));
+      else if (part.kind === "pair") container.append(conflictPair(part));
+      else {
+        const none = document.createElement("p");
+        none.className = "menu-empty";
+        none.textContent = part.text;
+        container.append(none);
+      }
     }
   }
 
@@ -657,10 +638,7 @@ async function start() {
 
     const body = document.createElement("div");
     body.className = "menu-body";
-    const refresh = () => {
-      if (search.value.trim()) drawResults(body, search.value);
-      else drawBrowse(body);
-    };
+    const refresh = () => drawMenuParts(body, notebookMenu(notebook, search.value));
     search.addEventListener("input", refresh);
     refresh();
 
@@ -704,7 +682,7 @@ async function start() {
   }
 
   // The ⋯ "This note" menu (#63): the actions for the open note only, under
-  // the note's name. What it offers is decided by noteActions.
+  // the note's name. What it offers is decided by noteMenu.
   const noteMenuButtonEl = document.querySelector(".pill-note-menu");
   const noteMenuEl = document.querySelector(".note-menu");
 
@@ -720,7 +698,7 @@ async function start() {
   }
 
   function openNoteMenu() {
-    const menu = noteActions(screen.note());
+    const menu = noteMenu(screen.note());
     if (!menu) return;
     closeMenu();
     screen.flush();
@@ -846,21 +824,7 @@ async function start() {
   // original.
   function showConflictCopies() {
     openMenu();
-    const body = menuPanelEl.querySelector(".menu-body");
-    body.replaceChildren(menuHeading("Changed in two places"));
-    for (const { copy, original } of notebook.conflictCopyPairs()) {
-      const row = document.createElement("div");
-      row.className = "conflict-pair";
-      const copyButton = noteButton(copy);
-      copyButton.textContent = copy;
-      row.append(copyButton);
-      if (original) {
-        const originalButton = noteButton(original);
-        originalButton.textContent = `Original: ${original}`;
-        row.append(originalButton);
-      }
-      body.append(row);
-    }
+    drawMenuParts(menuPanelEl.querySelector(".menu-body"), conflictMenu(notebook));
   }
   conflictLineEl.querySelector(".conflict-show").addEventListener("click", showConflictCopies);
 

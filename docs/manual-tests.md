@@ -11,6 +11,15 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Menu contents as data (#67)
+
+Nothing should look or work differently. Reload with ↻ first, then run these groups from section 2 again:
+
+- [ ] The pill at the top
+- [ ] Two menus: Notebook and This note
+- [ ] Archive
+- [ ] A short conflict message with Show them
+
 ### Panel placement behind a browser port (#66)
 
 Nothing should look or work differently. Reload with ↻ first, then run these groups from section 2 again:
