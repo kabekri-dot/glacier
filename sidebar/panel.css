@@ -1555,3 +1555,92 @@ html.beside .shortcuts-tab {
   color: var(--ink);
   font-weight: 700;
 }
+
+/* Hover icons on note rows and Course headings, and the Download choice (#71). */
+.menu-row {
+  display: flex;
+  align-items: center;
+}
+
+.menu-row .menu-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.row-icons {
+  display: none;
+  flex: none;
+  gap: 0.1rem;
+}
+
+.menu-row:hover .row-icons,
+.menu-row:focus-within .row-icons {
+  display: flex;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.icon-button:hover,
+.icon-button:focus-visible {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
+.menu-course summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.menu-course summary .icon-button {
+  visibility: hidden;
+}
+
+.menu-course summary:hover .icon-button,
+.menu-course summary:focus-within .icon-button {
+  visibility: visible;
+}
+
+.format-choice {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--paper);
+}
+
+.course-list {
+  max-height: 10rem;
+  overflow-y: auto;
+}
+
+.course-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.15rem 0.4rem;
+}
+
+.copied.has-action {
+  pointer-events: auto;
+}
+
+.notice-action {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

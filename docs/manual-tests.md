@@ -11,6 +11,19 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Hover actions on note rows; download as .md or PDF (#71)
+
+Reload with ↻ first.
+
+- [ ] Open the ▾ menu and hover a note row (also in Recent, search results and the Archive section): three small icons show on the right. Tab to a row: they show too. Each has a hover text naming the note, like "Archive 'Arrays basics'".
+- [ ] Click Download: a small choice appears there, Markdown (.md) or PDF. Markdown saves the .md file. PDF opens the print window with only the title and text, where you pick Save as PDF.
+- [ ] Click Archive: the note leaves the list at once and "Archived. Undo" shows at the bottom. Click Undo: it comes back.
+- [ ] In the Archive section the middle icon is Unarchive and puts the note back.
+- [ ] Click Delete: the usual question appears. Keep leaves it, Delete removes it.
+- [ ] Hover a Course heading: one Download icon shows. Markdown gives a zip of .md files. PDF gives one document with every note of the Course, each on a new page.
+- [ ] In ⋯ This note, Download asks the same Markdown or PDF choice.
+- [ ] Settings, Notes repo: a list of every Course (it scrolls when long), each with a Download icon that asks the same choice. Export everything and Export archive are still there.
+
 ### Conflict line you can close, guided second versions, sync dot explained (#70)
 
 Reload with ↻ first. Make a conflict first (see Conflict Copies, #16).

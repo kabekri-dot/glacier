@@ -17,11 +17,12 @@ import { createNotebook, importSummary, sourceLabel, syncErrorMessage } from "..
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { githubRemote } from "../src/github-remote.mjs";
 import { createAutoSync, syncDotText, syncStatusText } from "../src/auto-sync.mjs";
+import { printHtml } from "../src/print-layout.mjs";
 import { createConflictLine } from "../src/conflict-line.mjs";
 import { createScreen } from "../src/screen.mjs";
 import { isOpenedByPage } from "../src/page-open.mjs";
 import { newNoteChoices, NEW_NOTE_HINT, PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
-import { notebookMenu, conflictMenu, noteMenu, pageNoteCount, secondVersionBar } from "../src/menu-contents.mjs";
+import { notebookMenu, conflictMenu, noteMenu, rowActions, pageNoteCount, secondVersionBar } from "../src/menu-contents.mjs";
 import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
@@ -30,7 +31,7 @@ import { readShortcutsPanel } from "../src/shortcuts-panel.mjs";
 import { readLook, lookStyle, wholeRows, applyLook } from "../src/look.mjs";
 import { readPanelPlace, createPanelPlacement } from "../src/panel-place.mjs";
 import { createBrowserPanels } from "../src/browser-panels.mjs";
-import { createSettingsView, createShortcutsView, menuButton, syncStatusRow } from "./settings-view.js";
+import { createSettingsView, createShortcutsView, menuButton, iconButton, askFormat, syncStatusRow } from "./settings-view.js";
 import { drawBesideFrames } from "./beside-frames.js";
 import {
   blockRanges,
@@ -582,7 +583,53 @@ async function start() {
     return heading;
   }
 
-  function titleList(titles, current = null) {
+  // A note button with the hover icons on its right (#71).
+  function noteRow(button, title, archived = false) {
+    const row = document.createElement("div");
+    row.className = "menu-row";
+    const icons = document.createElement("span");
+    icons.className = "row-icons";
+    for (const action of rowActions(title, archived)) {
+      icons.append(iconButton(action.kind, action.hint, (clicked) => rowAction(action.kind, title, clicked)));
+    }
+    row.append(button, icons);
+    return row;
+  }
+
+  function rowAction(kind, title, anchor) {
+    if (kind === "download") askFormat(anchor, (format) => downloadNote(title, format));
+    else if (kind === "archive") archiveFromMenu(title);
+    else if (kind === "unarchive") {
+      notebook.unarchiveNote(title);
+      autoSync.changed();
+      refreshMenu();
+    } else {
+      closeMenu();
+      const note = notebook.note(title);
+      if (screen.note()?.title !== title) openNote(note, { byPage: isOpenedByPage(note) });
+      showDeleteQuestion();
+    }
+  }
+
+  // Archive at once, with a short notice that puts the note back.
+  function archiveFromMenu(title) {
+    if (screen.note()?.title === title) draw(screen.archive());
+    else {
+      notebook.archiveNote(title);
+      autoSync.changed();
+    }
+    refreshMenu();
+    showNotice("Archived.", 6000, {
+      label: "Undo",
+      run: () => {
+        notebook.unarchiveNote(title);
+        autoSync.changed();
+        refreshMenu();
+      },
+    });
+  }
+
+  function titleList(titles, current = null, archived = false) {
     const list = document.createElement("div");
     for (const title of titles) {
       const button = noteButton(title);
@@ -591,7 +638,7 @@ async function start() {
         button.classList.add("is-current");
         button.setAttribute("aria-current", "true");
       }
-      list.appendChild(button);
+      list.appendChild(noteRow(button, title, archived));
     }
     return list;
   }
@@ -623,23 +670,29 @@ async function start() {
     titleEl.className = "menu-result-title";
     if (titleMark) {
       button.append(marked(titleEl, titleMark));
-      return button;
+      return noteRow(button, title);
     }
     titleEl.textContent = title;
     const snippetEl = document.createElement("span");
     snippetEl.className = "menu-snippet";
     button.append(titleEl, snippetPieces(snippetEl, snippet));
-    return button;
+    return noteRow(button, title);
   }
 
-  function menuGroup({ label, hint, open, archive, titles }) {
+  function menuGroup({ label, hint, open, archive, titles, download }) {
     const details = document.createElement("details");
     details.className = archive ? "menu-archive" : "menu-course";
     details.open = open;
     const summary = document.createElement("summary");
     summary.textContent = label;
     summary.title = hint;
-    details.append(summary, titleList(titles));
+    if (download) {
+      const course = label;
+      summary.append(
+        iconButton("download", download, (button) => askFormat(button, (format) => downloadCourse(course, format))),
+      );
+    }
+    details.append(summary, titleList(titles, null, archive));
     return details;
   }
 
@@ -686,6 +739,8 @@ async function start() {
     }
   }
 
+  let refreshMenu = () => {};
+
   function openMenu() {
     closeSettings({ redraw: false });
     closeNoteMenu();
@@ -707,6 +762,7 @@ async function start() {
     const body = document.createElement("div");
     body.className = "menu-body";
     const refresh = () => drawMenuParts(body, notebookMenu(notebook, search.value, screen.note()));
+    refreshMenu = refresh;
     search.addEventListener("input", refresh);
     refresh();
 
@@ -740,6 +796,34 @@ async function start() {
     setTimeout(() => URL.revokeObjectURL(link.href), 10000);
   }
 
+  // Download a note or a Course in the chosen format (#71). Markdown gives
+  // the file or a zip; PDF opens the browser's print window with the notes
+  // laid out on their own, where the user picks Save as PDF.
+  function printWindow(notes) {
+    const win = window.open("", "_blank");
+    if (!win) {
+      showNotice("Your browser blocked the print window");
+      return;
+    }
+    win.document.write(printHtml(notes));
+    win.document.close();
+    win.focus();
+    win.print();
+  }
+
+  function downloadNote(title, format) {
+    screen.flush();
+    if (format === "pdf") return printWindow(notebook.notesToPrint(title));
+    const file = notebook.exportNote(title);
+    download(file.text, "text/markdown", file.path.split("/").pop());
+  }
+
+  function downloadCourse(course, format) {
+    screen.flush();
+    if (format === "pdf") return printWindow(notebook.notesOfCourse(course));
+    download(notebook.exportCourseZip(course), "application/zip", `${course} ${today()}.zip`);
+  }
+
   // The ⋯ "This note" menu (#63): the actions for the open note only, under
   // the note's name. What it offers is decided by noteMenu.
   const noteMenuButtonEl = document.querySelector(".pill-note-menu");
@@ -771,8 +855,7 @@ async function start() {
         menuButton(action.label, action.hint, () => {
           closeNoteMenu();
           if (action.kind === "download") {
-            const file = notebook.exportNote(screen.note().title);
-            download(file.text, "text/markdown", file.path.split("/").pop());
+            askFormat(noteMenuButtonEl, (format) => downloadNote(screen.note().title, format));
           } else if (action.kind === "archive") draw(screen.archive());
           else if (action.kind === "unarchive") draw(screen.unarchive());
           else showDeleteQuestion();
@@ -925,9 +1008,8 @@ async function start() {
       return { notes: result.notes };
     },
 
-    exportCourse(course) {
-      screen.flush();
-      download(notebook.exportCourseZip(course), "application/zip", `${course} ${today()}.zip`);
+    exportCourse(course, format) {
+      downloadCourse(course, format);
     },
 
     exportAll() {
@@ -1932,8 +2014,21 @@ async function start() {
   }
 
   // A short message in the bottom corner, gone after a moment.
-  function showNotice(text, ms = 4000) {
+  // With `action` ({ label, run }) the notice has a button, like Undo.
+  function showNotice(text, ms = 4000, action = null) {
     copiedEl.textContent = text;
+    copiedEl.classList.toggle("has-action", Boolean(action));
+    if (action) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "notice-action";
+      button.textContent = action.label;
+      button.addEventListener("click", () => {
+        copiedEl.hidden = true;
+        action.run();
+      });
+      copiedEl.append(" ", button);
+    }
     copiedEl.hidden = false;
     clearTimeout(copiedTimer);
     copiedTimer = setTimeout(() => (copiedEl.hidden = true), ms);

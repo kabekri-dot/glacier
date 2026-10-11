@@ -783,6 +783,20 @@ export function createNotebook({ storage }) {
       return zipNotes(storage.allNotes().filter((note) => note.archived));
     },
 
+    // The notes to lay out for printing (#71), as { title, body }: one note,
+    // or a Course's notes one after another.
+    notesToPrint(title) {
+      const note = storage.getNote(title);
+      return note ? [{ title: note.title, body: note.body ?? "" }] : [];
+    },
+
+    notesOfCourse(course) {
+      return listed()
+        .filter((note) => note.course === course)
+        .sort((a, b) => a.title.localeCompare(b.title))
+        .map((note) => ({ title: note.title, body: note.body ?? "" }));
+    },
+
     // One note as its single Markdown file, `{ path, text }`.
     exportNote(title) {
       return noteToFile(storage.getNote(title));
