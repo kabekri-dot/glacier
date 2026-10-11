@@ -663,6 +663,16 @@ export function createNotebook({ storage }) {
       return { ok: true, note: renamed };
     },
 
+    // Delete a note for good (#57). Links to it stay in other notes' text and
+    // become Missing Links. Its file leaves the Notes Repo on the next sync,
+    // which sees a synced file that no note has any more.
+    deleteNote(title) {
+      if (!storage.getNote(title)) return;
+      storage.deleteNote(title);
+      const recent = storage.getMeta(RECENT);
+      if (recent) storage.putMeta(RECENT, recent.filter((t) => t !== title));
+    },
+
     // Save the note's Markdown body. The editor calls this as you type, so
     // there is no save button (the write-through storage keeps IndexedDB in
     // step). Unknown titles are ignored rather than creating a stray note.

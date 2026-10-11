@@ -572,9 +572,73 @@ async function start() {
     });
     const noteRow = document.createElement("div");
     noteRow.className = "menu-actions";
-    noteRow.append(downloadNote);
+    const deleteThisNote = menuButton("Delete this note", "Remove this note for good", () => {
+      if (!current) return;
+      closeMenu();
+      showDeleteQuestion();
+    });
+    noteRow.append(downloadNote, deleteThisNote);
     section.append(noteRow);
     return section;
+  }
+
+  // Delete this note (#57): a short question in the sidebar, not a browser
+  // dialog. Keep or Esc puts the note back as it was. Delete removes it, and
+  // the Opening flow decides what the sidebar shows next.
+  function showDeleteQuestion() {
+    const doomed = current;
+    session.flush();
+    noteEl.replaceChildren();
+
+    const card = document.createElement("div");
+    card.className = "perm-card delete-question";
+
+    const question = document.createElement("p");
+    question.textContent = `Delete “${doomed.title}”? It is also removed from your Notes repo.`;
+    card.appendChild(question);
+
+    const buttons = document.createElement("div");
+    buttons.className = "perm-buttons";
+
+    const confirm = document.createElement("button");
+    confirm.type = "button";
+    confirm.className = "create-submit";
+    confirm.textContent = "Delete";
+
+    const keep = document.createElement("button");
+    keep.type = "button";
+    keep.className = "perm-cancel";
+    keep.textContent = "Keep";
+
+    function keepNote() {
+      document.removeEventListener("keydown", onKey, true);
+      openNote(notebook.note(doomed.title) ?? doomed, { byPage: openedByPage, fromHistory: true });
+    }
+    function onKey(event) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      keepNote();
+    }
+    confirm.addEventListener("click", () => {
+      document.removeEventListener("keydown", onKey, true);
+      notebook.deleteNote(doomed.title);
+      session.close();
+      current = null;
+      openedByPage = false;
+      updatePill();
+      updateNoteMeta();
+      updateBacklinks();
+      autoSync.changed();
+      openingFlow.start();
+    });
+    keep.addEventListener("click", keepNote);
+    document.addEventListener("keydown", onKey, true);
+
+    buttons.append(confirm, keep);
+    card.appendChild(buttons);
+    noteEl.appendChild(card);
+    keep.focus();
   }
 
   // --- The Notes Repo: connecting GitHub and the first sync (#14) -----------
