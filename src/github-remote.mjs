@@ -64,7 +64,13 @@ export function githubRemote({ repo, token, fetch = globalThis.fetch }) {
         body: body && JSON.stringify(body),
       });
     } catch (error) {
-      throw Object.assign(new Error("Couldn't reach GitHub", { cause: error }), { reason: "offline" });
+      // A request the browser cut off (the sidebar closing) isn't a network
+      // problem; the next sync catches up.
+      if (error?.name === "AbortError") {
+        throw Object.assign(new Error("The request was cut off", { cause: error }), { reason: "aborted" });
+      }
+      const why = `${error?.name ?? "Error"}: ${error?.message ?? error}`;
+      throw Object.assign(new Error(`Couldn't reach GitHub (${why})`, { cause: error }), { reason: "offline" });
     }
   }
 
