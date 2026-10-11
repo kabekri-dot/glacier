@@ -39,6 +39,13 @@ function contentsPath(path) {
   return `/contents/${path.split("/").map(encodeURIComponent).join("/")}`;
 }
 
+// One file names itself; a commit with several (a rename) lists them all.
+function commitMessage(writes, deletes) {
+  const lines = [...writes.map(({ path }) => `Update ${path}`), ...deletes.map(({ path }) => `Delete ${path}`)];
+  if (lines.length === 1) return lines[0];
+  return `Update ${lines.length} notes\n\n${lines.join("\n")}`;
+}
+
 export function githubRemote({ repo, token, fetch = globalThis.fetch }) {
   let branch = null;
 
@@ -67,7 +74,22 @@ export function githubRemote({ repo, token, fetch = globalThis.fetch }) {
     return response.json();
   }
 
-  return {
+  function branchPath() {
+    return branch.split("/").map(encodeURIComponent).join("/");
+  }
+
+  // GitHub's Git data API refuses a repo with no commits yet, so the first
+  // file goes in through the one-file Contents API and the rest follow as
+  // one commit on top of it.
+  async function commitToEmptyRepo(writes) {
+    if (writes.length === 0) return {};
+    const [first, ...rest] = writes;
+    const body = { message: `Add ${first.path}`, content: encodeBase64(first.text), branch };
+    const { content } = await getJson(contentsPath(first.path), { method: "PUT", body });
+    return { [first.path]: content.sha, ...(rest.length > 0 ? await remote.commit({ writes: rest }) : {}) };
+  }
+
+  const remote = {
     // Checks the repo and token by reading the repo, and learns its branch.
     async connect() {
       branch = (await getJson("")).default_branch;
@@ -90,18 +112,41 @@ export function githubRemote({ repo, token, fetch = globalThis.fetch }) {
       return { text: decodeBase64(file.content), version: file.sha };
     },
 
-    // One commit per file, on the default branch. `version` is the sha this
-    // browser last saw (none for a new file); GitHub refuses the write if the
-    // file has changed since.
-    async writeFile(path, text, version) {
-      const body = { message: `Update ${path}`, content: encodeBase64(text), sha: version };
-      const { content } = await getJson(contentsPath(path), { method: "PUT", body });
-      return content.sha;
-    },
-
-    async deleteFile(path, version) {
-      const body = { message: `Delete ${path}`, sha: version };
-      await getJson(contentsPath(path), { method: "DELETE", body });
+    // Several writes and deletes as one commit on the default branch (ADR
+    // 0005), through GitHub's Git data API: new blobs, a tree built on the
+    // branch's current one, a commit, then the branch is moved to it. Nothing
+    // shows in the repo until that last step, and GitHub refuses it if the
+    // branch moved in the meantime, so a failure leaves the repo as it was.
+    // `version` is the sha this browser last saw (none for a new file); a
+    // file that changed since is refused as stale before anything is sent.
+    async commit({ writes = [], deletes = [] }) {
+      const ref = await request(`/git/ref/heads/${branchPath()}`);
+      if (ref.status === 409 || ref.status === 404) return commitToEmptyRepo(writes);
+      if (!ref.ok) throw failure(ref.status);
+      const head = (await ref.json()).object.sha;
+      const baseTree = (await getJson(`/git/commits/${head}`)).tree.sha;
+      const { tree } = await getJson(`/git/trees/${baseTree}?recursive=1`);
+      const current = new Map(tree.filter((entry) => entry.type === "blob").map((entry) => [entry.path, entry.sha]));
+      for (const { path, version } of [...writes, ...deletes]) {
+        if (current.get(path) !== version) {
+          throw Object.assign(new Error(`Stale version of ${path}`), { reason: "conflict" });
+        }
+      }
+      const versions = {};
+      for (const { path, text } of writes) {
+        const blob = await getJson("/git/blobs", { method: "POST", body: { content: encodeBase64(text), encoding: "base64" } });
+        versions[path] = blob.sha;
+      }
+      const entries = [
+        ...writes.map(({ path }) => ({ path, mode: "100644", type: "blob", sha: versions[path] })),
+        ...deletes.map(({ path }) => ({ path, mode: "100644", type: "blob", sha: null })),
+      ];
+      const newTree = await getJson("/git/trees", { method: "POST", body: { base_tree: baseTree, tree: entries } });
+      const message = commitMessage(writes, deletes);
+      const newCommit = await getJson("/git/commits", { method: "POST", body: { message, tree: newTree.sha, parents: [head] } });
+      await getJson(`/git/refs/heads/${branchPath()}`, { method: "PATCH", body: { sha: newCommit.sha, force: false } });
+      return versions;
     },
   };
+  return remote;
 }
