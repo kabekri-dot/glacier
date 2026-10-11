@@ -11,6 +11,16 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### A new note's name follows its first line (#80)
+
+- [ ] Reload the extension with the ↻ button first. Press + and "New note", click the paper and type "Box model basics" slowly. The pill reads the whole line, not "B". Marks like "# " or bold stars are left out of the name.
+- [ ] Press Enter after the first line and then change the first line. The name stays as it was.
+- [ ] Start another new note, type a few words, press the down arrow or click a second line, then change the first line. The name does not change.
+- [ ] Start another new note, type a few letters, rename it by hand in the pill, then keep typing the first line. The name stays what you chose.
+- [ ] Type the first line of a new note so it matches an existing note's name: it gets a free name such as "Box model 2", with no error.
+- [ ] After the next sync, the file in the Notes repo has the final name, not a half typed one.
+- [ ] With a conflict: notes that have no second version show no message and no bar. The original and its second version each show the bar above their text.
+
 ### Shortcuts panel lists every key (#79)
 
 - [ ] Reload the extension with the ↻ button first. Open the Shortcuts panel. Start of a line lists `/`, `#`, `##`, `###`, `-`, `>` and the code block.
@@ -94,9 +104,8 @@ Reload with ↻ first.
 
 Reload with ↻ first. Make a conflict first (see Conflict Copies, #16).
 
-- [ ] The line under the pill says "A note has two versions. Check it". With two conflicts it says "2 notes have two versions. Check them".
-- [ ] Click the × on the line: it goes away and stays away, even after you type or sync. The dot stays orange.
-- [ ] Make a new conflict: the line comes back.
+- [ ] No line shows under the pill. The dot is orange, and hovering it says "A note has two versions. Click to see them".
+- [ ] Only the original and its second version show a bar above their text. Every other note shows nothing.
 - [ ] Click the line: the ▾ menu opens with each original and its second version under it. Click the second version to open it.
 - [ ] The second version shows a bar above its text: "This is a second version of 'Title'. Copy what you want to keep into 'Title', then delete this version."
 - [ ] Click Open 'Title' in the bar: the original opens.
@@ -139,7 +148,7 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 - [ ] The pill at the top
 - [ ] Two menus: Notebook and This note
 - [ ] Archive
-- [ ] A short conflict message with Show them
+- [ ] The bar on notes with two versions
 
 ### Panel placement behind a browser port (#66)
 
@@ -481,16 +490,15 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 - [ ] In Settings, Notes repo, under Backup: "Export archive" downloads a zip with only the archived notes.
 - [ ] "Export everything" includes archived notes, and "Restore from backup file" brings them back as archived.
 
-### A short conflict message with Check them
+### The bar on notes with two versions
 
 Make a conflict first (see Conflict Copies, #16).
 
-- [ ] A short line shows under the pill: "A note has two versions. Check it". It does not mention files or the Notes repo. With two conflicts it says "2 notes have two versions. Check them". The × closes it until a new conflict (#70).
-- [ ] The dot in the pill is orange while the line shows.
-- [ ] Hover the line: "See each note next to its second version".
-- [ ] Click the line: the pill menu opens with only the notes with two versions, each original with its second version under it. Click one to open it.
-- [ ] Delete the last copy (the ⋯ This note menu, "Delete"): the line goes away and the dot turns normal.
-- [ ] Make another conflict and archive the copy instead: the line goes away and the dot turns normal.
+- [ ] No line shows under the pill. The dot in the pill is orange.
+- [ ] Open the second version: a bar shows above its text, with Open and Delete this version buttons.
+- [ ] Open the original: a bar shows above its text saying it has a second version, with an Open button.
+- [ ] Open any other note: no bar and no message.
+- [ ] Delete the last second version (the ⋯ This note menu, "Delete"): the dot turns normal and the original's bar goes away.
 
 ### Why a panel opens inside the sidebar
 

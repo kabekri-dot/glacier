@@ -19,6 +19,11 @@ export function createNoteHistory() {
       position = titles.length - 1;
     },
 
+    // The note on screen got a new title.
+    rename(title) {
+      if (position >= 0) titles[position] = title;
+    },
+
     previous() {
       return position > 0 ? titles[position - 1] : null;
     },

@@ -26,8 +26,11 @@ function titleFromText(body) {
   return words.slice(0, 5).join(" ") || "New note";
 }
 
-export function createNoteSession({ notebook, onSaveError, onCreate, ...timers }) {
+export function createNoteSession({ notebook, onSaveError, onCreate, onRetitle, ...timers }) {
   let openTitle = null;
+  // True while a note that was named from its first line is still being
+  // written on that line: its title follows what is typed (#80).
+  let following = false;
   // The fresh page on screen: { title, source }, `source` only for a page.
   let draft = null;
 
@@ -48,25 +51,43 @@ export function createNoteSession({ notebook, onSaveError, onCreate, ...timers }
 
   // Turn the fresh page into a note. A note for a page takes the last used
   // Collection; a blank note has no page and no Collection (#68).
-  function createFromDraft(title) {
+  function createFromDraft(title, { named = true } = {}) {
     const { source } = draft;
     draft = null;
     const course = source ? notebook.lastCourse() : undefined;
     const note = notebook.createNote({ title, source, course });
     openTitle = note.title;
+    following = !named;
     onCreate?.(note);
     return note;
+  }
+
+  // Give the note the title of the first line as typed so far. A clash gets
+  // the free name the Notebook suggests. Stops following once a second line
+  // exists.
+  function followFirstLine(body) {
+    if (body.trimStart().includes("\n")) following = false;
+    const wanted = titleFromText(body);
+    if (wanted === openTitle) return;
+    flush();
+    const result = notebook.renameNote(openTitle, wanted);
+    const note = result.ok ? result.note : result.suggestion && notebook.renameNote(openTitle, result.suggestion).note;
+    if (!note || note.title === openTitle) return;
+    openTitle = note.title;
+    onRetitle?.(note);
   }
 
   return {
     open(note) {
       flush();
       draft = null;
+      following = false;
       openTitle = note.title;
     },
     openDraft({ title = "", source }) {
       flush();
       openTitle = null;
+      following = false;
       draft = { title, source };
     },
     // The title typed in the pill, confirmed with Enter. An empty title is
@@ -78,15 +99,23 @@ export function createNoteSession({ notebook, onSaveError, onCreate, ...timers }
     },
     edit(body) {
       if (draft && body !== "") {
-        createFromDraft(draft.title.trim() || titleFromText(body));
+        const typedTitle = draft.title.trim();
+        createFromDraft(typedTitle || titleFromText(body), { named: Boolean(typedTitle) });
+      } else if (following) {
+        followFirstLine(body);
       }
       if (openTitle === null) {
         return;
       }
       scheduler.schedule({ title: openTitle, body });
     },
+    // The caret left the first line (Enter, an arrow key, a click elsewhere).
+    leaveFirstLine() {
+      following = false;
+    },
     close() {
       flush();
+      following = false;
       draft = null;
       openTitle = null;
     },

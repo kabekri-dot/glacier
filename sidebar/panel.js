@@ -18,7 +18,6 @@ import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { githubRemote } from "../src/github-remote.mjs";
 import { createAutoSync, syncDotText, syncStatusText, syncBox, syncResultText } from "../src/auto-sync.mjs";
 import { printHtml } from "../src/print-layout.mjs";
-import { createConflictLine } from "../src/conflict-line.mjs";
 import { createScreen } from "../src/screen.mjs";
 import { isOpenedByPage } from "../src/page-open.mjs";
 import { newNoteChoices, NEW_NOTE_HINT, PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
@@ -63,7 +62,6 @@ const pillArchivedEl = document.querySelector(".pill-archived");
 const pillCountEl = document.querySelector(".pill-count");
 const pillMenuEl = document.querySelector(".pill-menu");
 const syncDotEl = document.querySelector(".sync-dot");
-const conflictLineEl = document.querySelector(".conflict-line");
 const secondVersionBarEl = document.querySelector(".second-version-bar");
 const renameHintEl = document.querySelector(".rename-hint");
 const backlinksButtonEl = document.querySelector(".backlinks-button");
@@ -310,7 +308,7 @@ async function start() {
         if (original) openNote(original, { byPage: isOpenedByPage(original) });
       }));
     }
-    buttons.append(barButton(bar.deleteLabel, showDeleteQuestion));
+    if (bar.deleteLabel) buttons.append(barButton(bar.deleteLabel, showDeleteQuestion));
     secondVersionBarEl.append(text, buttons);
     noteEl.style.setProperty("--bar-height", `${secondVersionBarEl.offsetHeight}px`);
   }
@@ -1036,18 +1034,7 @@ async function start() {
     syncDotEl.dataset.state = status.state;
     syncDotEl.title = syncDotText(status);
     syncDotEl.setAttribute("aria-label", label);
-    drawConflictLine(status);
     updateSecondVersionBar();
-  }
-
-  // The short line under the pill while notes have two versions (#59, #70).
-  const conflictLine = createConflictLine();
-  let conflictCount = 0;
-
-  function drawConflictLine(status) {
-    conflictCount = status.state === "conflict" ? status.conflicts.length : 0;
-    conflictLineEl.hidden = !conflictLine.shown(conflictCount);
-    if (conflictCount > 0) conflictLineEl.querySelector(".conflict-show").textContent = conflictLine.text(conflictCount);
   }
 
   // Check them: the ▾ menu, which lists Two versions at the top.
@@ -1056,11 +1043,6 @@ async function start() {
     openMenu();
     menuPanelEl.querySelector(".menu-body").scrollTop = 0;
   }
-  conflictLineEl.querySelector(".conflict-show").addEventListener("click", showConflictCopies);
-  conflictLineEl.querySelector(".conflict-close").addEventListener("click", () => {
-    conflictLine.close(conflictCount);
-    conflictLineEl.hidden = true;
-  });
 
   // The box under the sync dot (#75). What it says comes from syncBox and
   // syncResultText; this draws it, keeps "last synced" fresh while open and
@@ -2261,6 +2243,8 @@ async function start() {
     const { lines, focus } = editor.state;
     const ranges = blockRanges(lines);
     let focused = null;
+    // A new note's title follows its first line until the caret leaves it (#80).
+    if (focus.line > 0) screen.leaveFirstLine();
 
     for (const range of ranges) {
       if (focus.line >= range.start && focus.line < range.end) {
