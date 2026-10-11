@@ -71,6 +71,10 @@ const SECTIONS = [
   ["notes-repo", "Notes repo", false],
 ];
 
+// The quiet line a panel shows at its top when it opens inside the sidebar
+// although "beside the sidebar" is chosen (#60).
+export const INSIDE_NOTE = "This page doesn't allow panels beside the sidebar, so it opens here.";
+
 export function createSettingsView({ prefs, repo, onClose }) {
   const el = element("aside", "settings");
   el.id = "settings";
@@ -89,7 +93,9 @@ export function createSettingsView({ prefs, repo, onClose }) {
   closeButton.title = "Close settings";
   closeButton.addEventListener("click", () => onClose());
   header.append(title, closeButton);
-  el.append(header);
+  const insideNote = element("p", "panel-note", INSIDE_NOTE);
+  insideNote.hidden = true;
+  el.append(header, insideNote);
 
   const bodies = {};
   for (const [name, summaryText, open] of SECTIONS) {
@@ -447,6 +453,10 @@ export function createSettingsView({ prefs, repo, onClose }) {
     close() {
       el.hidden = true;
     },
+
+    showInsideNote(shown) {
+      insideNote.hidden = !shown;
+    },
   };
 }
 
@@ -472,7 +482,9 @@ export function createShortcutsView({ onFold, onUnfold }) {
     }
     body.append(element("h2", "settings-subheading", title), list);
   }
-  sheet.append(header, body);
+  const insideNote = element("p", "panel-note", INSIDE_NOTE);
+  insideNote.hidden = true;
+  sheet.append(header, insideNote, body);
 
   const tab = element("button", "shortcuts-tab", "Shortcuts");
   tab.type = "button";
@@ -491,6 +503,10 @@ export function createShortcutsView({ onFold, onUnfold }) {
     draw(state, shown = true) {
       sheet.hidden = !shown || !state.on || state.folded;
       tab.hidden = !shown || !state.on || !state.folded;
+    },
+
+    showInsideNote(shown) {
+      insideNote.hidden = !shown;
     },
   };
 }

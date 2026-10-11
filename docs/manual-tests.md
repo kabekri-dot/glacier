@@ -11,6 +11,16 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Why a panel opens inside the sidebar (#60)
+
+Reload the extension with the reload button first. In Settings, Panels, choose "Beside the sidebar".
+
+- [ ] On a new tab, open Settings: it opens inside the sidebar with the line "This page doesn't allow panels beside the sidebar, so it opens here." at its top.
+- [ ] On a new tab, open the shortcuts panel: it shows the same line at its top.
+- [ ] On a website such as the Odin Project, Settings and the shortcuts panel open beside the sidebar with no line.
+- [ ] Choose "Inside the sidebar": on a website and on a new tab, no line shows.
+- [ ] Take the permission back in the browser's extension settings: no line shows on a new tab.
+
 ### A short conflict message with Show them (#59)
 
 Make a conflict first (see Conflict Copies, #16).
