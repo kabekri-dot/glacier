@@ -442,33 +442,64 @@ async function start() {
     });
     actions.append(newLesson, newConcept);
 
-    menuPanelEl.append(search, actions, body, exportImportRow(refresh));
+    menuPanelEl.append(search, actions, body, backupSection(refresh));
     menuPanelEl.hidden = false;
     pillMenuEl.setAttribute("aria-expanded", "true");
     search.focus();
   }
 
-  // Export and Import (#13): the whole Notebook as a zip of Markdown files, and
-  // such a zip turned back into notes. The file format lives in the Notebook
-  // core; this only downloads and picks files. They move into settings once
-  // it exists (#18).
-  function exportImportRow(refresh) {
-    const row = document.createElement("div");
-    row.className = "menu-actions menu-files";
+  // Export and Restore (#13, #55). The file format lives in the Notebook
+  // core; this only downloads and picks files. "Download this note" stays in
+  // the pill menu. The rest sit under "Backup" until settings exist (#18).
+  function download(data, type, name) {
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([data], { type }));
+    link.download = name;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+  }
 
-    const exportButton = document.createElement("button");
-    exportButton.type = "button";
-    exportButton.className = "menu-new";
-    exportButton.textContent = "Export";
-    exportButton.title = "Download every note as a zip of Markdown files";
-    exportButton.addEventListener("click", () => {
+  function menuButton(text, hint, onClick) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "menu-new";
+    button.textContent = text;
+    button.title = hint;
+    button.addEventListener("click", onClick);
+    return button;
+  }
+
+  function backupSection(refresh) {
+    const today = new Date().toISOString().slice(0, 10);
+    const section = document.createElement("div");
+    section.className = "menu-files";
+
+    const downloadNote = menuButton("Download this note", "Save this note as a Markdown file", () => {
+      if (!current) return;
       session.flush();
-      const blob = new Blob([notebook.exportZip()], { type: "application/zip" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = `Glacier notes ${new Date().toISOString().slice(0, 10)}.zip`;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+      const file = notebook.exportNote(current.title);
+      download(file.text, "text/markdown", file.path.split("/").pop());
+    });
+    const noteRow = document.createElement("div");
+    noteRow.className = "menu-actions";
+    noteRow.append(downloadNote);
+
+    const heading = menuHeading("Backup");
+
+    const courseSelect = document.createElement("select");
+    courseSelect.className = "menu-course-pick";
+    courseSelect.setAttribute("aria-label", "Course to export");
+    for (const course of notebook.courses()) courseSelect.add(new Option(course, course));
+    const exportCourse = menuButton("Export a course", "Download the Lesson notes of the chosen Course as a zip", () => {
+      if (!courseSelect.value) return;
+      session.flush();
+      download(notebook.exportCourseZip(courseSelect.value), "application/zip", `${courseSelect.value} ${today}.zip`);
+    });
+    exportCourse.disabled = !courseSelect.options.length;
+
+    const exportAll = menuButton("Export everything", "Download every note as a zip of Markdown files", () => {
+      session.flush();
+      download(notebook.exportZip(), "application/zip", `Glacier notes ${today}.zip`);
     });
 
     const picker = document.createElement("input");
@@ -489,16 +520,17 @@ async function start() {
       }
       picker.value = "";
     });
+    const restore = menuButton(
+      "Restore from backup file",
+      "Bring back notes from an Export zip. Notes you already have are never overwritten",
+      () => picker.click(),
+    );
 
-    const importButton = document.createElement("button");
-    importButton.type = "button";
-    importButton.className = "menu-new";
-    importButton.textContent = "Import";
-    importButton.title = "Add the notes from an Export zip. Notes you already have are never overwritten";
-    importButton.addEventListener("click", () => picker.click());
-
-    row.append(exportButton, importButton, picker);
-    return row;
+    const backupRow = document.createElement("div");
+    backupRow.className = "menu-actions";
+    backupRow.append(courseSelect, exportCourse, exportAll, restore, picker);
+    section.append(noteRow, heading, backupRow);
+    return section;
   }
 
   // Rename by clicking the title (#54): the title becomes a text field in

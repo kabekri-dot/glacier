@@ -192,3 +192,16 @@ test("the Import message says what was added, what was already there and what wa
     "Imported 3 notes, 2 notes already here, 1 note kept as a copy next to yours.",
   );
 });
+
+test("exporting one note gives exactly its Markdown file", () => {
+  const notebook = sampleNotebook();
+  assert.deepEqual(notebook.exportNote("Margins"), noteToFile(notebook.note("Margins")));
+});
+
+test("exporting a Course contains only that Course's Lesson Notes", async () => {
+  const notebook = sampleNotebook();
+  notebook.createLessonNote({ title: "Flexbox", course: "CSS Basics", source: "https://css.example/flex" });
+  const copy = createNotebook({ storage: memoryStorage() });
+  await copy.importZip(notebook.exportCourseZip("TOP Foundations"));
+  assert.deepEqual(copy.notes().map((note) => note.title), ["Box model"]);
+});

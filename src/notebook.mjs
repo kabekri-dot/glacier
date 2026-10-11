@@ -178,6 +178,25 @@ function sameNote(a, b) {
   return ["type", "course", "source", "body"].every((key) => (a[key] ?? "") === (b[key] ?? ""));
 }
 
+// Note files for these notes, zipped. Two titles that only differ in
+// characters a filename can't hold get a number, and their frontmatter keeps
+// the title.
+function zipNotes(notes) {
+  const taken = new Set();
+  const files = [];
+  for (const note of notes) {
+    const base = safeName(note.title);
+    let file = fileFor(note, base);
+    for (let n = 2; taken.has(file.path.toLowerCase()); n++) {
+      file = fileFor(note, `${base} ${n}`);
+    }
+    taken.add(file.path.toLowerCase());
+    files.push(file);
+  }
+  files.sort((a, b) => a.path.localeCompare(b.path));
+  return zipFiles(files);
+}
+
 // What an Import did, in one short sentence for the screen.
 export function importSummary({ added, unchanged, copies }) {
   const notes = (n) => (n === 1 ? "1 note" : `${n} notes`);
@@ -482,22 +501,19 @@ export function createNotebook({ storage }) {
     },
 
     // Export (#13): the whole Notebook as a zip of note files, ready to open
-    // as an Obsidian vault. Two titles that only differ in characters a
-    // filename can't hold get a number, and their frontmatter keeps the title.
+    // as an Obsidian vault.
     exportZip() {
-      const taken = new Set();
-      const files = [];
-      for (const note of storage.allNotes()) {
-        const base = safeName(note.title);
-        let file = fileFor(note, base);
-        for (let n = 2; taken.has(file.path.toLowerCase()); n++) {
-          file = fileFor(note, `${base} ${n}`);
-        }
-        taken.add(file.path.toLowerCase());
-        files.push(file);
-      }
-      files.sort((a, b) => a.path.localeCompare(b.path));
-      return zipFiles(files);
+      return zipNotes(storage.allNotes());
+    },
+
+    // The same zip with only one Course's Lesson Notes.
+    exportCourseZip(course) {
+      return zipNotes(storage.allNotes().filter((note) => note.type === "lesson" && note.course === course));
+    },
+
+    // One note as its single Markdown file, `{ path, text }`.
+    exportNote(title) {
+      return noteToFile(storage.getNote(title));
     },
 
     // Import (#13): turn such a zip back into notes. A note the Notebook
