@@ -34,6 +34,10 @@ Glacier's rules come from its ADRs (`docs/adr/`) and glossary (`CONTEXT.md`). Th
 
 Don't silently break an ADR. Stop and leave a comment on the issue explaining why the rule might need to change.
 
+## Shortcuts panel
+
+A change that adds or changes a key or a Markdown command also updates the Shortcuts panel (`src/shortcuts-panel.mjs`: `HANDLED_KEYS` and `SHORTCUT_GROUPS`).
+
 ## Visible text
 
 Every piece of text the app shows (sidebar, forms, menus, cards, hover text, the manifest's descriptions) follows these rules. `test/visible-text.test.mjs` checks the dash and capitals rules.
