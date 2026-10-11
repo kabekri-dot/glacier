@@ -11,23 +11,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
-### Backlinks (#10)
-
-- [ ] Note A contains `[[B]]`. Open B: a small button at the bottom left shows `1`.
-- [ ] Click it: A is listed. Click A: it opens.
-
-### Renaming (#11)
-
-- [ ] Pill menu, **Rename**, give B a new name. In A the link now shows the new name.
-- [ ] Renaming to a name that's already taken is refused, and a free name is suggested.
-- [ ] After a rename the note stays open and its backlinks still work.
-
-### Selecting and copying (#7)
-
-- [ ] Drag over several lines: they get selected. A single click still puts the cursor there.
-- [ ] Ctrl+A once selects the line, twice the whole note, never the web page.
-- [ ] Ctrl+C shows a short message with the number of lines copied.
-- [ ] Paste into another note: headings, lists, links and code come back as the same Markdown.
+Nothing right now.
 
 ## 2. Everything
 
@@ -137,6 +121,21 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 - [ ] A link to an existing note looks different from a link to a missing one.
 - [ ] Clicking a link opens that note. Clicking a missing link creates a Concept note with that name and opens it.
 - [ ] Concept notes have no Course.
+- [ ] Note A contains `[[B]]`. Open B: a small button at the bottom left shows `1`.
+- [ ] Click it: A is listed. Click A: it opens.
+
+### Renaming
+
+- [ ] Pill menu, **Rename**, give B a new name. In A the link now shows the new name.
+- [ ] Renaming to a name that's already taken is refused, and a free name is suggested.
+- [ ] After a rename the note stays open and its backlinks still work.
+
+### Selecting and copying
+
+- [ ] Drag over several lines: they get selected. A single click still puts the cursor there.
+- [ ] Ctrl+A once selects the line, twice the whole note, never the web page.
+- [ ] Ctrl+C shows a short message with the number of lines copied.
+- [ ] Paste into another note: headings, lists, links and code come back as the same Markdown.
 
 ### Code blocks
 
