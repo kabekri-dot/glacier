@@ -176,16 +176,12 @@ export function syncBox(status, now = new Date()) {
 }
 
 // What the Sync now button shows for a few seconds once a sync is done.
+export const JUST_SYNCED = "Just synced";
+
 export function syncResultText(result) {
   if (result.state === "offline") return OFFLINE_SHORT;
   if (result.state === "error") return syncDotText(result);
-  const sent = result.sent ?? 0;
-  const received = result.received ?? 0;
-  if (sent === 0 && received === 0) return "Up to date";
-  const notes = (count) => (count === 1 ? "1 note" : `${count} notes`);
-  if (received === 0) return `${notes(sent)} sent`;
-  if (sent === 0) return `${notes(received)} received`;
-  return `${notes(sent)} sent, ${received} received`;
+  return JUST_SYNCED;
 }
 
 export function conflictMessage(count) {

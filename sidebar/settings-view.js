@@ -42,7 +42,21 @@ const ICONS = {
   archive: '<path d="M4 6h16v4H4zM6 10v9h12v-9M10 14h4"/>',
   unarchive: '<path d="M4 6h16v4H4zM6 10v9h12v-9M12 17v-5M9 14l3-3 3 3"/>',
   delete: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>',
+  website: '<circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c-3 3-3 13 0 16M12 4c3 3 3 13 0 16"/>',
+  own: '<path d="M5 19l1-4L16 5l3 3L9 18zM14 7l3 3"/>',
 };
+
+// The small line icon before a note's title (#81): a globe for a website, a
+// pencil for a note you made yourself. `origin` comes from noteOrigin.
+export function originIcon(origin) {
+  const icon = document.createElement("span");
+  icon.className = "origin-icon";
+  icon.title = origin.hint;
+  icon.innerHTML =
+    '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" ' +
+    `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[origin.kind]}</svg>`;
+  return icon;
+}
 
 // A small line icon button (#71): Download, Archive, Unarchive or Delete.
 export function iconButton(kind, hint, onClick) {

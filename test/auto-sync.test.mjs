@@ -280,14 +280,9 @@ test("not connected, the box says so and offers to set up sync", () => {
   assert.equal(box.last, null);
 });
 
-test("a sync that changed nothing reads up to date", () => {
-  assert.equal(syncResultText({ state: "synced", sent: 0, received: 0 }), "Up to date");
-});
-
-test("a sync that moved notes says how many went each way", () => {
-  assert.equal(syncResultText({ state: "synced", sent: 3, received: 1 }), "3 notes sent, 1 received");
-  assert.equal(syncResultText({ state: "synced", sent: 1, received: 0 }), "1 note sent");
-  assert.equal(syncResultText({ state: "synced", sent: 0, received: 2 }), "2 notes received");
+test("a finished sync reads Just synced, whatever moved", () => {
+  assert.equal(syncResultText({ state: "synced", sent: 0, received: 0 }), "Just synced");
+  assert.equal(syncResultText({ state: "synced", sent: 3, received: 1 }), "Just synced");
 });
 
 test("a sync that failed gives the offline or error words", () => {

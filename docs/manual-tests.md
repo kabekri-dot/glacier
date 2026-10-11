@@ -11,6 +11,16 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Several versions, last 3 notes on ←, website or own icons, handwritten Just synced (#81)
+
+- [ ] With a note that has a second version, open the ▾ menu: the heading reads "Several versions (1)". Hovering it explains why Glacier kept every version.
+- [ ] Hover a row under that heading: Download, Archive and Delete icons show, like on the other rows.
+- [ ] Open four or five different notes one after another, then click `←`: a small box opens under it with the last 3 notes, newest first, each with a small icon. Hovering `←` says "Your last notes".
+- [ ] In that box, ↑ and ↓ move between the notes and Enter opens one. A click on a note opens it. Esc, or a click outside, closes the box.
+- [ ] In the ▾ menu lists, in search results and in the `←` box, a note from a website has a small globe, and a note you made yourself has a small pencil. Hovering says "From a website" or "Your own note". The line above the text of a website note shows the globe before the site link.
+- [ ] Click the sync dot, then "Sync now": the button writes "Just synced" in the handwriting font, left to right, then fades back to "Sync now". With the network off, you get the plain error words and no writing.
+- [ ] With "reduce motion" turned on in your system, "Just synced" just appears.
+
 ### A new note's name follows its first line (#80)
 
 - [ ] Reload the extension with the ↻ button first. Press + and "New note", click the paper and type "Box model basics" slowly. The pill reads the whole line, not "B". Marks like "# " or bold stars are left out of the name.
@@ -31,11 +41,11 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 ### Sync lives in the dot; the Notebook menu holds only notes (#75)
 
 - [ ] Reload the extension with the ↻ button first. Click the sync dot in the pill: a small box opens under it with the status in words (for example "Up to date") and a quiet line "Last synced 2 minutes ago". Leave it open for a minute: the time moves on by itself.
-- [ ] Click "Sync now": the button reads "Syncing…", then for a few seconds the result ("Up to date", or "3 notes sent, 1 received"), then "Sync now" again. Turn the network off and try again: the result is "Offline. Your changes are kept here".
+- [ ] Click "Sync now": the button reads "Syncing…", then for a few seconds "Just synced", then "Sync now" again. Turn the network off and try again: the result is "Offline. Your changes are kept here".
 - [ ] Press Esc, or click anywhere outside the box: it closes.
-- [ ] Make a note with two versions (see Conflict Copies below). The box shows "1 note has two versions. Check them" style text. Clicking it opens the ▾ menu with "Two versions (n)" at the very top, each original with its second version under it.
+- [ ] Make a note with two versions (see Conflict Copies below). The box shows "1 note has two versions. Check them" style text. Clicking it opens the ▾ menu with "Several versions (n)" at the very top, each original with its second version under it.
 - [ ] Click "Notes repo settings" in the box: settings open at Notes repo. Without a Notes repo connected, the box says "Not connected to GitHub" and offers "Set up sync", which opens the same place.
-- [ ] Open the ▾ menu: there is no Sync, no "Sync now" and no "Notes repo" in it. The order is search, Two versions (only while there are any), Notes for this page, Recent, Collections, Archive.
+- [ ] Open the ▾ menu: there is no Sync, no "Sync now" and no "Notes repo" in it. The order is search, Several versions (only while there are any), Notes for this page, Recent, Collections, Archive.
 - [ ] Nothing in the menus or the box is bold.
 
 ### Actions on a whole Collection (#74)
@@ -215,7 +225,7 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 - [ ] The Notebook is listed: Collections with their notes, then "No Collection" with the rest.
 - [ ] On a note with a page, the menu starts with "Notes for this page", newest first, and "+ New note for this page" under them.
 - [ ] Esc closes the menu.
-- [ ] `←` appears after the note changed. Hovering shows "Back to: <title>". Clicking goes back one note, and clicking again goes further back.
+- [ ] `←` appears after the note changed. Hovering shows "Your last notes". Clicking opens a box with the last 3 notes, newest first.
 - [ ] `+` is always there. It offers "New note", and on a website also "New note for this page". On a settings page it offers only "New note".
 - [ ] Hovering over each `+` choice, and "+ New note" in the menu, shows a short explanation.
 - [ ] Each `+` choice opens a fresh page with the title in the pill ready to type. Enter makes the note, Esc goes back to the note from before and makes nothing.
