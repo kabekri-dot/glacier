@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { createAutoSync, syncStatusText } from "../src/auto-sync.mjs";
+import { createAutoSync, syncStatusText, conflictMessage } from "../src/auto-sync.mjs";
 import { createNotebook, noteToFile } from "../src/notebook.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { memoryRemote } from "../src/memory-remote.mjs";
@@ -124,8 +124,48 @@ test("renaming the Conflict Copy after merging by hand ends the conflict", async
   assert.equal((await autoSync.syncNow()).state, "synced");
 });
 
-test("the conflict status names the Conflict Copy", async () => {
+test("the conflict message is short and counts the copies", () => {
+  assert.equal(conflictMessage(1), "A note changed in two places. Glacier kept both versions.");
+  assert.equal(conflictMessage(3), "3 notes changed in two places. Glacier kept both versions.");
+});
+
+test("the conflict status uses the short message", async () => {
   const { remote, firefox } = await staleWriteSetup();
   const status = await autoSyncFor(firefox, remote).syncNow();
-  assert.match(syncStatusText(status).detail, new RegExp(`Margins \\(conflict \\d{4}-\\d{2}-\\d{2}\\)`));
+  assert.equal(syncStatusText(status).detail.startsWith(conflictMessage(1)), true);
+  assert.doesNotMatch(syncStatusText(status).detail, /Notes repo|file/);
+});
+
+test("the notebook lists each Conflict Copy with its original", async () => {
+  const { remote, firefox } = await staleWriteSetup();
+  await firefox.sync(remote);
+  assert.deepEqual(firefox.conflictCopyPairs(), [
+    { copy: conflictCopyIn(firefox).title, original: "Margins" },
+  ]);
+});
+
+test("a Conflict Copy whose original was renamed is listed without one", async () => {
+  const { remote, firefox } = await staleWriteSetup();
+  await firefox.sync(remote);
+  firefox.renameNote("Margins", "Margins in print");
+  assert.equal(firefox.conflictCopyPairs()[0].original, null);
+});
+
+test("the conflict clears when the last Conflict Copy is deleted", async () => {
+  const { remote, firefox } = await staleWriteSetup();
+  const autoSync = autoSyncFor(firefox, remote);
+  await autoSync.syncNow();
+  firefox.deleteNote(conflictCopyIn(firefox).title);
+  autoSync.changed();
+  assert.equal(autoSync.status().state, "synced");
+});
+
+test("the conflict clears when the last Conflict Copy is archived", async () => {
+  const { remote, firefox } = await staleWriteSetup();
+  const autoSync = autoSyncFor(firefox, remote);
+  await autoSync.syncNow();
+  firefox.archiveNote(conflictCopyIn(firefox).title);
+  assert.deepEqual(firefox.conflictCopies(), []);
+  autoSync.changed();
+  assert.equal(autoSync.status().state, "synced");
 });
