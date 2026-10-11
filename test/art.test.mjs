@@ -31,8 +31,11 @@ test("the toolbar icon is the glacier art in both browsers", () => {
 });
 
 test("the round button and the settings header show the same glacier art", () => {
+  // The settings header is drawn by settings-view.js, inside the sidebar and
+  // beside it (#21).
   const html = readFileSync(path("sidebar/panel.html"), "utf8");
-  const uses = html.match(/src="\.\.\/icons\/glacier\.svg"/g) ?? [];
-  assert.equal(uses.length, 2);
+  const view = readFileSync(path("sidebar/settings-view.js"), "utf8");
+  assert.match(html, /src="\.\.\/icons\/glacier\.svg"/);
+  assert.match(view, /\.src = "\.\.\/icons\/glacier\.svg"/);
   assert.ok(existsSync(path("icons/glacier.svg")));
 });

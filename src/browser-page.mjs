@@ -1,6 +1,8 @@
 // The browser page port for the Opening flow (#40): wraps the tabs and
 // permissions APIs of Chrome and Firefox. Plugged in from panel.js; the flow
 // itself never touches a browser API (ADR 0002).
+import { BESIDE_PERMISSION } from "./panel-place.mjs";
+
 export function createBrowserPage(api) {
   return {
     async currentPage() {
@@ -13,9 +15,12 @@ export function createBrowserPage(api) {
       }
     },
 
+    // The panels' "all websites" permission (#21) also lets Glacier read the
+    // tab, so with it you are only asked once (ADR 0008 addition).
     async hasPermission() {
       try {
-        return await api.permissions.contains({ permissions: ["tabs"] });
+        if (await api.permissions.contains({ permissions: ["tabs"] })) return true;
+        return await api.permissions.contains(BESIDE_PERMISSION);
       } catch {
         return false;
       }

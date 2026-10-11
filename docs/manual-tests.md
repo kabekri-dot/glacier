@@ -11,10 +11,34 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Panels beside the sidebar (#21)
+
+- [ ] Remove Glacier and load it again: installing shows no permission warning. In Chrome, `chrome://extensions`, Details, Site access shows no sites.
+- [ ] Open a website and click the round glacier button: Glacier's own card shows in the sidebar first, saying what it is for and that Glacier never reads, saves or sends anything from the pages you visit. No browser prompt yet.
+- [ ] Press Esc on the card: it closes and nothing is chosen. Click the glacier button again: the card shows again.
+- [ ] Click Allow: now the browser's prompt shows. Accept it: settings open next to the sidebar, over the right edge of the web page. The note in the sidebar keeps its full width.
+- [ ] With settings beside the sidebar, change the paper, the font and drag the text size: the note changes at once, also while you drag.
+- [ ] Change "Tabs and notes", the previous note button and the Shortcuts panel beside the sidebar: each one works at once in the sidebar.
+- [ ] Turn the Shortcuts panel on: the cheat sheet shows beside the sidebar too, to the left of settings. Close settings: the cheat sheet moves to the edge of the page.
+- [ ] Fold the cheat sheet with its arrow: a slim Shortcuts tab stays on the edge of the page. Click the tab: it opens again.
+- [ ] Close settings with the ×, with Esc, with the glacier button and by clicking in the note. Each way closes them.
+- [ ] Under Notes repo beside the sidebar: Sync now, Export a course, Export everything and Restore from backup file all work, and the downloads and messages show in the sidebar. With no repo connected, connecting one shows the first sync steps beside the sidebar.
+- [ ] Switch to another website tab with settings or the cheat sheet open: they go with you. Go back: they are there and not left behind on the other tab.
+- [ ] Follow a link in the page: after it loads, the panels come back beside the sidebar.
+- [ ] On a new tab, a browser settings page (`chrome://settings` or `about:preferences`) and a PDF, open settings: they open inside the sidebar. Switch back to a website: they move beside it.
+- [ ] Close the sidebar with settings or the cheat sheet beside it: within a few seconds they are gone from the page.
+- [ ] In settings, under Panels, choose "Inside the sidebar": settings and the cheat sheet move inside at once. Choose "Beside the sidebar": they move out again.
+- [ ] Take the permission back in the browser (Chrome: Details, Site access; Firefox: Permissions tab of the add-on). Open settings: they open inside the sidebar. Choose "Beside the sidebar" under Panels: the browser asks again.
+- [ ] Fresh start again, and this time click "Not now, open them inside" on the card: settings open inside the sidebar, no browser prompt shows, and everything else works as before. Reopen the sidebar: the card doesn't come back.
+- [ ] Fresh start, decline the browser's prompt after Allow: settings open inside the sidebar.
+- [ ] After allowing, "+ Lesson note" on a new page doesn't ask for the tabs permission again: the page's title fills in.
+- [ ] Firefox with the sidebar on the left (View, Sidebar, Move sidebar to left): the panels open on the left edge of the page, next to the sidebar.
+- [ ] With the panels beside the sidebar, in devtools for the web page, Network: nothing is sent anywhere by Glacier. Elements: Glacier added only its own `glacier-panels` element.
+
 ### Shortcuts panel (#20)
 
 - [ ] Open settings, then Shortcuts panel. It starts as Off, and no cheat sheet shows.
-- [ ] Choose On: a Shortcuts sheet appears on the right edge of the sidebar. It lists the start of a line (/, #, ##, ###, -, three backticks), anything in a line ([[Title]], bold, code) and the keys (Enter, Backspace, up and down, Esc, Ctrl A twice, Ctrl C, Ctrl K).
+- [ ] Choose On: a Shortcuts sheet appears on the right edge of the sidebar (or beside it, with "Beside the sidebar" chosen under Panels, #21). It lists the start of a line (/, #, ##, ###, -, three backticks), anything in a line ([[Title]], bold, code) and the keys (Enter, Backspace, up and down, Esc, Ctrl A twice, Ctrl C, Ctrl K).
 - [ ] Click the arrow in its header: it folds into a slim tab on the edge. Click the tab: the sheet opens again.
 - [ ] Fold it, close and reopen the sidebar: it is still folded. Open it, reopen the sidebar: it is still open.
 - [ ] Choose Off in settings: the sheet and the tab both go away. Choose On again: it comes back as you left it.
@@ -45,7 +69,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ### Settings, Classic papers and handwriting (#18)
 
-- [ ] A round glacier button sits in the bottom right corner. Clicking it opens settings over the lower part of the sidebar, with the note still showing above. Clicking it again, the × in the header, or Esc closes them.
+- [ ] With "Inside the sidebar" chosen under Panels (#21): a round glacier button sits in the bottom right corner. Clicking it opens settings over the lower part of the sidebar, with the note still showing above. Clicking it again, the × in the header, or Esc closes them.
 - [ ] Paper, Writing and Notes repo fold open and closed when you click their names. Open all three and scroll: the "Settings" header stays on top.
 - [ ] Under Paper, Classics, choose each one in turn: Blank Page, School Notebook (blue lines and a red margin line), Chalkboard (dark, chalk white writing), Moleskine (very faint lines) and Engineer (a green grid, darker every fifth line). The note changes at once.
 - [ ] Close the sidebar and open it again: the paper you chose is still there. In the other browser it is its own choice.
@@ -141,6 +165,8 @@ Connect a Notes repo first (see #14).
 - [ ] Fresh start without the permission: only a "+ Lesson note" button shows.
 - [ ] Click it: Glacier's own card explains the permission. **Allow** shows the browser's prompt, and then the page's note or form.
 - [ ] **Not now** leads to a form for a note made by hand.
+- [ ] Installing shows no permission warning. The first time settings open, Glacier's own card explains drawing beside the sidebar, and the browser asks only after **Allow** (#21).
+- [ ] Allowed, settings and the cheat sheet open beside the sidebar on websites and inside it on browser pages. Declined, they open inside. Settings, Panels changes it later.
 
 ### Notes for the page you're on
 

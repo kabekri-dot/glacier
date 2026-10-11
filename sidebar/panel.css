@@ -1022,11 +1022,13 @@ code {
   outline-offset: 1px;
 }
 
-/* Settings, inside the sidebar for now (#18; #21 moves them beside it). A
-   sheet over the lower part of the page, so the top of the note stays in
+/* Settings inside the sidebar (#18), when they can't open beside it (#21).
+   A sheet over the lower part of the page, so the top of the note stays in
    view and shows each change live. The header stays on top while the
-   sections scroll. */
-.settings {
+   sections scroll. The explanation card before the panels permission (ADR
+   0008) sits in the same place. */
+.settings,
+.panels-card {
   position: fixed;
   left: 0.5rem;
   right: 0.5rem;
@@ -1165,8 +1167,9 @@ code {
   font: inherit;
 }
 
-/* The Shortcuts panel (#20), inside the sidebar for now (#21 moves it beside
-   it). A narrow sheet on the right edge that folds into a slim vertical tab. */
+/* The Shortcuts panel (#20) inside the sidebar, when it can't open beside it
+   (#21). A narrow sheet on the right edge that folds into a slim vertical
+   tab. */
 .shortcuts {
   position: fixed;
   right: 0.5rem;
@@ -1245,4 +1248,31 @@ code {
   font-size: 0.85rem;
   cursor: pointer;
   box-shadow: 0 2px 10px var(--shadow);
+}
+
+.panels-card {
+  top: 25%;
+  padding: 1rem;
+}
+
+/* Beside the sidebar (#21): each panel is drawn in its own frame over the
+   edge of the web page (beside.html), so it fills that frame. */
+html.beside body {
+  background: var(--paper);
+}
+
+html.beside .settings,
+html.beside .shortcuts {
+  inset: 0;
+  width: auto;
+  border: 0;
+  border-left: 1px solid var(--rule);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+html.beside .shortcuts-tab {
+  inset: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
