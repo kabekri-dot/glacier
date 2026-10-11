@@ -1164,3 +1164,85 @@ code {
   color: var(--ink);
   font: inherit;
 }
+
+/* The Shortcuts panel (#20), inside the sidebar for now (#21 moves it beside
+   it). A narrow sheet on the right edge that folds into a slim vertical tab. */
+.shortcuts {
+  position: fixed;
+  right: 0.5rem;
+  top: 3.6rem;
+  bottom: 4rem;
+  z-index: 26;
+  width: min(15rem, 70%);
+  overflow-y: auto;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  box-shadow: 0 6px 20px var(--shadow);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.shortcuts[hidden],
+.shortcuts-tab[hidden] {
+  display: none;
+}
+
+.shortcuts-header {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.7rem;
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+}
+
+.shortcuts-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.shortcuts-fold {
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+
+.shortcuts-body {
+  padding: 0.3rem 0.7rem 0.7rem;
+}
+
+.shortcuts-list {
+  margin: 0;
+}
+
+.shortcuts-list dt {
+  margin-top: 0.4rem;
+}
+
+.shortcuts-list dd {
+  margin: 0;
+}
+
+.shortcuts-tab {
+  position: fixed;
+  right: 0;
+  top: 5rem;
+  z-index: 26;
+  padding: 0.6rem 0.25rem;
+  writing-mode: vertical-rl;
+  border: 1px solid var(--rule);
+  border-right: none;
+  border-radius: 8px 0 0 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  box-shadow: 0 2px 10px var(--shadow);
+}

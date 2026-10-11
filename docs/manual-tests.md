@@ -11,6 +11,14 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Shortcuts panel (#20)
+
+- [ ] Open settings, then Shortcuts panel. It starts as Off, and no cheat sheet shows.
+- [ ] Choose On: a Shortcuts sheet appears on the right edge of the sidebar. It lists the start of a line (/, #, ##, ###, -, three backticks), anything in a line ([[Title]], bold, code) and the keys (Enter, Backspace, up and down, Esc, Ctrl A twice, Ctrl C, Ctrl K).
+- [ ] Click the arrow in its header: it folds into a slim tab on the edge. Click the tab: the sheet opens again.
+- [ ] Fold it, close and reopen the sidebar: it is still folded. Open it, reopen the sidebar: it is still open.
+- [ ] Choose Off in settings: the sheet and the tab both go away. Choose On again: it comes back as you left it.
+
 ### Nature papers and pixel art (#19)
 
 - [ ] The toolbar button shows the glacier picture: white ice on a blue sky above blue water. Same in Chrome and Firefox.
