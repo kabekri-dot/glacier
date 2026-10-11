@@ -290,6 +290,9 @@ export function createNotebook({ storage }) {
   // first. It is kept in storage (not just memory) so it survives a
   // browser restart (ADR 0003), alongside the notes themselves.
   const LAST_COURSE = "lastCourse";
+  // Collections made from the ▾ menu that have no notes yet (#82). One stays
+  // listed until a note is put in it or it is deleted.
+  const EMPTY_COURSES = "emptyCollections";
   // Titles of the notes opened lately, newest first, kept in storage too.
   const RECENT = "recentNotes";
   const RECENT_KEPT = 20;
@@ -364,11 +367,19 @@ export function createNotebook({ storage }) {
     return new Date().toISOString().slice(0, 10);
   }
 
+  // The empty Collections that still have no note (#82).
+  function emptyCollections() {
+    return (storage.getMeta(EMPTY_COURSES) ?? []).filter(
+      (name) => !storage.allNotes().some((note) => sameCollection(note.course, name)),
+    );
+  }
+
   // The spelling the Notebook already uses for this Collection name, in any
   // capitals (#73), or the name as typed when it is a new Collection.
   function existingCollection(name) {
     const found = storage.allNotes().find((note) => sameCollection(note.course, name));
-    return found ? found.course : name;
+    if (found) return found.course;
+    return emptyCollections().find((empty) => sameCollection(empty, name)) ?? name;
   }
 
   // When notes carry one Collection in different capitals, they all take one
@@ -587,7 +598,7 @@ export function createNotebook({ storage }) {
           seen.add(note.course);
         }
       }
-      return [...seen].sort((a, b) => a.localeCompare(b));
+      return [...seen, ...emptyCollections()].sort((a, b) => a.localeCompare(b));
     },
 
     // The Collections for the list on the line above the text (#61): the last
@@ -595,7 +606,28 @@ export function createNotebook({ storage }) {
     courseChoices() {
       const last = storage.getMeta(LAST_COURSE);
       const rest = this.courses().filter((course) => course !== last);
-      return last ? [last, ...rest] : rest;
+      return last && this.courses().includes(last) ? [last, ...rest] : rest;
+    },
+
+    // Make an empty Collection from the ▾ menu (#82). A name that exists in
+    // other capitals picks the existing one (#73). Returns the name.
+    newCollection(course) {
+      const typed = (course ?? "").trim();
+      if (!typed) return undefined;
+      const name = existingCollection(typed);
+      if (!this.courses().includes(name)) {
+        storage.putMeta(EMPTY_COURSES, [...emptyCollections(), name]);
+      }
+      return name;
+    },
+
+    // Take a note out of its Collection (#82). The last used Collection stays.
+    removeFromCourse(title) {
+      const note = storage.getNote(title);
+      if (!note) return note;
+      const { course, ...moved } = note;
+      storage.putNote(moved);
+      return moved;
     },
 
     // Move a note to another Collection, picked or typed on the line above the
@@ -725,6 +757,7 @@ export function createNotebook({ storage }) {
         }
       }
       const sorted = (titles) => titles.sort((a, b) => a.localeCompare(b));
+      for (const course of emptyCollections()) byCourse.set(course, []);
       return {
         courses: [...byCourse.keys()]
           .sort((a, b) => a.localeCompare(b))
@@ -826,6 +859,7 @@ export function createNotebook({ storage }) {
     // Delete a Collection and the notes in it for good (#74). The archived
     // notes of the same name are not in the Collection's list, so they stay.
     deleteCollection(course) {
+      storage.putMeta(EMPTY_COURSES, emptyCollections().filter((name) => !sameCollection(name, course)));
       listed()
         .filter((note) => sameCollection(note.course, course))
         .forEach((note) => this.deleteNote(note.title));

@@ -11,6 +11,19 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Putting a note into a Collection (#82)
+
+Reload with ↻ first.
+
+- [ ] A note without a Collection shows a faded "Add to a collection" above the text. Hover it: "Click to choose a collection".
+- [ ] Click it: a list shows your Collections and "+ New collection" at the bottom. Choose "+ New collection", type a name, press Enter: the note is in it and the name shows above the text.
+- [ ] On a note with a Collection, click the name: the list also has "No collection". Choose it: the line goes back to "Add to a collection".
+- [ ] Open ⋯ and choose "Move to collection…": the same list opens above the text.
+- [ ] Open ▾: under Notebook, click "+ New collection", type a name, press Enter: an empty Collection appears in the list. Hover it: only the Delete icon shows.
+- [ ] Choose that empty Collection from "Add to a collection" on a note: the note shows under it in ▾.
+- [ ] Type an existing name in other capitals as a new Collection: no second Collection appears.
+- [ ] Sync, then look at the Notes repo: a moved note's file is in its new folder, in one commit.
+
 ### Several versions, last 3 notes on ←, website or own icons, handwritten Just synced (#81)
 
 - [ ] With a note that has a second version, open the ▾ menu: the heading reads "Several versions (1)". Hovering it explains why Glacier kept every version.
@@ -79,7 +92,7 @@ Reload with ↻ first.
 
 Reload with ↻ first. You need a connected Notes repo for the last two checks.
 
-- [ ] The line above the text says "No collection" on a note without one. Hover it: "Move to another collection". Click it: the list ends with "+ New collection".
+- [ ] The line above the text says "Add to a collection" on a note without one. Hover it: "Click to choose a collection". Click it: the list ends with "+ New collection".
 - [ ] Open the ▾ menu: the Notebook lists Collections, then "No Collection" with the rest. Hover a Collection heading: three icons show, and Download names the Collection and its note count.
 - [ ] Settings, Notes repo: the list under Backup holds Collections, and hovering a Download icon names the Collection. Nowhere in the sidebar, menus or settings does the word Course show.
 - [ ] Put a note in "Testing Test", then click "+ New collection" on another note and type "testing test": the note joins "Testing Test", and the menu shows one Collection.
@@ -143,10 +156,10 @@ Reload with ↻ first.
 - [ ] Switch to another tab and back, or reopen the sidebar: the note you wrote in last opens, and the pill says "1 of 2".
 - [ ] Click "1 of 2": the ▾ menu opens with "Notes for this page" at the top, both notes newest first, the open one in bold, and "+ New note for this page" under them. Click the other note: it opens and the pill says "2 of 2".
 - [ ] Write a word in that note, switch tabs and come back: now it opens first, with "1 of 2".
-- [ ] + and "New note": a blank note with "Title" faded in the pill. Name it and write: the line above the text shows only "No collection", no site link. Click "No collection" to give it a Collection.
+- [ ] + and "New note": a blank note with "Title" faded in the pill. Name it and write: the line above the text shows only "Add to a collection", no site link. Click it to give it a Collection.
 - [ ] Hover the two + choices: "A blank note, not tied to any page." and "A note for the page you're on. It opens again when you visit the page."
 - [ ] On a settings page, + offers only "New note".
-- [ ] Click a Missing Link: the new note has no site link and "No collection".
+- [ ] Click a Missing Link: the new note has no site link and "Add to a collection".
 - [ ] Look through the pill, both menus, the + menu, the start prompt, the permission card and settings: nothing says Lesson or Concept.
 - [ ] With a Notes repo that still has a `concepts/` folder, sync: on GitHub one commit moves those files to `notes/`, and the notes still open with their text and backlinks.
 - [ ] Restore from an older Export zip (with `concepts/` in it): every note comes back.
@@ -327,7 +340,7 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 
 - [ ] A note with a Collection and a website shows a small "Collection · site ↗" line above its text (for example "youtube.com ↗"), and no `---` lines. Clicking the site switches to the page's tab when it is open, otherwise opens it in a new tab.
 - [ ] Clicking the Collection opens a small list to move the note to another Collection or a new one.
-- [ ] A note without a page shows only its Collection, or "No collection".
+- [ ] A note without a page shows only its Collection, or "Add to a collection".
 
 ### Export and Restore from backup file
 

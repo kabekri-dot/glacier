@@ -327,8 +327,8 @@ async function start() {
     button.type = "button";
     button.className = "note-meta-course";
     button.classList.toggle("is-empty", !note.course);
-    button.textContent = note.course || "No collection";
-    button.title = "Move to another collection";
+    button.textContent = note.course || "Add to a collection";
+    button.title = "Click to choose a collection";
     button.addEventListener("click", () => {
       if (noteMetaEl.querySelector(".course-list")) updateNoteMeta();
       else openCourseList();
@@ -340,6 +340,17 @@ async function start() {
   function openCourseList() {
     const list = document.createElement("div");
     list.className = "course-list";
+    if (screen.note()?.course) {
+      const none = document.createElement("button");
+      none.type = "button";
+      none.className = "course-choice";
+      none.textContent = "No collection";
+      none.addEventListener("click", () => {
+        draw(screen.removeFromCourse());
+        render();
+      });
+      list.appendChild(none);
+    }
     for (const course of notebook.courseChoices()) {
       const choice = document.createElement("button");
       choice.type = "button";
@@ -846,6 +857,37 @@ async function start() {
     return details;
   }
 
+  // "+ New collection" under the Notebook heading turns into a text field.
+  // Enter makes an empty Collection; Esc or an empty field changes nothing.
+  function newCollectionButton({ label, hint }) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "menu-new menu-new-collection";
+    button.textContent = label;
+    button.title = hint;
+    button.addEventListener("click", () => {
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "menu-new-collection-input";
+      input.placeholder = "New collection";
+      input.setAttribute("aria-label", "New collection");
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          notebook.newCollection(input.value);
+          refreshMenu();
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          refreshMenu();
+        }
+      });
+      button.replaceWith(input);
+      input.focus();
+    });
+    return button;
+  }
+
   function conflictPair({ notes }) {
     const row = document.createElement("div");
     row.className = "conflict-pair";
@@ -878,6 +920,7 @@ async function start() {
       if (part.kind === "heading") container.append(menuHeading(part.text, part.hint));
       else if (part.kind === "notes") container.append(titleList(part.titles, part.current));
       else if (part.kind === "newForPage") container.append(newForPageButton(part));
+      else if (part.kind === "newCollection") container.append(newCollectionButton(part));
       else if (part.kind === "group") container.append(menuGroup(part));
       else if (part.kind === "result") container.append(searchResult(part));
       else if (part.kind === "pair") container.append(conflictPair(part));
@@ -1006,7 +1049,9 @@ async function start() {
       noteMenuEl.appendChild(
         menuButton(action.label, action.hint, () => {
           closeNoteMenu();
-          if (action.kind === "download") {
+          if (action.kind === "move") {
+            if (!noteMetaEl.querySelector(".course-list")) openCourseList();
+          } else if (action.kind === "download") {
             askFormat(noteMenuButtonEl, (format) => downloadNote(screen.note().title, format));
           } else if (action.kind === "archive") draw(screen.archive());
           else if (action.kind === "unarchive") draw(screen.unarchive());

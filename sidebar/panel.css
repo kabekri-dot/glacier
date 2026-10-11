@@ -1728,3 +1728,10 @@ html.beside .settings {
     animation: none;
   }
 }
+
+.menu-new-collection-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0.3rem 0;
+  font: inherit;
+}
