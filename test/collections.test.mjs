@@ -142,3 +142,70 @@ test("a Collection pulled in with other capitals joins the existing one", async 
   assert.deepEqual(other.courses(), ["Testing Test"]);
   assert.equal(other.note("Box").course, "Testing Test");
 });
+
+// Actions on a whole Collection (#74).
+
+const wholeCollection = [
+  { title: "Box model", course: "TOP Foundations", created: "2026-10-01T09:00:00.000Z", body: "Boxes." },
+  { title: "Flexbox", course: "TOP Foundations", created: "2026-10-02T09:00:00.000Z", body: "Flex." },
+  { title: "Algebra", course: "Khan", created: "2026-10-03T09:00:00.000Z", body: "x." },
+  { title: "Loose", created: "2026-10-04T09:00:00.000Z", body: "No Collection." },
+];
+
+async function syncedWholeCollection() {
+  const files = Object.fromEntries(wholeCollection.map((n) => [noteToFile(n).path, noteToFile(n).text]));
+  const remote = memoryRemote(files);
+  const notebook = createNotebook({ storage: memoryStorage() });
+  await notebook.firstSync(remote);
+  return { notebook, remote };
+}
+
+test("archiving a Collection archives exactly its notes and says which", async () => {
+  const { notebook } = await syncedWholeCollection();
+  const archived = notebook.archiveCollection("top foundations");
+  assert.deepEqual(archived.sort(), ["Box model", "Flexbox"]);
+  assert.deepEqual(notebook.archivedNotes().map((n) => n.title), ["Box model", "Flexbox"]);
+  assert.deepEqual(notebook.outline().courses.map((c) => c.course), ["Khan"]);
+  assert.deepEqual(notebook.outline().uncategorised, ["Loose"]);
+});
+
+test("unarchiving a Collection brings back only its archived notes", async () => {
+  const { notebook } = await syncedWholeCollection();
+  notebook.archiveCollection("TOP Foundations");
+  notebook.archiveNote("Algebra");
+  notebook.unarchiveCollection("TOP Foundations");
+  assert.deepEqual(notebook.archivedNotes().map((n) => n.title), ["Algebra"]);
+  assert.deepEqual(notebook.outline().courses.map((c) => c.course), ["TOP Foundations"]);
+});
+
+test("deleting a Collection deletes exactly its notes", async () => {
+  const { notebook } = await syncedWholeCollection();
+  notebook.deleteCollection("TOP Foundations");
+  assert.equal(notebook.note("Box model"), undefined);
+  assert.equal(notebook.note("Flexbox"), undefined);
+  assert.equal(notebook.note("Algebra").title, "Algebra");
+  assert.equal(notebook.note("Loose").title, "Loose");
+});
+
+test("sync moves an archived Collection under archive/ and removes a deleted one", async () => {
+  const { notebook, remote } = await syncedWholeCollection();
+  notebook.archiveCollection("TOP Foundations");
+  notebook.deleteCollection("Khan");
+  await notebook.sync(remote);
+  const paths = (await remote.listFiles()).map((f) => f.path).sort();
+  assert.deepEqual(paths, [
+    "archive/collections/TOP Foundations/Box model.md",
+    "archive/collections/TOP Foundations/Flexbox.md",
+    "notes/Loose.md",
+  ]);
+});
+
+test("the Archive lists its notes by Collection", async () => {
+  const { notebook } = await syncedWholeCollection();
+  notebook.archiveCollection("TOP Foundations");
+  notebook.archiveNote("Loose");
+  assert.deepEqual(notebook.archivedOutline(), {
+    courses: [{ course: "TOP Foundations", titles: ["Box model", "Flexbox"] }],
+    uncategorised: ["Loose"],
+  });
+});

@@ -1602,13 +1602,28 @@ html.beside .shortcuts-tab {
   justify-content: space-between;
 }
 
-.menu-course summary .icon-button {
+.menu-course summary .icon-button,
+.menu-course-heading .icon-button {
   visibility: hidden;
 }
 
 .menu-course summary:hover .icon-button,
-.menu-course summary:focus-within .icon-button {
+.menu-course summary:focus-within .icon-button,
+.menu-course-heading:hover .icon-button,
+.menu-course-heading:focus-within .icon-button {
   visibility: visible;
+}
+
+.menu-course-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.2rem 0;
+  font-size: 0.85rem;
+}
+
+.menu-course .delete-question {
+  margin: 0.3rem 0;
 }
 
 .format-choice {

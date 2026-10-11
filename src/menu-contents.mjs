@@ -6,8 +6,10 @@
 //   { kind: "heading", text, hint }       a small heading
 //   { kind: "notes", titles, current? }   note buttons, `current` the open one
 //   { kind: "newForPage", label, hint }   "+ New note for this page"
-//   { kind: "group", label, hint, open, archive, titles, download? }   a foldable group;
-//                                  `download` is the hover text of a Collection's Download icon
+//   { kind: "group", label, hint, open, archive, titles, course?, actions?, sections? }
+//                                  a foldable group; a Collection's has `course` and
+//                                  `actions` (its hover icons); the Archive has `sections`,
+//                                  one per Collection: { course, titles, actions }
 //   { kind: "empty", text }               a quiet line when nothing is listed
 //   { kind: "result", title, titleMark, snippet }           a search result
 //   { kind: "pair", notes: [{ title, label }] }             a Conflict Copy and its original
@@ -81,13 +83,14 @@ function browse(notebook, openNote) {
     parts.push({ kind: "empty", text: "No notes yet" });
   }
   for (const { course, titles } of outline.courses) {
-    parts.push({ kind: "group", label: course, hint: "Notes in this Collection", open: true, archive: false, titles, download: `Download the Collection '${course}'` });
+    parts.push({ kind: "group", label: course, hint: "Notes in this Collection", open: true, archive: false, titles, course, actions: collectionActions(course, titles.length) });
   }
   if (outline.uncategorised.length > 0) {
     parts.push(heading("No Collection", "Notes not in any Collection"), { kind: "notes", titles: outline.uncategorised });
   }
   const archived = notebook.archivedNotes();
   if (archived.length > 0) {
+    const archivedOutline = notebook.archivedOutline();
     parts.push({
       kind: "group",
       label: `Archive (${archived.length})`,
@@ -95,6 +98,11 @@ function browse(notebook, openNote) {
       open: false,
       archive: true,
       titles: archived.map((note) => note.title),
+      sections: archivedOutline.courses.map(({ course, titles }) => ({
+        course,
+        titles,
+        actions: collectionActions(course, titles.length, true),
+      })),
     });
   }
   return parts;
@@ -152,4 +160,30 @@ export function rowActions(title, archived = false) {
     archived ? { kind: "unarchive", hint: `Unarchive '${title}'` } : { kind: "archive", hint: `Archive '${title}'` },
     { kind: "delete", hint: `Delete '${title}'` },
   ];
+}
+
+function noteCount(count) {
+  return count === 1 ? "1 note" : `${count} notes`;
+}
+
+// The hover icons on a Collection heading (#74): Download, Archive (Unarchive
+// in the Archive section) and Delete, each naming the Collection and its notes.
+export function collectionActions(course, count, archived = false) {
+  const notes = noteCount(count);
+  const named = `'${course}', ${notes}`;
+  return [
+    { kind: "download", hint: `Download '${course}', ${notes}` },
+    archived ? { kind: "unarchive", hint: `Unarchive ${named}` } : { kind: "archive", hint: `Archive ${named}` },
+    ...(archived ? [] : [{ kind: "delete", hint: `Delete ${named}` }]),
+  ];
+}
+
+// The notice after archiving a whole Collection, and the question before
+// deleting one.
+export function archivedNotice(count) {
+  return count === 1 ? "Archived 1 note." : `Archived ${count} notes.`;
+}
+
+export function deleteCollectionQuestion(course, count) {
+  return `Delete the collection '${course}' and its ${noteCount(count)}? They're also removed from your Notes repo.`;
 }

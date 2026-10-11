@@ -22,7 +22,7 @@ import { createConflictLine } from "../src/conflict-line.mjs";
 import { createScreen } from "../src/screen.mjs";
 import { isOpenedByPage } from "../src/page-open.mjs";
 import { newNoteChoices, NEW_NOTE_HINT, PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
-import { notebookMenu, conflictMenu, noteMenu, rowActions, pageNoteCount, secondVersionBar } from "../src/menu-contents.mjs";
+import { notebookMenu, conflictMenu, noteMenu, rowActions, archivedNotice, deleteCollectionQuestion, pageNoteCount, secondVersionBar } from "../src/menu-contents.mjs";
 import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
@@ -679,19 +679,114 @@ async function start() {
     return noteRow(button, title);
   }
 
-  function menuGroup({ label, hint, open, archive, titles, download }) {
+  // A Collection heading with its hover icons (#74).
+  function collectionSummary(course, actions, parent, tag = "summary") {
+    const summary = document.createElement(tag);
+    summary.textContent = course;
+    for (const action of actions) {
+      summary.append(iconButton(action.kind, action.hint, (button) => collectionAction(action.kind, course, button, parent)));
+    }
+    return summary;
+  }
+
+  function collectionAction(kind, course, anchor, details) {
+    if (kind === "download") askFormat(anchor, (format) => downloadCourse(course, format));
+    else if (kind === "archive") archiveCollectionFromMenu(course);
+    else if (kind === "unarchive") unarchiveCollectionFromMenu(course);
+    else askDeleteCollection(course, details);
+  }
+
+  function archiveCollectionFromMenu(course) {
+    screen.flush();
+    const openTitle = screen.note()?.title;
+    const titles = notebook.archiveCollection(course);
+    if (openTitle && titles.includes(openTitle)) draw(screen.archive());
+    autoSync.changed();
+    refreshMenu();
+    showNotice(archivedNotice(titles.length), 6000, {
+      label: "Undo",
+      run: () => {
+        titles.forEach((title) => notebook.unarchiveNote(title));
+        autoSync.changed();
+        refreshMenu();
+      },
+    });
+  }
+
+  function unarchiveCollectionFromMenu(course) {
+    notebook.unarchiveCollection(course);
+    autoSync.changed();
+    refreshMenu();
+  }
+
+  // Delete a whole Collection (#74): the question replaces the group's notes
+  // right in the menu, with Delete and Keep. Esc is Keep.
+  function askDeleteCollection(course, details) {
+    details.querySelector(".delete-question")?.remove();
+    const count = notebook.outline().courses.find((entry) => entry.course === course)?.titles.length ?? 0;
+    const card = document.createElement("div");
+    card.className = "perm-card delete-question";
+    const question = document.createElement("p");
+    question.textContent = deleteCollectionQuestion(course, count);
+    const buttons = document.createElement("div");
+    buttons.className = "perm-buttons";
+    const confirm = barButton("Delete", () => {
+      stop();
+      const openTitle = screen.note()?.title;
+      const gone = notebook.outline().courses.find((entry) => entry.course === course)?.titles ?? [];
+      screen.flush();
+      notebook.deleteCollection(course);
+      autoSync.changed();
+      if (openTitle && gone.includes(openTitle)) draw(screen.pulled(gone));
+      refreshMenu();
+    });
+    const keep = document.createElement("button");
+    keep.type = "button";
+    keep.className = "perm-cancel";
+    keep.textContent = "Keep";
+    function stop() {
+      document.removeEventListener("keydown", onKey, true);
+      card.remove();
+    }
+    function onKey(event) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      stop();
+    }
+    keep.addEventListener("click", stop);
+    document.addEventListener("keydown", onKey, true);
+    buttons.append(confirm, keep);
+    card.append(question, buttons);
+    details.querySelector("summary").after(card);
+    keep.focus();
+  }
+
+  function menuGroup({ label, hint, open, archive, titles, actions, sections }) {
     const details = document.createElement("details");
     details.className = archive ? "menu-archive" : "menu-course";
     details.open = open;
-    const summary = document.createElement("summary");
-    summary.textContent = label;
-    summary.title = hint;
-    if (download) {
-      const course = label;
-      summary.append(
-        iconButton("download", download, (button) => askFormat(button, (format) => downloadCourse(course, format))),
-      );
+    if (sections) {
+      const summary = document.createElement("summary");
+      summary.textContent = label;
+      summary.title = hint;
+      details.append(summary);
+      for (const section of sections) {
+        const inner = document.createElement("div");
+        inner.className = "menu-course";
+        const heading = collectionSummary(section.course, section.actions, inner, "div");
+        heading.className = "menu-course-heading";
+        heading.title = "Notes in this Collection";
+        inner.append(heading, titleList(section.titles, null, true));
+        details.append(inner);
+      }
+      const loose = titles.filter((title) => !sections.some((section) => section.titles.includes(title)));
+      details.append(titleList(loose, null, true));
+      return details;
     }
+    const summary = actions ? collectionSummary(label, actions, details) : document.createElement("summary");
+    if (!actions) summary.textContent = label;
+    summary.title = hint;
     details.append(summary, titleList(titles, null, archive));
     return details;
   }
@@ -813,14 +908,14 @@ async function start() {
 
   function downloadNote(title, format) {
     screen.flush();
-    if (format === "pdf") return printWindow(notebook.notesToPrint(title));
+    if (format !== "md") return printWindow(notebook.notesToPrint(title));
     const file = notebook.exportNote(title);
     download(file.text, "text/markdown", file.path.split("/").pop());
   }
 
   function downloadCourse(course, format) {
     screen.flush();
-    if (format === "pdf") return printWindow(notebook.notesOfCourse(course));
+    if (format !== "md") return printWindow(notebook.notesOfCourse(course));
     download(notebook.exportCourseZip(course), "application/zip", `${course} ${today()}.zip`);
   }
 
