@@ -11,6 +11,15 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Delete at the end of a line pulls the next line up (#77)
+
+Reload with ↻ first.
+
+- [ ] Type text on line 1 and line 4, leaving lines 2 and 3 empty. Put the caret at the end of line 1 and press Delete twice: the text from line 4 is now on line 2, and the caret has not moved.
+- [ ] Press Ctrl+Z: the lines come back, in one step per press of Delete.
+- [ ] Press Delete in the middle of a line: it removes the one character after the caret, as before. Ctrl+Delete in the middle of a line removes the next word. At the end of the last line, Delete does nothing.
+- [ ] In a note with a code block, press Delete at the end of the line above the opening fence, and at the end of the closing fence: the fences stay, and the caret only moves to the start of the next line.
+
 ### Course becomes Collection, and capitals don't split Collections (#73)
 
 Reload with ↻ first. You need a connected Notes repo for the last two checks.

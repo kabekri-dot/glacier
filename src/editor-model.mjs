@@ -235,6 +235,19 @@ export function pressBackspace(lines, line, col) {
   return { lines, line, col };
 }
 
+// Delete at the end of a line: join the next line onto it (the caret stays
+// put). Fences are never merged into (#27), so there the caret only moves to
+// the start of the next line. At the end of the note, nothing happens.
+export function pressDelete(lines, line, col) {
+  if (line >= lines.length - 1) return { lines, line, col };
+  if (isFence(lines[line]) || isFence(lines[line + 1])) {
+    return { lines, line: line + 1, col: 0 };
+  }
+  const next = lines.slice();
+  next.splice(line, 2, lines[line] + lines[line + 1]);
+  return { lines: next, line, col };
+}
+
 // Insert text at (line, col), as a paste does: a single line goes in inline;
 // several lines split the current line so each pasted line stays its own line.
 export function insertText(lines, line, col, text) {
