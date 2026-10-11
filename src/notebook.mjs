@@ -805,6 +805,47 @@ export function createNotebook({ storage }) {
       storage.putNote(rest);
     },
 
+    // Archive every note of a Collection (#74). Returns their titles, so Undo
+    // can put back exactly those.
+    archiveCollection(course) {
+      const titles = listed().filter((note) => sameCollection(note.course, course)).map((note) => note.title);
+      titles.forEach((title) => this.archiveNote(title));
+      return titles;
+    },
+
+    // Unarchive every archived note of a Collection (#74).
+    unarchiveCollection(course) {
+      const titles = storage
+        .allNotes()
+        .filter((note) => note.archived && sameCollection(note.course, course))
+        .map((note) => note.title);
+      titles.forEach((title) => this.unarchiveNote(title));
+      return titles;
+    },
+
+    // Delete a Collection and the notes in it for good (#74). The archived
+    // notes of the same name are not in the Collection's list, so they stay.
+    deleteCollection(course) {
+      listed()
+        .filter((note) => sameCollection(note.course, course))
+        .forEach((note) => this.deleteNote(note.title));
+    },
+
+    // The Archive as the menu lists it: by Collection, then the notes without one.
+    archivedOutline() {
+      const courses = new Map();
+      const uncategorised = [];
+      for (const { title, course } of this.archivedNotes()) {
+        if (!course) uncategorised.push(title);
+        else if (courses.has(course)) courses.get(course).push(title);
+        else courses.set(course, [title]);
+      }
+      return {
+        courses: [...courses.keys()].sort((a, b) => a.localeCompare(b)).map((course) => ({ course, titles: courses.get(course) })),
+        uncategorised,
+      };
+    },
+
     // The archived notes, sorted by title, for the menu's Archive section.
     archivedNotes() {
       return storage

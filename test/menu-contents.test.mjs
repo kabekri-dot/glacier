@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createNotebook } from "../src/notebook.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
-import { notebookMenu, conflictMenu, noteMenu, pageNoteCount, secondVersionBar } from "../src/menu-contents.mjs";
+import { notebookMenu, conflictMenu, noteMenu, pageNoteCount, deleteCollectionQuestion, archivedNotice, secondVersionBar } from "../src/menu-contents.mjs";
 
 // What the ▾ Notebook and ⋯ This note menus list (#67), as plain data the
 // sidebar only has to draw.
@@ -65,7 +65,11 @@ test("the Notebook lists Collections with their notes, then the notes without a 
   const menu = notebookMenu(notebookWith(), "");
   assert.deepEqual(menu, [
     { kind: "heading", text: "Notebook", hint: null },
-    { kind: "group", label: "TOP Foundations", hint: "Notes in this Collection", open: true, archive: false, titles: ["Box model", "Flexbox"], download: "Download the Collection 'TOP Foundations'" },
+    { kind: "group", label: "TOP Foundations", hint: "Notes in this Collection", open: true, archive: false, titles: ["Box model", "Flexbox"], course: "TOP Foundations", actions: [
+      { kind: "download", hint: "Download 'TOP Foundations', 2 notes" },
+      { kind: "archive", hint: "Archive 'TOP Foundations', 2 notes" },
+      { kind: "delete", hint: "Delete 'TOP Foundations', 2 notes" },
+    ] },
     { kind: "heading", text: "No Collection", hint: "Notes not in any Collection" },
     { kind: "notes", titles: ["Loose page", "Margins"] },
   ]);
@@ -139,6 +143,7 @@ test("archived notes are listed only under a folded Archive", () => {
     open: false,
     archive: true,
     titles: ["Margins"],
+    sections: [],
   });
   const elsewhere = menu.slice(0, -1).flatMap((part) => part.titles ?? []);
   assert.equal(elsewhere.includes("Margins"), false);
@@ -212,4 +217,28 @@ test("an ordinary note or no note has no second version bar", () => {
   const notebook = notebookWith();
   assert.equal(secondVersionBar(notebook, notebook.note("Margins")), null);
   assert.equal(secondVersionBar(notebook, null), null);
+});
+
+test("a Collection in the Archive offers Unarchive for all its notes", () => {
+  const notebook = notebookWith();
+  notebook.archiveCollection("TOP Foundations");
+  const archive = notebookMenu(notebook, "").at(-1);
+  assert.deepEqual(archive.sections, [
+    {
+      course: "TOP Foundations",
+      titles: ["Box model", "Flexbox"],
+      actions: [
+        { kind: "download", hint: "Download 'TOP Foundations', 2 notes" },
+        { kind: "unarchive", hint: "Unarchive 'TOP Foundations', 2 notes" },
+      ],
+    },
+  ]);
+});
+
+test("the delete question names the Collection and the count", () => {
+  assert.equal(
+    deleteCollectionQuestion("Testing", 12),
+    "Delete the collection 'Testing' and its 12 notes? They're also removed from your Notes repo.",
+  );
+  assert.equal(archivedNotice(12), "Archived 12 notes.");
 });

@@ -40,5 +40,5 @@ test("a Course prints every note, each starting on a new page", () => {
 test("the Notebook menu offers a Download on each Collection heading", () => {
   const parts = notebookMenu(notebookWith(), "");
   const course = parts.find((part) => part.kind === "group");
-  assert.equal(course.download, "Download the Collection 'CSS'");
+  assert.equal(course.actions[0].hint, "Download 'CSS', 2 notes");
 });

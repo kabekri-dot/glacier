@@ -62,7 +62,8 @@ export function iconButton(kind, hint, onClick) {
   return button;
 }
 
-// The small choice right where a Download was clicked (#71): Markdown or PDF.
+// The small choice right where a Download was clicked (#71, #74): Markdown,
+// PDF or Print. PDF and Print both open the print window.
 // Closes on a pick, on Esc or on a click anywhere else.
 export function askFormat(anchor, onPick) {
   document.querySelector(".format-choice")?.remove();
@@ -76,9 +77,14 @@ export function askFormat(anchor, onPick) {
   const onKey = (event) => {
     if (event.key === "Escape") close();
   };
-  for (const [format, label] of [["md", "Markdown (.md)"], ["pdf", "PDF"]]) {
+  const hints = {
+    md: "Save as a Markdown file",
+    pdf: "Opens the print window. Choose Save as PDF there",
+    print: "Opens the print window to print on paper",
+  };
+  for (const [format, label] of [["md", "Markdown (.md)"], ["pdf", "PDF"], ["print", "Print"]]) {
     box.append(
-      menuButton(label, format === "pdf" ? "Opens the print window. Choose Save as PDF there" : "Save as a Markdown file", () => {
+      menuButton(label, hints[format], () => {
         close();
         onPick(format);
       }),

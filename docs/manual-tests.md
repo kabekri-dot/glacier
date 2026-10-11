@@ -11,6 +11,14 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Actions on a whole Collection (#74)
+
+- [ ] Reload with ↻ first. Open the ▾ menu and hover a Collection heading: Download, Archive and Delete icons show, and they also show when the heading has keyboard focus. Each hover text names the Collection and its note count, like "Archive 'Testing', 12 notes".
+- [ ] Click Download on a Collection: a small choice shows Markdown (.md), PDF and Print. Markdown saves a zip. PDF and Print open the print window with every note of the Collection, each on a new page. Do the same from a note row and from ⋯ This note: the same three choices.
+- [ ] Click Archive on a Collection: its notes leave the lists and "Archived 12 notes." shows with Undo. Undo puts them all back.
+- [ ] Open the Archive section: the notes sit under their Collection, and hovering that heading offers Unarchive. It brings back every note of that Collection.
+- [ ] Click Delete on a Collection: the question names the count, "Delete the collection 'Testing' and its 12 notes? They're also removed from your Notes repo." Keep (or Esc) leaves everything. Delete removes the notes, and after the next sync they are gone from the Notes repo too.
+
 ### Enter after Ctrl+B, and Shift+Enter as a plain new line (#78)
 
 Reload with ↻ first.
@@ -35,7 +43,7 @@ Reload with ↻ first.
 Reload with ↻ first. You need a connected Notes repo for the last two checks.
 
 - [ ] The line above the text says "No collection" on a note without one. Hover it: "Move to another collection". Click it: the list ends with "+ New collection".
-- [ ] Open the ▾ menu: the Notebook lists Collections, then "No Collection" with the rest. Hover a Collection heading: "Download the Collection" and its name.
+- [ ] Open the ▾ menu: the Notebook lists Collections, then "No Collection" with the rest. Hover a Collection heading: three icons show, and Download names the Collection and its note count.
 - [ ] Settings, Notes repo: the list under Backup holds Collections, and hovering a Download icon names the Collection. Nowhere in the sidebar, menus or settings does the word Course show.
 - [ ] Put a note in "Testing Test", then click "+ New collection" on another note and type "testing test": the note joins "Testing Test", and the menu shows one Collection.
 - [ ] If you had "Testing Test" and "Testing test" before this change: after the reload they show as one Collection, spelled like the one with more notes.
@@ -54,11 +62,11 @@ Reload with ↻ first. Turn the Shortcuts panel on in settings.
 Reload with ↻ first.
 
 - [ ] Open the ▾ menu and hover a note row (also in Recent, search results and the Archive section): three small icons show on the right. Tab to a row: they show too. Each has a hover text naming the note, like "Archive 'Arrays basics'".
-- [ ] Click Download: a small choice appears there, Markdown (.md) or PDF. Markdown saves the .md file. PDF opens the print window with only the title and text, where you pick Save as PDF.
+- [ ] Click Download: a small choice appears there, Markdown (.md), PDF or Print. Markdown saves the .md file. PDF and Print open the print window with only the title and text, where you pick Save as PDF.
 - [ ] Click Archive: the note leaves the list at once and "Archived. Undo" shows at the bottom. Click Undo: it comes back.
 - [ ] In the Archive section the middle icon is Unarchive and puts the note back.
 - [ ] Click Delete: the usual question appears. Keep leaves it, Delete removes it.
-- [ ] Hover a Collection heading: one Download icon shows. Markdown gives a zip of .md files. PDF gives one document with every note of the Collection, each on a new page.
+- [ ] Hover a Collection heading: three icons show (see the Collection section above). Markdown gives a zip of .md files. PDF gives one document with every note of the Collection, each on a new page.
 - [ ] In ⋯ This note, Download asks the same Markdown or PDF choice.
 - [ ] Settings, Notes repo: a list of every Collection (it scrolls when long), each with a Download icon that asks the same choice. Export everything and Export archive are still there.
 
