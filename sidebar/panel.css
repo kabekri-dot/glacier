@@ -937,12 +937,6 @@ code {
   cursor: pointer;
 }
 
-.menu-files {
-  display: block;
-  border-top: 1px solid var(--rule);
-  padding-top: 0.5rem;
-}
-
 .menu-new:hover {
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
