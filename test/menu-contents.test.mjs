@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createNotebook } from "../src/notebook.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
-import { notebookMenu, conflictMenu, noteMenu, pageNoteCount } from "../src/menu-contents.mjs";
+import { notebookMenu, conflictMenu, noteMenu, pageNoteCount, secondVersionBar } from "../src/menu-contents.mjs";
 
 // What the ▾ Notebook and ⋯ This note menus list (#67), as plain data the
 // sidebar only has to draw.
@@ -145,17 +145,17 @@ test("archived notes are listed only under a folded Archive", () => {
   assert.deepEqual(notebookMenu(notebook, "outside"), [{ kind: "empty", text: "No notes match" }]);
 });
 
-test("Conflict Copies are listed next to their originals", () => {
+test("each original is listed with its second version under it", () => {
   const notebook = notebookWith();
   notebook.createNote({ title: "Margins (conflict 2026-10-02)" });
   notebook.createNote({ title: "Gone (conflict 2026-10-02)" });
   assert.deepEqual(conflictMenu(notebook), [
-    { kind: "heading", text: "Changed in two places", hint: null },
+    { kind: "heading", text: "Notes with two versions", hint: null },
     {
       kind: "pair",
       notes: [
+        { title: "Margins", label: "Margins" },
         { title: "Margins (conflict 2026-10-02)", label: "Margins (conflict 2026-10-02)" },
-        { title: "Margins", label: "Original: Margins" },
       ],
     },
     { kind: "pair", notes: [{ title: "Gone (conflict 2026-10-02)", label: "Gone (conflict 2026-10-02)" }] },
@@ -186,4 +186,30 @@ test("an archived note offers Unarchive instead of Archive", () => {
   notebook.archiveNote("Flexbox");
   const menu = noteMenu(notebook.note("Flexbox"));
   assert.deepEqual(menu.actions.map((action) => action.label), ["Download as a file", "Unarchive", "Delete"]);
+});
+
+test("a second version shows a bar naming the original and the two buttons", () => {
+  const notebook = notebookWith();
+  notebook.createNote({ title: "Margins (conflict 2026-10-02)" });
+  assert.deepEqual(secondVersionBar(notebook, notebook.note("Margins (conflict 2026-10-02)")), {
+    text: "This is a second version of 'Margins'. Copy what you want to keep into 'Margins', then delete this version.",
+    original: "Margins",
+    openLabel: "Open 'Margins'",
+    deleteLabel: "Delete this version",
+  });
+});
+
+test("a second version whose original is gone has the bar without an Open button", () => {
+  const notebook = notebookWith();
+  notebook.createNote({ title: "Gone (conflict 2026-10-02)" });
+  const bar = secondVersionBar(notebook, notebook.note("Gone (conflict 2026-10-02)"));
+  assert.equal(bar.original, null);
+  assert.equal(bar.openLabel, null);
+  assert.match(bar.text, /second version of 'Gone'/);
+});
+
+test("an ordinary note or no note has no second version bar", () => {
+  const notebook = notebookWith();
+  assert.equal(secondVersionBar(notebook, notebook.note("Margins")), null);
+  assert.equal(secondVersionBar(notebook, null), null);
 });
