@@ -79,6 +79,10 @@ export function createEditorSession({
   let redoSteps = [];
   let typingTimer = null;
   let beforePlus = null;
+  // The selection (block offsets) a formatting shortcut left over the words it
+  // formatted, while nothing has touched it since (#78). Enter then steps past
+  // the formatting instead of replacing the words.
+  let formatSelection = null;
 
   const snapshot = () => ({
     lines: [...lines],
@@ -106,6 +110,7 @@ export function createEditorSession({
   function restore(saved) {
     lines = [...saved.lines];
     focus = { ...saved.focus };
+    formatSelection = null;
     menu = null;
     plusOrigin = null;
     beforePlus = null;
@@ -129,6 +134,7 @@ export function createEditorSession({
   // ↑/↓ crossing a block): the focused block span is recomputed.
   function moveTo(line, col) {
     endTypingRun();
+    formatSelection = null;
     focus = { line, col };
     dropPadding();
     relayout();
@@ -482,6 +488,7 @@ export function createEditorSession({
     edit(value, caret, { paste = false } = {}) {
       recordStep({ typing: !paste });
       beforePlus = null;
+      formatSelection = null;
       const wasCode = isFence(lines[blockStart]);
       if (padStart !== null) padEdited = true;
       const newLines = value.split("\n");
@@ -511,6 +518,26 @@ export function createEditorSession({
     // bullet (editor-model). A selection [selStart, selEnd] is deleted first.
     enter(value, selStart, selEnd) {
       const here = lineColFromOffset(value, selStart);
+      const kept = formatSelection;
+      formatSelection = null;
+      if (
+        selStart !== selEnd &&
+        kept &&
+        kept.start === selStart &&
+        kept.end === selEnd
+      ) {
+        // Right after Ctrl+B / Ctrl+I / Ctrl+E: collapse past the closing
+        // marks, then Enter acts as usual from there.
+        const end = lineColFromOffset(value, selEnd);
+        const col = columnAfterFormatting(lines, end.line, end.col);
+        recordStep();
+        const next = pressEnter(lines, end.line, typeof col === "number" ? col : end.col);
+        lines = next.lines;
+        focus = { line: next.line, col: next.col };
+        relayout();
+        notifyChange();
+        return;
+      }
       // Inside bold, italic or code, Enter only steps out past the closing
       // marks (#45); a second Enter makes the new line.
       const out = selStart === selEnd && columnAfterFormatting(lines, here.line, here.col);
@@ -533,14 +560,26 @@ export function createEditorSession({
       notifyChange();
     },
 
-    // Shift+Enter inside bold, italic or code (#45): close the marks, start a
-    // new line and reopen them there. Returns false when the caret is not
-    // inside formatting (or text is selected), leaving the key as it is today.
+    // Shift+Enter: a new line in the same note. Inside bold, italic or code
+    // (#45) the marks are closed and reopened on the new line; elsewhere the
+    // line is just split, with no list continuation (#78). Returns false in a
+    // code block, leaving the key to the browser.
     lineBreak(value, selStart, selEnd) {
-      if (selStart !== selEnd) return false;
+      if (isFence(lines[blockStart] ?? "")) return false;
+      formatSelection = null;
       const here = lineColFromOffset(value, selStart);
-      const next = breakInsideFormatting(lines, here.line, here.col);
-      if (!next) return false;
+      let next = null;
+      if (selStart === selEnd) {
+        next = breakInsideFormatting(lines, here.line, here.col);
+      }
+      if (!next) {
+        const end = lineColFromOffset(value, selEnd);
+        const head = lines[here.line].slice(0, here.col);
+        const tail = lines[end.line].slice(end.col);
+        const split = lines.slice();
+        split.splice(here.line, end.line - here.line + 1, head, tail);
+        next = { lines: split, line: here.line + 1, col: 0 };
+      }
       recordStep();
       beforePlus = null;
       lines = next.lines;
@@ -570,10 +609,12 @@ export function createEditorSession({
       focus = { ...next.end };
       relayout();
       if (changed) notifyChange();
-      return {
+      const selection = {
         start: offsetInBlock(next.start.line, next.start.col),
         end: offsetInBlock(next.end.line, next.end.col),
       };
+      formatSelection = selStart !== selEnd ? selection : null;
+      return selection;
     },
 
     // Backspace at the very start of the focused block: join it with the line

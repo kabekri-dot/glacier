@@ -11,6 +11,16 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Enter after Ctrl+B, and Shift+Enter as a plain new line (#78)
+
+Reload with ↻ first.
+
+- [ ] In a bullet list, select the last word, press Ctrl+B, then Enter: the word is bold and a new bullet starts. The same with Ctrl+I and Ctrl+E.
+- [ ] Select a word and press Ctrl+B, then click inside the word and select it again by hand, then Enter: the selection is replaced by a line break, as before.
+- [ ] Press Ctrl+Z after Ctrl+B and Enter: first the new line goes, then the bold.
+- [ ] In a bullet line, press Shift+Enter: the new line has no bullet and stays in the same note.
+- [ ] Inside bold, Shift+Enter still makes a new bold line. In a code block it makes a new line as before.
+
 ### Delete at the end of a line pulls the next line up (#77)
 
 Reload with ↻ first.
@@ -217,6 +227,7 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 
 - [ ] Type `**key`, so the cursor is inside bold. Enter jumps out past `**` on the same line. A second Enter makes a new line.
 - [ ] Inside bold, Shift+Enter starts a new line that is still bold.
+- [ ] In a bullet line, Shift+Enter starts a line without a bullet. Select a word, Ctrl+B, Enter: the word stays and a new bullet starts.
 
 ### Undo and redo
 
