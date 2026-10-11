@@ -1189,16 +1189,6 @@ code {
   padding-top: calc(var(--note-top) + var(--line-height) + var(--bar-height, 0px) + 0.5rem);
 }
 
-.conflict-show {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--accent);
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
 .rename-suggestion {
   padding: 0;
   border: 0;
