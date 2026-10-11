@@ -18,6 +18,12 @@ which version.
 - `sidebar/` — the Zen panel: `panel.html`, `panel.css`, `panel.js`.
 - `fonts/` — the bundled handwriting fonts (Latin subset, woff2), each with
   its SIL Open Font License.
+- `icons/` — the glacier art: the toolbar icon (PNG) and the round settings
+  button (SVG).
+- `art/` — one pixel-art panorama (SVG) per Nature paper.
+- `tools/draw-art.mjs` — a developer tool that draws `icons/` and `art/`.
+  Run `node tools/draw-art.mjs` after changing the art; the extension never
+  loads it.
 - `src/` — the note logic, with no screen code (the first two files are the
   two test seams):
   - `notebook.mjs` — the **Notebook core** (all note logic; storage is plugged

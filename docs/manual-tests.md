@@ -11,6 +11,21 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Nature papers and pixel art (#19)
+
+- [ ] The toolbar button shows the glacier picture: white ice on a blue sky above blue water. Same in Chrome and Firefox.
+- [ ] The round button in the bottom right corner shows the same glacier, and so does the "Settings" header next to its title.
+- [ ] Open settings, then Paper: two groups, "Nature" (Glacier, Forest, Ocean, Desert, Volcano, Aurora (dark)) and "Classics" below it. Each Nature paper's swatch shows a bit of its picture.
+- [ ] On a fresh start (or after removing the extension's storage) the paper is Glacier.
+- [ ] Choose each Nature paper in turn. Along the bottom of the page sits a faint pixel landscape that fades out upwards: glaciers and ice on water, pine forest by a lake, sailboats and islands on the sea, dunes and cacti, smoking volcanoes with lava, mountains under a green aurora at night. Each one changes as it goes to the right, it doesn't repeat the same picture.
+- [ ] Each Nature paper uses its own font with "Theme default": Glacier, Ocean and Aurora Shantell Sans, Forest Patrick Hand, Desert Caveat, Volcano Kalam Light.
+- [ ] Make the sidebar wider and narrower: the landscape stays the same height and a wider sidebar shows more of it.
+- [ ] Change the text size from 85 % to 150 %: the landscape keeps its height.
+- [ ] Write a long note and scroll to the end: the last line sits above the landscape, with some room between them. No text is ever drawn on it.
+- [ ] Click on the landscape below the last line: you can write there, and the new line still sits above the landscape.
+- [ ] On Aurora, the pill, the menu, the search box and settings are all readable.
+- [ ] Choose a Classic paper: the landscape goes away and the note ends near the bottom again.
+
 ### Tabs and notes settings (#53)
 
 - [ ] Open settings and fold open "Tabs and notes". It has three choices: when I switch tabs, on a page that isn't a website, and the previous note button.
@@ -24,7 +39,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 - [ ] A round glacier button sits in the bottom right corner. Clicking it opens settings over the lower part of the sidebar, with the note still showing above. Clicking it again, the × in the header, or Esc closes them.
 - [ ] Paper, Writing and Notes repo fold open and closed when you click their names. Open all three and scroll: the "Settings" header stays on top.
-- [ ] Under Paper, choose each one in turn: Glacier, Blank Page, School Notebook (blue lines and a red margin line), Chalkboard (dark, chalk white writing), Moleskine (very faint lines) and Engineer (a green grid, darker every fifth line). The note changes at once.
+- [ ] Under Paper, Classics, choose each one in turn: Blank Page, School Notebook (blue lines and a red margin line), Chalkboard (dark, chalk white writing), Moleskine (very faint lines) and Engineer (a green grid, darker every fifth line). The note changes at once.
 - [ ] Close the sidebar and open it again: the paper you chose is still there. In the other browser it is its own choice.
 - [ ] On Chalkboard, the pill, the menu, the search box and the settings are all readable.
 - [ ] Under Writing, pick each font: Shantell Sans, Patrick Hand, Kalam Light, Caveat, Architects Daughter. The note changes at once.
@@ -108,7 +123,7 @@ Connect a Notes repo first (see #14).
 
 ### Opening Glacier
 
-- [ ] The toolbar button opens Glacier.
+- [ ] The toolbar button shows the glacier picture and opens Glacier.
 - [ ] Alt+Shift+G opens Glacier, and pressing it again closes it. Try it from the web page and while typing in a note.
 - [ ] Type something, close with the shortcut right away, reopen: the text is still there.
 - [ ] When the sidebar opens, the cursor is already in the note.

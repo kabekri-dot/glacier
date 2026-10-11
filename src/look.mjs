@@ -5,7 +5,9 @@
 
 // Each paper: its colours, its pattern ("ruled", "margin" for ruled with a
 // red margin line, "grid", or "none") and its default font. "top" is the
-// tint at the top of the page.
+// tint at the top of the page. A Nature paper (#19) also names its "art":
+// the pixel-art panorama along the bottom, drawn once by tools/draw-art.mjs
+// into art/<name>.svg.
 export const PAPERS = [
   {
     name: "Glacier",
@@ -17,6 +19,68 @@ export const PAPERS = [
     accent: "#3f78c4",
     pattern: "ruled",
     font: "Shantell Sans",
+    art: "glacier",
+  },
+  {
+    name: "Forest",
+    group: "Nature",
+    paper: "#eff4ea",
+    top: "#e1ecda",
+    rule: "#d0e0c6",
+    ink: "#1f3b2a",
+    accent: "#5d7f3a",
+    pattern: "ruled",
+    font: "Patrick Hand",
+    art: "forest",
+  },
+  {
+    name: "Ocean",
+    group: "Nature",
+    paper: "#edf6f8",
+    top: "#d8edf3",
+    rule: "#c5dfe8",
+    ink: "#1b2c4f",
+    accent: "#17838a",
+    pattern: "ruled",
+    font: "Shantell Sans",
+    art: "ocean",
+  },
+  {
+    name: "Desert",
+    group: "Nature",
+    paper: "#f9f1e2",
+    top: "#f6e5c9",
+    rule: "#ead8b8",
+    ink: "#5a3a22",
+    accent: "#c0603a",
+    pattern: "ruled",
+    font: "Caveat",
+    art: "desert",
+  },
+  {
+    name: "Volcano",
+    group: "Nature",
+    paper: "#f2efed",
+    top: "#e7e0dc",
+    rule: "#dcd3cd",
+    ink: "#2f2c2b",
+    accent: "#d9581b",
+    pattern: "ruled",
+    font: "Kalam Light",
+    art: "volcano",
+  },
+  {
+    name: "Aurora",
+    group: "Nature",
+    paper: "#151e35",
+    top: "#0f1830",
+    rule: "#27344f",
+    ink: "#e4ecfa",
+    accent: "#5fe0a0",
+    pattern: "ruled",
+    font: "Shantell Sans",
+    dark: true,
+    art: "aurora",
   },
   {
     name: "Blank Page",
@@ -90,6 +154,14 @@ const FONTS = [
   { name: "Architects Daughter", family: '"Architects Daughter"', weight: 400, ascent: 0.986, descent: 0.403, scale: 1 },
 ];
 
+// The papers as settings show them: the Nature group, then the Classics.
+export function paperGroups() {
+  return ["Nature", "Classics"].map((group) => ({
+    group,
+    papers: PAPERS.filter((paper) => paper.group === group),
+  }));
+}
+
 export const FONT_OVERRIDES = [
   "Theme default",
   "Shantell Sans",
@@ -104,6 +176,10 @@ export const TEXT_SIZE = { min: 85, max: 150, step: 5, standard: 100 };
 // At 100 %: the text size and the height of one ruled row, in pixels.
 const BASE_TEXT = 16.8;
 const BASE_ROW = 28.8;
+
+// The panorama's height in pixels. It stays the same at every text size, so
+// a wider sidebar shows more landscape rather than a bigger one.
+const PANORAMA_HEIGHT = 108;
 
 // A saved look, cleaned up: anything unknown goes back to the default, and
 // the text size stays within the slider's range.
@@ -134,11 +210,17 @@ export function lookStyle(look) {
   // The pattern draws its rule on the row's last pixel; this lifts it.
   const ruleShift = lineHeight - 1 - ruleTop;
 
+  // The note ends this far above the bottom of the paper: below the panorama
+  // on a Nature paper, with one more row of room, so text never sits on it.
+  const panorama = paper.art ? PANORAMA_HEIGHT : 0;
+  const noteBottom = paper.art ? panorama + lineHeight : 24;
+
   const ink = rgb(paper.ink);
   return {
     paper: paper.name,
     pattern: paper.pattern,
     dark: Boolean(paper.dark),
+    art: paper.art ?? null,
     font: fontName,
     textSize,
     lineHeight,
@@ -160,6 +242,8 @@ export function lookStyle(look) {
       "--text-size": `${textSize}px`,
       "--line-height": `${lineHeight}px`,
       "--rule-shift": `${ruleShift}px`,
+      "--panorama-height": `${panorama}px`,
+      "--note-bottom": `${noteBottom}px`,
     },
   };
 }
