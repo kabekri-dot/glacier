@@ -11,6 +11,22 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Conflict line you can close, guided second versions, sync dot explained (#70)
+
+Reload with ↻ first. Make a conflict first (see Conflict Copies, #16).
+
+- [ ] The line under the pill says "A note has two versions. Check it". With two conflicts it says "2 notes have two versions. Check them".
+- [ ] Click the × on the line: it goes away and stays away, even after you type or sync. The dot stays orange.
+- [ ] Make a new conflict: the line comes back.
+- [ ] Click the line: the ▾ menu opens with each original and its second version under it. Click the second version to open it.
+- [ ] The second version shows a bar above its text: "This is a second version of 'Title'. Copy what you want to keep into 'Title', then delete this version."
+- [ ] Click Open 'Title' in the bar: the original opens.
+- [ ] Click Delete this version: the usual question appears. Keep brings the note back, Delete removes it. When the last second version is gone, the line and the orange dot go away.
+- [ ] Hover the dot when everything is saved: "All saved to GitHub". While syncing: "Saving to GitHub". With the network off: "Offline. Your changes are kept here and sync later".
+- [ ] Hover the orange dot: "A note has two versions. Click to see them". Click it: the list of pairs opens.
+- [ ] Break the token on purpose and sync: hovering the dot gives the error's short text.
+- [ ] Before connecting GitHub, hover the dot: "Not connected to GitHub. Set it up in Settings".
+
 ### Search titles, or // to search inside notes (#69)
 
 - [ ] Reload with the reload button first. Open the menu: the search box says "Search titles, or // to search inside notes", and hovering it says the same.
@@ -240,7 +256,7 @@ Connect a Notes repo first (see #14).
 Connect the same Notes repo in Chrome and in Firefox first (see #14).
 
 - [ ] Turn the network off in Firefox (devtools, Offline). Change the same note in both browsers, with different text. Turn Firefox's network on again and let it sync. Both texts are kept: the note has Firefox's text, and a second note "Title (conflict date)" with today's date has Chrome's text. Both files are on GitHub.
-- [ ] The dot turns orange. Hovering it says "Conflict" and gives the short message. The Sync line in the pill menu says the same.
+- [ ] The dot turns orange. Hovering it says "A note has two versions. Click to see them". The Sync line in the pill menu says "A note has two versions. Check it".
 - [ ] Type something or press "Sync now": the dot stays orange while the copy is there.
 - [ ] Open Chrome's sidebar: it also has both notes and an orange dot.
 - [ ] Rename the copy by clicking its title in the pill (for example to "Margins old"). A few seconds later the dot turns green.
@@ -387,14 +403,14 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 - [ ] In Settings, Notes repo, under Backup: "Export archive" downloads a zip with only the archived notes.
 - [ ] "Export everything" includes archived notes, and "Restore from backup file" brings them back as archived.
 
-### A short conflict message with Show them
+### A short conflict message with Check them
 
 Make a conflict first (see Conflict Copies, #16).
 
-- [ ] A short line shows under the pill: "A note changed in two places. Glacier kept both versions." It does not mention files or the Notes repo. With two conflicts it starts with "2 notes".
+- [ ] A short line shows under the pill: "A note has two versions. Check it". It does not mention files or the Notes repo. With two conflicts it says "2 notes have two versions. Check them". The × closes it until a new conflict (#70).
 - [ ] The dot in the pill is orange while the line shows.
-- [ ] Hover Show them: "Open a copy, move over what you need, then delete or archive it."
-- [ ] Click Show them: the pill menu opens with only the conflict copies, each with its original under it. Click one to open it.
+- [ ] Hover the line: "See each note next to its second version".
+- [ ] Click the line: the pill menu opens with only the notes with two versions, each original with its second version under it. Click one to open it.
 - [ ] Delete the last copy (the ⋯ This note menu, "Delete"): the line goes away and the dot turns normal.
 - [ ] Make another conflict and archive the copy instead: the line goes away and the dot turns normal.
 

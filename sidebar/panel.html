@@ -22,11 +22,13 @@
       <button type="button" class="pill-side pill-new" aria-haspopup="true" aria-expanded="false" aria-label="New note">+</button>
     </div>
     <p class="rename-hint" role="status" hidden></p>
-    <!-- Shown while Conflict Copies are left (#59). -->
+    <!-- Shown while notes have two versions; × closes it until a new one (#70). -->
     <p class="conflict-line" role="status" hidden>
-      <span class="conflict-text"></span>
-      <button type="button" class="conflict-show" title="Open a copy, move over what you need, then delete or archive it.">Show them</button>
+      <button type="button" class="conflict-show" title="See each note next to its second version"></button>
+      <button type="button" class="conflict-close" aria-label="Close this message" title="Close this message">&times;</button>
     </p>
+    <!-- Above a second version's text (#70). -->
+    <div class="second-version-bar" hidden></div>
     <div class="new-menu" hidden></div>
     <div class="note-menu" hidden></div>
     <div class="menu" hidden></div>

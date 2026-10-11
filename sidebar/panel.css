@@ -821,6 +821,7 @@ code {
 
 .sync-dot[data-state="conflict"] {
   background: #d98a1c;
+  cursor: pointer;
 }
 
 .sync-dot[data-state="error"] {
@@ -1132,6 +1133,50 @@ code {
 
 .conflict-line[hidden] {
   display: none;
+}
+
+.conflict-close {
+  margin-left: 0.4rem;
+  padding: 0 0.2rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Above a second version's text (#70), under the Course line. */
+.second-version-bar {
+  position: absolute;
+  top: calc(var(--note-top) + var(--line-height));
+  left: var(--note-left);
+  right: 1.25rem;
+  z-index: 5;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #d98a1c;
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+.second-version-bar[hidden] {
+  display: none;
+}
+
+.second-version-bar p {
+  margin: 0 0 0.3rem;
+}
+
+.second-version-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.note.has-bar {
+  padding-top: calc(var(--note-top) + var(--line-height) + var(--bar-height, 0px) + 0.5rem);
 }
 
 .conflict-show {

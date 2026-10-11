@@ -143,8 +143,27 @@ function lastSyncedText(lastSynced, now) {
 }
 
 export function conflictMessage(count) {
-  const subject = count === 1 ? "A note" : `${count} notes`;
-  return `${subject} changed in two places. Glacier kept both versions.`;
+  return count === 1 ? "A note has two versions. Check it" : `${count} notes have two versions. Check them`;
+}
+
+// What hovering the sync dot says, for every state (#70).
+export function syncDotText(status) {
+  switch (status.state) {
+    case "syncing":
+      return "Saving to GitHub";
+    case "synced":
+      return "All saved to GitHub";
+    case "offline":
+      return "Offline. Your changes are kept here and sync later";
+    case "conflict": {
+      const count = status.conflicts?.length ?? 1;
+      return `${count === 1 ? "A note has" : `${count} notes have`} two versions. Click to see them`;
+    }
+    case "error":
+      return syncStatusText(status).detail.replace(/ (Last synced|Not synced yet).*$/, "");
+    default:
+      return "Not connected to GitHub. Set it up in Settings";
+  }
 }
 
 // The status in words: a short `label` and a sentence of `detail`.
@@ -163,7 +182,7 @@ export function syncStatusText(status, now = new Date()) {
     case "conflict":
       return {
         label: "Conflict",
-        detail: `${conflictMessage(status.conflicts?.length ?? 1)} ${last}`,
+        detail: `${conflictMessage(status.conflicts?.length ?? 1)}. ${last}`,
       };
     case "error":
       return {

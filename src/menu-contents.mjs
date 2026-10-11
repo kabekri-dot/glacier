@@ -12,6 +12,7 @@
 //   { kind: "pair", notes: [{ title, label }] }             a Conflict Copy and its original
 import { PAGE_NOTE_HINT } from "./new-note-choices.mjs";
 
+const CONFLICT_SUFFIX = / \(conflict \d{4}-\d{2}-\d{2}\)( \d+)?$/;
 const ARCHIVE_HINT = "Notes you hid from your lists. Open one to bring it back";
 const PAGE_NOTES_HINT = "Every note for this page, the latest first";
 
@@ -98,19 +99,32 @@ function browse(notebook, openNote) {
   return parts;
 }
 
-// Show them (#59): only the Conflict Copies, each next to its original when
-// that is still there.
+// Check them (#70): only the notes with two versions, each original with its
+// second version (Conflict Copy) under it. The original is left out when it
+// is gone.
 export function conflictMenu(notebook) {
   return [
-    heading("Changed in two places"),
+    heading("Notes with two versions"),
     ...notebook.conflictCopyPairs().map(({ copy, original }) => ({
       kind: "pair",
-      notes: [
-        { title: copy, label: copy },
-        ...(original ? [{ title: original, label: `Original: ${original}` }] : []),
-      ],
+      notes: [...(original ? [{ title: original, label: original }] : []), { title: copy, label: copy }],
     })),
   ];
+}
+
+// The short bar above a second version's text (#70), or null for any other
+// note. `original` is null when the original was renamed or removed.
+export function secondVersionBar(notebook, note) {
+  if (!note) return null;
+  const pair = notebook.conflictCopyPairs().find(({ copy }) => copy === note.title);
+  if (!pair) return null;
+  const name = note.title.replace(CONFLICT_SUFFIX, "");
+  return {
+    text: `This is a second version of '${name}'. Copy what you want to keep into '${name}', then delete this version.`,
+    original: pair.original,
+    openLabel: pair.original ? `Open '${pair.original}'` : null,
+    deleteLabel: "Delete this version",
+  };
 }
 
 // The ⋯ "This note" menu (#63): the open note's name and its actions. No note

@@ -124,8 +124,8 @@ test("renaming the Conflict Copy after merging by hand ends the conflict", async
 });
 
 test("the conflict message is short and counts the copies", () => {
-  assert.equal(conflictMessage(1), "A note changed in two places. Glacier kept both versions.");
-  assert.equal(conflictMessage(3), "3 notes changed in two places. Glacier kept both versions.");
+  assert.equal(conflictMessage(1), "A note has two versions. Check it");
+  assert.equal(conflictMessage(3), "3 notes have two versions. Check them");
 });
 
 test("the conflict status uses the short message", async () => {

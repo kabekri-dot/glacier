@@ -16,11 +16,12 @@
 import { createNotebook, importSummary, sourceLabel, syncErrorMessage } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { githubRemote } from "../src/github-remote.mjs";
-import { conflictMessage, createAutoSync, syncStatusText } from "../src/auto-sync.mjs";
+import { createAutoSync, syncDotText, syncStatusText } from "../src/auto-sync.mjs";
+import { createConflictLine } from "../src/conflict-line.mjs";
 import { createScreen } from "../src/screen.mjs";
 import { isOpenedByPage } from "../src/page-open.mjs";
 import { newNoteChoices, NEW_NOTE_HINT, PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
-import { notebookMenu, conflictMenu, noteMenu, pageNoteCount } from "../src/menu-contents.mjs";
+import { notebookMenu, conflictMenu, noteMenu, pageNoteCount, secondVersionBar } from "../src/menu-contents.mjs";
 import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
@@ -62,6 +63,7 @@ const pillCountEl = document.querySelector(".pill-count");
 const pillMenuEl = document.querySelector(".pill-menu");
 const syncDotEl = document.querySelector(".sync-dot");
 const conflictLineEl = document.querySelector(".conflict-line");
+const secondVersionBarEl = document.querySelector(".second-version-bar");
 const renameHintEl = document.querySelector(".rename-hint");
 const backlinksButtonEl = document.querySelector(".backlinks-button");
 const backlinksListEl = document.querySelector(".backlinks-list");
@@ -286,6 +288,39 @@ async function start() {
     if (note?.source) noteMetaEl.append(" · ", sourceLink(note.source));
     noteMetaEl.hidden = !note;
     noteEl.classList.toggle("has-meta", Boolean(note));
+    updateSecondVersionBar();
+  }
+
+  // The bar above a second version's text (#70): where the original is, and
+  // a way to delete this version (which asks first, #57).
+  function updateSecondVersionBar() {
+    const bar = secondVersionBar(notebook, screen.note());
+    secondVersionBarEl.hidden = !bar;
+    secondVersionBarEl.replaceChildren();
+    noteEl.classList.toggle("has-bar", Boolean(bar));
+    if (!bar) return;
+    const text = document.createElement("p");
+    text.textContent = bar.text;
+    const buttons = document.createElement("div");
+    buttons.className = "second-version-buttons";
+    if (bar.original) {
+      buttons.append(barButton(bar.openLabel, () => {
+        const original = notebook.note(bar.original);
+        if (original) openNote(original, { byPage: isOpenedByPage(original) });
+      }));
+    }
+    buttons.append(barButton(bar.deleteLabel, showDeleteQuestion));
+    secondVersionBarEl.append(text, buttons);
+    noteEl.style.setProperty("--bar-height", `${secondVersionBarEl.offsetHeight}px`);
+  }
+
+  function barButton(label, onClick) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "card-button";
+    button.textContent = label;
+    button.addEventListener("click", onClick);
+    return button;
   }
 
   function courseButton(note) {
@@ -827,30 +862,41 @@ async function start() {
     return section;
   }
 
-  // The sync dot in the pill shows the state by its colour; hovering it
-  // gives the state in words with the last sync.
+  // The sync dot in the pill shows the state by its colour; hovering it says
+  // what the state means (#70).
   function drawSyncStatus(status) {
-    const { label, detail } = syncStatusText(status);
+    const { label } = syncStatusText(status);
     syncDotEl.dataset.state = status.state;
-    syncDotEl.title = status.state === "off" ? label : `${label}. ${detail}`;
+    syncDotEl.title = syncDotText(status);
     syncDotEl.setAttribute("aria-label", label);
     drawConflictLine(status);
+    updateSecondVersionBar();
   }
 
-  // The short line under the pill while Conflict Copies are left (#59).
+  // The short line under the pill while notes have two versions (#59, #70).
+  const conflictLine = createConflictLine();
+  let conflictCount = 0;
+
   function drawConflictLine(status) {
-    const copies = status.state === "conflict" ? status.conflicts.length : 0;
-    conflictLineEl.hidden = copies === 0;
-    if (copies > 0) conflictLineEl.querySelector(".conflict-text").textContent = conflictMessage(copies);
+    conflictCount = status.state === "conflict" ? status.conflicts.length : 0;
+    conflictLineEl.hidden = !conflictLine.shown(conflictCount);
+    if (conflictCount > 0) conflictLineEl.querySelector(".conflict-show").textContent = conflictLine.text(conflictCount);
   }
 
-  // Show them: the pill menu with only the Conflict Copies, each next to its
-  // original.
+  // Check them: the pill menu with only the notes that have two versions,
+  // each original with its second version under it.
   function showConflictCopies() {
     openMenu();
     drawMenuParts(menuPanelEl.querySelector(".menu-body"), conflictMenu(notebook));
   }
   conflictLineEl.querySelector(".conflict-show").addEventListener("click", showConflictCopies);
+  conflictLineEl.querySelector(".conflict-close").addEventListener("click", () => {
+    conflictLine.close(conflictCount);
+    conflictLineEl.hidden = true;
+  });
+  syncDotEl.addEventListener("click", () => {
+    if (syncDotEl.dataset.state === "conflict") showConflictCopies();
+  });
 
   // What the Notes repo section of Settings asks of the Notebook, wherever
   // settings are drawn (see settings-view.js). The first sync goes through the
