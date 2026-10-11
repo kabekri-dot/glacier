@@ -6,6 +6,7 @@
 //   { kind: "heading", text, hint }       a small heading
 //   { kind: "notes", titles, current? }   note buttons, `current` the open one
 //   { kind: "newForPage", label, hint }   "+ New note for this page"
+//   { kind: "newCollection", label, hint } "+ New collection" under the Notebook heading
 //   { kind: "group", label, hint, open, archive, titles, course?, actions?, sections? }
 //                                  a foldable group; a Collection's has `course` and
 //                                  `actions` (its hover icons); the Archive has `sections`,
@@ -80,7 +81,7 @@ function browse(notebook, openNote) {
     parts.push(heading("Recent"), { kind: "notes", titles: recent.map((note) => note.title) });
   }
   const outline = notebook.outline();
-  parts.push(heading("Notebook"));
+  parts.push(heading("Notebook"), { kind: "newCollection", label: "+ New collection", hint: "Make an empty collection to fill later" });
   if (outline.courses.length + outline.uncategorised.length === 0) {
     parts.push({ kind: "empty", text: "No notes yet" });
   }
@@ -166,6 +167,7 @@ export function noteMenu(note) {
   return {
     heading: note.title,
     actions: [
+      { kind: "move", label: "Move to collection…", hint: "Put this note in a collection" },
       { kind: "download", label: "Download as a file", hint: "Save this note as a Markdown file" },
       note.archived
         ? { kind: "unarchive", label: "Unarchive", hint: "Put this note back in your lists" }
@@ -192,6 +194,7 @@ function noteCount(count) {
 // The hover icons on a Collection heading (#74): Download, Archive (Unarchive
 // in the Archive section) and Delete, each naming the Collection and its notes.
 export function collectionActions(course, count, archived = false) {
+  if (count === 0) return [{ kind: "delete", hint: `Delete '${course}'` }];
   const notes = noteCount(count);
   const named = `'${course}', ${notes}`;
   return [
@@ -208,6 +211,7 @@ export function archivedNotice(count) {
 }
 
 export function deleteCollectionQuestion(course, count) {
+  if (count === 0) return `Delete the empty collection '${course}'?`;
   return `Delete the collection '${course}' and its ${noteCount(count)}? They're also removed from your Notes repo.`;
 }
 

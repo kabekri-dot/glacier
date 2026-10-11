@@ -201,6 +201,12 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
       return { type: "note", note, reload: false, changed: true };
     },
 
+    removeFromCourse() {
+      session.flush();
+      note = notebook.removeFromCourse(note.title);
+      return { type: "note", note, reload: false, changed: true };
+    },
+
     archive() {
       session.flush();
       notebook.archiveNote(note.title);

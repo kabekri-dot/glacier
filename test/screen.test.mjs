@@ -642,3 +642,14 @@ test("the ← box is empty at the start", () => {
   const { screen } = setup();
   assert.deepEqual(screen.lastNotes(), []);
 });
+
+test("taking the note out of its Collection keeps it open", () => {
+  const { notebook, screen, grid } = withNotes();
+  screen.open(grid);
+  screen.moveToCourse("Khan");
+  const view = screen.removeFromCourse();
+  assert.equal(view.type, "note");
+  assert.equal(view.changed, true);
+  assert.equal(screen.note().course, undefined);
+  assert.equal(notebook.note("Grid").course, undefined);
+});

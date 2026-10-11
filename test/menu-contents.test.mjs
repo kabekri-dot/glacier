@@ -67,6 +67,7 @@ test("the Notebook lists Collections with their notes, then the notes without a 
   const menu = notebookMenu(notebookWith(), "");
   assert.deepEqual(menu, [
     { kind: "heading", text: "Notebook", hint: null },
+    { kind: "newCollection", label: "+ New collection", hint: "Make an empty collection to fill later" },
     { kind: "group", label: "TOP Foundations", hint: "Notes in this Collection", open: true, archive: false, titles: ["Box model", "Flexbox"], course: "TOP Foundations", actions: [
       { kind: "download", hint: "Download 'TOP Foundations', 2 notes" },
       { kind: "archive", hint: "Archive 'TOP Foundations', 2 notes" },
@@ -128,6 +129,7 @@ test("an empty Notebook says there are no notes yet", () => {
   const menu = notebookMenu(createNotebook({ storage: memoryStorage() }), "");
   assert.deepEqual(menu, [
     { kind: "heading", text: "Notebook", hint: null },
+    { kind: "newCollection", label: "+ New collection", hint: "Make an empty collection to fill later" },
     { kind: "empty", text: "No notes yet" },
   ]);
 });
@@ -194,6 +196,7 @@ test("an open note gets its name, Download as a file, Archive and Delete", () =>
   assert.deepEqual(
     menu.actions.map((action) => [action.kind, action.label]),
     [
+      ["move", "Move to collection…"],
       ["download", "Download as a file"],
       ["archive", "Archive"],
       ["delete", "Delete"],
@@ -206,7 +209,7 @@ test("an archived note offers Unarchive instead of Archive", () => {
   const notebook = notebookWith();
   notebook.archiveNote("Flexbox");
   const menu = noteMenu(notebook.note("Flexbox"));
-  assert.deepEqual(menu.actions.map((action) => action.label), ["Download as a file", "Unarchive", "Delete"]);
+  assert.deepEqual(menu.actions.map((action) => action.label), ["Move to collection…", "Download as a file", "Unarchive", "Delete"]);
 });
 
 test("a second version shows a bar naming the original and the two buttons", () => {
@@ -275,4 +278,14 @@ test("a note with a page is from a website and one without is your own", () => {
   const notebook = notebookWith();
   assert.deepEqual(noteOrigin(notebook, "Flexbox"), { kind: "website", hint: "From a website" });
   assert.deepEqual(noteOrigin(notebook, "Margins"), { kind: "own", hint: "Your own note" });
+});
+
+test("the Notebook part offers + New collection, and an empty Collection only Delete", () => {
+  const notebook = notebookWith();
+  notebook.newCollection("Biology");
+  const parts = notebookMenu(notebook, "");
+  assert.equal(parts.find((part) => part.kind === "newCollection").label, "+ New collection");
+  const group = parts.find((part) => part.kind === "group" && part.course === "Biology");
+  assert.deepEqual(group.actions.map((action) => action.kind), ["delete"]);
+  assert.equal(deleteCollectionQuestion("Biology", 0), "Delete the empty collection 'Biology'?");
 });
