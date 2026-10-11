@@ -1,0 +1,223 @@
+// The Screen: what the sidebar shows (#65). It holds the note on screen (or
+// none), whether the page opened it, the fresh page (#61) and the note that
+// was on screen before it, the ← history (#52), and the Note session that
+// saves what is typed (#39). panel.js only listens to events, calls one action
+// and draws the description the action returns. No DOM, no browser APIs.
+//
+// The Opening flow (#40) still decides *which* view a page change leads to;
+// its views are handed to show(). Each action returns one of:
+//
+//   { type: "note", note, reload, changed? }  the note on screen. `reload`
+//       puts its text in the editor with the caret at the top; without it the
+//       text stays as typed and only the pill, Course line and Backlinks change.
+//   { type: "freshPage", title, source, editTitle }  an empty page that
+//       becomes a note at the first character or a confirmed title.
+//   { type: "startPrompt" } or { type: "permissionCard" }
+//   { type: "followPage", lessonNote? }  no note any more: the Opening flow
+//       decides (`lessonNote` is the "+ Lesson note" click).
+//   { type: "pageChanged" }  a pulled Lesson note may belong to this page.
+//   { type: "backlinks" }    only the Backlinks may have changed.
+//   { type: "titleRefused", suggestion? }  the title in the pill is refused.
+//
+// `changed: true` means the Notebook changed, for Sync. `beforeLeave()` is
+// called just before the note on screen is left, so the editor can take an
+// untouched `/` back out before it is saved (#28). Timers are injected.
+import { createNoteSession } from "./note-session.mjs";
+import { createNoteHistory } from "./note-history.mjs";
+import { isOpenedByPage } from "./page-open.mjs";
+
+export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ...timers }) {
+  let note = null;
+  // Whether the page opened the note, so a later page change may replace it
+  // (only with the "keep a note I opened myself" setting, ADR 0009).
+  let openedByPage = false;
+  // The fresh page on screen: { type: "lesson" | "concept", title, source }.
+  let freshPage = null;
+  // The note on screen when a fresh page took its place, so Esc can go back.
+  let before = null;
+  let created = null;
+  const history = createNoteHistory();
+  const session = createNoteSession({
+    notebook,
+    onSaveError,
+    onCreate: (made) => (created = made),
+    ...timers,
+  });
+
+  function showNote(next, { byPage = false, fromHistory = false } = {}) {
+    beforeLeave();
+    session.open(next);
+    notebook.markOpened(next.title);
+    freshPage = null;
+    before = null;
+    note = next;
+    openedByPage = byPage;
+    if (!fromHistory) history.visit(next.title);
+    return { type: "note", note, reload: true };
+  }
+
+  function showNothing() {
+    session.close();
+    note = null;
+    openedByPage = false;
+    freshPage = null;
+  }
+
+  function rememberNoteBefore() {
+    if (note) before = { note, openedByPage };
+  }
+
+  // `type` is "lesson" or "concept"; a Lesson note without `source` is made by
+  // hand. `editTitle` asks for the title in the pill to be edited at once.
+  function startFreshPage({ type, title = "", source, editTitle = false }) {
+    rememberNoteBefore();
+    beforeLeave();
+    session.openDraft({ type, title, source });
+    note = null;
+    openedByPage = false;
+    freshPage = { type, title, source };
+    return { type: "freshPage", title, source, editTitle };
+  }
+
+  // The Note session made the note on the fresh page: from here it is a
+  // normal note, with its text as typed.
+  function freshPageBecameNote() {
+    const made = created;
+    created = null;
+    freshPage = null;
+    before = null;
+    note = made;
+    openedByPage = isOpenedByPage(made);
+    history.visit(made.title);
+    notebook.markOpened(made.title);
+    return { type: "note", note, reload: false, changed: true };
+  }
+
+  return {
+    note: () => note,
+    freshPage: () => freshPage,
+    // For the Opening flow's decision.
+    onScreen: () => ({ current: note, openedByPage }),
+    // The title ← would open, or null.
+    previous: () => history.previous(),
+    flush: () => session.flush(),
+
+    // A view the Opening flow decided on.
+    show(view) {
+      switch (view.type) {
+        case "open":
+          return showNote(view.note, { byPage: true });
+        case "lessonDraft":
+          return startFreshPage({
+            type: "lesson",
+            title: view.page.title,
+            source: view.page.url,
+            editTitle: view.editTitle,
+          });
+        case "byHandDraft":
+          return startFreshPage({ type: "lesson" });
+        default:
+          showNothing();
+          return { type: view.type };
+      }
+    },
+
+    // A note the user opened: from the menu, a Link, the recent notes. A
+    // menu entry passes `byPage` for a Lesson note with a Source.
+    open(next, { byPage = false } = {}) {
+      return showNote(next, { byPage });
+    },
+
+    startFreshPage,
+
+    // "+ Lesson note": the page decides between its note and a fresh page.
+    startLessonNote() {
+      rememberNoteBefore();
+      showNothing();
+      return { type: "followPage", lessonNote: true };
+    },
+
+    // The text changed. The first character on a fresh page makes the note.
+    edit(body) {
+      session.edit(body);
+      return created ? freshPageBecameNote() : null;
+    },
+
+    // The title typed in the pill on a fresh page, confirmed with Enter.
+    confirmTitle(title) {
+      session.confirmTitle(title);
+      return created ? freshPageBecameNote() : { type: "titleRefused" };
+    },
+
+    // Esc on a fresh page: back to the note from before, if it's still there.
+    cancel() {
+      const back = before;
+      before = null;
+      const stillThere = back && notebook.note(back.note.title);
+      if (stillThere) return showNote(stillThere, { byPage: back.openedByPage });
+      return { type: "followPage" };
+    },
+
+    // ← opens the note that was on screen before. A note that has since gone
+    // is skipped, so it never lands nowhere; null when there is none.
+    back() {
+      for (let title = history.back(); title !== null; title = history.back()) {
+        const found = notebook.note(title);
+        if (found) return showNote(found, { byPage: isOpenedByPage(found), fromHistory: true });
+      }
+      return null;
+    },
+
+    rename(title) {
+      session.flush();
+      const result = notebook.renameNote(note.title, title);
+      if (!result.ok) return { type: "titleRefused", suggestion: result.suggestion };
+      return { ...showNote(result.note, { byPage: openedByPage }), changed: true };
+    },
+
+    moveToCourse(course) {
+      session.flush();
+      note = notebook.moveToCourse(note.title, course);
+      return { type: "note", note, reload: false, changed: true };
+    },
+
+    archive() {
+      session.flush();
+      notebook.archiveNote(note.title);
+      showNothing();
+      return { type: "followPage", changed: true };
+    },
+
+    unarchive() {
+      session.flush();
+      notebook.unarchiveNote(note.title);
+      note = notebook.note(note.title);
+      return { type: "note", note, reload: false, changed: true };
+    },
+
+    delete() {
+      session.flush();
+      notebook.deleteNote(note.title);
+      showNothing();
+      return { type: "followPage", changed: true };
+    },
+
+    // The note on screen again, as stored (Keep after the delete question).
+    reopen() {
+      return showNote(notebook.note(note.title) ?? note, { byPage: openedByPage, fromHistory: true });
+    },
+
+    // A pull changed these notes.
+    pulled(titles) {
+      if (!note) {
+        const lessonCameIn = titles.some((title) => notebook.note(title)?.source);
+        return lessonCameIn ? { type: "pageChanged" } : null;
+      }
+      if (!titles.includes(note.title)) return { type: "backlinks" };
+      const found = notebook.note(note.title);
+      if (found) return showNote(found, { byPage: openedByPage, fromHistory: true });
+      showNothing();
+      return { type: "followPage" };
+    },
+  };
+}

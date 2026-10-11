@@ -17,9 +17,8 @@ import { createNotebook, importSummary, sourceLabel, syncErrorMessage } from "..
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { githubRemote } from "../src/github-remote.mjs";
 import { conflictMessage, createAutoSync, syncStatusText } from "../src/auto-sync.mjs";
-import { createNoteSession } from "../src/note-session.mjs";
+import { createScreen } from "../src/screen.mjs";
 import { isOpenedByPage } from "../src/page-open.mjs";
-import { createNoteHistory } from "../src/note-history.mjs";
 import {
   newNoteChoices,
   LESSON_NOTE_HINT,
@@ -175,30 +174,24 @@ async function start() {
     return;
   }
 
-  // The note currently shown. Nothing is open until the page's Lesson Note is
-  // found or a note is created (the Opening flow, below); while nothing is
-  // open the panel shows a way to make a note rather than a blank, locked page
-  // (#3). Following a Link opens another note in place (openLink).
-  let current = null;
-  // Whether the open note was opened by the page (so a later page change may
-  // replace it) or by the user following a Link / creating it (so it stays put
-  // when the page behind the sidebar changes — issue #29).
-  let openedByPage = false;
-  // A fresh page that is not a note yet (#61): { type, title, hint }. The Note
-  // session makes the note at the first character or a confirmed title.
-  let draft = null;
-  // The note on screen when a fresh page took its place, so Esc can go back.
-  let noteBeforeDraft = null;
-  // The notes that have been on screen, for the pill's ← button (#52).
-  const history = createNoteHistory();
+  // What's on screen (the note, the fresh page of #61, the note before it,
+  // the ← history and saving) is the Screen's (#65). Nothing is open until the
+  // page's Lesson Note is found or a note is made (the Opening flow, below);
+  // while nothing is open the panel shows a way to make a note rather than a
+  // blank, locked page (#3). Each action returns what to draw next.
+  const screen = createScreen({
+    notebook,
+    onSaveError: reportSaveError,
+    // Leaving a note with the menu open is a dismissal, so an untouched + `/`
+    // is taken back out before the note we're leaving is saved (#28).
+    beforeLeave: () => editor.dismissMenu(),
+  });
 
   // The editing decisions — the note's lines and caret, typing, Enter,
   // Backspace, ↑/↓, paste, the `/` command menu with the + button and the
   // cursor maths — live behind this front door (#31, #32, ADR 0002). This file
-  // only forwards what happened and draws editor.state and editor.menu; it does
-  // the opening of notes (openNote); a text change is forwarded to the Note
-  // session, which owns saving the open note.
-  const session = createNoteSession({ notebook, onSaveError: reportSaveError, onCreate: noteCreated });
+  // only forwards what happened and draws editor.state and editor.menu; a text
+  // change is forwarded to the Screen, which owns saving the open note.
   // Sync with the Notes Repo runs by itself (#15): a pull when the sidebar
   // opens and a push a few seconds after typing stops. When to sync is
   // auto-sync's; this connects it to GitHub and draws the status.
@@ -208,38 +201,76 @@ async function start() {
       const { repo, token } = await loadConnection();
       return repo && token ? { remote: githubRemote({ repo, token }), repo } : null;
     },
-    beforeSync: () => session.flush(),
+    beforeSync: () => screen.flush(),
     onStatus: drawSyncStatus,
-    onPulled: showPulled,
+    onPulled: (titles) => {
+      if (menuIsOpen()) closeMenu();
+      draw(screen.pulled(titles));
+    },
   });
   const editor = createEditorSession({
     onChange: (body) => {
-      session.edit(body);
+      draw(screen.edit(body));
       autoSync.changed();
     },
     titles: () => notebook.notes().map((note) => note.title),
   });
 
-  // Open a note in the editor: flush any pending save for the note we're
-  // leaving, load the new note's lines and draw it with the caret at the top.
-  // `byPage` marks a note opened to follow the current page (see openedByPage).
-  function openNote(note, { byPage = false, fromHistory = false } = {}) {
-    // Leaving a note with the menu open is a dismissal, so an untouched + `/`
-    // is taken back out before the note we're leaving is saved (#28).
-    editor.dismissMenu();
-    session.open(note);
-    notebook.markOpened(note.title);
-    draft = null;
-    noteBeforeDraft = null;
-    current = note;
-    openedByPage = byPage;
-    if (!fromHistory) history.visit(note.title);
-    editor.load(current.body ?? "");
-    render();
-    closeMenu();
-    updatePill();
-    updateBacklinks();
-    updateNoteMeta();
+  // Open a note the user picked. `byPage` is for a Lesson note with a Source.
+  function openNote(note, options) {
+    draw(screen.open(note, options));
+  }
+
+  // Draw what a Screen action returned (see src/screen.mjs for the views).
+  function draw(view) {
+    if (!view) return;
+    if (view.changed) autoSync.changed();
+    switch (view.type) {
+      case "note":
+        if (view.reload) {
+          // The note's lines in the editor, with the caret at the top.
+          editor.load(view.note.body ?? "");
+          render();
+          closeMenu();
+        } else {
+          // The text stays as typed; a fresh page that became a note loses its
+          // hint and gets its + back.
+          if (focusedEl) focusedEl.dataset.placeholder = EMPTY_LINE_HINT;
+          noteEl.querySelector(".line-plus")?.removeAttribute("hidden");
+        }
+        updatePill();
+        updateBacklinks();
+        updateNoteMeta();
+        break;
+      case "freshPage":
+        editor.load("");
+        closeMenu();
+        updatePill();
+        updateBacklinks();
+        updateNoteMeta();
+        render();
+        if (view.editTitle) startTitleEdit();
+        break;
+      case "startPrompt":
+        showStartPrompt();
+        break;
+      case "permissionCard":
+        showPermissionCard();
+        break;
+      case "followPage":
+        updatePill();
+        updateNoteMeta();
+        updateBacklinks();
+        if (view.lessonNote) openingFlow.clickLessonNote({ editTitle: true });
+        else openingFlow.start();
+        break;
+      case "pageChanged":
+        openingFlow.pageChanged();
+        break;
+      case "backlinks":
+        updateBacklinks();
+        break;
+    }
   }
 
   // --- The note's header (#13, #61) ----------------------------------------
@@ -253,7 +284,8 @@ async function start() {
   function updateNoteMeta() {
     noteMetaEl.replaceChildren();
     noteMetaEl.classList.remove("is-picking");
-    const lesson = current?.type === "lesson" ? current : null;
+    const note = screen.note();
+    const lesson = note?.type === "lesson" ? note : null;
     if (lesson) noteMetaEl.append(courseButton(lesson));
     if (lesson?.source) noteMetaEl.append(" · ", sourceLink(lesson.source));
     noteMetaEl.hidden = !lesson;
@@ -333,10 +365,7 @@ async function start() {
   }
 
   function moveCurrentNote(course) {
-    session.flush();
-    current = notebook.moveToCourse(current.title, course);
-    autoSync.changed();
-    updateNoteMeta();
+    draw(screen.moveToCourse(course));
     render();
   }
 
@@ -353,7 +382,7 @@ async function start() {
       event.preventDefault();
       event.stopPropagation();
       updateNoteMeta();
-      if (current) render();
+      if (screen.note()) render();
     },
     true,
   );
@@ -389,7 +418,8 @@ async function start() {
   function updateBacklinks() {
     closeBacklinks();
     backlinksListEl.replaceChildren();
-    const linking = current ? notebook.backlinks(current.title) : [];
+    const note = screen.note();
+    const linking = note ? notebook.backlinks(note.title) : [];
     backlinksButtonEl.hidden = linking.length === 0;
     backlinksButtonEl.textContent =
       linking.length === 1 ? "1 backlink" : `${linking.length} backlinks`;
@@ -418,27 +448,23 @@ async function start() {
 
   function updatePill() {
     stopTitleEdit();
-    pillTitleEl.textContent = current ? current.title : draft ? draft.title || "Title" : "Glacier";
-    pillTitleEl.classList.toggle("is-draft", Boolean(draft));
-    pillTitleEl.title = draft ? "Click to name this note" : "Click to rename";
-    pillArchivedEl.hidden = !current?.archived;
+    const note = screen.note();
+    const freshPage = screen.freshPage();
+    pillTitleEl.textContent = note ? note.title : freshPage ? freshPage.title || "Title" : "Glacier";
+    pillTitleEl.classList.toggle("is-draft", Boolean(freshPage));
+    pillTitleEl.title = freshPage ? "Click to name this note" : "Click to rename";
+    pillArchivedEl.hidden = !note?.archived;
     updateNoteMenuButton();
-    const previous = history.previous();
+    const previous = screen.previous();
     backEl.hidden = previous === null || !tabSettings.showPreviousButton;
     backEl.title = previous === null ? "" : `Back to: ${previous}`;
   }
 
-  // ← opens the note that was on screen before. A note that has since gone
-  // is skipped, so the button never lands nowhere.
+  // ← opens the note that was on screen before, skipping any that are gone.
   backEl.addEventListener("click", () => {
-    for (let title = history.back(); title !== null; title = history.back()) {
-      const note = notebook.note(title);
-      if (note) {
-        openNote(note, { byPage: isOpenedByPage(note), fromHistory: true });
-        return;
-      }
-    }
-    updatePill();
+    const view = screen.back();
+    if (view) draw(view);
+    else updatePill();
   });
 
   // + opens a small menu of the kinds of note to make. On a website the Lesson
@@ -450,13 +476,7 @@ async function start() {
   }
 
   function startLessonNote() {
-    rememberNoteBeforeDraft();
-    session.close();
-    current = null;
-    openedByPage = false;
-    updatePill();
-    updateNoteMeta();
-    openingFlow.clickLessonNote({ editTitle: true });
+    draw(screen.startLessonNote());
   }
 
   async function openNewMenu() {
@@ -471,8 +491,8 @@ async function start() {
       button.addEventListener("click", () => {
         closeNewMenu();
         if (choice.kind === "lesson") startLessonNote();
-        else if (choice.kind === "byHand") showDraft({ type: "lesson", hint: DRAFT_HINT, editTitle: true });
-        else showDraft({ type: "concept", hint: DRAFT_HINT, editTitle: true });
+        else if (choice.kind === "byHand") draw(screen.startFreshPage({ type: "lesson", editTitle: true }));
+        else draw(screen.startFreshPage({ type: "concept", editTitle: true }));
       });
       newMenuEl.appendChild(button);
     }
@@ -505,7 +525,7 @@ async function start() {
   function dismissMenuPanel() {
     if (!menuIsOpen()) return;
     closeMenu();
-    if (current || draft) render();
+    if (screen.note() || screen.freshPage()) render();
   }
 
   function noteButton(title, className = "menu-item") {
@@ -627,7 +647,7 @@ async function start() {
       return;
     }
     // Flush the line being edited so the menu sees its latest text.
-    session.flush();
+    screen.flush();
     menuPanelEl.replaceChildren();
 
     const search = document.createElement("input");
@@ -662,7 +682,7 @@ async function start() {
     newConcept.textContent = "+ Concept";
     newConcept.title = CONCEPT_NOTE_HINT;
     newConcept.addEventListener("click", () => {
-      showDraft({ type: "concept", title: search.value.trim(), hint: DRAFT_HINT, editTitle: true });
+      draw(screen.startFreshPage({ type: "concept", title: search.value.trim(), editTitle: true }));
     });
     actions.append(newLesson, newConcept);
 
@@ -696,15 +716,15 @@ async function start() {
   }
 
   function updateNoteMenuButton() {
-    noteMenuButtonEl.hidden = !current;
-    if (!current) closeNoteMenu();
+    noteMenuButtonEl.hidden = !screen.note();
+    if (!screen.note()) closeNoteMenu();
   }
 
   function openNoteMenu() {
-    const menu = noteActions(current);
+    const menu = noteActions(screen.note());
     if (!menu) return;
     closeMenu();
-    session.flush();
+    screen.flush();
     noteMenuEl.replaceChildren();
     const heading = document.createElement("p");
     heading.className = "note-menu-heading";
@@ -715,10 +735,10 @@ async function start() {
         menuButton(action.label, action.hint, () => {
           closeNoteMenu();
           if (action.kind === "download") {
-            const file = notebook.exportNote(current.title);
+            const file = notebook.exportNote(screen.note().title);
             download(file.text, "text/markdown", file.path.split("/").pop());
-          } else if (action.kind === "archive") archiveCurrentNote();
-          else if (action.kind === "unarchive") unarchiveCurrentNote();
+          } else if (action.kind === "archive") draw(screen.archive());
+          else if (action.kind === "unarchive") draw(screen.unarchive());
           else showDeleteQuestion();
         }),
       );
@@ -733,35 +753,12 @@ async function start() {
     else openNoteMenu();
   });
 
-  // Archive (#58): the note leaves the lists, and the Opening flow decides
-  // what the sidebar shows next (a page with no Lesson note gets a fresh page).
-  function archiveCurrentNote() {
-    session.flush();
-    notebook.archiveNote(current.title);
-    session.close();
-    current = null;
-    openedByPage = false;
-    updatePill();
-    updateNoteMeta();
-    updateBacklinks();
-    autoSync.changed();
-    openingFlow.start();
-  }
-
-  function unarchiveCurrentNote() {
-    session.flush();
-    notebook.unarchiveNote(current.title);
-    current = notebook.note(current.title);
-    updatePill();
-    autoSync.changed();
-  }
-
   // Delete this note (#57): a short question in the sidebar, not a browser
   // dialog. Keep or Esc puts the note back as it was. Delete removes it, and
   // the Opening flow decides what the sidebar shows next.
   function showDeleteQuestion() {
-    const doomed = current;
-    session.flush();
+    const doomed = screen.note();
+    screen.flush();
     noteEl.replaceChildren();
 
     const card = document.createElement("div");
@@ -786,7 +783,7 @@ async function start() {
 
     function keepNote() {
       document.removeEventListener("keydown", onKey, true);
-      openNote(notebook.note(doomed.title) ?? doomed, { byPage: openedByPage, fromHistory: true });
+      draw(screen.reopen());
     }
     function onKey(event) {
       if (event.key !== "Escape") return;
@@ -796,15 +793,7 @@ async function start() {
     }
     confirm.addEventListener("click", () => {
       document.removeEventListener("keydown", onKey, true);
-      notebook.deleteNote(doomed.title);
-      session.close();
-      current = null;
-      openedByPage = false;
-      updatePill();
-      updateNoteMeta();
-      updateBacklinks();
-      autoSync.changed();
-      openingFlow.start();
+      draw(screen.delete());
     });
     keep.addEventListener("click", keepNote);
     document.addEventListener("keydown", onKey, true);
@@ -876,30 +865,6 @@ async function start() {
   }
   conflictLineEl.querySelector(".conflict-show").addEventListener("click", showConflictCopies);
 
-  // A pull changed notes. When the open note is one of them, it is shown
-  // again with the incoming text; when it is gone (renamed in the other
-  // browser), the sidebar opens what the page asks for. With no note open, a
-  // Lesson Note that came in may be the one for this page.
-  function showPulled(titles) {
-    if (menuIsOpen()) closeMenu();
-    if (!current) {
-      const lessonCameIn = titles.some((title) => notebook.note(title)?.source);
-      if (lessonCameIn) openingFlow.pageChanged();
-      return;
-    }
-    if (!titles.includes(current.title)) {
-      updateBacklinks();
-      return;
-    }
-    const note = notebook.note(current.title);
-    if (note) openNote(note, { byPage: openedByPage, fromHistory: true });
-    else {
-      session.close();
-      current = null;
-      openingFlow.start();
-    }
-  }
-
   // What the Notes repo section of Settings asks of the Notebook, wherever
   // settings are drawn (see settings-view.js). The first sync goes through the
   // GitHub remote; the repo and token are saved only once GitHub has accepted
@@ -921,29 +886,29 @@ async function start() {
       }
       await extensionStorage.set({ notesRepo: repo, githubToken: token });
       autoSync.syncNow();
-      if (!current) openingFlow.start();
+      if (!screen.note()) openingFlow.start();
       else updateBacklinks();
       if (!settingsWanted) showNotice(`Your notes from ${repo} are here.`);
       return { notes: result.notes };
     },
 
     exportCourse(course) {
-      session.flush();
+      screen.flush();
       download(notebook.exportCourseZip(course), "application/zip", `${course} ${today()}.zip`);
     },
 
     exportAll() {
-      session.flush();
+      screen.flush();
       download(notebook.exportZip(), "application/zip", `Glacier notes ${today()}.zip`);
     },
 
     exportArchive() {
-      session.flush();
+      screen.flush();
       download(notebook.exportArchiveZip(), "application/zip", `Glacier archive ${today()}.zip`);
     },
 
     async restore(bytes) {
-      session.flush();
+      screen.flush();
       try {
         const result = await notebook.importZip(bytes);
         showNotice(importSummary(result));
@@ -1022,7 +987,7 @@ async function start() {
     closeMenu();
     closeNewMenu();
     closeBacklinks();
-    session.flush();
+    screen.flush();
     if (panelPlace === "ask") {
       showPanelsCard(section);
       return;
@@ -1042,7 +1007,7 @@ async function start() {
     settingsSection = null;
     glacierButtonEl.setAttribute("aria-expanded", "false");
     placePanels();
-    if (redraw && (current || draft)) render();
+    if (redraw && (screen.note() || screen.freshPage())) render();
   }
 
   // Writing again, or opening the menus, closes settings.
@@ -1341,29 +1306,23 @@ async function start() {
   function saveTitleEdit() {
     if (!titleEdit) return;
     const { input } = titleEdit;
-    if (draft) {
-      // A confirmed title makes the note (#61), and the caret drops onto the
-      // first line of the paper.
-      const note = session.confirmTitle(input.value);
-      if (note) render();
-      else showRenameHint(input, {});
-      return;
-    }
-    session.flush();
-    const result = notebook.renameNote(current.title, input.value);
-    if (result.ok) {
-      openNote(result.note, { byPage: openedByPage });
-      autoSync.changed();
-    } else showRenameHint(input, result);
+    // On a fresh page a confirmed title makes the note (#61), and the caret
+    // drops onto the first line of the paper.
+    const freshPage = screen.freshPage();
+    const view = freshPage ? screen.confirmTitle(input.value) : screen.rename(input.value);
+    if (view.type === "titleRefused") return showRenameHint(input, view);
+    draw(view);
+    if (freshPage) render();
   }
 
   function startTitleEdit() {
-    if (titleEdit || !(current || draft)) return;
+    const note = screen.note();
+    if (titleEdit || !(note || screen.freshPage())) return;
     closeMenu();
     const input = document.createElement("input");
     input.type = "text";
     input.className = "pill-title-input";
-    input.value = current ? current.title : draft.title;
+    input.value = note ? note.title : screen.freshPage().title;
     input.placeholder = "Title";
     input.setAttribute("aria-label", "Note title");
     input.addEventListener("keydown", (event) => {
@@ -1374,13 +1333,13 @@ async function start() {
         event.preventDefault();
         event.stopPropagation();
         stopTitleEdit();
-        if (draft) cancelDraft();
-        else if (current) render();
+        if (screen.freshPage()) draw(screen.cancel());
+        else if (screen.note()) render();
       }
     });
     // Clicking away from an empty title on a fresh page just leaves it unnamed.
     input.addEventListener("blur", () => {
-      if (draft && !input.value.trim()) stopTitleEdit();
+      if (screen.freshPage() && !input.value.trim()) stopTitleEdit();
       else saveTitleEdit();
     });
     titleEdit = { input };
@@ -1490,12 +1449,12 @@ async function start() {
     if (event.target !== noteEl || !noteEl.lastElementChild) return;
     // On a fresh page a click only puts the caret on the first line: adding
     // lines down to the click would already make the note (#61).
-    if (draft) {
+    if (screen.freshPage()) {
       event.preventDefault();
       render();
       return;
     }
-    if (!current) return;
+    if (!screen.note()) return;
     const below = event.clientY - noteEl.lastElementChild.getBoundingClientRect().bottom;
     if (below < 0) return;
     event.preventDefault();
@@ -1781,7 +1740,7 @@ async function start() {
     el.className = isCode ? "md-edit md-code" : "md-edit";
     el.contentEditable = "true";
     el.setAttribute("role", "textbox");
-    el.dataset.placeholder = draft ? draft.hint : EMPTY_LINE_HINT;
+    el.dataset.placeholder = lineHint();
     drawFocused(el, editor.lines.slice(start, range.end));
 
     // Hand the new text and caret to the session, which splices the block and
@@ -2095,7 +2054,7 @@ async function start() {
         plus.textContent = "+";
         plus.setAttribute("aria-label", "Open the command menu");
         // On a fresh page the + would already make the note, so it waits.
-        plus.hidden = Boolean(draft);
+        plus.hidden = Boolean(screen.freshPage());
         plus.addEventListener("mousedown", (event) => {
           event.preventDefault();
           editor.openMenuFromPlus(built.start);
@@ -2136,109 +2095,39 @@ async function start() {
   const browserPage = createBrowserPage(api);
   const openingFlow = createOpeningFlow({
     page: browserPage,
-    getOpenNote: () => ({ current, openedByPage }),
+    getOpenNote: () => screen.onScreen(),
     lessonNoteForSource: (url) => notebook.lessonNoteForSource(url),
-    show: showOpeningView,
+    show: (view) => draw(screen.show(view)),
     getTabSettings: () => tabSettings,
   });
 
   // --- A fresh page for a new note (#61) -------------------------------------
   //
   // No create form: a new note is an empty page you write on at once. The
-  // Note session makes the note at the first character or when the title in
-  // the pill is confirmed; until then a click or leaving makes nothing.
+  // Screen makes the note at the first character or when the title in the
+  // pill is confirmed; until then a click or leaving makes nothing.
 
-  function rememberNoteBeforeDraft() {
-    if (current) noteBeforeDraft = { note: current, openedByPage };
+  // The quiet line on an empty line: on a fresh page it says where the note
+  // starts, with the page's own line when it is for a website.
+  function lineHint() {
+    const freshPage = screen.freshPage();
+    if (!freshPage) return EMPTY_LINE_HINT;
+    return freshPage.source ? PAGE_DRAFT_HINT : DRAFT_HINT;
   }
 
-  // `type` is "lesson" or "concept"; a Lesson note without `source` is made by
-  // hand. `editTitle` puts the title in the pill into edit mode, all selected.
-  function showDraft({ type, title = "", source, hint, editTitle = false }) {
-    rememberNoteBeforeDraft();
-    editor.dismissMenu();
-    session.openDraft({ type, title, source });
-    current = null;
-    openedByPage = false;
-    draft = { type, title, hint };
-    editor.load("");
-    closeMenu();
-    updatePill();
-    updateBacklinks();
-    updateNoteMeta();
-    render();
-    if (editTitle) startTitleEdit();
-  }
-
-  // The Note session made the note: from here it is a normal note.
-  function noteCreated(note) {
-    draft = null;
-    noteBeforeDraft = null;
-    current = note;
-    openedByPage = isOpenedByPage(note);
-    history.visit(note.title);
-    notebook.markOpened(note.title);
-    updatePill();
-    updateBacklinks();
-    updateNoteMeta();
-    if (focusedEl) focusedEl.dataset.placeholder = EMPTY_LINE_HINT;
-    noteEl.querySelector(".line-plus")?.removeAttribute("hidden");
-    autoSync.changed();
-  }
-
-  // Esc before the note was made: back to the note from before, and nothing
-  // is made.
-  function cancelDraft() {
-    const before = noteBeforeDraft;
-    noteBeforeDraft = null;
-    const stillThere = before && notebook.note(before.note.title);
-    openingFlow.cancelDraft(stillThere ? { note: stillThere, openedByPage: before.openedByPage } : null);
-  }
-
-  // Esc on the paper of a fresh page. The title field, menus and cards handle
-  // their own Esc first.
+  // Esc on the paper of a fresh page: back to the note from before, and
+  // nothing is made. The title field, menus and cards handle their own Esc.
   document.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape" || event.defaultPrevented || !draft || titleEdit) return;
+    if (event.key !== "Escape" || event.defaultPrevented || !screen.freshPage() || titleEdit) return;
     event.preventDefault();
-    cancelDraft();
+    draw(screen.cancel());
   });
-
-  // Draw what the Opening flow decided.
-  function showOpeningView(view) {
-    switch (view.type) {
-      case "startPrompt":
-        showStartPrompt();
-        break;
-      case "permissionCard":
-        showPermissionCard();
-        break;
-      case "open":
-        openNote(view.note, { byPage: view.openedByPage ?? true });
-        break;
-      case "lessonDraft":
-        showDraft({
-          type: "lesson",
-          title: view.page.title,
-          source: view.page.url,
-          hint: PAGE_DRAFT_HINT,
-          editTitle: view.editTitle,
-        });
-        break;
-      case "byHandDraft":
-        showDraft({ type: "lesson", hint: DRAFT_HINT });
-        break;
-    }
-  }
 
   // The starting panel when no note is open and the permission hasn't been
   // granted yet: one handwritten line and a quiet "+ Lesson note", so there's
   // always a way in (#3). Clicking it either proceeds (already allowed) or
   // shows the card.
   function showStartPrompt() {
-    session.close();
-    draft = null;
-    current = null;
-    openedByPage = false;
     updatePill();
     updateNoteMeta();
     noteEl.replaceChildren();
@@ -2264,8 +2153,6 @@ async function start() {
   // permission is for and what it is never used for. The browser's prompt only
   // appears after Allow, straight from that click.
   function showPermissionCard() {
-    session.close();
-    draft = null;
     noteEl.replaceChildren();
 
     const card = document.createElement("div");
@@ -2319,24 +2206,24 @@ async function start() {
 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
-      session.flush();
+      screen.flush();
       autoSync.flush();
     } else autoSync.syncNow();
   });
   window.addEventListener("pagehide", () => {
-    session.flush();
+    screen.flush();
     autoSync.flush();
   });
   window.addEventListener("online", () => autoSync.syncNow());
 
-  keepBackgroundInformed(session);
+  keepBackgroundInformed(screen);
 }
 
 // Chrome: tells the background this window's panel is open, so the shortcut
 // knows to close it (it is closed when this connection drops). The background
 // can ask the panel to close itself. Reconnects if the service worker
 // restarted. Firefox toggles its sidebar without this.
-async function keepBackgroundInformed(session) {
+async function keepBackgroundInformed(screen) {
   if (!api.sidePanel || !api.windows) return;
   try {
     const { id: windowId } = await api.windows.getCurrent();
@@ -2344,7 +2231,7 @@ async function keepBackgroundInformed(session) {
       const port = api.runtime.connect({ name: `glacier-panel:${windowId}` });
       port.onMessage.addListener((message) => {
         if (message && message.type === "close") {
-          session.flush();
+          screen.flush();
           window.close();
         }
       });
