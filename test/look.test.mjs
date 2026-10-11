@@ -8,6 +8,7 @@ import {
   readLook,
   lookStyle,
   wholeRows,
+  applyLook,
 } from "../src/look.mjs";
 
 const px = (value) => Number.parseFloat(value);
@@ -166,4 +167,14 @@ test("a block that is not a whole number of rows is padded to the next row", () 
   assert.equal(wholeRows(58, 29), 58);
   assert.equal(wholeRows(58.3, 29), 58);
   assert.equal(wholeRows(0, 29), 0);
+});
+
+test("applying a look sets the Theme's colours and its colour scheme on the page", () => {
+  const set = {};
+  const root = { style: { setProperty: (name, value) => (set[name] = value), colorScheme: "" } };
+  const style = applyLook(root, readLook({ paper: "Chalkboard" }));
+  assert.equal(set["--paper"], "#3b4a44");
+  assert.equal(set["--ink"], "#eceee6");
+  assert.equal(root.style.colorScheme, "dark");
+  assert.equal(style.paper, "Chalkboard");
 });

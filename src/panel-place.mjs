@@ -1,8 +1,29 @@
 // Where settings and the Shortcuts panel open (#21, ADR 0008): beside the
 // sidebar, over the edge of the web page, or inside the sidebar. Beside needs
 // the optional "all websites" permission, asked for behind Glacier's own
-// explanation card the first time a panel opens. Pure, so it can be tested
-// with node --test; the panel keeps the choice per browser, next to the look.
+// explanation card the first time settings open.
+//
+// The Panel placement owns that whole decision (#66). panel.js tells it what
+// is wanted (settings open at a section, the Shortcuts panel on and folded)
+// and draws what it shows. The browser is plugged in as a port, so tests use
+// a fake one (src/browser-panels.mjs is the real one):
+//   browser.activeTab()          -> { id, url } of the tab behind the sidebar, or null
+//   browser.hasPermission()      -> whether the "all websites" permission is granted
+//   browser.requestPermission()  -> asks for it; must be called straight from a click
+//   browser.drawFrames(tabId, { settings, shortcuts })
+//                                -> draws the frames in that tab's page, or with
+//                                   both null takes them away; false when the
+//                                   browser refuses. `settings` is { section },
+//                                   `shortcuts` is { folded }.
+//   browser.onTabChange(fn)      -> calls fn when another tab shows or the page loads again
+//
+// `show(view)` draws one of these, where `settings` and `shortcuts` say where
+// each panel is drawn ("beside", "inside", or null for settings closed):
+//   { card, open, settings, section, shortcuts, explain }
+// `card` is the explanation card, `open` whether settings or the card are
+// open (for the glacier button), `explain` whether a panel inside the
+// sidebar shows the "page doesn't allow" line (#60).
+// `keepChoice(place)` keeps "beside" or "inside" for this browser.
 
 // The permission the panels need to draw Glacier's own frames on the page.
 // The scripting permission itself is required, as it shows no warning and
@@ -23,19 +44,151 @@ function canDrawBeside(url) {
   return !STORE_PAGES.some((page) => page.test(url));
 }
 
-// "card" shows the explanation card, then the panels open "beside" or "inside".
-// `granted` is whether the browser holds the permission now, `url` the page
-// behind the sidebar (undefined when it can't be read).
-export function decidePanelPlace({ choice, granted, url }) {
-  if (choice === "ask" && !granted) return "card";
-  if (choice === "inside" || !granted) return "inside";
-  return canDrawBeside(url) ? "beside" : "inside";
+// Beside only with the permission, unless inside was chosen, and only on a
+// page the browser lets Glacier draw on.
+function wantsBeside({ choice, granted, url }) {
+  return choice !== "inside" && granted && canDrawBeside(url);
 }
 
-// Whether a panel that opens inside the sidebar says why (#60): the permission
-// is granted and inside wasn't chosen, but this page can't be drawn on, or the
-// browser `refused` when Glacier tried. A declined permission or a choice of
-// inside needs no explanation.
-export function explainsInside({ choice, granted, url, refused = false }) {
+// A panel inside the sidebar says why when the permission is granted and
+// inside wasn't chosen, but this page can't be drawn on, or the browser
+// `refused` when Glacier tried. A declined permission or a choice of inside
+// needs no explanation.
+function explainsInside({ choice, granted, url, refused }) {
   return choice !== "inside" && granted && (refused || !canDrawBeside(url));
+}
+
+export function createPanelPlacement({ browser, show, keepChoice = () => {}, choice = "ask", shortcuts = { on: false, folded: false } }) {
+  let panelPlace = readPanelPlace(choice);
+  let shortcutsPanel = shortcuts;
+  let settingsWanted = false;
+  let settingsSection = null;
+  // The section settings open at once the card is answered, while it shows.
+  let card = null;
+
+  // The tab whose page holds the frames now, if any.
+  let besideTabId = null;
+  let latestPlacing = 0;
+  let placed = { beside: false, explain: false };
+
+  function report() {
+    show({
+      card: card !== null,
+      open: card !== null || settingsWanted,
+      settings: settingsWanted ? (placed.beside ? "beside" : "inside") : null,
+      section: settingsSection,
+      shortcuts: placed.beside ? "beside" : "inside",
+      explain: placed.explain,
+    });
+  }
+
+  // Put settings and the Shortcuts panel where they belong now: beside the
+  // sidebar in the page you're on, or inside the sidebar. Run again whenever
+  // the page, a panel or the choice changes; the latest run wins.
+  async function place() {
+    const run = (latestPlacing += 1);
+    const tab = await browser.activeTab();
+    const granted = await browser.hasPermission();
+    if (run !== latestPlacing) return;
+
+    const url = tab?.url;
+    const shortcutsWanted = shortcutsPanel.on;
+    const besideWanted = wantsBeside({ choice: panelPlace, granted, url }) && (settingsWanted || shortcutsWanted);
+    if (besideTabId !== null && (!besideWanted || besideTabId !== tab.id)) {
+      browser.drawFrames(besideTabId, { settings: null, shortcuts: null });
+      besideTabId = null;
+    }
+    let beside = false;
+    if (besideWanted) {
+      beside = await browser.drawFrames(tab.id, {
+        settings: settingsWanted ? { section: settingsSection } : null,
+        shortcuts: shortcutsWanted ? { folded: shortcutsPanel.folded } : null,
+      });
+      if (beside) besideTabId = tab.id;
+      if (run !== latestPlacing) return;
+    }
+
+    const refused = besideWanted && !beside;
+    placed = { beside, explain: !beside && explainsInside({ choice: panelPlace, granted, url, refused }) };
+    report();
+  }
+
+  function choose(chosen) {
+    panelPlace = readPanelPlace(chosen);
+    keepChoice(panelPlace);
+  }
+
+  // The first time, Glacier's own card shows instead (ADR 0008).
+  function openSettings(section) {
+    if (panelPlace === "ask") {
+      card = { section: section ?? null };
+      report();
+      return Promise.resolve();
+    }
+    card = null;
+    settingsWanted = true;
+    settingsSection = section ?? null;
+    return place();
+  }
+
+  return {
+    // Draws the Shortcuts panel where it belongs, and follows you to another
+    // tab while something is open.
+    start() {
+      browser.onTabChange(() => (settingsWanted || shortcutsPanel.on ? place() : undefined));
+      return place();
+    },
+
+    choice: () => panelPlace,
+
+    // Settings or the card, for the glacier button.
+    isOpen: () => card !== null || settingsWanted,
+
+    settingsOpen: () => settingsWanted,
+
+    openSettings,
+
+    // Closes the card or settings; true when settings were open.
+    closeSettings() {
+      if (card !== null) {
+        card = null;
+        report();
+      }
+      if (!settingsWanted) return false;
+      settingsWanted = false;
+      settingsSection = null;
+      place();
+      return true;
+    },
+
+    // Allow on the card asks the browser, so it must come straight from the
+    // click. Either answer opens settings, beside or inside.
+    async answerCard(allow) {
+      const section = card?.section ?? null;
+      const granted = allow && (await browser.requestPermission());
+      card = null;
+      choose(granted ? "beside" : "inside");
+      return openSettings(section);
+    },
+
+    // The choice under Panels in settings. Choosing beside asks the browser
+    // first, straight from the change.
+    async choosePlace(wanted) {
+      const granted = wanted === "beside" && (await browser.requestPermission());
+      choose(granted ? "beside" : "inside");
+      place();
+      return panelPlace;
+    },
+
+    // A choice made beside the sidebar, or in another window.
+    setChoice(saved) {
+      panelPlace = readPanelPlace(saved);
+      return place();
+    },
+
+    setShortcuts(state) {
+      shortcutsPanel = state;
+      return place();
+    },
+  };
 }
