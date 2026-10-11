@@ -11,13 +11,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
-### Code review fixes (#64)
-
-- [ ] Open a note, press + and Concept note, then click the paper and write "Box model basics" without typing a title: the note in the pill menu is called "Box model basics", never "Untitled".
-- [ ] Do the same with a first line that starts with "# " and a bold word: the title has no marks in it.
-- [ ] Make a conflict, then open the copy and delete it from ⋯ This note: the conflict line goes away and the dot turns normal at once, before any sync. Do the same with Archive.
-- [ ] Close the sidebar while it says Syncing, then open it again: it ends on Synced, Offline or Conflict, never stays on Syncing.
-- [ ] Rename a note and archive a note, then sync: both arrive on GitHub as one commit each.
+Nothing right now.
 
 ## 2. Everything
 
@@ -393,3 +387,11 @@ Reload the extension with the reload button first.
 - [ ] Click Delete: the question names the note, with Delete and Keep.
 - [ ] With no note open (empty paper for a new note), ⋯ is not shown.
 - [ ] Esc closes either menu. Opening ▾ closes ⋯, and opening ⋯ closes ▾.
+
+### Fixes from the code review
+
+- [ ] Open a note, press + and Concept note, then click the paper and write "Box model basics" without typing a title: the note in the pill menu is called "Box model basics", never "Untitled".
+- [ ] Do the same with a first line that starts with "# " and a bold word: the title has no marks in it.
+- [ ] Make a conflict, then open the copy and delete it from ⋯ This note: the conflict line goes away and the dot turns normal at once, before any sync. Do the same with Archive.
+- [ ] Close the sidebar while it says Syncing, then open it again: it ends on Synced, Offline or Conflict, never stays on Syncing.
+- [ ] Rename a note and archive a note, then sync: both arrive on GitHub as one commit each.
