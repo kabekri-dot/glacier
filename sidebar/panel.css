@@ -211,6 +211,7 @@ html[data-pattern="grid"] .note {
     );
   background-position: 0 calc(var(--note-top) - var(--rule-shift));
 }
+
 /* Each line is its own block. Rendered blocks and the current line share the
    same metrics so the caret lands on the ruling and nothing jumps when a line
    turns raw and back (ADR 0006). */
