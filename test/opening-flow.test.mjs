@@ -6,7 +6,7 @@ import { createOpeningFlow } from "../src/opening-flow.mjs";
 
 const lessonA = { title: "Lesson A", source: "https://a.test/lesson" };
 
-function setup({ permission = false, grantOnRequest = true, pages = [], open, keepUserOpenedNotes = false } = {}) {
+function setup({ permission = false, grantOnRequest = true, pages = [], open, tabSettings = {} } = {}) {
   const shown = [];
   const state = { permission, tab: null, listener: null };
   let openNote = open ?? { current: null, openedByPage: false };
@@ -24,7 +24,7 @@ function setup({ permission = false, grantOnRequest = true, pages = [], open, ke
     getOpenNote: () => openNote,
     lessonNoteForSource: (url) => pages.find((n) => n.source === url) ?? null,
     show: (view) => shown.push(view),
-    keepUserOpenedNotes,
+    getTabSettings: () => tabSettings,
   });
   return { flow, shown, state, page, setOpen: (o) => (openNote = o) };
 }
@@ -180,7 +180,7 @@ test("with the old option on, a note the user opened stays put", async () => {
     permission: true,
     pages: [lessonA],
     open: { current: concept, openedByPage: false },
-    keepUserOpenedNotes: true,
+    tabSettings: { keepUserOpenedNotes: true },
   });
   state.tab = { url: lessonA.source, title: "Lesson A" };
   await flow.pageChanged();
@@ -211,4 +211,47 @@ test("listening forwards the browser's page changes to the flow", async () => {
   flow.listen();
   await state.listener();
   assert.deepEqual(shown, [{ type: "open", note: lessonA }]);
+});
+
+test("a setting changed after the flow was made takes effect on the next page change", async () => {
+  const settings = { keepUserOpenedNotes: false };
+  const shown = [];
+  const state = { tab: { url: lessonA.source, title: "Lesson A" } };
+  const flow = createOpeningFlow({
+    page: {
+      currentPage: () => Promise.resolve(state.tab),
+      hasPermission: () => Promise.resolve(true),
+      requestPermission: () => Promise.resolve(true),
+      onPageChange: () => {},
+    },
+    getOpenNote: () => ({ current: concept, openedByPage: false }),
+    lessonNoteForSource: () => lessonA,
+    show: (view) => shown.push(view),
+    getTabSettings: () => settings,
+  });
+  await flow.pageChanged();
+  settings.keepUserOpenedNotes = true;
+  await flow.pageChanged();
+  assert.deepEqual(shown, [{ type: "open", note: lessonA }]);
+});
+
+test("on a page that is not a website the open note is kept by default", async () => {
+  const { flow, shown, state } = setup({
+    permission: true,
+    open: { current: concept, openedByPage: false },
+  });
+  state.tab = { url: "chrome://newtab/", title: "New Tab" };
+  await flow.pageChanged();
+  assert.deepEqual(shown, []);
+});
+
+test("on a page that is not a website the new note form shows when chosen", async () => {
+  const { flow, shown, state } = setup({
+    permission: true,
+    open: { current: concept, openedByPage: false },
+    tabSettings: { onNonWebsite: "newNoteForm" },
+  });
+  state.tab = { url: "chrome://newtab/", title: "New Tab" };
+  await flow.pageChanged();
+  assert.deepEqual(shown, [{ type: "newNoteForm" }]);
 });

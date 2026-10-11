@@ -11,6 +11,15 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Tabs and notes settings (#53)
+
+- [ ] Open settings and fold open "Tabs and notes". It has three choices: when I switch tabs, on a page that isn't a website, and the previous note button.
+- [ ] Leave "When I switch tabs" on "Show the note of the tab I'm on". Open a note from the menu, then switch to a website tab: the note of that tab shows.
+- [ ] Choose "Keep a note I opened myself", open a Concept Note from the menu, then switch tabs: the note stays, without reopening the sidebar.
+- [ ] Leave "On a page that isn't a website" on "Keep the open note", then switch to a new tab: the note stays. Choose "Show a new note form" and switch to a new tab again: the new note form shows.
+- [ ] Choose "Hidden" for the previous note button: the ← button leaves the pill at once. Choose "Shown": it comes back when there is a note to go back to.
+- [ ] Close the sidebar and open it again: all three choices are still as you left them.
+
 ### Settings, Classic papers and handwriting (#18)
 
 - [ ] A round glacier button sits in the bottom right corner. Clicking it opens settings over the lower part of the sidebar, with the note still showing above. Clicking it again, the × in the header, or Esc closes them.

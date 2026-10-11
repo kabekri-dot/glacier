@@ -19,8 +19,10 @@
 // draws one of: { type: "startPrompt" }, { type: "permissionCard" },
 // { type: "open", note }, { type: "lessonForm", page }, { type: "newNoteForm" }.
 //
-// `keepUserOpenedNotes` (default false) is the old rule: notes the user opened
-// themselves stay put when the page changes.
+// `getTabSettings()` returns the "Tabs and notes" settings (#53), read on every
+// page change so a changed setting works at once: `keepUserOpenedNotes` is the
+// old rule (notes the user opened themselves stay put when the page changes),
+// `onNonWebsite` is "keep" or "newNoteForm" for a page that isn't a website.
 import { decidePageOpen } from "./page-open.mjs";
 
 export function createOpeningFlow({
@@ -28,7 +30,7 @@ export function createOpeningFlow({
   getOpenNote,
   lessonNoteForSource,
   show,
-  keepUserOpenedNotes = false,
+  getTabSettings = () => ({}),
 }) {
   // Only http and https pages are lesson pages; anything else (chrome://,
   // file://, a new tab) counts as no page.
@@ -52,7 +54,7 @@ export function createOpeningFlow({
       openedByPage,
       page: lessonPage,
       lessonNoteForSource,
-      keepUserOpenedNotes,
+      ...getTabSettings(),
     });
     if (decision.type !== "keep") show(decision);
   }
