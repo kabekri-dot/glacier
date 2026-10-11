@@ -599,16 +599,19 @@ async function start() {
   function rowAction(kind, title, anchor) {
     if (kind === "download") askFormat(anchor, (format) => downloadNote(title, format));
     else if (kind === "archive") archiveFromMenu(title);
-    else if (kind === "unarchive") {
-      notebook.unarchiveNote(title);
-      autoSync.changed();
-      refreshMenu();
-    } else {
+    else if (kind === "unarchive") unarchiveFromMenu(title);
+    else {
       closeMenu();
       const note = notebook.note(title);
       if (screen.note()?.title !== title) openNote(note, { byPage: isOpenedByPage(note) });
       showDeleteQuestion();
     }
+  }
+
+  function unarchiveFromMenu(title) {
+    notebook.unarchiveNote(title);
+    autoSync.changed();
+    refreshMenu();
   }
 
   // Archive at once, with a short notice that puts the note back.
@@ -621,11 +624,7 @@ async function start() {
     refreshMenu();
     showNotice("Archived.", 6000, {
       label: "Undo",
-      run: () => {
-        notebook.unarchiveNote(title);
-        autoSync.changed();
-        refreshMenu();
-      },
+      run: () => unarchiveFromMenu(title),
     });
   }
 
