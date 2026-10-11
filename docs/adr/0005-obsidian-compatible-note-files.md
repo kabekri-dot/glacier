@@ -9,3 +9,7 @@ Titles are unique across the whole Notebook, not just within a folder, so a Link
 - **Slug filenames (`box-model.md`) with the title inside**: tidier, but breaks Link resolution in Obsidian.
 - **Hidden IDs in Links (`[[a3f9|Box model]]`)**: robust to renames, but makes the files ugly and Obsidian-incompatible.
 - **Titles unique per folder with path Links**: Links become messy and harder to resolve.
+
+## Change: one kind of note (ADR 0010)
+
+There are no Lesson Notes or Concept Notes any more, only notes. A note with a Course is in `courses/<Course>/<Title>.md`, every other note in `notes/<Title>.md`. The frontmatter drops `type` and gains `edited`. Old `concepts/` files and `type` lines are still read, and move on the next sync.

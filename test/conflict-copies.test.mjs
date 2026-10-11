@@ -12,8 +12,7 @@ import { memoryRemote } from "../src/memory-remote.mjs";
 // that copy is gone. Two Notebooks sharing one in-memory remote stand in for
 // Chrome and Firefox.
 
-const concept = {
-  type: "concept",
+const margins = {
   title: "Margins",
   created: "2026-10-02T10:00:00.000Z",
   body: "Space outside the border.",
@@ -35,7 +34,7 @@ function conflictCopyIn(notebook) {
 // Chrome pushes its edit in the moment between Firefox listing the Notes
 // Repo and Firefox writing, so Firefox's write names a stale version.
 async function staleWriteSetup() {
-  const remote = memoryRemote(fileOf(concept));
+  const remote = memoryRemote(fileOf(margins));
   const chrome = browser();
   const firefox = browser();
   await chrome.firstSync(remote);
@@ -73,7 +72,7 @@ test("the Conflict Copy's title has the date", async () => {
 });
 
 test("the same text written in both browsers is no conflict", async () => {
-  const remote = memoryRemote(fileOf(concept));
+  const remote = memoryRemote(fileOf(margins));
   const chrome = browser();
   const firefox = browser();
   await chrome.firstSync(remote);

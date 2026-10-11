@@ -1,11 +1,11 @@
 // The Opening flow: what the sidebar shows for the page behind it (issue #40).
 //
 // It decides between the start prompt, the permission card (ADR 0008), the
-// page's Lesson Note, a fresh page that becomes a note when you write (#61),
+// page's note, a fresh page that becomes a note when you write (#61),
 // or keeping the open note (decidePageOpen, #29, #50): the sidebar always shows
 // the note of the website tab you are on, and a non-website page keeps the
 // open note. It owns
-// "is this a lesson page" (http or https only) and the latest-change-wins rule
+// "is this a website" (http or https only) and the latest-change-wins rule
 // for quick tab switches.
 //
 // The browser is plugged in as a small "browser page" port, so tests can use a
@@ -16,29 +16,29 @@
 //   page.onPageChange(fn)    -> calls fn when the active tab or its address changes
 //
 // `getOpenNote()` returns { current, openedByPage } for the note on screen,
-// `lessonNoteForSource(url)` returns a Lesson Note or null, and `show(view)`
-// draws one of: { type: "startPrompt" }, { type: "permissionCard" },
-// { type: "open", note }, { type: "lessonDraft", page, editTitle? }
-// (a fresh page for the website's Lesson Note) or { type: "byHandDraft" } (a
-// fresh page for a note by hand, with no Source).
+// `noteForPage(url)` returns the page's most recently edited note or null,
+// and `show(view)` draws one of: { type: "startPrompt" },
+// { type: "permissionCard" }, { type: "open", note },
+// { type: "pageDraft", page, editTitle? } (a fresh page for a note for the
+// website) or { type: "blankDraft" } (a fresh page for a blank note, #68).
 //
 // `getTabSettings()` returns the "Tabs and notes" settings (#53), read on every
 // page change so a changed setting works at once: `keepUserOpenedNotes` is the
 // old rule (notes the user opened themselves stay put when the page changes),
-// `onNonWebsite` is "keep" or "newNoteForm" (a fresh page by hand) for a page
+// `onNonWebsite` is "keep" or "newNoteForm" (a blank fresh page) for a page
 // that isn't a website.
 import { decidePageOpen } from "./page-open.mjs";
 
 export function createOpeningFlow({
   page,
   getOpenNote,
-  lessonNoteForSource,
+  noteForPage,
   show,
   getTabSettings = () => ({}),
 }) {
-  // Only http and https pages are lesson pages; anything else (chrome://,
+  // Only http and https pages are websites; anything else (chrome://,
   // file://, a new tab) counts as no page.
-  async function readLessonPage() {
+  async function readWebsite() {
     const tab = await page.currentPage();
     if (!tab || !tab.url || !/^https?:/i.test(tab.url)) return null;
     return { url: tab.url, title: tab.title || tab.url };
@@ -48,22 +48,19 @@ export function createOpeningFlow({
   // since, so the sidebar ends on the latest page, never the tab you left.
   let latestRead = 0;
 
-  // `extra` is added to a fresh page for the website, e.g. `editTitle` when
-  // the + menu asked for it.
-  async function followCurrentPage(extra = {}) {
+  async function followCurrentPage() {
     const read = (latestRead += 1);
-    const lessonPage = await readLessonPage();
+    const website = await readWebsite();
     if (read !== latestRead) return;
     const { current, openedByPage } = getOpenNote();
     const decision = decidePageOpen({
       current,
       openedByPage,
-      page: lessonPage,
-      lessonNoteForSource,
+      page: website,
+      noteForPage,
       ...getTabSettings(),
     });
-    if (decision.type === "lessonDraft") show({ ...decision, ...extra });
-    else if (decision.type !== "keep") show(decision);
+    if (decision.type !== "keep") show(decision);
   }
 
   return {
@@ -73,11 +70,18 @@ export function createOpeningFlow({
       else show({ type: "startPrompt" });
     },
 
-    // "+ Lesson note" on the start prompt, or "Lesson note for this page" in
-    // the + menu, which passes `{ editTitle: true }`.
-    async clickLessonNote(extra = {}) {
-      if (await page.hasPermission()) await followCurrentPage(extra);
-      else show({ type: "permissionCard" });
+    // "New note for this page" (#68): always a fresh page for the website,
+    // even when it has notes already, with the title ready to edit. Without
+    // the permission the card asks for it first.
+    async newNoteForPage() {
+      if (!(await page.hasPermission())) {
+        show({ type: "permissionCard" });
+        return;
+      }
+      const read = (latestRead += 1);
+      const website = await readWebsite();
+      if (read !== latestRead) return;
+      show(website ? { type: "pageDraft", page: website, editTitle: true } : { type: "blankDraft" });
     },
 
     // "Allow" on the permission card. The request starts before any await
@@ -85,12 +89,12 @@ export function createOpeningFlow({
     async allow() {
       const granted = await page.requestPermission();
       if (granted) await followCurrentPage();
-      else show({ type: "byHandDraft" });
+      else show({ type: "blankDraft" });
     },
 
     // "Not now" on the permission card.
     decline() {
-      show({ type: "byHandDraft" });
+      show({ type: "blankDraft" });
     },
 
     // The page behind the sidebar changed. Without the permission there is
@@ -102,10 +106,10 @@ export function createOpeningFlow({
 
     // Whether the page behind the sidebar is a website, for the + menu. With no
     // permission the page can't be read, so it is taken as a website and the
-    // Lesson note choice leads to the permission card.
+    // "New note for this page" choice leads to the permission card.
     async onWebsite() {
       if (!(await page.hasPermission())) return true;
-      return (await readLessonPage()) !== null;
+      return (await readWebsite()) !== null;
     },
 
     // Start listening for page changes from the port.

@@ -10,8 +10,7 @@ import { memoryRemote } from "../src/memory-remote.mjs";
 // push a few seconds after typing stops. Timers are injected, and an
 // in-memory remote stands in for GitHub.
 
-const concept = {
-  type: "concept",
+const margins = {
   title: "Margins",
   created: "2026-10-02T10:00:00.000Z",
   body: "Space outside the border.",
@@ -38,7 +37,7 @@ function manualTimer() {
 
 function setup({ remote = memoryRemote({}), connected = true } = {}) {
   const storage = memoryStorage();
-  storage.putNote(concept);
+  storage.putNote(margins);
   const notebook = createNotebook({ storage });
   const timer = manualTimer();
   const statuses = [];
@@ -60,12 +59,13 @@ test("a few seconds after typing stops, the change is pushed", async () => {
   autoSync.changed();
   assert.deepEqual(remote.files(), {});
   await timer.fire();
-  const { path, text } = noteToFile({ ...concept, body: "Typed." });
+  const { path, text } = noteToFile(notebook.note("Margins"));
+  assert.equal(notebook.note("Margins").body, "Typed.");
   assert.deepEqual(remote.files(), { [path]: text });
 });
 
 test("opening the sidebar pulls the other browser's changes and says which notes changed", async () => {
-  const other = { ...concept, title: "Padding", body: "Space inside." };
+  const other = { ...margins, title: "Padding", body: "Space inside." };
   const { path, text } = noteToFile(other);
   const { notebook, pulled, autoSync } = setup({ remote: memoryRemote({ [path]: text }) });
   await autoSync.syncNow();
@@ -136,7 +136,7 @@ test("each status has a short label, and says when the last sync was", () => {
 async function failingSync(failure) {
   const { githubRemote } = await import("../src/github-remote.mjs");
   const storage = memoryStorage();
-  storage.putNote(concept);
+  storage.putNote(margins);
   const notebook = createNotebook({ storage });
   const remote = githubRemote({
     repo: "me/notes",

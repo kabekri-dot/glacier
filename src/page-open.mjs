@@ -1,12 +1,13 @@
 // When the page behind the sidebar changes — a tab switch, or the active tab
 // navigating — Glacier decides what the sidebar shows (issues #29, #50). The rule:
 //
-//   - A website (http/https) always wins: the sidebar shows its Lesson Note, or
-//     a fresh page for it that becomes its Lesson Note when you type (#61), whatever note was open and however it
-//     was opened (page, pill menu, Link, made by hand).
-//   - A browser-internal page (new tab, settings, a PDF) is never a lesson, so
-//     a note that's open is kept; only an empty panel offers a fresh page for
-//     a note by hand.
+//   - A website (http/https) always wins: the sidebar shows its most recently
+//     edited note (#68), or a fresh page for it that becomes its note when you
+//     type (#61), whatever note was open and however it was opened (page, pill
+//     menu, Link, made by hand).
+//   - A browser-internal page (new tab, settings, a PDF) is never a website,
+//     so a note that's open is kept; only an empty panel offers a blank fresh
+//     page.
 //   - The old rule stays reachable behind `keepUserOpenedNotes`: a note the
 //     user opened themselves is never thrown away, only a page-opened note, or
 //     an empty panel, follows the page. The "Tabs and notes" settings switch it on (#53).
@@ -18,12 +19,12 @@
 // `current` is the open note or null; `openedByPage` says that note was opened
 // by the page (only matters with `keepUserOpenedNotes`). `page` is the
 // active tab's { url, title } or null for a browser-internal page.
-// `lessonNoteForSource(url)` returns the Lesson Note for a Source, or null.
+// `noteForPage(url)` returns the page's most recently edited note, or null.
 export function decidePageOpen({
   current,
   openedByPage,
   page,
-  lessonNoteForSource,
+  noteForPage,
   keepUserOpenedNotes = false,
   onNonWebsite = "keep",
 }) {
@@ -33,16 +34,16 @@ export function decidePageOpen({
     // Nothing on a browser-internal page to open. Keep an open note rather than
     // replacing it with a fresh page; only offer one on an empty panel. The
     // "Tabs and notes" setting can ask for it even then (#53).
-    return current && onNonWebsite !== "newNoteForm" ? { type: "keep" } : { type: "byHandDraft" };
+    return current && onNonWebsite !== "newNoteForm" ? { type: "keep" } : { type: "blankDraft" };
   }
 
-  const existing = lessonNoteForSource(page.url);
+  const existing = noteForPage(page.url);
   if (existing) return { type: "open", note: existing };
-  return { type: "lessonDraft", page };
+  return { type: "pageDraft", page };
 }
 
-// Whether a note counts as opened by the page: a Lesson Note has a Source, so
-// it follows tab switches; a note made by hand has none and stays put.
+// Whether a note counts as opened by the page: a note with a page (Source)
+// follows tab switches; a blank note has none and stays put.
 export function isOpenedByPage(note) {
   return Boolean(note.source);
 }

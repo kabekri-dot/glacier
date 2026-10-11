@@ -269,7 +269,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
     courseSelect.className = "menu-course-pick";
     courseSelect.setAttribute("aria-label", "Course to export");
     for (const course of await repo.courses()) courseSelect.add(new Option(course, course));
-    const exportCourse = menuButton("Export a course", "Download the Lesson notes of the chosen Course as a zip", () => {
+    const exportCourse = menuButton("Export a course", "Download the notes of the chosen Course as a zip", () => {
       if (courseSelect.value) repo.exportCourse(courseSelect.value);
     });
     exportCourse.disabled = !courseSelect.options.length;

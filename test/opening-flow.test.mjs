@@ -4,7 +4,7 @@ import { createOpeningFlow } from "../src/opening-flow.mjs";
 
 // The Opening flow through its public interface, with a fake browser page.
 
-const lessonA = { title: "Lesson A", source: "https://a.test/lesson" };
+const noteA = { title: "Page A", source: "https://a.test/lesson" };
 
 function setup({ permission = false, grantOnRequest = true, pages = [], open, tabSettings = {} } = {}) {
   const shown = [];
@@ -22,7 +22,7 @@ function setup({ permission = false, grantOnRequest = true, pages = [], open, ta
   const flow = createOpeningFlow({
     page,
     getOpenNote: () => openNote,
-    lessonNoteForSource: (url) => pages.find((n) => n.source === url) ?? null,
+    noteForPage: (url) => pages.find((n) => n.source === url) ?? null,
     show: (view) => shown.push(view),
     getTabSettings: () => tabSettings,
   });
@@ -35,17 +35,11 @@ test("without permission the sidebar opens on the start prompt", async () => {
   assert.deepEqual(shown, [{ type: "startPrompt" }]);
 });
 
-test("clicking + Lesson note without permission shows the permission card", async () => {
-  const { flow, shown } = setup();
-  await flow.clickLessonNote();
-  assert.deepEqual(shown, [{ type: "permissionCard" }]);
-});
-
-test("allowing opens the page's Lesson Note", async () => {
-  const { flow, shown, state } = setup({ pages: [lessonA] });
-  state.tab = { url: lessonA.source, title: "Lesson A" };
+test("allowing opens the page's note", async () => {
+  const { flow, shown, state } = setup({ pages: [noteA] });
+  state.tab = { url: noteA.source, title: "Page A" };
   await flow.allow();
-  assert.deepEqual(shown, [{ type: "open", note: lessonA }]);
+  assert.deepEqual(shown, [{ type: "open", note: noteA }]);
 });
 
 test("allowing on an unknown lesson page shows a fresh page", async () => {
@@ -53,27 +47,27 @@ test("allowing on an unknown lesson page shows a fresh page", async () => {
   state.tab = { url: "https://new.test/x", title: "New" };
   await flow.allow();
   assert.deepEqual(shown, [
-    { type: "lessonDraft", page: { url: "https://new.test/x", title: "New" } },
+    { type: "pageDraft", page: { url: "https://new.test/x", title: "New" } },
   ]);
 });
 
 test("declining the browser's prompt shows a fresh page by hand", async () => {
   const { flow, shown } = setup({ grantOnRequest: false });
   await flow.allow();
-  assert.deepEqual(shown, [{ type: "byHandDraft" }]);
+  assert.deepEqual(shown, [{ type: "blankDraft" }]);
 });
 
 test("choosing Not now shows a fresh page by hand", () => {
   const { flow, shown } = setup();
   flow.decline();
-  assert.deepEqual(shown, [{ type: "byHandDraft" }]);
+  assert.deepEqual(shown, [{ type: "blankDraft" }]);
 });
 
 test("with permission already granted the sidebar opens the page's note", async () => {
-  const { flow, shown, state } = setup({ permission: true, pages: [lessonA] });
-  state.tab = { url: lessonA.source, title: "Lesson A" };
+  const { flow, shown, state } = setup({ permission: true, pages: [noteA] });
+  state.tab = { url: noteA.source, title: "Page A" };
   await flow.start();
-  assert.deepEqual(shown, [{ type: "open", note: lessonA }]);
+  assert.deepEqual(shown, [{ type: "open", note: noteA }]);
 });
 
 test("a title-less page uses its address as the title", async () => {
@@ -84,14 +78,14 @@ test("a title-less page uses its address as the title", async () => {
 });
 
 for (const url of ["chrome://settings", "file:///home/me/lesson.pdf"]) {
-  test(`${url} offers a fresh page by hand, not a Lesson Note`, async () => {
+  test(`${url} offers a fresh page by hand, not a note`, async () => {
     const { flow, shown, state } = setup({
       permission: true,
       pages: [{ title: "Trap", source: url }],
     });
     state.tab = { url, title: "Page" };
     await flow.start();
-    assert.deepEqual(shown, [{ type: "byHandDraft" }]);
+    assert.deepEqual(shown, [{ type: "blankDraft" }]);
   });
 }
 
@@ -106,50 +100,50 @@ test("two quick page changes resolving out of order end on the latest page", asy
       onPageChange: () => {},
     },
     getOpenNote: () => ({ current: null, openedByPage: false }),
-    lessonNoteForSource: (url) => (url === lessonA.source ? lessonA : null),
+    noteForPage: (url) => (url === noteA.source ? noteA : null),
     show: (view) => shown.push(view),
   });
   const first = flow.pageChanged();
   const second = flow.pageChanged();
   await new Promise((resolve) => setImmediate(resolve));
-  reads[1]({ url: lessonA.source, title: "A" });
+  reads[1]({ url: noteA.source, title: "A" });
   await second;
   reads[0]({ url: "https://old.test/", title: "Old" });
   await first;
-  assert.deepEqual(shown, [{ type: "open", note: lessonA }]);
+  assert.deepEqual(shown, [{ type: "open", note: noteA }]);
 });
 
-const concept = { title: "A Concept" };
-const lessonB = { title: "Lesson B", source: "https://b.test/lesson" };
+const blank = { title: "A blank note" };
+const noteB = { title: "Page B", source: "https://b.test/lesson" };
 
-test("a note the user opened is replaced by a website's Lesson Note", async () => {
+test("a note the user opened is replaced by a website's note", async () => {
   const { flow, shown, state } = setup({
     permission: true,
-    pages: [lessonA],
-    open: { current: concept, openedByPage: false },
+    pages: [noteA],
+    open: { current: blank, openedByPage: false },
   });
-  state.tab = { url: lessonA.source, title: "Lesson A" };
+  state.tab = { url: noteA.source, title: "Page A" };
   await flow.pageChanged();
-  assert.deepEqual(shown, [{ type: "open", note: lessonA }]);
+  assert.deepEqual(shown, [{ type: "open", note: noteA }]);
 });
 
 test("a note made by hand is replaced by a fresh page on a website with no note", async () => {
   const { flow, shown, state } = setup({
     permission: true,
-    open: { current: concept, openedByPage: false },
+    open: { current: blank, openedByPage: false },
   });
   state.tab = { url: "https://new.test/x", title: "New" };
   await flow.pageChanged();
   assert.deepEqual(shown, [
-    { type: "lessonDraft", page: { url: "https://new.test/x", title: "New" } },
+    { type: "pageDraft", page: { url: "https://new.test/x", title: "New" } },
   ]);
 });
 
 test("a non-website page keeps the open note", async () => {
   const { flow, shown, state } = setup({
     permission: true,
-    pages: [lessonA],
-    open: { current: concept, openedByPage: false },
+    pages: [noteA],
+    open: { current: blank, openedByPage: false },
   });
   state.tab = { url: "chrome://settings", title: "Settings" };
   await flow.pageChanged();
@@ -159,30 +153,30 @@ test("a non-website page keeps the open note", async () => {
 test("switching back to a tab shows that tab's note again", async () => {
   const { flow, shown, state, setOpen } = setup({
     permission: true,
-    pages: [lessonA, lessonB],
+    pages: [noteA, noteB],
   });
-  state.tab = { url: lessonA.source, title: "A" };
+  state.tab = { url: noteA.source, title: "A" };
   await flow.pageChanged();
-  setOpen({ current: concept, openedByPage: false });
-  state.tab = { url: lessonB.source, title: "B" };
+  setOpen({ current: blank, openedByPage: false });
+  state.tab = { url: noteB.source, title: "B" };
   await flow.pageChanged();
-  state.tab = { url: lessonA.source, title: "A" };
+  state.tab = { url: noteA.source, title: "A" };
   await flow.pageChanged();
   assert.deepEqual(shown, [
-    { type: "open", note: lessonA },
-    { type: "open", note: lessonB },
-    { type: "open", note: lessonA },
+    { type: "open", note: noteA },
+    { type: "open", note: noteB },
+    { type: "open", note: noteA },
   ]);
 });
 
 test("with the old option on, a note the user opened stays put", async () => {
   const { flow, shown, state } = setup({
     permission: true,
-    pages: [lessonA],
-    open: { current: concept, openedByPage: false },
+    pages: [noteA],
+    open: { current: blank, openedByPage: false },
     tabSettings: { keepUserOpenedNotes: true },
   });
-  state.tab = { url: lessonA.source, title: "Lesson A" };
+  state.tab = { url: noteA.source, title: "Page A" };
   await flow.pageChanged();
   assert.deepEqual(shown, []);
 });
@@ -190,33 +184,33 @@ test("with the old option on, a note the user opened stays put", async () => {
 test("a page change follows a page-opened note to the new page", async () => {
   const { flow, shown, state } = setup({
     permission: true,
-    pages: [lessonA],
+    pages: [noteA],
     open: { current: { title: "Other" }, openedByPage: true },
   });
-  state.tab = { url: lessonA.source, title: "Lesson A" };
+  state.tab = { url: noteA.source, title: "Page A" };
   await flow.pageChanged();
-  assert.deepEqual(shown, [{ type: "open", note: lessonA }]);
+  assert.deepEqual(shown, [{ type: "open", note: noteA }]);
 });
 
 test("a page change without permission is ignored", async () => {
-  const { flow, shown, state } = setup({ pages: [lessonA] });
-  state.tab = { url: lessonA.source, title: "Lesson A" };
+  const { flow, shown, state } = setup({ pages: [noteA] });
+  state.tab = { url: noteA.source, title: "Page A" };
   await flow.pageChanged();
   assert.deepEqual(shown, []);
 });
 
 test("listening forwards the browser's page changes to the flow", async () => {
-  const { flow, shown, state } = setup({ permission: true, pages: [lessonA] });
-  state.tab = { url: lessonA.source, title: "Lesson A" };
+  const { flow, shown, state } = setup({ permission: true, pages: [noteA] });
+  state.tab = { url: noteA.source, title: "Page A" };
   flow.listen();
   await state.listener();
-  assert.deepEqual(shown, [{ type: "open", note: lessonA }]);
+  assert.deepEqual(shown, [{ type: "open", note: noteA }]);
 });
 
 test("a setting changed after the flow was made takes effect on the next page change", async () => {
   const settings = { keepUserOpenedNotes: false };
   const shown = [];
-  const state = { tab: { url: lessonA.source, title: "Lesson A" } };
+  const state = { tab: { url: noteA.source, title: "Page A" } };
   const flow = createOpeningFlow({
     page: {
       currentPage: () => Promise.resolve(state.tab),
@@ -224,21 +218,21 @@ test("a setting changed after the flow was made takes effect on the next page ch
       requestPermission: () => Promise.resolve(true),
       onPageChange: () => {},
     },
-    getOpenNote: () => ({ current: concept, openedByPage: false }),
-    lessonNoteForSource: () => lessonA,
+    getOpenNote: () => ({ current: blank, openedByPage: false }),
+    noteForPage: () => noteA,
     show: (view) => shown.push(view),
     getTabSettings: () => settings,
   });
   await flow.pageChanged();
   settings.keepUserOpenedNotes = true;
   await flow.pageChanged();
-  assert.deepEqual(shown, [{ type: "open", note: lessonA }]);
+  assert.deepEqual(shown, [{ type: "open", note: noteA }]);
 });
 
 test("on a page that is not a website the open note is kept by default", async () => {
   const { flow, shown, state } = setup({
     permission: true,
-    open: { current: concept, openedByPage: false },
+    open: { current: blank, openedByPage: false },
   });
   state.tab = { url: "chrome://newtab/", title: "New Tab" };
   await flow.pageChanged();
@@ -248,26 +242,34 @@ test("on a page that is not a website the open note is kept by default", async (
 test("on a page that is not a website a fresh page by hand shows when chosen", async () => {
   const { flow, shown, state } = setup({
     permission: true,
-    open: { current: concept, openedByPage: false },
+    open: { current: blank, openedByPage: false },
     tabSettings: { onNonWebsite: "newNoteForm" },
   });
   state.tab = { url: "chrome://newtab/", title: "New Tab" };
   await flow.pageChanged();
-  assert.deepEqual(shown, [{ type: "byHandDraft" }]);
+  assert.deepEqual(shown, [{ type: "blankDraft" }]);
 });
 
-test("+ Lesson note for this page opens a fresh page with the title ready to edit", async () => {
+test("New note for this page opens a fresh page with the title ready to edit", async () => {
   const { flow, shown, state } = setup({ permission: true });
   state.tab = { url: "https://new.test/x", title: "New" };
-  await flow.clickLessonNote({ editTitle: true });
+  await flow.newNoteForPage();
   assert.deepEqual(shown, [
-    { type: "lessonDraft", page: { url: "https://new.test/x", title: "New" }, editTitle: true },
+    { type: "pageDraft", page: { url: "https://new.test/x", title: "New" }, editTitle: true },
   ]);
 });
 
-test("+ Lesson note for a page that has a note opens that note", async () => {
-  const { flow, shown, state } = setup({ permission: true, pages: [lessonA] });
-  state.tab = { url: lessonA.source, title: "Lesson A" };
-  await flow.clickLessonNote({ editTitle: true });
-  assert.deepEqual(shown, [{ type: "open", note: lessonA }]);
+test("New note for this page on a page that has a note still opens a fresh page", async () => {
+  const { flow, shown, state } = setup({ permission: true, pages: [noteA] });
+  state.tab = { url: noteA.source, title: "Page A" };
+  await flow.newNoteForPage();
+  assert.deepEqual(shown, [
+    { type: "pageDraft", page: { url: noteA.source, title: "Page A" }, editTitle: true },
+  ]);
+});
+
+test("New note for this page without permission shows the permission card", async () => {
+  const { flow, shown } = setup();
+  await flow.newNoteForPage();
+  assert.deepEqual(shown, [{ type: "permissionCard" }]);
 });

@@ -4,43 +4,45 @@ import { deflateRawSync } from "node:zlib";
 
 import { createNotebook, importSummary, noteToFile, noteFromFile } from "../src/notebook.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
+import { zipFiles } from "../src/zip.mjs";
 
-// Notes as Markdown files (#13, ADR 0005): filename = title, a small YAML
-// frontmatter (type, course, source, created) and the Markdown body, in
-// courses/<Course>/ or concepts/. Export zips them; Import reads them back.
+// Notes as Markdown files (#13, ADR 0005, ADR 0010): filename = title, a small
+// YAML frontmatter (course, source, created, edited) and the Markdown body, in
+// courses/<Course>/ for a note with a Course and notes/ for every other note.
+// Export zips them; Import reads them back.
 
-const lesson = {
-  type: "lesson",
+const withCourse = {
   title: "Box model",
   course: "TOP Foundations",
   source: "https://odin.example/foundations/box-model?v=2",
   created: "2026-10-01T09:30:00.000Z",
+  edited: "2026-10-01T10:00:00.000Z",
   body: "# Box model\n\nSee [[Margins]].\n",
 };
 
-const concept = {
-  type: "concept",
+const plain = {
   title: "Margins",
   created: "2026-10-02T10:00:00.000Z",
   body: "Space outside the border.",
 };
 
-test("a Lesson Note's file sits in its Course folder and is named after its title", () => {
-  assert.equal(noteToFile(lesson).path, "courses/TOP Foundations/Box model.md");
+test("a note with a Course sits in its Course folder and is named after its title", () => {
+  assert.equal(noteToFile(withCourse).path, "courses/TOP Foundations/Box model.md");
 });
 
-test("a Concept Note's file sits in concepts/", () => {
-  assert.equal(noteToFile(concept).path, "concepts/Margins.md");
+test("a note without a Course sits in notes/, with or without a page", () => {
+  assert.equal(noteToFile(plain).path, "notes/Margins.md");
+  assert.equal(noteToFile({ ...plain, source: "https://e.example/a" }).path, "notes/Margins.md");
 });
 
 test("a note file starts with frontmatter and ends with the Markdown body", () => {
-  const { text } = noteToFile(lesson);
-  assert.match(text, /^---\ntype: lesson\ncourse: TOP Foundations\nsource: .+\ncreated: .+\n---\n/);
+  const { text } = noteToFile(withCourse);
+  assert.match(text, /^---\ncourse: TOP Foundations\nsource: .+\ncreated: .+\nedited: .+\n---\n/);
   assert.ok(text.endsWith("---\n# Box model\n\nSee [[Margins]].\n"));
 });
 
 test("note → file → note gives back the same note", () => {
-  for (const note of [lesson, concept]) {
+  for (const note of [withCourse, plain]) {
     const { path, text } = noteToFile(note);
     assert.deepEqual(noteFromFile(path, text), note);
   }
@@ -48,7 +50,6 @@ test("note → file → note gives back the same note", () => {
 
 test("awkward titles, Courses and bodies survive the round trip", () => {
   const note = {
-    type: "lesson",
     title: 'What is "this": a/b?',
     course: "Khan: Algebra 1",
     created: "2026-10-03T00:00:00.000Z",
@@ -60,8 +61,8 @@ test("awkward titles, Courses and bodies survive the round trip", () => {
   assert.deepEqual(noteFromFile(path, text), note);
 });
 
-test("a Lesson Note without a Course or Source round-trips too", () => {
-  const note = { type: "lesson", title: "From a book", created: "2026-10-04T00:00:00.000Z", body: "" };
+test("a note without a page or Course round-trips too", () => {
+  const note = { title: "From a book", created: "2026-10-04T00:00:00.000Z", body: "" };
   const { path, text } = noteToFile(note);
   assert.deepEqual(noteFromFile(path, text), note);
 });
@@ -69,21 +70,45 @@ test("a Lesson Note without a Course or Source round-trips too", () => {
 test("a file without frontmatter becomes a note from its folder and filename", () => {
   assert.deepEqual(
     { ...noteFromFile("courses/CSS/Flexbox.md", "Rows and columns"), created: undefined },
-    { type: "lesson", title: "Flexbox", course: "CSS", created: undefined, body: "Rows and columns" },
+    { title: "Flexbox", course: "CSS", created: undefined, body: "Rows and columns" },
   );
-  assert.equal(noteFromFile("concepts/Idea.md", "x").type, "concept");
+  assert.deepEqual(
+    { ...noteFromFile("notes/Idea.md", "x"), created: undefined },
+    { title: "Idea", created: undefined, body: "x" },
+  );
+});
+
+test("an old file in concepts/ with a type line is read as a note without a page or Course", () => {
+  const text = "---\ntype: concept\ncreated: 2026-10-05T00:00:00.000Z\n---\nAn idea";
+  assert.deepEqual(noteFromFile("concepts/Idea.md", text), {
+    title: "Idea",
+    created: "2026-10-05T00:00:00.000Z",
+    body: "An idea",
+  });
+});
+
+test("an old file with type: lesson keeps its Course and page and loses the type", () => {
+  const text =
+    "---\ntype: lesson\ncourse: CSS\nsource: https://e.example/grid\ncreated: 2026-10-05T00:00:00.000Z\n---\nTwo axes";
+  assert.deepEqual(noteFromFile("courses/CSS/Grid.md", text), {
+    title: "Grid",
+    course: "CSS",
+    source: "https://e.example/grid",
+    created: "2026-10-05T00:00:00.000Z",
+    body: "Two axes",
+  });
 });
 
 function sampleNotebook() {
   const notebook = createNotebook({ storage: memoryStorage() });
-  notebook.createLessonNote({
+  notebook.createNote({
     title: "Box model",
     source: "https://odin.example/box",
     course: "TOP Foundations",
     created: "2026-10-01T09:30:00.000Z",
   });
   notebook.saveBody("Box model", "See [[Margins]] and [[Padding]].");
-  notebook.createConceptNote({ title: "Margins", created: "2026-10-02T10:00:00.000Z" });
+  notebook.createNote({ title: "Margins", created: "2026-10-02T10:00:00.000Z" });
   notebook.saveBody("Margins", "Space outside, näher am Rand.");
   return notebook;
 }
@@ -101,7 +126,7 @@ test("export then import gives back the same Notebook", async () => {
 test("Import adds the notes it doesn't have and reports them", async () => {
   const zip = sampleNotebook().exportZip();
   const other = createNotebook({ storage: memoryStorage() });
-  other.createConceptNote({ title: "Already here" });
+  other.createNote({ title: "Already here" });
   const result = await other.importZip(zip);
   assert.equal(result.added, 2);
   assert.equal(other.notes().length, 3);
@@ -198,10 +223,27 @@ test("exporting one note gives exactly its Markdown file", () => {
   assert.deepEqual(notebook.exportNote("Margins"), noteToFile(notebook.note("Margins")));
 });
 
-test("exporting a Course contains only that Course's Lesson Notes", async () => {
+test("exporting a Course contains only that Course's notes", async () => {
   const notebook = sampleNotebook();
-  notebook.createLessonNote({ title: "Flexbox", course: "CSS Basics", source: "https://css.example/flex" });
+  notebook.createNote({ title: "Flexbox", course: "CSS Basics", source: "https://css.example/flex" });
   const copy = createNotebook({ storage: memoryStorage() });
   await copy.importZip(notebook.exportCourseZip("TOP Foundations"));
   assert.deepEqual(copy.notes().map((note) => note.title), ["Box model"]);
+});
+
+test("an Export made before notes/ existed restores every note", async () => {
+  const zip = zipFiles([
+    { path: "concepts/Margins.md", text: "---\ntype: concept\ncreated: 2026-10-02T10:00:00.000Z\n---\nSpace" },
+    {
+      path: "courses/TOP/Box model.md",
+      text: "---\ntype: lesson\ncourse: TOP\nsource: https://odin.example/box\ncreated: 2026-10-01T09:30:00.000Z\n---\nSee [[Margins]]",
+    },
+    { path: "courses/From a book.md", text: "---\ntype: lesson\ncreated: 2026-10-03T00:00:00.000Z\n---\nPage 12" },
+  ]);
+  const notebook = createNotebook({ storage: memoryStorage() });
+  assert.equal((await notebook.importZip(zip)).added, 3);
+  assert.deepEqual(notebook.note("Margins"), { title: "Margins", created: "2026-10-02T10:00:00.000Z", body: "Space" });
+  assert.equal(notebook.note("Box model").course, "TOP");
+  assert.equal(notebook.noteForPage("https://odin.example/box").title, "Box model");
+  assert.equal(noteToFile(notebook.note("From a book")).path, "notes/From a book.md");
 });

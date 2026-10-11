@@ -1,17 +1,12 @@
-// What the pill's + menu offers (issue #52), and the hover explanations for
-// the two kinds of note. Pure, so it can be tested with node --test.
-export const LESSON_NOTE_HINT =
-  "Notes for one lesson. Opens by itself when you visit that page.";
-export const CONCEPT_NOTE_HINT =
-  "An idea that isn't tied to one page. Link to it from any note with [[ ]].";
+// What the pill's + menu offers (issues #52, #68), and the hover texts that
+// tell the two choices apart. Pure, so it can be tested with node --test.
+export const NEW_NOTE_HINT = "A blank note, not tied to any page.";
+export const PAGE_NOTE_HINT = "A note for the page you're on. It opens again when you visit the page.";
 
-// On a website a Lesson note belongs to the page; on any other page a Lesson
-// note can only be made by hand ("byHand").
+// There is one kind of note (ADR 0010): a blank one is always offered, and on
+// a website a note for the page as well.
 export function newNoteChoices({ onWebsite }) {
-  return [
-    onWebsite
-      ? { kind: "lesson", label: "Lesson note for this page", hint: LESSON_NOTE_HINT }
-      : { kind: "byHand", label: "New note", hint: LESSON_NOTE_HINT },
-    { kind: "concept", label: "Concept note", hint: CONCEPT_NOTE_HINT },
-  ];
+  const choices = [{ kind: "blank", label: "New note", hint: NEW_NOTE_HINT }];
+  if (onWebsite) choices.push({ kind: "page", label: "New note for this page", hint: PAGE_NOTE_HINT });
+  return choices;
 }

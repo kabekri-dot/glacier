@@ -10,9 +10,9 @@ import { memoryRemote } from "../src/memory-remote.mjs";
 
 function notebookWithCourses() {
   const notebook = createNotebook({ storage: memoryStorage() });
-  notebook.createLessonNote({ title: "Algebra", source: "https://khan.example/a", course: "Khan" });
-  notebook.createLessonNote({ title: "Grid", source: "https://odin.example/grid", course: "TOP" });
-  notebook.createLessonNote({ title: "Atoms", source: "https://chem.example/a", course: "Chemistry" });
+  notebook.createNote({ title: "Algebra", source: "https://khan.example/a", course: "Khan" });
+  notebook.createNote({ title: "Grid", source: "https://odin.example/grid", course: "TOP" });
+  notebook.createNote({ title: "Atoms", source: "https://chem.example/a", course: "Chemistry" });
   return notebook;
 }
 
