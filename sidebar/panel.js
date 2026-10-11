@@ -29,6 +29,7 @@ import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
 import { readTabSettings } from "../src/tab-settings.mjs";
+import { SHORTCUT_GROUPS, readShortcutsPanel } from "../src/shortcuts-panel.mjs";
 import { PAPERS, paperGroups, FONT_OVERRIDES, TEXT_SIZE, readLook, lookStyle, wholeRows } from "../src/look.mjs";
 import {
   blockRanges,
@@ -69,6 +70,11 @@ const paperBodyEl = document.querySelector(".paper-body");
 const writingBodyEl = document.querySelector(".writing-body");
 const tabsBodyEl = document.querySelector(".tabs-body");
 const repoBodyEl = document.querySelector(".repo-body");
+const shortcutsEl = document.querySelector(".shortcuts");
+const shortcutsBodyEl = document.querySelector(".shortcuts-body");
+const shortcutsFoldEl = document.querySelector(".shortcuts-fold");
+const shortcutsTabEl = document.querySelector(".shortcuts-tab");
+const shortcutsSettingBodyEl = document.querySelector(".shortcuts-setting-body");
 
 // This browser's own extension storage: the Notes Repo connection and the
 // chosen look. Neither is ever written into the Notebook (ADR 0003).
@@ -117,6 +123,10 @@ function reportSaveError(error) {
 // How notes follow tabs (#53), kept per browser like the look.
 let tabSettings = readTabSettings(undefined);
 
+// The Shortcuts panel (#20): switched on in settings, open or folded until
+// you change it.
+let shortcutsPanel = readShortcutsPanel(undefined);
+
 async function start() {
   if (!noteEl) return;
 
@@ -130,7 +140,13 @@ async function start() {
   } catch (error) {
     console.warn("Glacier: could not read the tab settings", error);
   }
+  try {
+    shortcutsPanel = readShortcutsPanel((await extensionStorage.get("shortcutsPanel")).shortcutsPanel);
+  } catch (error) {
+    console.warn("Glacier: could not read the shortcuts panel", error);
+  }
   drawLook();
+  drawShortcutsPanel();
   document.fonts?.addEventListener("loadingdone", fitRows);
 
   // Keep the page read-only until the Notebook has loaded (issue #23). Making
@@ -974,6 +990,50 @@ async function start() {
     );
   }
 
+  // The cheat sheet, or its slim tab when folded, or nothing when switched off.
+  function drawShortcutsPanel() {
+    shortcutsEl.hidden = !shortcutsPanel.on || shortcutsPanel.folded;
+    shortcutsTabEl.hidden = !shortcutsPanel.on || !shortcutsPanel.folded;
+    if (shortcutsBodyEl.childElementCount) return;
+    const groups = SHORTCUT_GROUPS.map(({ title, entries }) => {
+      const heading = document.createElement("h2");
+      heading.className = "settings-subheading";
+      heading.textContent = title;
+      const list = document.createElement("dl");
+      list.className = "shortcuts-list";
+      for (const [keys, does] of entries) {
+        const term = document.createElement("dt");
+        const code = document.createElement("code");
+        code.textContent = keys;
+        term.append(code);
+        const description = document.createElement("dd");
+        description.textContent = does;
+        list.append(term, description);
+      }
+      return [heading, list];
+    });
+    shortcutsBodyEl.replaceChildren(...groups.flat());
+  }
+
+  function saveShortcutsPanel(change) {
+    shortcutsPanel = readShortcutsPanel({ ...shortcutsPanel, ...change });
+    drawShortcutsPanel();
+    extensionStorage.set({ shortcutsPanel }).catch((error) => {
+      console.warn("Glacier: could not keep the shortcuts panel", error);
+    });
+  }
+
+  function drawShortcutsSetting() {
+    const select = document.createElement("select");
+    select.add(new Option("Off", "off", false, !shortcutsPanel.on));
+    select.add(new Option("On", "on", false, shortcutsPanel.on));
+    select.addEventListener("change", () => saveShortcutsPanel({ on: select.value === "on" }));
+    shortcutsSettingBodyEl.replaceChildren(field("Shortcuts panel", select));
+  }
+
+  shortcutsFoldEl.addEventListener("click", () => saveShortcutsPanel({ folded: true }));
+  shortcutsTabEl.addEventListener("click", () => saveShortcutsPanel({ folded: false }));
+
   function openSettings(section) {
     closeMenu();
     closeNewMenu();
@@ -982,6 +1042,7 @@ async function start() {
     drawPapers();
     drawWriting();
     drawTabs();
+    drawShortcutsSetting();
     settingsEl.hidden = false;
     glacierButtonEl.setAttribute("aria-expanded", "true");
     settingsCloseEl.focus();
