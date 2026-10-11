@@ -1,0 +1,133 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+
+import { createAutoSync, syncStatusText } from "../src/auto-sync.mjs";
+import { createNotebook, noteToFile } from "../src/notebook.mjs";
+import { memoryStorage } from "../src/memory-storage.mjs";
+import { memoryRemote } from "../src/memory-remote.mjs";
+
+// Sync runs by itself (#15, ADR 0003): a pull when the sidebar opens and a
+// push a few seconds after typing stops. Timers are injected, and an
+// in-memory remote stands in for GitHub.
+
+const concept = {
+  type: "concept",
+  title: "Margins",
+  created: "2026-10-02T10:00:00.000Z",
+  body: "Space outside the border.",
+};
+
+function manualTimer() {
+  let fn = null;
+  return {
+    setTimer: (callback) => {
+      fn = callback;
+      return 1;
+    },
+    clearTimer: () => {
+      fn = null;
+    },
+    pending: () => fn !== null,
+    fire: async () => {
+      const callback = fn;
+      fn = null;
+      await callback?.();
+    },
+  };
+}
+
+function setup({ remote = memoryRemote({}), connected = true } = {}) {
+  const storage = memoryStorage();
+  storage.putNote(concept);
+  const notebook = createNotebook({ storage });
+  const timer = manualTimer();
+  const statuses = [];
+  const pulled = [];
+  const autoSync = createAutoSync({
+    notebook,
+    connect: async () => (connected ? { remote, repo: "me/notes" } : null),
+    onStatus: (status) => statuses.push(status.state),
+    onPulled: (titles) => pulled.push(...titles),
+    setTimer: timer.setTimer,
+    clearTimer: timer.clearTimer,
+  });
+  return { notebook, remote, timer, statuses, pulled, autoSync };
+}
+
+test("a few seconds after typing stops, the change is pushed", async () => {
+  const { notebook, remote, timer, autoSync } = setup();
+  notebook.saveBody("Margins", "Typed.");
+  autoSync.changed();
+  assert.deepEqual(remote.files(), {});
+  await timer.fire();
+  const { path, text } = noteToFile({ ...concept, body: "Typed." });
+  assert.deepEqual(remote.files(), { [path]: text });
+});
+
+test("opening the sidebar pulls the other browser's changes and says which notes changed", async () => {
+  const other = { ...concept, title: "Padding", body: "Space inside." };
+  const { path, text } = noteToFile(other);
+  const { notebook, pulled, autoSync } = setup({ remote: memoryRemote({ [path]: text }) });
+  await autoSync.syncNow();
+  assert.equal(notebook.note("Padding").body, "Space inside.");
+  assert.deepEqual(pulled, ["Padding"]);
+});
+
+test("the status goes from syncing to synced, with the time of the last sync", async () => {
+  const { statuses, autoSync } = setup();
+  const status = await autoSync.syncNow();
+  assert.deepEqual(statuses, ["syncing", "synced"]);
+  assert.ok(status.lastSynced);
+});
+
+test("without a Notes Repo nothing syncs and the status says so", async () => {
+  const { autoSync } = setup({ connected: false });
+  const status = await autoSync.syncNow();
+  assert.equal(status.state, "off");
+});
+
+test("offline, the status says offline and the edit is pushed on a later try", async () => {
+  const { notebook, remote, timer, autoSync } = setup();
+  remote.failWith("offline");
+  notebook.saveBody("Margins", "Typed offline.");
+  const status = await autoSync.syncNow();
+  assert.equal(status.state, "offline");
+  assert.ok(timer.pending(), "a retry is planned");
+  remote.failWith(null);
+  await timer.fire();
+  assert.equal(autoSync.status().state, "synced");
+  assert.equal(Object.values(remote.files())[0].endsWith("Typed offline."), true);
+});
+
+test("a note changed in two places shows the conflict state", async () => {
+  const remote = memoryRemote({});
+  const { notebook, autoSync } = setup({ remote });
+  await autoSync.syncNow();
+  const firefox = createNotebook({ storage: memoryStorage() });
+  await firefox.sync(remote);
+  firefox.saveBody("Margins", "Firefox's text.");
+  await firefox.sync(remote);
+  notebook.saveBody("Margins", "Chrome's text.");
+  const status = await autoSync.syncNow();
+  assert.equal(status.state, "conflict");
+});
+
+test("an expired token gives a clear message", async () => {
+  const { remote, autoSync } = setup();
+  remote.failWith("unauthorized");
+  const status = await autoSync.syncNow();
+  assert.equal(status.state, "error");
+  assert.match(syncStatusText(status).detail, /expired/);
+  assert.match(syncStatusText(status).detail, /Notes repo/);
+});
+
+test("each status has a short label, and says when the last sync was", () => {
+  const now = new Date("2026-10-11T12:00:00");
+  const lastSynced = new Date("2026-10-11T11:55:00").toISOString();
+  assert.equal(syncStatusText({ state: "synced", lastSynced }, now).label, "Synced");
+  assert.equal(syncStatusText({ state: "syncing", lastSynced }, now).label, "Syncing");
+  assert.equal(syncStatusText({ state: "offline", lastSynced }, now).label, "Offline");
+  assert.equal(syncStatusText({ state: "conflict", lastSynced }, now).label, "Conflict");
+  assert.match(syncStatusText({ state: "synced", lastSynced }, now).detail, /Last synced 5 minutes ago/);
+  assert.match(syncStatusText({ state: "offline" }, now).detail, /kept in this browser/);
+});

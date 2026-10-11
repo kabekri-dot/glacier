@@ -44,6 +44,20 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 - [ ] A note you already had with different text is kept, and the repo's version shows up next to it as "Title (conflict date)".
 - [ ] The token is in neither the repo nor an Export zip. It shows only in the extension's storage (devtools of the sidebar, Application or Storage, Extension storage).
 
+### Automatic two way sync (#15)
+
+Connect the same Notes repo in Chrome and in Firefox first (see #14).
+
+- [ ] Type in a note in Chrome and stop. A few seconds later the dot in the pill turns green. Hovering it says "Synced" and when the last sync was. On GitHub the note's file has your text.
+- [ ] While it syncs the dot pulses. Hovering it says "Syncing".
+- [ ] Open Firefox's sidebar: the note shows the text from Chrome. If it was already open on screen, it shows the new text after a moment.
+- [ ] Make a new note in Chrome, then open the sidebar in Firefox: the note is there. Rename it in Firefox, open Chrome's sidebar again: it has the new name, and on GitHub the old file is gone.
+- [ ] Turn the network off (devtools, Offline) and type. The dot becomes an empty ring and hovering it says "Offline" and that your changes are kept. Turn the network on again: the dot turns green and GitHub has the text.
+- [ ] Change the same note in both browsers while one of them is offline, then let both sync. The dot turns orange, hovering says "Conflict", and the other text is kept as "Title (conflict date)".
+- [ ] Open the pill menu: under "Sync" is a short line with the status and the last sync, and a "Sync now" button. Pressing it shows "Synced just now." for a moment.
+- [ ] Revoke or delete the token on GitHub, then type or press "Sync now": the dot turns red and the message says GitHub no longer accepts your token, it may have expired, and to paste a new one in Notes repo. Pasting a new token there makes it sync again.
+- [ ] Without a Notes repo connected, the dot stays as before, hovering it says "Saved in this browser", and there is no "Sync now".
+
 ## 2. Everything
 
 ### Opening Glacier
@@ -76,7 +90,7 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 
 ### The pill at the top
 
-- [ ] The pill shows the note's title and a sync dot.
+- [ ] The pill shows the note's title and a sync dot. Its colour shows the sync status, and hovering it says the status in words (#15).
 - [ ] Clicking the ▾ after the title, the bare part of the pill, or pressing Ctrl+K, opens the menu with the search box ready.
 - [ ] Search finds words in titles and in the text, with the match highlighted. Clicking a result opens it and closes the menu.
 - [ ] Recent notes are listed, including notes made by hand.

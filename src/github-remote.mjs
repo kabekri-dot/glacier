@@ -16,6 +16,7 @@ function failure(status) {
     status === 401 ? "unauthorized"
     : status === 403 ? "forbidden"
     : status === 404 ? "not-found"
+    : status === 409 || status === 422 ? "conflict"
     : "unknown";
   return Object.assign(new Error(`GitHub answered ${status}`), { reason });
 }
@@ -27,25 +28,41 @@ function decodeBase64(base64) {
   return new TextDecoder().decode(bytes);
 }
 
+function encodeBase64(text) {
+  const bytes = new TextEncoder().encode(text);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function contentsPath(path) {
+  return `/contents/${path.split("/").map(encodeURIComponent).join("/")}`;
+}
+
 export function githubRemote({ repo, token, fetch = globalThis.fetch }) {
   let branch = null;
 
-  async function get(path) {
+  async function get(path, { method = "GET", body } = {}) {
     try {
       return await fetch(`${API}/repos/${repo}${path}`, {
+        method,
+        // GitHub lets answers be cached for a minute; a pull must see what
+        // the other browser pushed just now.
+        cache: "no-store",
         headers: {
           Accept: "application/vnd.github+json",
           Authorization: `Bearer ${token}`,
           "X-GitHub-Api-Version": "2022-11-28",
         },
+        body: body && JSON.stringify(body),
       });
     } catch (error) {
       throw Object.assign(new Error("Couldn't reach GitHub", { cause: error }), { reason: "offline" });
     }
   }
 
-  async function getJson(path) {
-    const response = await get(path);
+  async function getJson(path, options) {
+    const response = await get(path, options);
     if (!response.ok) throw failure(response.status);
     return response.json();
   }
@@ -69,9 +86,22 @@ export function githubRemote({ repo, token, fetch = globalThis.fetch }) {
     },
 
     async readFile(path) {
-      const encoded = path.split("/").map(encodeURIComponent).join("/");
-      const file = await getJson(`/contents/${encoded}?ref=${encodeURIComponent(branch)}`);
+      const file = await getJson(`${contentsPath(path)}?ref=${encodeURIComponent(branch)}`);
       return { text: decodeBase64(file.content), version: file.sha };
+    },
+
+    // One commit per file, on the default branch. `version` is the sha this
+    // browser last saw (none for a new file); GitHub refuses the write if the
+    // file has changed since.
+    async writeFile(path, text, version) {
+      const body = { message: `Update ${path}`, content: encodeBase64(text), sha: version };
+      const { content } = await getJson(contentsPath(path), { method: "PUT", body });
+      return content.sha;
+    },
+
+    async deleteFile(path, version) {
+      const body = { message: `Delete ${path}`, sha: version };
+      await getJson(contentsPath(path), { method: "DELETE", body });
     },
   };
 }

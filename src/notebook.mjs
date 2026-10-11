@@ -254,6 +254,11 @@ export function createNotebook({ storage }) {
   // Titles of the notes opened lately, newest first, kept in storage too.
   const RECENT = "recentNotes";
   const RECENT_KEPT = 20;
+  // What each Notes Repo file held when this browser last synced it, keyed by
+  // path: `{ title, version, text }`. Comparing a note's file with it tells
+  // which side changed since (#15).
+  const SYNCED = "syncedFiles";
+  const LAST_SYNCED = "lastSynced";
   // How much text to show on each side of a match in a search snippet.
   const SNIPPET_SIDE = 30;
 
@@ -304,6 +309,85 @@ export function createNotebook({ storage }) {
     };
     storage.putNote(note);
     return note;
+  }
+
+  function today() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function conflictCopy(note) {
+    const copy = { ...note, title: uniqueTitle(`${note.title} (conflict ${today()})`) };
+    storage.putNote(copy);
+    return copy;
+  }
+
+  // Whether this note is still as it was when its file was last synced.
+  function unchangedSince(note, entry, path) {
+    const file = noteToFile(note);
+    return file.path === path && file.text === entry.text;
+  }
+
+  // Bring one changed or new Notes Repo file into this browser. A note that
+  // changed here too is never overwritten (ADR 0004): the incoming version
+  // becomes a Conflict Copy, and this browser's text is pushed over the file.
+  function pullFile(path, version, text, synced, result) {
+    const known = synced[path];
+    const incoming = noteFromFile(path, text);
+    const local = storage.getNote(known ? known.title : incoming.title);
+    if (!local) {
+      const note = { ...incoming, title: uniqueTitle(incoming.title) };
+      storage.putNote(note);
+      result.pulled.push(note.title);
+      synced[path] = { title: note.title, version, text };
+    } else if (known ? unchangedSince(local, known, path) : sameNote(local, incoming)) {
+      if (local.title !== incoming.title) storage.deleteNote(local.title);
+      storage.putNote(incoming);
+      if (!sameNote(local, incoming) || local.title !== incoming.title) result.pulled.push(incoming.title);
+      synced[path] = { title: incoming.title, version, text };
+    } else {
+      result.pulled.push(conflictCopy(incoming).title);
+      result.conflicts += 1;
+      synced[path] = { title: local.title, version, text };
+    }
+  }
+
+  // A file gone from the Notes Repo (deleted, or renamed in another browser)
+  // takes its note with it, unless the note changed here since: then it is
+  // kept and pushed back.
+  function pullDeletion(path, synced, result) {
+    const local = storage.getNote(synced[path].title);
+    if (local && unchangedSince(local, synced[path], path)) {
+      storage.deleteNote(local.title);
+      result.pulled.push(local.title);
+    }
+    delete synced[path];
+  }
+
+  // Write every note whose file differs from what was last synced, then
+  // delete the files no note has any more (a rename writes the new file
+  // first). What is known is saved after each step, so a lost connection
+  // halfway leaves the rest for the next sync.
+  async function push(remote, synced, result) {
+    const wanted = new Map();
+    for (const note of storage.allNotes()) {
+      const file = noteToFile(note);
+      wanted.set(file.path, { title: note.title, text: file.text });
+    }
+    for (const [path, { title, text }] of wanted) {
+      const known = synced[path];
+      if (known && known.title === title && known.text === text) continue;
+      const version = await remote.writeFile(path, text, known?.version);
+      synced[path] = { title, version, text };
+      storage.putMeta(SYNCED, { ...synced });
+      result.pushed += 1;
+    }
+    for (const path of Object.keys(synced)) {
+      if (wanted.has(path)) continue;
+      await remote.deleteFile(path, synced[path].version);
+      delete synced[path];
+      storage.putMeta(SYNCED, { ...synced });
+      result.pushed += 1;
+    }
   }
 
   return {
@@ -565,22 +649,59 @@ export function createNotebook({ storage }) {
       const downloaded = [];
       onProgress({ step: "downloading", done: 0, total: paths.length });
       for (const path of paths) {
-        const { text } = await remote.readFile(path);
-        downloaded.push(noteFromFile(path, text));
+        const { text, version } = await remote.readFile(path);
+        downloaded.push({ path, version, text, note: noteFromFile(path, text) });
         onProgress({ step: "downloading", done: downloaded.length, total: paths.length });
       }
       onProgress({ step: "linking" });
-      const today = new Date().toISOString().slice(0, 10);
-      for (const note of downloaded) {
+      const synced = {};
+      for (const { path, version, text, note } of downloaded) {
         const existing = storage.getNote(note.title);
         if (!existing) {
           storage.putNote(note);
         } else if (!sameNote(existing, note)) {
-          storage.putNote({ ...note, title: uniqueTitle(`${note.title} (conflict ${today})`) });
+          conflictCopy(note);
         }
+        synced[path] = { title: note.title, version, text };
       }
+      storage.putMeta(SYNCED, synced);
+      storage.putMeta(LAST_SYNCED, new Date().toISOString());
       onProgress({ step: "ready", notes: downloaded.length });
       return { notes: downloaded.length };
+    },
+
+    // Sync (#15): pull what changed in the Notes Repo since this browser
+    // last synced, then push what changed here. Changed files are all
+    // downloaded before any note changes, so a lost connection while pulling
+    // leaves the Notebook as it was. `pulled` lists the notes that came in,
+    // changed or went, so the screen can redraw them.
+    async sync(remote) {
+      await remote.connect();
+      const synced = { ...storage.getMeta(SYNCED) };
+      const listed = (await remote.listFiles()).filter(({ path }) => isNoteFile(path));
+      const changed = [];
+      for (const { path, version } of listed) {
+        if (synced[path]?.version === version) continue;
+        const file = await remote.readFile(path);
+        changed.push({ path, ...file });
+      }
+      const result = { pulled: [], pushed: 0, conflicts: 0 };
+      for (const { path, version, text } of changed) {
+        pullFile(path, version, text, synced, result);
+      }
+      const listedPaths = new Set(listed.map(({ path }) => path));
+      for (const path of Object.keys(synced)) {
+        if (!listedPaths.has(path)) pullDeletion(path, synced, result);
+      }
+      storage.putMeta(SYNCED, { ...synced });
+      await push(remote, synced, result);
+      storage.putMeta(LAST_SYNCED, new Date().toISOString());
+      return result;
+    },
+
+    // When the last sync finished (an ISO date), or undefined before any.
+    lastSynced() {
+      return storage.getMeta(LAST_SYNCED);
     },
 
     // Import (#13): turn such a zip back into notes. A note the Notebook
