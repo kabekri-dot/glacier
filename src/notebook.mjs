@@ -368,57 +368,65 @@ export function createNotebook({ storage }) {
     delete synced[path];
   }
 
-  // A write or delete named a version the Notes Repo no longer has: the
-  // file changed in another browser since this one listed it. Pull it again,
-  // so a note changed in both places becomes a Conflict Copy (ADR 0004).
-  async function pullAgain(remote, path, synced, result) {
-    const listed = (await remote.listFiles()).find((file) => file.path === path);
-    if (!listed) {
-      if (synced[path]) pullDeletion(path, synced, result);
-    } else {
-      const { text, version } = await remote.readFile(path);
+  // Pull what changed in the Notes Repo since this browser last synced it.
+  // Changed files are all downloaded before any note changes, so a lost
+  // connection while pulling leaves the Notebook as it was.
+  async function pull(remote, synced, result) {
+    const listed = (await remote.listFiles()).filter(({ path }) => isNoteFile(path));
+    const changed = [];
+    for (const { path, version } of listed) {
+      if (synced[path]?.version === version) continue;
+      const file = await remote.readFile(path);
+      changed.push({ path, ...file });
+    }
+    for (const { path, version, text } of changed) {
       pullFile(path, version, text, synced, result);
+    }
+    const listedPaths = new Set(listed.map(({ path }) => path));
+    for (const path of Object.keys(synced)) {
+      if (!listedPaths.has(path)) pullDeletion(path, synced, result);
     }
     storage.putMeta(SYNCED, { ...synced });
   }
 
-  // Write every note whose file differs from what was last synced, then
-  // delete the files no note has any more (a rename writes the new file
-  // first). What is known is saved after each step, so a lost connection
-  // halfway leaves the rest for the next sync. Returns false when a stale
-  // version was refused and pulled again, so the push starts over.
+  // Send every note whose file differs from what was last synced, and delete
+  // the files no note has any more, as one commit (ADR 0005): a rename's new
+  // file, its old file and every rewritten Link land together or not at all.
+  // Returns false when the Notes Repo refused a stale version: then what
+  // changed there is pulled again (a note changed in both places becomes a
+  // Conflict Copy, ADR 0004) and the push starts over.
   async function pushRound(remote, synced, result) {
     const wanted = new Map();
     for (const note of storage.allNotes()) {
       const file = noteToFile(note);
       wanted.set(file.path, { title: note.title, text: file.text });
     }
-    // The file being written or deleted, for when it is refused as stale.
-    let path;
+    const writes = [];
+    for (const [path, { title, text }] of wanted) {
+      const known = synced[path];
+      if (known && known.title === title && known.text === text) continue;
+      writes.push({ path, title, text, version: known?.version });
+    }
+    const deletes = Object.keys(synced)
+      .filter((path) => !wanted.has(path))
+      .map((path) => ({ path, version: synced[path].version }));
+    if (writes.length === 0 && deletes.length === 0) return true;
+    let versions;
     try {
-      for (const [wantedPath, { title, text }] of wanted) {
-        path = wantedPath;
-        const known = synced[path];
-        if (known && known.title === title && known.text === text) continue;
-        const version = await remote.writeFile(path, text, known?.version);
-        synced[path] = { title, version, text };
-        storage.putMeta(SYNCED, { ...synced });
-        result.pushed += 1;
-      }
-      for (const syncedPath of Object.keys(synced)) {
-        if (wanted.has(syncedPath)) continue;
-        path = syncedPath;
-        await remote.deleteFile(path, synced[path].version);
-        delete synced[path];
-        storage.putMeta(SYNCED, { ...synced });
-        result.pushed += 1;
-      }
-      return true;
+      versions = await remote.commit({
+        writes: writes.map(({ path, text, version }) => ({ path, text, version })),
+        deletes,
+      });
     } catch (error) {
       if (error?.reason !== "conflict") throw error;
-      await pullAgain(remote, path, synced, result);
+      await pull(remote, synced, result);
       return false;
     }
+    for (const { path, title, text } of writes) synced[path] = { title, version: versions[path], text };
+    for (const { path } of deletes) delete synced[path];
+    storage.putMeta(SYNCED, { ...synced });
+    result.pushed += writes.length + deletes.length;
+    return true;
   }
 
   // A few rounds are plenty: each one takes in what the other browser wrote.
@@ -719,29 +727,14 @@ export function createNotebook({ storage }) {
     },
 
     // Sync (#15): pull what changed in the Notes Repo since this browser
-    // last synced, then push what changed here. Changed files are all
-    // downloaded before any note changes, so a lost connection while pulling
-    // leaves the Notebook as it was. `pulled` lists the notes that came in,
-    // changed or went, so the screen can redraw them.
+    // last synced, then push what changed here as one commit (#17).
+    // `pulled` lists the notes that came in, changed or went, so the screen
+    // can redraw them.
     async sync(remote) {
       await remote.connect();
       const synced = { ...storage.getMeta(SYNCED) };
-      const listed = (await remote.listFiles()).filter(({ path }) => isNoteFile(path));
-      const changed = [];
-      for (const { path, version } of listed) {
-        if (synced[path]?.version === version) continue;
-        const file = await remote.readFile(path);
-        changed.push({ path, ...file });
-      }
       const result = { pulled: [], pushed: 0, conflicts: 0 };
-      for (const { path, version, text } of changed) {
-        pullFile(path, version, text, synced, result);
-      }
-      const listedPaths = new Set(listed.map(({ path }) => path));
-      for (const path of Object.keys(synced)) {
-        if (!listedPaths.has(path)) pullDeletion(path, synced, result);
-      }
-      storage.putMeta(SYNCED, { ...synced });
+      await pull(remote, synced, result);
       await push(remote, synced, result);
       storage.putMeta(LAST_SYNCED, new Date().toISOString());
       return result;

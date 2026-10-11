@@ -70,6 +70,16 @@ Connect the same Notes repo in Chrome and in Firefox first (see #14).
 - [ ] Make another conflict, then delete the copy's file on GitHub and press "Sync now": the copy is gone from the menu and the dot turns green.
 - [ ] Change the same note in both browsers to exactly the same text: no copy appears.
 
+### A rename syncs as one commit (#17)
+
+Connect a Notes repo first (see #14).
+
+- [ ] Make two notes that link to a third with [[Its title]]. Wait for the dot to turn green.
+- [ ] Rename the third note by clicking its title in the pill. When the dot is green again, open the repo's commits on GitHub: there is one new commit with the renamed file, the old file gone, and both notes with the new Link.
+- [ ] Type in a single note and let it sync: that change is one commit too.
+- [ ] In a new empty repo, connect and let your notes sync: everything arrives, in at most two commits.
+- [ ] Turn the network off (devtools, Offline) and rename a linked note. On GitHub nothing changes. Turn the network on again: the rename arrives as one commit.
+
 ## 2. Everything
 
 ### Opening Glacier
@@ -186,6 +196,7 @@ Connect the same Notes repo in Chrome and in Firefox first (see #14).
 - [ ] Click the title in the pill, give B a new name and press Enter. In A the link now shows the new name.
 - [ ] Renaming to a name that's already taken is refused, and a free name is suggested.
 - [ ] After a rename the note stays open and its backlinks still work.
+- [ ] With a Notes repo connected, a rename shows on GitHub as one commit with the renamed file and every changed link (#17).
 
 ### Selecting and copying
 
