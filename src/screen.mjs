@@ -36,11 +36,14 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
   // The note on screen when a fresh page took its place, so Esc can go back.
   let before = null;
   let created = null;
+  // The note after its title followed the first line (#80).
+  let retitled = null;
   const history = createNoteHistory();
   const session = createNoteSession({
     notebook,
     onSaveError,
     onCreate: (made) => (created = made),
+    onRetitle: (renamed) => (retitled = renamed),
     ...timers,
   });
 
@@ -141,7 +144,18 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
     // The text changed. The first character on a fresh page makes the note.
     edit(body) {
       session.edit(body);
-      return created ? freshPageBecameNote() : null;
+      if (created) return freshPageBecameNote();
+      if (!retitled) return null;
+      note = retitled;
+      retitled = null;
+      history.rename(note.title);
+      notebook.markOpened(note.title);
+      return { type: "note", note, reload: false, changed: true };
+    },
+
+    // The caret left the first line: a new note's title stops following it.
+    leaveFirstLine() {
+      session.leaveFirstLine();
     },
 
     // The title typed in the pill on a fresh page, confirmed with Enter.

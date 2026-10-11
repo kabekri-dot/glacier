@@ -1155,39 +1155,7 @@ code {
   display: none;
 }
 
-/* The short conflict message under the pill (#59). */
-.conflict-line {
-  position: fixed;
-  top: 2.6rem;
-  left: 0.75rem;
-  right: 0.75rem;
-  z-index: 15;
-  margin: 0 auto;
-  width: fit-content;
-  max-width: calc(100% - 1.5rem);
-  padding: 0.25rem 0.65rem;
-  border: 1px solid #d98a1c;
-  border-radius: 10px;
-  background: var(--paper);
-  color: var(--ink);
-  font-size: 0.85rem;
-}
-
-.conflict-line[hidden] {
-  display: none;
-}
-
-.conflict-close {
-  margin-left: 0.4rem;
-  padding: 0 0.2rem;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-/* Above a second version's text (#70), under the Collection line. */
+/* Above the text of an original or a second version (#70, #80), under the Collection line. */
 .second-version-bar {
   position: absolute;
   top: calc(var(--note-top) + var(--line-height));
@@ -1219,16 +1187,6 @@ code {
 
 .note.has-bar {
   padding-top: calc(var(--note-top) + var(--line-height) + var(--bar-height, 0px) + 0.5rem);
-}
-
-.conflict-show {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--accent);
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
 }
 
 .rename-suggestion {

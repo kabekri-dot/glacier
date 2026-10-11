@@ -123,18 +123,33 @@ function twoVersions(notebook) {
   ];
 }
 
-// The short bar above a second version's text (#70), or null for any other
-// note. `original` is null when the original was renamed or removed.
+// The short bar above the text of a note involved in a conflict (#70, #80): a
+// second version (`deleteLabel` set) or an original that has one. Null for any
+// other note. `original` is the other note to open, or null when it was
+// renamed or removed.
 export function secondVersionBar(notebook, note) {
   if (!note) return null;
-  const pair = notebook.conflictCopyPairs().find(({ copy }) => copy === note.title);
-  if (!pair) return null;
-  const name = note.title.replace(CONFLICT_SUFFIX, "");
+  const pairs = notebook.conflictCopyPairs();
+  const pair = pairs.find(({ copy }) => copy === note.title);
+  if (pair) {
+    const name = note.title.replace(CONFLICT_SUFFIX, "");
+    return {
+      text: `This is a second version of '${name}'. Copy what you want to keep into '${name}', then delete this version.`,
+      original: pair.original,
+      openLabel: pair.original ? `Open '${pair.original}'` : null,
+      deleteLabel: "Delete this version",
+    };
+  }
+  const copies = pairs.filter(({ original }) => original === note.title);
+  if (copies.length === 0) return null;
+  const other = copies[0].copy;
   return {
-    text: `This is a second version of '${name}'. Copy what you want to keep into '${name}', then delete this version.`,
-    original: pair.original,
-    openLabel: pair.original ? `Open '${pair.original}'` : null,
-    deleteLabel: "Delete this version",
+    text: copies.length === 1
+      ? `This note has a second version, '${other}'. Copy what you want to keep from it into this note, then delete it.`
+      : `This note has ${copies.length} second versions. Copy what you want to keep from them into this note, then delete them.`,
+    original: other,
+    openLabel: `Open '${other}'`,
+    deleteLabel: null,
   };
 }
 

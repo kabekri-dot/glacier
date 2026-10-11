@@ -540,3 +540,80 @@ test("a failing save reaches the save-error callback", () => {
   screen.flush();
   assert.deepEqual(errors, [boom]);
 });
+
+// --- A new note's title follows its first line (#80) -----------------------
+
+test("a new note's title follows the first line as you type it", () => {
+  const { notebook, screen } = withNotes();
+  screen.startFreshPage({});
+  let view;
+  for (const text of ["B", "Bo", "Box", "Box model", "Box model basics"]) view = screen.edit(text);
+  screen.flush();
+  assert.equal(view.note.title, "Box model basics");
+  assert.equal(screen.note().title, "Box model basics");
+  assert.equal(notebook.note("Box model basics").body, "Box model basics");
+  assert.equal(notebook.note("B"), undefined);
+});
+
+test("the title leaves out Markdown marks while it follows the first line", () => {
+  const { screen } = withNotes();
+  screen.startFreshPage({});
+  screen.edit("#");
+  screen.edit("# Cascade");
+  assert.equal(screen.note().title, "Cascade");
+});
+
+test("leaving the first line stops the title following it", () => {
+  const { notebook, screen } = withNotes();
+  screen.startFreshPage({});
+  screen.edit("Box model");
+  screen.leaveFirstLine();
+  assert.equal(screen.edit("Box model basics"), null);
+  screen.flush();
+  assert.equal(screen.note().title, "Box model");
+  assert.equal(notebook.note("Box model").body, "Box model basics");
+});
+
+test("a second line stops the title following the first one", () => {
+  const { screen } = withNotes();
+  screen.startFreshPage({});
+  screen.edit("Box model");
+  screen.edit("Box model\nmore");
+  assert.equal(screen.edit("Box model changed\nmore"), null);
+  assert.equal(screen.note().title, "Box model");
+});
+
+test("renaming by hand stops the title following the first line", () => {
+  const { screen } = withNotes();
+  screen.startFreshPage({});
+  screen.edit("Box");
+  screen.rename("My name");
+  assert.equal(screen.edit("Box model"), null);
+  assert.equal(screen.note().title, "My name");
+});
+
+test("a title that is taken gets a free name while it follows", () => {
+  const { notebook, screen } = withNotes();
+  screen.startFreshPage({});
+  screen.edit("Second");
+  assert.notEqual(screen.note().title, "Second");
+  assert.match(screen.note().title, /^Second/);
+  assert.equal(notebook.note("Second").title, "Second");
+});
+
+test("a note with a title of its own does not follow the first line", () => {
+  const { screen } = withNotes();
+  screen.startFreshPage({ title: "Flexbox" });
+  screen.edit("A");
+  assert.equal(screen.edit("Something else"), null);
+  assert.equal(screen.note().title, "Flexbox");
+});
+
+test("the title that follows the first line is the one the history and recent notes keep", () => {
+  const { notebook, screen } = withNotes();
+  screen.startFreshPage({});
+  screen.edit("B");
+  screen.edit("Box");
+  assert.equal(notebook.recentNotes()[0].title, "Box");
+  assert.equal(notebook.recentNotes().filter((n) => n.title === "B").length, 0);
+});

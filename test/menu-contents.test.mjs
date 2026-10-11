@@ -227,9 +227,21 @@ test("a second version whose original is gone has the bar without an Open button
   assert.match(bar.text, /second version of 'Gone'/);
 });
 
+test("an original with a second version shows a bar with an Open button and no delete", () => {
+  const notebook = notebookWith();
+  notebook.createNote({ title: "Margins (conflict 2026-10-02)" });
+  const bar = secondVersionBar(notebook, notebook.note("Margins"));
+  assert.match(bar.text, /second version, 'Margins \(conflict 2026-10-02\)'/);
+  assert.equal(bar.openLabel, "Open 'Margins (conflict 2026-10-02)'");
+  assert.equal(bar.original, "Margins (conflict 2026-10-02)");
+  assert.equal(bar.deleteLabel, null);
+});
+
 test("an ordinary note or no note has no second version bar", () => {
   const notebook = notebookWith();
-  assert.equal(secondVersionBar(notebook, notebook.note("Margins")), null);
+  notebook.createNote({ title: "Margins (conflict 2026-10-02)" });
+  notebook.createNote({ title: "Unrelated" });
+  assert.equal(secondVersionBar(notebook, notebook.note("Unrelated")), null);
   assert.equal(secondVersionBar(notebook, null), null);
 });
 
