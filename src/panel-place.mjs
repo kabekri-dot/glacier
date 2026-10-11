@@ -32,9 +32,10 @@ export function decidePanelPlace({ choice, granted, url }) {
   return canDrawBeside(url) ? "beside" : "inside";
 }
 
-// Whether a panel that opens inside the sidebar says why (#60): the user chose
-// beside and the browser allows it, but this page can't be drawn on. A declined
-// permission or a choice of inside needs no explanation.
-export function explainsInside({ choice, granted, url }) {
-  return choice === "beside" && granted && !canDrawBeside(url);
+// Whether a panel that opens inside the sidebar says why (#60): the permission
+// is granted and inside wasn't chosen, but this page can't be drawn on, or the
+// browser `refused` when Glacier tried. A declined permission or a choice of
+// inside needs no explanation.
+export function explainsInside({ choice, granted, url, refused = false }) {
+  return choice !== "inside" && granted && (refused || !canDrawBeside(url));
 }

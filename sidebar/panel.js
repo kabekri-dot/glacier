@@ -1149,7 +1149,8 @@ async function start() {
       if (run !== latestPlacing) return;
     }
 
-    const explain = !beside && explainsInside({ choice: panelPlace, granted, url: tab?.url });
+    const refused = besideWanted && !beside;
+    const explain = !beside && explainsInside({ choice: panelPlace, granted, url: tab?.url, refused });
     settingsView.showInsideNote(explain);
     shortcutsView.showInsideNote(explain);
     shortcutsView.draw(shortcutsPanel, !beside);

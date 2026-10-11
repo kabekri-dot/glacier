@@ -81,6 +81,15 @@ test("the inside note stays away on a website that allows panels beside", () => 
   assert.equal(explainsInside({ choice: "beside", granted: true, url: article }), false);
 });
 
+test("the inside note shows when the permission was granted but the choice was never saved", () => {
+  assert.equal(explainsInside({ choice: "ask", granted: true, url: "chrome://settings/" }), true);
+});
+
+test("the inside note shows when the browser refused to draw on a page that looked allowed", () => {
+  const pdfWithoutSuffix = "https://example.com/download?id=7";
+  assert.equal(explainsInside({ choice: "beside", granted: true, url: pdfWithoutSuffix, refused: true }), true);
+});
+
 test("the inside note stays away when inside is chosen or the permission is declined", () => {
   assert.equal(explainsInside({ choice: "inside", granted: true, url: "chrome://newtab/" }), false);
   assert.equal(explainsInside({ choice: "beside", granted: false, url: "chrome://newtab/" }), false);
