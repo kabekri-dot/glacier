@@ -1,7 +1,7 @@
 // The Notebook core: all note, Link, title, search, file-format and sync
 // logic lives here as later slices add it. It has no screen code and no
-// browser APIs; storage (and later GitHub) is plugged in from outside
-// (ADR 0003), so the core can be tested with an in-memory stand-in.
+// browser APIs; storage and GitHub (the remote) are plugged in from outside
+// (ADR 0003), so the core can be tested with in-memory stand-ins.
 
 import { findLinks } from "./editor-model.mjs";
 import { zipFiles, unzipFiles } from "./zip.mjs";
@@ -204,6 +204,42 @@ export function importSummary({ added, unchanged, copies }) {
   if (unchanged > 0) parts.push(`${notes(unchanged)} already here`);
   if (copies > 0) parts.push(`${notes(copies)} kept as a copy next to yours`);
   return parts.join(", ") + ".";
+}
+
+// --- The Notes Repo (#14, ADR 0003) -----------------------------------------
+//
+// The Notes Repo is a GitHub repository, named "owner/name". People often
+// paste its address instead, so that is accepted too.
+export function notesRepoName(input) {
+  const name = (input ?? "")
+    .trim()
+    .replace(/^(https?:\/\/)?(www\.)?github\.com\//i, "")
+    .replace(/\.git$/i, "")
+    .replace(/\/$/, "");
+  return /^[\w.-]+\/[\w.-]+$/.test(name) ? name : undefined;
+}
+
+// What went wrong talking to the Notes Repo, in one sentence for the screen.
+// A remote marks its errors with a `reason`; anything else is unexpected.
+export function syncErrorMessage(error, repo) {
+  switch (error?.reason) {
+    case "unauthorized":
+      return "GitHub didn't accept this token. Check that you pasted all of it, or make a new one.";
+    case "not-found":
+      return `Couldn't find ${repo} on GitHub. Check the name, and that the token is made for this repo.`;
+    case "forbidden":
+      return `This token can't open ${repo}. Give it Contents access, read and write, on this repo.`;
+    case "offline":
+      return "Couldn't reach GitHub. Check your connection and try again.";
+    default:
+      return "Something went wrong talking to GitHub. Please try again in a moment.";
+  }
+}
+
+// Only Markdown files in the two note folders are notes; a README, an
+// `.obsidian` folder or pictures in the Notes Repo are left alone.
+function isNoteFile(path) {
+  return /^(courses|concepts)\/.+\.md$/i.test(path);
 }
 
 export function createNotebook({ storage }) {
@@ -514,6 +550,37 @@ export function createNotebook({ storage }) {
     // One note as its single Markdown file, `{ path, text }`.
     exportNote(title) {
       return noteToFile(storage.getNote(title));
+    },
+
+    // The first sync (#14): bring every note in the Notes Repo into this
+    // browser. All files are downloaded before anything changes, so a wrong
+    // token or a lost connection leaves the Notebook as it was. A note that is
+    // already here is never overwritten (ADR 0004): if the Notes Repo's text
+    // differs, it is kept next to it as a Conflict Copy. Nothing is written
+    // to the Notes Repo. `onProgress` hears each step, for the progress screen.
+    async firstSync(remote, onProgress = () => {}) {
+      onProgress({ step: "connecting" });
+      await remote.connect();
+      const paths = (await remote.listFiles()).map(({ path }) => path).filter(isNoteFile);
+      const downloaded = [];
+      onProgress({ step: "downloading", done: 0, total: paths.length });
+      for (const path of paths) {
+        const { text } = await remote.readFile(path);
+        downloaded.push(noteFromFile(path, text));
+        onProgress({ step: "downloading", done: downloaded.length, total: paths.length });
+      }
+      onProgress({ step: "linking" });
+      const today = new Date().toISOString().slice(0, 10);
+      for (const note of downloaded) {
+        const existing = storage.getNote(note.title);
+        if (!existing) {
+          storage.putNote(note);
+        } else if (!sameNote(existing, note)) {
+          storage.putNote({ ...note, title: uniqueTitle(`${note.title} (conflict ${today})`) });
+        }
+      }
+      onProgress({ step: "ready", notes: downloaded.length });
+      return { notes: downloaded.length };
     },
 
     // Import (#13): turn such a zip back into notes. A note the Notebook

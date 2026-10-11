@@ -29,6 +29,21 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 - [ ] "Export everything" downloads a zip of every note, as before.
 - [ ] "Restore from backup file" works as before (see section 2).
 
+### Connect GitHub and the first sync (#14)
+
+You need a private GitHub repo for your notes and a fine grained token for it (GitHub, Settings, Developer settings, Fine grained tokens), limited to that repo with Contents set to read and write. Put a few notes in it first, for example from an Export zip, in `courses/` and `concepts/`.
+
+- [ ] Open the pill menu: under a small "Sync" heading at the bottom there is a "Notes repo" button. It opens a form in the sidebar with Repo and Token fields and a short text about the token.
+- [ ] "Back to my notes" returns to the note that was open.
+- [ ] Type the repo as `yourname/notes` (pasting its GitHub address works too), paste the token, press "Connect and sync". A screen shows Connecting to GitHub, then Downloading 1 of N notes counting up, then Linking notes, then Ready, and says how many notes came in.
+- [ ] "Start writing" goes back. Every note from the repo is in the menu, with its Course, text and backlinks.
+- [ ] Typing just "notes" (no owner) says to type it as owner and name.
+- [ ] A wrong token says GitHub didn't accept it. A repo name that doesn't exist says it couldn't find that repo. Nothing in the Notebook changes.
+- [ ] With the network off (devtools, Offline), it says it couldn't reach GitHub.
+- [ ] Open "Notes repo" again: it says which repo is connected, the repo is filled in and the token field says it is saved. Change the repo and sync again without pasting the token.
+- [ ] A note you already had with different text is kept, and the repo's version shows up next to it as "Title (conflict date)".
+- [ ] The token is in neither the repo nor an Export zip. It shows only in the extension's storage (devtools of the sidebar, Application or Storage, Extension storage).
+
 ## 2. Everything
 
 ### Opening Glacier

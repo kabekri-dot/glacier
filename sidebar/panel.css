@@ -376,6 +376,48 @@ code {
   border-color: var(--glacier-accent);
 }
 
+/* The Notes Repo settings and the first sync's steps (#14). */
+.settings-text {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.settings-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.75;
+  line-height: 1.4;
+}
+
+.settings-error {
+  margin: 0;
+  color: #b3261e;
+  line-height: 1.4;
+}
+
+.sync-steps {
+  margin: 0;
+  padding-left: 1.4rem;
+  line-height: 1.8;
+}
+
+.sync-steps li {
+  opacity: 0.55;
+}
+
+.sync-steps .sync-step-done,
+.sync-steps .sync-step-now {
+  opacity: 1;
+}
+
+.sync-steps .sync-step-now {
+  font-weight: 700;
+}
+
+.sync-steps .sync-step-done::marker {
+  content: "\2713  ";
+}
+
 /* A failed save (issue #25): a quiet banner pinned to the bottom, shown only
    when the panel unhides it, so it never covers the note it's warning about. */
 .save-error {

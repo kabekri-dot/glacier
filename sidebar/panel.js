@@ -13,8 +13,9 @@
 // draws editor.state and editor.menu. The pill that switches notes arrives in a
 // later slice (#12).
 
-import { createNotebook, importSummary } from "../src/notebook.mjs";
+import { createNotebook, importSummary, notesRepoName, syncErrorMessage } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
+import { githubRemote } from "../src/github-remote.mjs";
 import { createNoteSession } from "../src/note-session.mjs";
 import { isOpenedByPage } from "../src/page-open.mjs";
 import { createNoteHistory } from "../src/note-history.mjs";
@@ -442,7 +443,7 @@ async function start() {
     });
     actions.append(newLesson, newConcept);
 
-    menuPanelEl.append(search, actions, body, backupSection(refresh));
+    menuPanelEl.append(search, actions, body, backupSection(refresh), notesRepoSection());
     menuPanelEl.hidden = false;
     pillMenuEl.setAttribute("aria-expanded", "true");
     search.focus();
@@ -531,6 +532,191 @@ async function start() {
     backupRow.append(courseSelect, exportCourse, exportAll, restore, picker);
     section.append(noteRow, heading, backupRow);
     return section;
+  }
+
+  // --- The Notes Repo: connecting GitHub and the first sync (#14) -----------
+  //
+  // Settings sit inside the sidebar for now (#18 moves them). The repo name
+  // and token are kept only in this browser's extension storage, never in the
+  // Notebook or the Notes Repo (ADR 0003). The Notebook core does the first
+  // sync through the GitHub remote; this only draws the form and the steps.
+  const extensionStorage = (typeof browser !== "undefined" ? browser : chrome).storage.local;
+
+  async function loadConnection() {
+    const { notesRepo, githubToken } = await extensionStorage.get(["notesRepo", "githubToken"]);
+    return { repo: notesRepo ?? "", token: githubToken ?? "" };
+  }
+
+  function notesRepoSection() {
+    const section = document.createElement("div");
+    section.className = "menu-files";
+    const row = document.createElement("div");
+    row.className = "menu-actions";
+    row.append(menuButton("Notes repo", "Connect your GitHub repo, or change the repo or token", () => {
+      closeMenu();
+      showSettings();
+    }));
+    section.append(menuHeading("Sync"), row);
+    return section;
+  }
+
+  // The note that was open when settings opened, to go back to afterwards.
+  let settingsBack = null;
+
+  // Leave the settings or the first sync and go back to that note, or to
+  // what the page asks for when none was open.
+  function leaveSettings() {
+    const note = settingsBack && notebook.note(settingsBack);
+    settingsBack = null;
+    if (note) openNote(note, { byPage: isOpenedByPage(note), fromHistory: true });
+    else openingFlow.start();
+  }
+
+  async function showSettings({ repo, error } = {}) {
+    if (current) settingsBack = current.title;
+    session.flush();
+    session.close();
+    current = null;
+    openedByPage = false;
+    updatePill();
+    updateNoteMeta();
+    updateBacklinks();
+    const saved = await loadConnection();
+
+    const form = document.createElement("form");
+    form.className = "create-form";
+
+    const heading = document.createElement("h1");
+    heading.className = "create-heading";
+    heading.textContent = "Notes repo";
+
+    const about = document.createElement("p");
+    about.className = "settings-text";
+    about.textContent = saved.repo
+      ? `Connected to ${saved.repo}. Change the repo or paste a new token, then sync again.`
+      : "Sync your notes through a private GitHub repo, so Chrome and Firefox share them.";
+
+    const repoInput = document.createElement("input");
+    repoInput.type = "text";
+    repoInput.className = "create-input";
+    repoInput.placeholder = "yourname/notes";
+    repoInput.value = repo ?? saved.repo;
+
+    const tokenInput = document.createElement("input");
+    tokenInput.type = "password";
+    tokenInput.className = "create-input";
+    tokenInput.autocomplete = "off";
+    tokenInput.placeholder = saved.token ? "Saved. Paste a new one to change it" : "Paste your token";
+
+    const tokenHelp = document.createElement("p");
+    tokenHelp.className = "settings-hint";
+    tokenHelp.textContent =
+      "Make a fine grained token on GitHub for this one repo, with Contents access set to read and write. It stays in this browser and never goes into your notes.";
+
+    const errorEl = document.createElement("p");
+    errorEl.className = "settings-error";
+    errorEl.setAttribute("role", "alert");
+    errorEl.hidden = !error;
+    errorEl.textContent = error ?? "";
+
+    const submit = document.createElement("button");
+    submit.type = "submit";
+    submit.className = "create-submit";
+    submit.textContent = "Connect and sync";
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "perm-cancel";
+    cancel.textContent = "Back to my notes";
+    cancel.addEventListener("click", leaveSettings);
+    const buttons = document.createElement("div");
+    buttons.className = "perm-buttons";
+    buttons.append(submit, cancel);
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const name = notesRepoName(repoInput.value);
+      const token = tokenInput.value.trim() || saved.token;
+      let problem = null;
+      if (!name) problem = "Type the repo as owner and name with a slash between, for example yourname/notes.";
+      else if (!token) problem = "Paste your token from GitHub.";
+      if (problem) {
+        errorEl.textContent = problem;
+        errorEl.hidden = false;
+        return;
+      }
+      showFirstSync(name, token);
+    });
+
+    form.append(heading, about, field("Repo", repoInput), field("Token", tokenInput), tokenHelp, errorEl, buttons);
+    noteEl.replaceChildren(form);
+    repoInput.focus();
+  }
+
+  // The first sync's progress screen: connecting, downloading n of N notes,
+  // linking, ready, then a confirmation. The repo and token are saved only
+  // once GitHub has accepted them; a wrong one goes back to the form with a
+  // clear message.
+  async function showFirstSync(repo, token) {
+    const screen = document.createElement("div");
+    screen.className = "perm-card";
+    const heading = document.createElement("h1");
+    heading.className = "create-heading";
+    heading.textContent = "First sync";
+    const list = document.createElement("ol");
+    list.className = "sync-steps";
+    const steps = {};
+    for (const [step, text] of [
+      ["connecting", "Connecting to GitHub"],
+      ["downloading", "Downloading notes"],
+      ["linking", "Linking notes"],
+      ["ready", "Ready"],
+    ]) {
+      steps[step] = document.createElement("li");
+      steps[step].textContent = text;
+      list.append(steps[step]);
+    }
+    screen.append(heading, list);
+    noteEl.replaceChildren(screen);
+
+    const order = Object.keys(steps);
+    const showStep = (progress) => {
+      const at = order.indexOf(progress.step);
+      order.forEach((step, i) => {
+        steps[step].className = i < at ? "sync-step-done" : i === at ? "sync-step-now" : "";
+      });
+      if (progress.step === "downloading") {
+        steps.downloading.textContent = `Downloading ${progress.done} of ${progress.total} notes`;
+      }
+      if (progress.step === "ready") steps.ready.className = "sync-step-done";
+    };
+
+    let result;
+    try {
+      result = await notebook.firstSync(githubRemote({ repo, token }), showStep);
+    } catch (error) {
+      console.error("Glacier: first sync failed", error);
+      // Switching tabs may have replaced this screen; then a notice says it.
+      if (screen.isConnected) showSettings({ repo, error: syncErrorMessage(error, repo) });
+      else showNotice(syncErrorMessage(error, repo), 8000);
+      return;
+    }
+    await extensionStorage.set({ notesRepo: repo, githubToken: token });
+    if (!screen.isConnected) {
+      showNotice(`Your notes from ${repo} are here.`);
+      return;
+    }
+
+    const done = document.createElement("p");
+    done.className = "settings-text";
+    const notes = result.notes === 1 ? "1 note" : `${result.notes} notes`;
+    done.textContent = `Your notes are here. Brought in ${notes} from ${repo}.`;
+    const ok = document.createElement("button");
+    ok.type = "button";
+    ok.className = "create-submit";
+    ok.textContent = "Start writing";
+    ok.addEventListener("click", leaveSettings);
+    screen.append(done, ok);
+    ok.focus();
   }
 
   // Rename by clicking the title (#54): the title becomes a text field in
