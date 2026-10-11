@@ -11,6 +11,16 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Delete this note (#57)
+
+- [ ] Open a note and open the pill menu: "Delete this note" is there, and hovering shows "Remove this note for good".
+- [ ] Click it: the sidebar asks "Delete 'title'? It is also removed from your Notes repo." with Delete and Keep. No browser dialog shows.
+- [ ] Click Keep: the note comes back as it was. Do it again and press Esc: same result.
+- [ ] Click Delete: the sidebar shows the note of the tab you are on, or the "+ Lesson note" button if that page has none.
+- [ ] The deleted note is gone from the menu, recent notes and search, and the previous note button skips it.
+- [ ] Another note that linked to it now shows that link as a Missing Link.
+- [ ] After a sync, the note's file is gone from the Notes repo on GitHub, and it does not come back after another sync.
+
 ### A create form stays until you leave it (#56)
 
 - [ ] Open a note, then a website with no note, and click "+ Lesson note": the form shows. Click on the paper, on empty space and on the pill: the form stays.
