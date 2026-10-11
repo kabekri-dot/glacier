@@ -1502,6 +1502,8 @@ html.beside .shortcuts {
 
 html.beside .shortcuts-tab {
   inset: 0;
+  border: 1px solid var(--rule);
+  border-right: none;
   border-radius: 0;
   box-shadow: none;
 }
