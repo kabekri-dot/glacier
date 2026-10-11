@@ -11,18 +11,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
-### Export and Import (#13)
-
-- [ ] A Lesson note with a Course and a website shows a small "Course · source ↗" line above its text, and no `---` lines. Clicking "source ↗" opens the lesson in a new tab.
-- [ ] A Lesson note made by hand (no website) shows only its Course. A Concept note shows no such line.
-- [ ] Open the pill menu: Export and Import sit at the bottom, and hovering shows what they do.
-- [ ] Export downloads a zip named "Glacier notes" with the date.
-- [ ] Unzip it: Lesson notes are in `courses/<Course>/`, Concept notes in `concepts/`, each file named after its title with a short block of details at the top.
-- [ ] In Obsidian, "Open folder as vault" on the unzipped folder: the notes open and clicking a Link goes to the other note.
-- [ ] Import that zip again: a message says no notes were added and all were already here, and nothing changed.
-- [ ] Change a note, then Import the older zip: your note keeps your change, and the older text appears as a second note with "(imported" and the date in its title.
-- [ ] Import a zip into a fresh Glacier (or another browser): every note comes back with its text, Course and website.
-- [ ] Import a file that isn't a zip: a message says it couldn't be read, and nothing changed.
+Nothing right now.
 
 ## 2. Everything
 
@@ -156,3 +145,16 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 ### How it reads
 
 - [ ] No text in Glacier uses dashes as punctuation, words in capitals, or emoji.
+
+### Export and Import
+
+- [ ] A Lesson note with a Course and a website shows a small "Course · source ↗" line above its text, and no `---` lines. Clicking "source ↗" opens the lesson in a new tab.
+- [ ] A Lesson note made by hand (no website) shows only its Course. A Concept note shows no such line.
+- [ ] Open the pill menu: Export and Import sit at the bottom, and hovering shows what they do.
+- [ ] Export downloads a zip named "Glacier notes" with the date.
+- [ ] Unzip it: Lesson notes are in `courses/<Course>/`, Concept notes in `concepts/`, each file named after its title with a short block of details at the top.
+- [ ] In Obsidian, "Open folder as vault" on the unzipped folder: the notes open and clicking a Link goes to the other note.
+- [ ] Import that zip again: a message says no notes were added and all were already here, and nothing changed.
+- [ ] Change a note, then Import the older zip: your note keeps your change, and the older text appears as a second note with "(imported" and the date in its title.
+- [ ] Import a zip into a fresh Glacier (or another browser): every note comes back with its text, Course and website.
+- [ ] Import a file that isn't a zip: a message says it couldn't be read, and nothing changed.
