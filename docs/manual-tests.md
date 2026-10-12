@@ -11,6 +11,17 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Collection icons, welcome overlap, Just synced, beside frame, Recent 5, page note Collection (#89)
+
+- [ ] Open the ▾ menu and hover a Collection heading: Download, Archive and Delete sit together on the right, as close as the icons on a note row.
+- [ ] On a fresh install (or after clearing "welcomeSeen"), visit a website that already has a note: the note opens and the welcome is gone, with no text on top of the note. Reload: the welcome does not come back.
+- [ ] With the welcome showing, type a letter, press +, or open a note from the menu: the welcome goes in each case.
+- [ ] Click the sync dot, then "Sync now": the box stays open and the pen writes "Just synced". Press it again when nothing changed: the pen writes it again.
+- [ ] In Settings, Notes repo, press "Sync now": the status line is written out as "Just synced" by the pen, then returns to normal. With reduce motion on, the words just appear. With the network off you read the plain error text.
+- [ ] With Settings beside the sidebar: the frame touches the sidebar's edge with no overlap and no gap, fits the window height, and has no scrollbar of its own on the outside. Scroll its list to the end and keep scrolling: the web page behind does not move.
+- [ ] Open the ▾ menu: Recent lists at most 5 notes.
+- [ ] On a page whose notes are in no Collection, press "New note for this page" while another Collection was used last: the new note is in no Collection. On a page with a note in a Collection, the new note joins it. On a page with no notes yet, it takes the last used Collection.
+
 ### Round 4 bugs: Backspace in bullets, plus click, dot colour, snippets, Restore text, long titles, reopen (#88)
 
 - [ ] Type `- first`, Enter, `second`. Put the caret at the start of the second bullet and press Backspace: the bullet mark goes and the words stay. Press Backspace again: it joins the line above, with no `- ` left in the middle.

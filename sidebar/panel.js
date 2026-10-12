@@ -30,7 +30,7 @@ import { readShortcutsPanel } from "../src/shortcuts-panel.mjs";
 import { readLook, lookStyle, wholeRows, applyLook } from "../src/look.mjs";
 import { readPanelPlace, createPanelPlacement } from "../src/panel-place.mjs";
 import { createBrowserPanels } from "../src/browser-panels.mjs";
-import { createSettingsView, createShortcutsView, menuButton, iconButton, originIcon, askFormat } from "./settings-view.js";
+import { createSettingsView, createShortcutsView, justSyncedLine, menuButton, iconButton, originIcon, askFormat } from "./settings-view.js";
 import { HOW_GLACIER_WORKS, ADD_TO_COLLECTION_HINT, welcomeShown } from "../src/guidance.mjs";
 import { drawBesideFrames } from "./beside-frames.js";
 import {
@@ -131,6 +131,19 @@ let savedPanelPlace = readPanelPlace(undefined);
 
 // Whether the welcome (#85) is still to be shown: until Start writing, once.
 let showWelcome = false;
+
+// Hide the welcome and count it as seen: Start writing, a note opening or
+// anything typed all do it (#89).
+function dismissWelcome() {
+  if (!showWelcome) return;
+  showWelcome = false;
+  const welcomeEl = document.querySelector(".welcome");
+  welcomeEl.hidden = true;
+  welcomeEl.replaceChildren();
+  extensionStorage.set({ welcomeSeen: true }).catch((error) => {
+    console.warn("Glacier: could not remember the welcome", error);
+  });
+}
 
 async function start() {
   if (!noteEl) return;
@@ -234,6 +247,7 @@ async function start() {
     if (view.changed) autoSync.changed();
     switch (view.type) {
       case "note":
+        dismissWelcome();
         if (view.reload) {
           // The note's lines in the editor, with the caret at the top.
           editor.load(view.note.body ?? "");
@@ -765,9 +779,12 @@ async function start() {
   function collectionSummary(course, actions, parent, tag = "summary") {
     const summary = document.createElement(tag);
     summary.textContent = course;
+    const icons = document.createElement("span");
+    icons.className = "collection-icons";
     for (const action of actions) {
-      summary.append(iconButton(action.kind, action.hint, (button) => collectionAction(action.kind, course, button, parent)));
+      icons.append(iconButton(action.kind, action.hint, (button) => collectionAction(action.kind, course, button, parent)));
     }
+    summary.append(icons);
     return summary;
   }
 
@@ -1181,7 +1198,6 @@ async function start() {
   let syncResultShown = null;
   let justSynced = false;
   let justSyncedWritten = false;
-  const SVG = "http://www.w3.org/2000/svg";
   let syncResultTimer = null;
   let syncing = false;
 
@@ -1191,26 +1207,6 @@ async function start() {
     syncDotEl.setAttribute("aria-expanded", "false");
     clearInterval(syncBoxTimer);
     syncBoxTimer = null;
-  }
-
-  // A small pen writes "Just synced" across the box, left to right. The
-  // writing plays once; a redraw while the words stay shows them as written.
-  function justSyncedLine() {
-    const line = document.createElement("p");
-    line.className = "sync-box-status sync-box-written";
-    if (justSyncedWritten) line.classList.add("is-written");
-    const words = document.createElement("span");
-    words.className = "sync-box-words";
-    words.textContent = JUST_SYNCED;
-    const pen = document.createElementNS(SVG, "svg");
-    pen.setAttribute("class", "sync-pen");
-    pen.setAttribute("viewBox", "0 0 16 16");
-    pen.setAttribute("aria-hidden", "true");
-    const stroke = document.createElementNS(SVG, "path");
-    stroke.setAttribute("d", "M2 14 L3 10 L11 2 L14 5 L6 13 Z M9.5 3.5 L12.5 6.5");
-    pen.append(stroke);
-    line.append(words, pen);
-    return line;
   }
 
   function drawSyncBox() {
@@ -1223,7 +1219,7 @@ async function start() {
       line.textContent = text;
       lines.push(line);
     };
-    if (justSynced) lines.push(justSyncedLine());
+    if (justSynced) lines.push(justSyncedLine(justSyncedWritten, "sync-box-status"));
     else addLine("sync-box-status", box.status);
     if (box.last) addLine("sync-box-last", box.last);
 
@@ -1287,7 +1283,8 @@ async function start() {
     else closeSyncBox();
   });
   document.addEventListener("click", (event) => {
-    if (!syncBoxEl.hidden && !event.target.closest(".sync-box, .sync-dot")) closeSyncBox();
+    // A button the box redrew is no longer in the page; that click was inside the box.
+    if (!syncBoxEl.hidden && event.target.isConnected && !event.target.closest(".sync-box, .sync-dot")) closeSyncBox();
   });
   document.addEventListener(
     "keydown",
@@ -2120,6 +2117,7 @@ async function start() {
     };
 
     el.addEventListener("input", (event) => {
+      dismissWelcome();
       applyEdit(el.textContent, selectionIn(el).start, event.isComposing);
     });
     el.addEventListener("compositionend", () => {
@@ -2587,12 +2585,7 @@ async function start() {
     start.className = "welcome-start";
     start.textContent = "Start writing";
     start.addEventListener("click", () => {
-      showWelcome = false;
-      welcomeEl.hidden = true;
-      welcomeEl.replaceChildren();
-      extensionStorage.set({ welcomeSeen: true }).catch((error) => {
-        console.warn("Glacier: could not remember the welcome", error);
-      });
+      dismissWelcome();
       if (!screen.note() && !screen.freshPage()) draw(screen.startFreshPage({}));
       else focusedEl?.focus();
     });

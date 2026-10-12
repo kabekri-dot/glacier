@@ -788,7 +788,7 @@ export function createNotebook({ storage }) {
     },
 
     // The notes opened lately, newest first, without any that are gone.
-    recentNotes(limit = 8) {
+    recentNotes(limit = 5) {
       return (storage.getMeta(RECENT) ?? [])
         .map((title) => storage.getNote(title))
         .filter((note) => note && !note.archived)
