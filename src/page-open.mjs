@@ -20,11 +20,14 @@
 // by the page (only matters with `keepUserOpenedNotes`). `page` is the
 // active tab's { url, title } or null for a browser-internal page.
 // `noteForPage(url)` returns the page's most recently edited note, or null.
+// `lastNote` is the note last opened in this browser, or null: a fresh sidebar
+// on a browser-internal page shows it instead of an empty page (#88).
 export function decidePageOpen({
   current,
   openedByPage,
   page,
   noteForPage,
+  lastNote = null,
   keepUserOpenedNotes = false,
   onNonWebsite = "keep",
 }) {
@@ -33,7 +36,11 @@ export function decidePageOpen({
   if (!page) {
     // Nothing on a browser-internal page to open. Keep an open note rather than
     // replacing it with a fresh page; only offer one on an empty panel. The
-    // "Tabs and notes" setting can ask for it even then (#53).
+    // "Tabs and notes" setting can ask for it even then (#53). With nothing
+    // open yet, the note you were last on opens rather than an empty page.
+    if (!current && lastNote && onNonWebsite !== "newNoteForm") {
+      return { type: "open", note: lastNote, byPage: false };
+    }
     return current && onNonWebsite !== "newNoteForm" ? { type: "keep" } : { type: "blankDraft" };
   }
 

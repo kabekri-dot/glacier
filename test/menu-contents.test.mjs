@@ -302,9 +302,9 @@ test("with no note open the pill says Glacier quietly and cannot be renamed", ()
   assert.deepEqual(pillTitle({ note: null, freshPage: null }), { text: "Glacier", hint: "", renamable: false, draft: false });
 });
 
-test("the pill of an open note shows its title and offers to rename it", () => {
+test("the pill of an open note shows its title and offers to rename it, the hover showing the whole title", () => {
   const pill = pillTitle({ note: { title: "Grid" }, freshPage: null });
-  assert.deepEqual(pill, { text: "Grid", hint: "Click to rename", renamable: true, draft: false });
+  assert.deepEqual(pill, { text: "Grid", hint: "Grid\nClick to rename", renamable: true, draft: false });
 });
 
 test("the pill of a fresh page offers to name the note", () => {

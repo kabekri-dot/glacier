@@ -11,6 +11,17 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Round 4 bugs: Backspace in bullets, plus click, dot colour, snippets, Restore text, long titles, reopen (#88)
+
+- [ ] Type `- first`, Enter, `second`. Put the caret at the start of the second bullet and press Backspace: the bullet mark goes and the words stay. Press Backspace again: it joins the line above, with no `- ` left in the middle.
+- [ ] Do the same on a heading line and a quote line: the first Backspace removes the mark only.
+- [ ] Click the + on the left of an empty line with the mouse: the command menu opens. Do it again on a line with text.
+- [ ] On the School Notebook paper with no GitHub connection, the dot in the pill is grey, not red. Check another paper: the dot looks the same.
+- [ ] Search with `//` for a word that sits in a heading, a quote or a code block: the snippet shows plain words, no `##`, `>` or backticks, and a link shows its title.
+- [ ] Restore from a backup file: the message starts with "Restored", for example "Restored 2 notes, 1 kept as a copy next to yours."
+- [ ] Give a note a very long title: the pill ends it with "…", and hovering it shows the whole title.
+- [ ] Open a browser page (new tab or settings), close and reopen Glacier: the last note you were on opens, not the empty page. On a website with no note you still get its empty page.
+
 ### Quotes, code block rows, Archived label, Undo reopen, focus ring, sideways scroll (#87)
 
 - [ ] Type a line starting with `> ` and move to another line: it shows as a quote with a quiet bar on the left and no `>`. Click back into it: the `>` shows faded.

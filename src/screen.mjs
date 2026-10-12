@@ -129,7 +129,7 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
     show(view) {
       switch (view.type) {
         case "open":
-          return showNote(view.note, { byPage: true });
+          return showNote(view.note, { byPage: view.byPage ?? true });
         case "pageDraft":
           return startFreshPage({
             title: view.page.title,

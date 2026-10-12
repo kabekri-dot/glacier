@@ -228,12 +228,25 @@ function zipNotes(notes) {
   return zipFiles(files);
 }
 
-// What an Import did, in one short sentence for the screen.
+// A note's text without its Markdown marks, for search snippets: headings,
+// quotes, bullets and code fences lose their marks, links show their title.
+export function plainText(markdown) {
+  return markdown
+    .split("\n")
+    .filter((line) => !/^\s*(```|~~~)/.test(line))
+    .map((line) => line.replace(/^\s*(#{1,6}\s+|>\s?|[-*+]\s+(\[[ xX]\]\s+)?|\d+\.\s+)/, ""))
+    .join("\n")
+    .replace(/!?\[\[([^\]|]+)(\|([^\]]*))?\]\]/g, (_, target, bar, label) => label ?? target)
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/(\*\*|__|~~|`|\*)/g, "");
+}
+
+// What a Restore did, in one short sentence for the screen.
 export function importSummary({ added, unchanged, copies }) {
   const notes = (n) => (n === 1 ? "1 note" : `${n} notes`);
-  const parts = [`Imported ${notes(added)}`];
-  if (unchanged > 0) parts.push(`${notes(unchanged)} already here`);
-  if (copies > 0) parts.push(`${notes(copies)} kept as a copy next to yours`);
+  const parts = [`Restored ${notes(added)}`];
+  if (unchanged > 0) parts.push(`${unchanged} already here`);
+  if (copies > 0) parts.push(`${copies} kept as a copy next to yours`);
   return parts.join(", ") + ".";
 }
 
@@ -309,7 +322,9 @@ export function createNotebook({ storage }) {
   // The text around the earliest match of any word, cut to a short stretch on
   // each side, as pieces in order: `{ text, match }`, with `match` true for
   // the pieces the screen should highlight.
-  function snippetAround(body, words) {
+  function snippetAround(rawBody, words) {
+    const plain = plainText(rawBody);
+    const body = words.every((word) => plain.toLowerCase().includes(word)) ? plain : rawBody;
     const lower = body.toLowerCase();
     const found = words.map((word) => ({ at: lower.indexOf(word), length: word.length }));
     const first = found.filter((hit) => hit.at !== -1).sort((a, b) => a.at - b.at)[0];

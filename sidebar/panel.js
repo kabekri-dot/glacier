@@ -39,6 +39,7 @@ import {
   editorTextToBody,
   focusedLineSpans,
   isFence,
+  lineMarkLength,
   renderLineHtml,
 } from "../src/editor-model.mjs";
 
@@ -1875,7 +1876,7 @@ async function start() {
   // then redraw so the removal shows. Used by the terminal dismissals: Esc,
   // clicking outside the line, and scrolling away from the menu (#28).
   function dismissAndRedraw() {
-    if (!editor.menu) return;
+    if (redrawing || !editor.menu) return;
     editor.dismissMenu();
     render();
   }
@@ -2251,12 +2252,13 @@ async function start() {
 
       if (
         event.key === "Backspace" &&
-        selection.start === 0 &&
         selection.start === selection.end &&
-        start > 0
+        (selection.start === 0
+          ? start > 0 || lineMarkLength(value) > 0
+          : selection.start === lineMarkLength(value.split("\n")[0]))
       ) {
         event.preventDefault();
-        editor.setFocus(start, 0);
+        editor.setFocus(start, selection.start);
         editor.backspaceAtStart();
         render();
         return;
@@ -2398,8 +2400,13 @@ async function start() {
   // Rebuild the page from the current lines, with the focused block as the
   // styled editing surface and every other block rendered. The caret is
   // restored afterwards.
+  // Taking the old focused line out of the page fires its blur, which would
+  // dismiss a menu the + has just opened (the real click is lost, #88).
+  let redrawing = false;
   function render() {
+    redrawing = true;
     noteEl.replaceChildren();
+    redrawing = false;
     focusedEl = null;
     // Keep the session's focused-block span in step with the caret before we
     // read it back to place the caret (#31).
@@ -2464,6 +2471,7 @@ async function start() {
     page: browserPage,
     getOpenNote: () => screen.onScreen(),
     noteForPage: (url) => notebook.noteForPage(url),
+    getLastNote: () => notebook.recentNotes(1)[0] ?? null,
     show: (view) => draw(screen.show(view)),
     getTabSettings: () => tabSettings,
   });

@@ -212,10 +212,10 @@ test("a file that is not a zip is refused without touching the Notebook", async 
 });
 
 test("the Import message says what was added, what was already there and what was copied", () => {
-  assert.equal(importSummary({ added: 1, unchanged: 0, copies: 0 }), "Imported 1 note.");
+  assert.equal(importSummary({ added: 1, unchanged: 0, copies: 0 }), "Restored 1 note.");
   assert.equal(
     importSummary({ added: 3, unchanged: 2, copies: 1 }),
-    "Imported 3 notes, 2 notes already here, 1 note kept as a copy next to yours.",
+    "Restored 3 notes, 2 already here, 1 kept as a copy next to yours.",
   );
 });
 

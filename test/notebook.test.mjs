@@ -418,6 +418,13 @@ test("// searches the text and shows the words in a snippet", () => {
   ]);
 });
 
+test("// snippets show plain text without Markdown marks", () => {
+  const notebook = notebookWithNotes();
+  notebook.saveBody("Variables", "## Heading\n> a quoted needle\n```js\nlet x\n```\nsee [the docs](https://x.y) and **bold**");
+  const [result] = notebook.search("// needle");
+  assert.equal(result.snippet.map((p) => p.text).join(""), "Heading a quoted needle let x see the docs and bold");
+});
+
 test("// needs every word, in any order, ignoring case", () => {
   const notebook = notebookWithNotes();
   notebook.saveBody("Variables", "A variable holds a Value.");

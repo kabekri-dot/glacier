@@ -746,6 +746,7 @@ code {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  width: max-content;
   max-width: calc(100% - 1.5rem);
 }
 
@@ -806,6 +807,7 @@ code {
 }
 
 .pill-title {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -819,11 +821,12 @@ code {
   width: 0.55rem;
   height: 0.55rem;
   border-radius: 50%;
-  background: var(--accent);
+  background: #8a8f99;
 }
 
 /* The sync status (#15): the dot's colour tells the state, hovering it
-   tells it in words. Not connected keeps the plain accent dot. */
+   tells it in words. The colours are fixed, the same on every paper (#88);
+   not connected is a quiet grey. */
 .sync-dot[data-state="synced"] {
   background: #3a9a5b;
 }
