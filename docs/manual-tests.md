@@ -11,6 +11,15 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Explaining Notes and Collections, and the pen that writes Just synced (#85)
+
+- [ ] In a fresh profile, open Glacier: three lines in the handwriting font explain notes, website notes and Collections, with a quiet "Start writing" button. Click it: the welcome goes and the caret is on the paper. Reload the extension and open Glacier again: the welcome does not come back.
+- [ ] With no Collections, open the ▾ menu: under "Notebook" a quiet line says "Collections hold notes that belong together. Make one with + New collection." Make a Collection: the line is gone.
+- [ ] On a note without a Collection, hover "Add to a collection" above the text: it explains what Collections are. Hover the `+` in the pill: it says "New note".
+- [ ] Open the Shortcuts panel with `?`: it starts with "How Glacier works" and the same three sentences.
+- [ ] Click the sync dot, then "Sync now": a small pen moves across the box and writes "Just synced" in the handwriting font, left to right. After a few seconds the box shows its normal status again. With the network off you get the plain words and no pen.
+- [ ] With "reduce motion" turned on in your system, "Just synced" just appears, with no pen.
+
 ### Calmer menus: compact Shortcuts panel, quiet search box and plus entries (#84)
 
 Reload with ↻ first. Try Aurora and Chalkboard too.
@@ -55,8 +64,6 @@ Reload with ↻ first.
 - [ ] Open four or five different notes one after another, then click `←`: a small box opens under it with the last 3 notes, newest first, each with a small icon. Hovering `←` says "Your last notes".
 - [ ] In that box, ↑ and ↓ move between the notes and Enter opens one. A click on a note opens it. Esc, or a click outside, closes the box.
 - [ ] In the ▾ menu lists, in search results and in the `←` box, a note from a website has a small globe, and a note you made yourself has a small pencil. Hovering says "From a website" or "Your own note". The line above the text of a website note shows the globe before the site link.
-- [ ] Click the sync dot, then "Sync now": the button writes "Just synced" in the handwriting font, left to right, then fades back to "Sync now". With the network off, you get the plain error words and no writing.
-- [ ] With "reduce motion" turned on in your system, "Just synced" just appears.
 
 ### A new note's name follows its first line (#80)
 
@@ -78,7 +85,7 @@ Reload with ↻ first.
 ### Sync lives in the dot; the Notebook menu holds only notes (#75)
 
 - [ ] Reload the extension with the ↻ button first. Click the sync dot in the pill: a small box opens under it with the status in words (for example "Up to date") and a quiet line "Last synced 2 minutes ago". Leave it open for a minute: the time moves on by itself.
-- [ ] Click "Sync now": the button reads "Syncing…", then for a few seconds "Just synced", then "Sync now" again. Turn the network off and try again: the result is "Offline. Your changes are kept here".
+- [ ] Click "Sync now": the button reads "Syncing…", then a pen writes "Just synced" across the box for a few seconds, then the box shows its status again. Turn the network off and try again: the result is "Offline. Your changes are kept here".
 - [ ] Press Esc, or click anywhere outside the box: it closes.
 - [ ] Make a note with two versions (see Conflict Copies below). The box shows "1 note has two versions. Check them" style text. Clicking it opens the ▾ menu with "Several versions (n)" at the very top, each original with its second version under it.
 - [ ] Click "Notes repo settings" in the box: settings open at Notes repo. Without a Notes repo connected, the box says "Not connected to GitHub" and offers "Set up sync", which opens the same place.

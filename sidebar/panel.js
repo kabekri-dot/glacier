@@ -31,6 +31,7 @@ import { readLook, lookStyle, wholeRows, applyLook } from "../src/look.mjs";
 import { readPanelPlace, createPanelPlacement } from "../src/panel-place.mjs";
 import { createBrowserPanels } from "../src/browser-panels.mjs";
 import { createSettingsView, createShortcutsView, menuButton, iconButton, originIcon, askFormat } from "./settings-view.js";
+import { HOW_GLACIER_WORKS, ADD_TO_COLLECTION_HINT, welcomeShown } from "../src/guidance.mjs";
 import { drawBesideFrames } from "./beside-frames.js";
 import {
   blockRanges,
@@ -127,6 +128,9 @@ let shortcutsPanel = readShortcutsPanel(undefined);
 // the explanation card has been answered. The Panel placement keeps it after.
 let savedPanelPlace = readPanelPlace(undefined);
 
+// Whether the welcome (#85) is still to be shown: until Start writing, once.
+let showWelcome = false;
+
 async function start() {
   if (!noteEl) return;
 
@@ -149,6 +153,11 @@ async function start() {
     savedPanelPlace = readPanelPlace((await extensionStorage.get("panelPlace")).panelPlace);
   } catch (error) {
     console.warn("Glacier: could not read where the panels open", error);
+  }
+  try {
+    showWelcome = welcomeShown((await extensionStorage.get("welcomeSeen")).welcomeSeen);
+  } catch (error) {
+    console.warn("Glacier: could not read whether the welcome was seen", error);
   }
   drawLook();
   document.fonts?.addEventListener("loadingdone", fitRows);
@@ -328,7 +337,7 @@ async function start() {
     button.className = "note-meta-course";
     button.classList.toggle("is-empty", !note.course);
     button.textContent = note.course || "Add to a collection";
-    button.title = "Click to choose a collection";
+    button.title = note.course ? "Click to choose a collection" : ADD_TO_COLLECTION_HINT;
     button.addEventListener("click", () => {
       if (noteMetaEl.querySelector(".course-list")) updateNoteMeta();
       else openCourseList();
@@ -1172,6 +1181,7 @@ async function start() {
   let syncResultShown = null;
   let justSynced = false;
   let justSyncedWritten = false;
+  const SVG = "http://www.w3.org/2000/svg";
   let syncResultTimer = null;
   let syncing = false;
 
@@ -1181,6 +1191,26 @@ async function start() {
     syncDotEl.setAttribute("aria-expanded", "false");
     clearInterval(syncBoxTimer);
     syncBoxTimer = null;
+  }
+
+  // A small pen writes "Just synced" across the box, left to right. The
+  // writing plays once; a redraw while the words stay shows them as written.
+  function justSyncedLine() {
+    const line = document.createElement("p");
+    line.className = "sync-box-status sync-box-written";
+    if (justSyncedWritten) line.classList.add("is-written");
+    const words = document.createElement("span");
+    words.className = "sync-box-words";
+    words.textContent = JUST_SYNCED;
+    const pen = document.createElementNS(SVG, "svg");
+    pen.setAttribute("class", "sync-pen");
+    pen.setAttribute("viewBox", "0 0 16 16");
+    pen.setAttribute("aria-hidden", "true");
+    const stroke = document.createElementNS(SVG, "path");
+    stroke.setAttribute("d", "M2 14 L3 10 L11 2 L14 5 L6 13 Z M9.5 3.5 L12.5 6.5");
+    pen.append(stroke);
+    line.append(words, pen);
+    return line;
   }
 
   function drawSyncBox() {
@@ -1193,11 +1223,12 @@ async function start() {
       line.textContent = text;
       lines.push(line);
     };
-    addLine("sync-box-status", box.status);
+    if (justSynced) lines.push(justSyncedLine());
+    else addLine("sync-box-status", box.status);
     if (box.last) addLine("sync-box-last", box.last);
 
     const button = menuButton(
-      syncing ? "Syncing…" : (syncResultShown ?? box.action),
+      syncing ? "Syncing…" : (justSynced ? box.action : (syncResultShown ?? box.action)),
       status.state === "off" ? "Connect your GitHub repo" : "Pull and push your notes right away",
       async () => {
         if (status.state === "off") {
@@ -1222,8 +1253,6 @@ async function start() {
         if (!syncBoxEl.hidden) drawSyncBox();
       },
     );
-    // The writing plays once; a redraw while the words stay shows them as written.
-    if (justSynced) button.classList.add(justSyncedWritten ? "is-just-synced-still" : "is-just-synced");
     justSyncedWritten = justSynced;
     const parts = [...lines, button];
     if (box.conflicts) {
@@ -2533,6 +2562,34 @@ async function start() {
     card.appendChild(buttons);
     noteEl.appendChild(card);
   }
+
+  // The welcome (#85): three lines on the paper and one quiet button. Start
+  // writing hides it for good (kept in this browser's storage, not synced) and
+  // puts the caret on the paper.
+  const welcomeEl = document.querySelector(".welcome");
+  function drawWelcome() {
+    if (!showWelcome) return;
+    const start = document.createElement("button");
+    start.type = "button";
+    start.className = "welcome-start";
+    start.textContent = "Start writing";
+    start.addEventListener("click", () => {
+      showWelcome = false;
+      welcomeEl.hidden = true;
+      welcomeEl.replaceChildren();
+      extensionStorage.set({ welcomeSeen: true }).catch((error) => {
+        console.warn("Glacier: could not remember the welcome", error);
+      });
+      if (!screen.note() && !screen.freshPage()) draw(screen.startFreshPage({}));
+      else focusedEl?.focus();
+    });
+    welcomeEl.replaceChildren(
+      ...HOW_GLACIER_WORKS.map((text) => Object.assign(document.createElement("p"), { textContent: text })),
+      start,
+    );
+    welcomeEl.hidden = false;
+  }
+  drawWelcome();
 
   openingFlow.listen();
   openingFlow.start();

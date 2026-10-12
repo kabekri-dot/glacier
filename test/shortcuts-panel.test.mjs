@@ -20,7 +20,7 @@ test("unknown saved values go back to the defaults", () => {
 test("the cheat sheet lists the start of a line, anywhere and key shortcuts", () => {
   assert.deepEqual(
     SHORTCUT_GROUPS.map((group) => group.title),
-    ["Start of a line", "Anywhere in a line", "Keys"],
+    ["How Glacier works", "Start of a line", "Anywhere in a line", "Keys"],
   );
 });
 
