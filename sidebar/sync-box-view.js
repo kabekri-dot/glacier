@@ -72,10 +72,15 @@ export function createSyncBoxView({ dotEl, boxEl, autoSync, signInAgain, reconne
       openSettings("notes-home");
     });
     const notNow = menuButton(NOT_NOW, "Ask me again later", close);
-    boxEl.replaceChildren(cloud, text, keep, notNow);
+    const message = Object.assign(document.createElement("div"), { className: "sync-box-reminder" });
+    message.append(cloud, text);
+    const buttons = Object.assign(document.createElement("div"), { className: "sync-box-choices" });
+    buttons.append(keep, notNow);
+    boxEl.replaceChildren(message, buttons);
   }
 
   function drawBox() {
+    boxEl.classList.toggle("is-reminder", Boolean(reminder));
     if (reminder) return drawReminder();
     const status = autoSync.status();
     const box = syncBox(status);
@@ -126,8 +131,11 @@ export function createSyncBoxView({ dotEl, boxEl, autoSync, signInAgain, reconne
     boxEl.replaceChildren(...parts);
   }
 
-  function open() {
+  // `withReminder` is set only after the other popups closed, since closing
+  // this box (one of them) forgets the reminder.
+  function open(withReminder = null) {
     beforeOpen();
+    reminder = withReminder;
     drawBox();
     boxEl.hidden = false;
     dotEl.setAttribute("aria-expanded", "true");
@@ -159,8 +167,7 @@ export function createSyncBoxView({ dotEl, boxEl, autoSync, signInAgain, reconne
     // Open the box by itself with the reminder, unless it is already open.
     showReminder(text) {
       if (isOpen()) return false;
-      reminder = { text };
-      open();
+      open({ text });
       return true;
     },
 

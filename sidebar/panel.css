@@ -916,10 +916,29 @@ code {
   image-rendering: pixelated;
 }
 
+/* The reminder in the sync box (#98): the cloud beside one sentence, then
+   Keep them safe and Not now side by side. */
+.sync-box.is-reminder {
+  max-width: min(19rem, calc(100% - 1rem));
+}
+
+.sync-box-reminder {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
 .sync-box-cloud {
+  flex: none;
   width: 1.6rem;
   height: 1.6rem;
+  margin-top: 0.15rem;
   image-rendering: pixelated;
+}
+
+.sync-box-choices {
+  display: flex;
+  gap: 0.4rem;
 }
 
 @keyframes sync-pulse {
