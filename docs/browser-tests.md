@@ -20,6 +20,7 @@ What Claude tested itself by clicking, typing and pressing keys in a real Chrome
 | 3 | 2026-10-12 | after #86 | open findings → #87 |
 | 4 | 2026-10-12 | after #87, every user story | bugs → #88 |
 | 5 | 2026-10-12 | after #88 | all fixes work; see Round 5 |
+| 6 | 2026-10-12 | after #89, #90 | see Round 6 |
 
 ## Workflows
 
@@ -226,6 +227,18 @@ Every story in the spec (#1), judged against today's decisions. ✅ works, ❌ b
 | 7. Reopening shows the last note | ➖ only applies with the page permission, which the test Chrome can't grant. Without it, the start prompt still shows (small gap, by design of #88) |
 
 User stories 14 and 18 are now ✅. Every user story testable here works.
+
+## Round 6 (after #89, #90)
+
+| Point | Result |
+|---|---|
+| Welcome: pixel-art scene, greeting, three lines with pixel icons, Start writing, tip (#90) | ✅ fades in once; polish: noisy white pixels on the water line, the wrapped second line starts at the margin instead of under its text, button and tip sit a little off the rules |
+| Welcome goes away when a note opens (#89) | ✅ Start writing; ➖ a website opening its note |
+| Collection heading icons close together (#89) | ✅ 22 px apart, like note rows |
+| Recent shows the last 5 (#89) | ✅ 5 of 6 notes |
+| Just synced pen in the sync box and in Settings (#89) | ➖ needs a connected repo |
+| Settings beside the sidebar fits, no page scroll (#89) | ➖ needs the permission |
+| New page note takes the page's Collection (#89) | ➖ needs websites |
 
 ## Still to test
 
