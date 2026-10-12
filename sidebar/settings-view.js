@@ -562,7 +562,9 @@ export function createShortcutsView({ onFold, onUnfold }) {
     for (const [keys, does] of entries) {
       const term = document.createElement("dt");
       term.append(element("code", "", keys));
-      list.append(term, element("dd", "", does));
+      const row = element("div", "shortcuts-row");
+      row.append(term, element("dd", "", does));
+      list.append(row);
     }
     body.append(element("h2", "settings-subheading", title), list);
   }

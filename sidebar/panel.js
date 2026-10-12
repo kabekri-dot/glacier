@@ -1526,7 +1526,7 @@ async function start() {
     const notNow = document.createElement("button");
     notNow.type = "button";
     notNow.className = "perm-cancel";
-    notNow.textContent = "Not now, open them inside";
+    notNow.textContent = "Not now, open it inside";
     notNow.addEventListener("click", () => panels.answerCard(false));
     buttons.append(allow, notNow);
 

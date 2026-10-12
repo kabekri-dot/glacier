@@ -11,6 +11,14 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Welcome layout, unbroken shortcut keys, card button text (#86)
+
+- [ ] Reload with ↻, then start in a fresh profile: the welcome's first line is fully visible below the pill, every line sits on a ruled line in the handwriting font, and "No note for this page yet." does not show at the same time.
+- [ ] The sidebar has no extra scrollbar while the welcome shows.
+- [ ] Click Start writing: the welcome goes away and the note shows.
+- [ ] Open the Shortcuts panel: every key is on one piece (for example the link key and the bold italic key), short keys sit beside their description, and a long key takes its own line above its description.
+- [ ] Fresh start: the second button on the card says "Not now, open it inside".
+
 ### Explaining Notes and Collections, and the pen that writes Just synced (#85)
 
 - [ ] In a fresh profile, open Glacier: three lines in the handwriting font explain notes, website notes and Collections, with a quiet "Start writing" button. Click it: the welcome goes and the caret is on the paper. Reload the extension and open Glacier again: the welcome does not come back.
@@ -516,7 +524,7 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 - [ ] Close the sidebar with settings beside it: within a few seconds they are gone from the page.
 - [ ] In settings, under Panels, choose "Inside the sidebar": settings move inside at once. Choose "Beside the sidebar": they move out again.
 - [ ] Take the permission back in the browser (Chrome: Details, Site access; Firefox: Permissions tab of the add-on). Open settings: they open inside the sidebar. Choose "Beside the sidebar" under Panels: the browser asks again.
-- [ ] Fresh start again, and this time click "Not now, open them inside" on the card: settings open inside the sidebar, no browser prompt shows, and everything else works as before. Reopen the sidebar: the card doesn't come back.
+- [ ] Fresh start again, and this time click "Not now, open it inside" on the card: settings open inside the sidebar, no browser prompt shows, and everything else works as before. Reopen the sidebar: the card doesn't come back.
 - [ ] Fresh start, decline the browser's prompt after Allow: settings open inside the sidebar.
 - [ ] After allowing, + and "New note for this page" on a new page doesn't ask for the tabs permission again: the page's title fills in.
 - [ ] Firefox with the sidebar on the left (View, Sidebar, Move sidebar to left): the panels open on the left edge of the page, next to the sidebar.

@@ -1465,17 +1465,27 @@ code {
   padding: 0.3rem 0.7rem 0.7rem;
 }
 
-/* Key on the left in a narrow column, what it does wrapping on the right. */
+/* Each key sits beside what it does; a key too long for that takes its own
+   line above. Keys never break inside. */
 .shortcuts-list {
-  display: grid;
-  grid-template-columns: 4.2rem 1fr;
-  column-gap: 0.5rem;
-  row-gap: 0.25rem;
-  margin: 0;
+  margin: 0 0 0.25rem;
 }
 
-.shortcuts-list dt {
-  overflow-wrap: anywhere;
+.shortcuts-row {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.shortcuts-list dt,
+.shortcuts-list dt code {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.shortcuts-list dd {
+  flex: 1 1 5rem;
 }
 
 .shortcuts-list dt code {
@@ -1777,9 +1787,15 @@ html.beside .settings {
   }
 }
 
-/* The welcome on the first start (#85), in the Theme's handwriting. */
+/* The welcome on the first start (#85), in the Theme's handwriting. It sits
+   on the paper where the note's text starts, every line on a ruled row, and
+   it replaces whatever the note shows while it is up. */
 .welcome {
-  margin: 1rem;
+  position: absolute;
+  top: var(--note-top);
+  left: var(--note-left);
+  right: 1.25rem;
+  z-index: 2;
   font-family: var(--font-family);
   line-height: var(--line-height);
 }
@@ -1788,13 +1804,19 @@ html.beside .settings {
   display: none;
 }
 
+.welcome:not([hidden]) ~ .note > * {
+  visibility: hidden;
+}
+
 .welcome p {
-  margin: 0 0 0.5rem;
+  margin: 0;
 }
 
 .welcome-start {
-  margin-top: 0.5rem;
-  padding: 0.2rem 0.7rem;
+  height: var(--line-height);
+  margin-top: var(--line-height);
+  padding: 0 0.7rem;
+  line-height: 1;
   border: 1px solid var(--rule);
   border-radius: 6px;
   background: transparent;
