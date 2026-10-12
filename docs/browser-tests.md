@@ -19,6 +19,7 @@ What Claude tested itself by clicking, typing and pressing keys in a real Chrome
 | 2 | 2026-10-12 | after #83 to #85 | bugs → #86 |
 | 3 | 2026-10-12 | after #86 | open findings → #87 |
 | 4 | 2026-10-12 | after #87, every user story | bugs → #88 |
+| 5 | 2026-10-12 | after #88 | all fixes work; see Round 5 |
 
 ## Workflows
 
@@ -212,7 +213,21 @@ Every story in the spec (#1), judged against today's decisions. ✅ works, ❌ b
 
 **Round 4 bugs, all in #88:** Backspace in bullets, the `+` menu click, the dot's colour on some papers, Markdown in snippets, "Imported" instead of "Restored", long pill titles without "…", and reopening on a browser page shows the empty page instead of the last note.
 
+## Round 5 (after #88)
+
+| #88 point | Result |
+|---|---|
+| 1. Backspace at the start of a bullet | ✅ first press: plain line, second press: clean join |
+| 2. `+` on the left opens the command menu | ✅ on a real click, on a new line below text; Esc removes the untouched `/` |
+| 3. Sync dot colour | ✅ quiet grey for "Saved in this browser" |
+| 4. Search snippets without Markdown | ✅ |
+| 5. "Restored" instead of "Imported" | ✅ (checked in the code; the upload path is unchanged) |
+| 6. Long pill titles | ✅ ellipsis set, hover shows the whole title |
+| 7. Reopening shows the last note | ➖ only applies with the page permission, which the test Chrome can't grant. Without it, the start prompt still shows (small gap, by design of #88) |
+
+User stories 14 and 18 are now ✅. Every user story testable here works.
+
 ## Still to test
 
-- Round 5 after #88.
+- Nothing left that Claude can test here.
 - By the user (not possible here): sync and the pen animation, tab following and several notes per page, print and PDF, several versions, Firefox.
