@@ -11,6 +11,15 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Calmer menus: compact Shortcuts panel, quiet search box and plus entries (#84)
+
+Reload with ↻ first. Try Aurora and Chalkboard too.
+
+- [ ] Open the Shortcuts panel: each key sits on the left and its description on the right, on one row. The panel is narrow and still readable at a sidebar width of 260 px.
+- [ ] Open ▾ and click in the search box: no black border, a quiet line that turns to the accent colour while you type.
+- [ ] In ▾, "+ New note" and "+ New collection" look like the other rows, with the same hover look. Click "+ New collection": the name field has a quiet border too.
+- [ ] Compare ▾, ⋯, the ← box, the sync box, the + menu and the Collection list: same row height, padding, font weight and hover look.
+
 ### Bugs from the browser test: Collection click, overlaps, after archive or delete (#83)
 
 Reload with ↻ first.
