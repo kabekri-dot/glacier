@@ -247,7 +247,6 @@ test("choosing inside under Panels moves open settings inside at once", async ()
   assert.equal(last().settings, "inside");
 });
 
-
 test("picking a folder moves settings beside the sidebar inside it until they close", async () => {
   const { placement, drawn, last, kept, switchTab } = setup({ choice: "beside", granted: true });
   await placement.start();

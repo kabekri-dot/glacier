@@ -162,9 +162,7 @@ test("a sync with nothing new reads no file again", async () => {
   const { notebook, remote } = browser(folder, margins, padding);
   await notebook.switchNotesHome("folder", remote);
   let reads = 0;
-  const counted = folderRemote({
-    getFolder: async () => folder.handle,
-  });
+  const counted = folderRemote({ getFolder: async () => folder.handle });
   const readFile = counted.readFile;
   counted.readFile = (path) => {
     reads += 1;

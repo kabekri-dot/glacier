@@ -193,6 +193,15 @@ export function needsFolderOk(status) {
   return status.state === "error" && status.reason === "unauthorized" && status.place === NOTES_FOLDER;
 }
 
+function errorDetail(status, last) {
+  if (needsGoogleSignIn(status)) return "Google asks you to sign in again. Your changes are kept in this browser until you do.";
+  if (needsFolderOk(status)) return "Chrome needs your OK to write to your notes folder again.";
+  if (status.reason === "unauthorized") {
+    return "GitHub no longer accepts your token. It may have expired. Make a new one and paste it under Where your notes live.";
+  }
+  return `${status.message} ${last}`;
+}
+
 function needsGoogleSignIn(status) {
   return status.state === "error" && status.reason === "unauthorized" && status.place === "Google Drive";
 }
@@ -256,14 +265,7 @@ export function syncStatusText(status, now = new Date()) {
     case "error":
       return {
         label: "Not synced",
-        detail:
-          needsGoogleSignIn(status)
-            ? "Google asks you to sign in again. Your changes are kept in this browser until you do."
-            : needsFolderOk(status)
-              ? "Chrome needs your OK to write to your notes folder again."
-              : status.reason === "unauthorized"
-              ? "GitHub no longer accepts your token. It may have expired. Make a new one and paste it under Where your notes live."
-              : `${status.message} ${last}`,
+        detail: errorDetail(status, last),
       };
     default:
       return { label: "Saved in this browser", detail: "Saved only in this browser. Choose where your notes live in Settings." };
