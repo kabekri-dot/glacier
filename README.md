@@ -15,7 +15,13 @@ which version.
   `sidebar_action` for Firefox; each browser ignores the key it doesn't know).
 - `background.js` — opens the sidebar from the toolbar button and the
   keyboard shortcut.
-- `sidebar/` — the Zen panel: `panel.html`, `panel.css`, `panel.js`.
+- `sidebar/` — the Zen panel: `panel.html`, `panel.css` and `panel.js`, which
+  wires the note, the pill and settings together. The parts it draws with live
+  beside it: `menu-view.js` (the ▾ menu, its hover icons and the questions
+  before deleting), `pill-menus.js` (←, + and ⋯), `sync-box-view.js`,
+  `note-meta-view.js` (the Collection line above the text), `cards.js`,
+  `downloads.js` (download and print) and `settings-view.js` (settings and the
+  Shortcuts panel, also drawn beside the sidebar by `beside.js`).
 - `fonts/` — the bundled handwriting fonts (Latin subset, woff2), each with
   its SIL Open Font License.
 - `icons/` — the glacier art: the toolbar icon (PNG) and the round settings
