@@ -11,6 +11,17 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### The sidebar code split into parts (#93)
+
+Nothing should look or work differently. Check each in Chrome and Firefox:
+
+- [ ] ▾ menu: search titles, then `//` and a word inside a note. Collections and page groups fold open and shut. Hover a note row and a Collection heading: the icons show.
+- [ ] ▾ menu: click Delete on a Collection, then Keep, then Esc on the question. Click "+ New collection", type a name, press Enter.
+- [ ] ⋯ menu: Move to collection…, Download as a file, Archive (then Undo) and Delete (then Keep) each still work. On an archived note it says Unarchive.
+- [ ] Download as .md, PDF and Print for a note (row icon and ⋯), for a Collection, and for a Collection inside the Archive section.
+- [ ] On a website with two notes and no Collection, hover the page group under No collection, click the move icon and pick a Collection: both notes move.
+- [ ] ←, + and the sync dot each open their box, Esc closes it, and opening one closes the one that was open.
+
 ### Collections only by choice, page groups (#92)
 
 - [ ] Use a Collection, then on a new website write a note: it is in no Collection (the line above the text says "Add to a collection"). `+` → New note: also none.

@@ -13,15 +13,12 @@
 // draws editor.state and editor.menu. The pill that switches notes arrives in a
 // later slice (#12).
 
-import { createNotebook, importSummary, sourceLabel, syncErrorMessage } from "../src/notebook.mjs";
+import { createNotebook, importSummary, syncErrorMessage } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { githubRemote } from "../src/github-remote.mjs";
-import { createAutoSync, syncDotText, syncStatusText, syncBox, syncResultText, JUST_SYNCED } from "../src/auto-sync.mjs";
-import { printHtml } from "../src/print-layout.mjs";
+import { createAutoSync } from "../src/auto-sync.mjs";
 import { createScreen } from "../src/screen.mjs";
-import { isOpenedByPage } from "../src/page-open.mjs";
-import { newNoteChoices, NEW_NOTE_HINT, PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
-import { notebookMenu, noteMenu, rowActions, archivedNotice, deleteCollectionQuestion, pageNoteCount, secondVersionBar, noteOrigin, lastNotesBox, pillTitle, BACK_BUTTON_HINT } from "../src/menu-contents.mjs";
+import { pageNoteCount, pillTitle, BACK_BUTTON_HINT } from "../src/menu-contents.mjs";
 import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
@@ -30,8 +27,14 @@ import { readShortcutsPanel } from "../src/shortcuts-panel.mjs";
 import { readLook, lookStyle, wholeRows, applyLook } from "../src/look.mjs";
 import { readPanelPlace, createPanelPlacement } from "../src/panel-place.mjs";
 import { createBrowserPanels } from "../src/browser-panels.mjs";
-import { createSettingsView, createShortcutsView, justSyncedLine, menuButton, iconButton, originIcon, askFormat } from "./settings-view.js";
-import { WELCOME_GREETING, WELCOME_LINES, WELCOME_TIP, ADD_TO_COLLECTION_HINT, welcomeShown } from "../src/guidance.mjs";
+import { createSettingsView, createShortcutsView } from "./settings-view.js";
+import { createMenuView } from "./menu-view.js";
+import { createDownloads } from "./downloads.js";
+import { createSyncBoxView } from "./sync-box-view.js";
+import { createBackBox, createNewMenu, createNoteMenu } from "./pill-menus.js";
+import { createNoteMetaView } from "./note-meta-view.js";
+import { pageCard, panelsCard, startPrompt } from "./cards.js";
+import { WELCOME_GREETING, WELCOME_LINES, WELCOME_TIP, welcomeShown } from "../src/guidance.mjs";
 import { drawBesideFrames } from "./beside-frames.js";
 import {
   blockRanges,
@@ -64,15 +67,12 @@ const pillArchivedEl = document.querySelector(".pill-archived");
 const pillCountEl = document.querySelector(".pill-count");
 const pillMenuEl = document.querySelector(".pill-menu");
 const syncDotEl = document.querySelector(".sync-dot");
-const secondVersionBarEl = document.querySelector(".second-version-bar");
 const renameHintEl = document.querySelector(".rename-hint");
 const backlinksButtonEl = document.querySelector(".backlinks-button");
 const backlinksListEl = document.querySelector(".backlinks-list");
 const backEl = document.querySelector(".pill-back");
 const newButtonEl = document.querySelector(".pill-new");
-const newMenuEl = document.querySelector(".new-menu");
 const menuPanelEl = document.querySelector(".menu");
-const noteMetaEl = document.querySelector(".note-meta");
 const glacierButtonEl = document.querySelector(".glacier-button");
 
 // This browser's own extension storage: the Notes Repo connection and the
@@ -227,7 +227,7 @@ async function start() {
     beforeSync: () => screen.flush(),
     onStatus: drawSyncStatus,
     onPulled: (titles) => {
-      if (menuIsOpen()) closeMenu();
+      menuView.close();
       draw(screen.pulled(titles));
     },
   });
@@ -237,6 +237,30 @@ async function start() {
       autoSync.changed();
     },
     titles: () => notebook.notes().map((note) => note.title),
+  });
+
+  const downloads = createDownloads({ notebook, screen, notice: (text) => showNotice(text) });
+
+  // The ▾ menu (#12), drawn by sidebar/menu-view.js, and the actions on notes,
+  // Collections and Page groups that its hover icons and ⋯ share.
+  const menuView = createMenuView({
+    notebook,
+    screen,
+    el: menuPanelEl,
+    button: pillMenuEl,
+    noteEl,
+    draw,
+    render,
+    openNote,
+    startNoteForPage,
+    moveNote: () => noteMeta.pickCollection(),
+    changed: () => autoSync.changed(),
+    notice: showNotice,
+    downloads,
+    beforeOpen: () => {
+      closeSettings({ redraw: false });
+      closeOverlays();
+    },
   });
 
   // Open a note the user picked. `byPage` is for a note with a page.
@@ -255,7 +279,7 @@ async function start() {
           // The note's lines in the editor, with the caret at the top.
           editor.load(view.note.body ?? "");
           render();
-          closeMenu();
+          menuView.close();
         } else {
           // The text stays as typed; a fresh page that became a note loses its
           // hint and gets its + back.
@@ -264,14 +288,14 @@ async function start() {
         }
         updatePill();
         updateBacklinks();
-        updateNoteMeta();
+        noteMeta.update();
         break;
       case "freshPage":
         editor.load("");
-        closeMenu();
+        menuView.close();
         updatePill();
         updateBacklinks();
-        updateNoteMeta();
+        noteMeta.update();
         render();
         if (view.editTitle) startTitleEdit();
         break;
@@ -283,7 +307,7 @@ async function start() {
         break;
       case "followPage":
         updatePill();
-        updateNoteMeta();
+        noteMeta.update();
         updateBacklinks();
         if (view.newForPage) openingFlow.newNoteForPage();
         else openingFlow.start();
@@ -299,179 +323,20 @@ async function start() {
 
   // --- The note's header (#13, #61) ----------------------------------------
   //
-  // The note's file keeps its Collection and Source in a frontmatter (ADR 0005),
-  // but the editor never shows that YAML: every note gets a small
-  // "Collection · site ↗" line above its text instead, without the site when the
-  // note has no page (#68). Clicking the Collection opens a small list right there
-  // to move the note; the site switches to the page's tab, or opens it in a
-  // new one.
-
-  function updateNoteMeta() {
-    noteMetaEl.replaceChildren();
-    noteMetaEl.classList.remove("is-picking");
-    const note = screen.note();
-    if (note) noteMetaEl.append(courseButton(note));
-    if (note?.source) noteMetaEl.append(" · ", originIcon(noteOrigin(notebook, note.title)), sourceLink(note.source));
-    noteMetaEl.hidden = !note;
-    noteEl.classList.toggle("has-meta", Boolean(note));
-    updateSecondVersionBar();
-  }
-
-  // The bar above a second version's text (#70): where the original is, and
-  // a way to delete this version (which asks first, #57).
-  function updateSecondVersionBar() {
-    const bar = secondVersionBar(notebook, screen.note());
-    secondVersionBarEl.hidden = !bar;
-    secondVersionBarEl.replaceChildren();
-    noteEl.classList.toggle("has-bar", Boolean(bar));
-    if (!bar) return;
-    const text = document.createElement("p");
-    text.textContent = bar.text;
-    const buttons = document.createElement("div");
-    buttons.className = "second-version-buttons";
-    if (bar.original) {
-      buttons.append(barButton(bar.openLabel, () => {
-        const original = notebook.note(bar.original);
-        if (original) openNote(original, { byPage: isOpenedByPage(original) });
-      }));
-    }
-    if (bar.deleteLabel) buttons.append(barButton(bar.deleteLabel, showDeleteQuestion));
-    secondVersionBarEl.append(text, buttons);
-    noteEl.style.setProperty("--bar-height", `${secondVersionBarEl.offsetHeight}px`);
-  }
-
-  function barButton(label, onClick) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "card-button";
-    button.textContent = label;
-    button.addEventListener("click", onClick);
-    return button;
-  }
-
-  function courseButton(note) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "note-meta-course";
-    button.classList.toggle("is-empty", !note.course);
-    button.textContent = note.course || "Add to a collection";
-    button.title = note.course ? "Click to choose a collection" : ADD_TO_COLLECTION_HINT;
-    button.addEventListener("click", () => {
-      if (noteMetaEl.querySelector(".course-list")) updateNoteMeta();
-      else openCourseList();
-    });
-    return button;
-  }
-
-  // The Collections, the last used one first, and "+ New collection" at the bottom.
-  function openCourseList() {
-    const list = document.createElement("div");
-    list.className = "course-list";
-    if (screen.note()?.course) {
-      const none = document.createElement("button");
-      none.type = "button";
-      none.className = "course-choice";
-      none.textContent = "No collection";
-      none.addEventListener("click", () => {
-        draw(screen.removeFromCourse());
-        render();
-      });
-      list.appendChild(none);
-    }
-    for (const course of notebook.courseChoices()) {
-      const choice = document.createElement("button");
-      choice.type = "button";
-      choice.className = "course-choice";
-      choice.textContent = course;
-      choice.addEventListener("click", () => moveCurrentNote(course));
-      list.appendChild(choice);
-    }
-    const fresh = document.createElement("button");
-    fresh.type = "button";
-    fresh.className = "course-choice is-new";
-    fresh.textContent = "+ New collection";
-    fresh.addEventListener("click", showCourseInput);
-    list.appendChild(fresh);
-    noteMetaEl.classList.add("is-picking");
-    noteMetaEl.appendChild(list);
-    list.querySelector("button").focus();
-  }
-
-  // "+ New collection" turns the Collection into a text field on the same line.
-  // Enter or clicking away moves the note (a name that matches a Collection in
-  // other capitals picks that one, #73); Esc or an empty field changes nothing.
-  function showCourseInput() {
-    const input = document.createElement("input");
-    input.type = "text";
-    input.className = "course-input";
-    input.placeholder = "New collection";
-    input.setAttribute("aria-label", "New collection");
-    let done = false;
-    const finish = (keep) => {
-      if (done) return;
-      done = true;
-      if (keep && input.value.trim()) moveCurrentNote(input.value);
-      else {
-        updateNoteMeta();
-        render();
-      }
-    };
-    input.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        finish(true);
-      } else if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        finish(false);
-      }
-    });
-    input.addEventListener("blur", () => finish(true));
-    noteMetaEl.querySelector(".course-list")?.remove();
-    noteMetaEl.classList.remove("is-picking");
-    noteMetaEl.querySelector(".note-meta-course").replaceWith(input);
-    input.focus();
-  }
-
-  function moveCurrentNote(course) {
-    draw(screen.moveToCourse(course));
-    render();
-  }
-
-  // A click anywhere else, or Esc, closes the Collection list.
-  document.addEventListener("mousedown", (event) => {
-    if (!noteMetaEl.querySelector(".course-list")) return;
-    if (event.target.closest(".course-list, .note-meta-course")) return;
-    updateNoteMeta();
+  // The "Collection · site ↗" line above the text and the bar above a second
+  // version, drawn by sidebar/note-meta-view.js.
+  const noteMeta = createNoteMetaView({
+    el: document.querySelector(".note-meta"),
+    barEl: document.querySelector(".second-version-bar"),
+    noteEl,
+    notebook,
+    screen,
+    draw,
+    render,
+    openNote,
+    openSource: (source) => browserPage.openSource(source),
+    askDelete: () => menuView.askDeleteNote(),
   });
-  document.addEventListener(
-    "keydown",
-    (event) => {
-      if (event.key !== "Escape" || !noteMetaEl.querySelector(".course-list")) return;
-      event.preventDefault();
-      event.stopPropagation();
-      updateNoteMeta();
-      if (screen.note()) render();
-    },
-    true,
-  );
-
-  // The site, e.g. "youtube.com ↗"; hovering shows the full address. A plain
-  // click goes through the browser page port, which picks the lesson's tab.
-  function sourceLink(source) {
-    const link = document.createElement("a");
-    link.href = source;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.title = source;
-    link.textContent = `${sourceLabel(source)} ↗`;
-    link.addEventListener("click", (event) => {
-      if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey) return;
-      event.preventDefault();
-      browserPage.openSource(source);
-    });
-    return link;
-  }
 
   // --- Backlinks (#10) ---------------------------------------------------------
   //
@@ -510,10 +375,8 @@ async function start() {
 
   // --- The pill and its menu (#12) -------------------------------------------
   //
-  // The pill shows the open note's title and the sync dot. Clicking it, or
-  // Ctrl+K, opens the menu: search, recent notes, the Notebook and the two
-  // "+" buttons. What to list and what a search matches is the Notebook's
-  // (search, recentNotes, outline); this only draws it. Esc closes it.
+  // The pill shows the open note's title, "1 of 3", ⋯ and the sync dot.
+  // Clicking it, or Ctrl+K, opens the ▾ menu (menuView, above). Esc closes it.
 
   function updatePill() {
     stopTitleEdit();
@@ -537,718 +400,56 @@ async function start() {
     const count = pageNoteCount(notebook, note);
     pillCountEl.hidden = count === null;
     pillCountEl.textContent = count ?? "";
-    updateNoteMenuButton();
+    noteMenu.update();
     const previous = screen.previous();
     backEl.hidden = previous === null || !tabSettings.showPreviousButton;
-    if (previous === null) closeBackBox();
+    if (previous === null) backBox.close();
   }
 
-  // ← opens a small box with the last notes you were on, newest first (#81).
-  // A click on one opens it. Esc or a click outside closes the box, and
-  // ↑/↓ and Enter work too.
-  const backBoxEl = document.querySelector(".back-box");
+  // ←, + and ⋯ open their small menus (sidebar/pill-menus.js).
   backEl.title = BACK_BUTTON_HINT;
-
-  function closeBackBox() {
-    backBoxEl.hidden = true;
-    backBoxEl.replaceChildren();
-    backEl.setAttribute("aria-expanded", "false");
-  }
-
-  function openBackBox() {
-    backBoxEl.replaceChildren();
-    for (const { title, origin } of lastNotesBox(screen, notebook)) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "menu-item";
-      button.append(originIcon(origin), title);
-      button.addEventListener("click", () => {
-        closeBackBox();
-        const found = notebook.note(title);
-        if (found) openNote(found, { byPage: isOpenedByPage(found) });
-      });
-      backBoxEl.append(button);
-    }
-    backBoxEl.hidden = false;
-    backEl.setAttribute("aria-expanded", "true");
-    backBoxEl.querySelector("button")?.focus();
-  }
-
-  backEl.addEventListener("click", () => {
-    if (backBoxEl.hidden) {
-      closeOverlays();
-      openBackBox();
-    } else closeBackBox();
+  const backBox = createBackBox({
+    button: backEl,
+    box: document.querySelector(".back-box"),
+    screen,
+    notebook,
+    openNote,
+    beforeOpen: () => closeOverlays(),
   });
-  document.addEventListener("click", (event) => {
-    if (!backBoxEl.hidden && !event.target.closest(".back-box, .pill-back")) closeBackBox();
-  });
-  document.addEventListener(
-    "keydown",
-    (event) => {
-      if (backBoxEl.hidden) return;
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        closeBackBox();
-        return;
-      }
-      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-      event.preventDefault();
-      const buttons = [...backBoxEl.querySelectorAll("button")];
-      const at = buttons.indexOf(document.activeElement);
-      const step = event.key === "ArrowDown" ? 1 : -1;
-      buttons[(at + step + buttons.length) % buttons.length]?.focus();
-    },
-    true,
-  );
-
-  // + opens a small menu: New note (blank) always, and on a website New note
-  // for this page (#68).
-  function closeNewMenu() {
-    newMenuEl.hidden = true;
-    newMenuEl.replaceChildren();
-    newButtonEl.setAttribute("aria-expanded", "false");
-  }
 
   function startNoteForPage() {
     draw(screen.startNoteForPage());
   }
 
-  async function openNewMenu() {
-    const choices = newNoteChoices({ onWebsite: await openingFlow.onWebsite() });
-    newMenuEl.replaceChildren();
-    for (const choice of choices) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "menu-new";
-      button.textContent = choice.label;
-      button.title = choice.hint;
-      button.addEventListener("click", () => {
-        closeNewMenu();
-        if (choice.kind === "page") startNoteForPage();
-        else draw(screen.startFreshPage({ editTitle: true }));
-      });
-      newMenuEl.appendChild(button);
-    }
-    newMenuEl.hidden = false;
-    newButtonEl.setAttribute("aria-expanded", "true");
-    newMenuEl.querySelector("button").focus();
-  }
-
-  newButtonEl.addEventListener("click", () => {
-    if (!newMenuEl.hidden) closeNewMenu();
-    else {
-      closeOverlays();
-      openNewMenu();
-    }
+  const newMenu = createNewMenu({
+    button: newButtonEl,
+    box: document.querySelector(".new-menu"),
+    onWebsite: () => openingFlow.onWebsite(),
+    onPick: (kind) => {
+      if (kind === "page") startNoteForPage();
+      else draw(screen.startFreshPage({ editTitle: true }));
+    },
+    beforeOpen: () => closeOverlays(),
   });
 
-  function menuIsOpen() {
-    return !menuPanelEl.hidden;
-  }
-
-  function closeMenu() {
-    if (!menuIsOpen()) return;
-    menuPanelEl.hidden = true;
-    menuPanelEl.replaceChildren();
-    pillMenuEl.setAttribute("aria-expanded", "false");
-  }
-
-  // Close the menu and put the caret back in the note.
-  function dismissMenuPanel() {
-    if (!menuIsOpen()) return;
-    closeMenu();
-    if (screen.note() || screen.freshPage()) render();
-  }
-
-  function noteButton(title, className = "menu-item") {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = className;
-    button.addEventListener("click", () => {
-      const note = notebook.note(title);
-      if (note) openNote(note, { byPage: isOpenedByPage(note) });
-    });
-    return button;
-  }
-
-  function menuHeading(text, hint) {
-    const heading = document.createElement("h2");
-    heading.className = "menu-heading";
-    if (hint) heading.title = hint;
-    heading.textContent = text;
-    return heading;
-  }
-
-  // A note button with the hover icons on its right (#71).
-  function noteRow(button, title, archived = false) {
-    const row = document.createElement("div");
-    row.className = "menu-row";
-    const icons = document.createElement("span");
-    icons.className = "row-icons";
-    for (const action of rowActions(title, archived)) {
-      icons.append(iconButton(action.kind, action.hint, (clicked) => rowAction(action.kind, title, clicked)));
-    }
-    row.append(button, icons);
-    return row;
-  }
-
-  function rowAction(kind, title, anchor) {
-    if (kind === "download") askFormat(anchor, (format) => downloadNote(title, format));
-    else if (kind === "archive") archiveFromMenu(title);
-    else if (kind === "unarchive") unarchiveFromMenu(title);
-    else {
-      closeMenu();
-      const note = notebook.note(title);
-      if (screen.note()?.title !== title) openNote(note, { byPage: isOpenedByPage(note) });
-      showDeleteQuestion();
-    }
-  }
-
-  function unarchiveFromMenu(title) {
-    notebook.unarchiveNote(title);
-    autoSync.changed();
-    refreshMenu();
-  }
-
-  // Archive at once, with a short notice that puts the note back.
-  function archiveFromMenu(title) {
-    if (screen.note()?.title === title) draw(screen.archive());
-    else {
-      notebook.archiveNote(title);
-      autoSync.changed();
-    }
-    refreshMenu();
-    showNotice("Archived.", 6000, {
-      label: "Undo",
-      run: () => undoArchive([title]),
-    });
-  }
-
-  function titleList(titles, current = null, archived = false) {
-    const list = document.createElement("div");
-    for (const title of titles) {
-      const button = noteButton(title);
-      button.textContent = title;
-      button.prepend(originIcon(noteOrigin(notebook, title)));
-      if (title === current) {
-        button.classList.add("is-current");
-        button.setAttribute("aria-current", "true");
-      }
-      list.appendChild(noteRow(button, title, archived));
-    }
-    return list;
-  }
-
-  // A highlighted match: { before, match, after } as text with a <mark>.
-  function marked(element, { before, match, after }) {
-    const mark = document.createElement("mark");
-    mark.textContent = match;
-    element.append(before, mark, after);
-    return element;
-  }
-
-  function snippetPieces(element, pieces) {
-    for (const { text, match } of pieces) {
-      if (match) {
-        const mark = document.createElement("mark");
-        mark.textContent = text;
-        element.append(mark);
-      } else {
-        element.append(text);
-      }
-    }
-    return element;
-  }
-
-  function searchResult({ title, titleMark, snippet }) {
-    const button = noteButton(title, "menu-item menu-result");
-    const titleEl = document.createElement("span");
-    titleEl.className = "menu-result-title";
-    button.append(originIcon(noteOrigin(notebook, title)));
-    if (titleMark) {
-      button.append(marked(titleEl, titleMark));
-      return noteRow(button, title);
-    }
-    titleEl.textContent = title;
-    const snippetEl = document.createElement("span");
-    snippetEl.className = "menu-snippet";
-    button.append(titleEl, snippetPieces(snippetEl, snippet));
-    return noteRow(button, title);
-  }
-
-  // A Collection heading with its hover icons (#74).
-  function collectionSummary(course, actions, parent, tag = "summary") {
-    const summary = document.createElement(tag);
-    summary.textContent = course;
-    const icons = document.createElement("span");
-    icons.className = "collection-icons";
-    for (const action of actions) {
-      icons.append(iconButton(action.kind, action.hint, (button) => collectionAction(action.kind, course, button, parent)));
-    }
-    summary.append(icons);
-    return summary;
-  }
-
-  function collectionAction(kind, course, anchor, details) {
-    if (kind === "download") askFormat(anchor, (format) => downloadCourse(course, format, { archived: Boolean(details.closest(".menu-archive")) }));
-    else if (kind === "archive") archiveCollectionFromMenu(course);
-    else if (kind === "unarchive") unarchiveCollectionFromMenu(course);
-    else askDeleteCollection(course, details);
-  }
-
-  function archiveCollectionFromMenu(course) {
-    const { titles, view } = screen.archiveCollection(course);
-    draw(view);
-    refreshMenu();
-    showNotice(archivedNotice(titles.length), 6000, {
-      label: "Undo",
-      run: () => undoArchive(titles),
-    });
-  }
-
-  // Undo an archive: the notes come back, and the open note if it was closed.
-  function undoArchive(titles) {
-    draw(screen.undoArchive(titles));
-    refreshMenu();
-  }
-
-  function unarchiveCollectionFromMenu(course) {
-    notebook.unarchiveCollection(course);
-    autoSync.changed();
-    refreshMenu();
-  }
-
-  // Delete a whole Collection (#74): the question replaces the group's notes
-  // right in the menu, with Delete and Keep. Esc is Keep.
-  function askDeleteCollection(course, details) {
-    details.querySelector(".delete-question")?.remove();
-    const count = notebook.outline().courses.find((entry) => entry.course === course)?.titles.length ?? 0;
-    const card = document.createElement("div");
-    card.className = "perm-card delete-question";
-    const question = document.createElement("p");
-    question.textContent = deleteCollectionQuestion(course, count);
-    const buttons = document.createElement("div");
-    buttons.className = "perm-buttons";
-    const confirm = barButton("Delete", () => {
-      stop();
-      const openTitle = screen.note()?.title;
-      const gone = notebook.outline().courses.find((entry) => entry.course === course)?.titles ?? [];
-      screen.flush();
-      notebook.deleteCollection(course);
-      autoSync.changed();
-      if (openTitle && gone.includes(openTitle)) draw(screen.pulled(gone));
-      refreshMenu();
-    });
-    const keep = document.createElement("button");
-    keep.type = "button";
-    keep.className = "perm-cancel";
-    keep.textContent = "Keep";
-    function stop() {
-      document.removeEventListener("keydown", onKey, true);
-      card.remove();
-    }
-    function onKey(event) {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopPropagation();
-      stop();
-    }
-    keep.addEventListener("click", stop);
-    document.addEventListener("keydown", onKey, true);
-    buttons.append(confirm, keep);
-    card.append(question, buttons);
-    details.querySelector("summary").after(card);
-    keep.focus();
-  }
-
-  // A website's own group under No collection (#92): a globe, the page's
-  // title and one hover icon that moves all its notes to a Collection.
-  function pageSummary({ label, page, titles, actions }) {
-    const summary = document.createElement("summary");
-    const name = document.createElement("span");
-    name.className = "page-group-name";
-    name.append(originIcon({ kind: "website", hint: "From a website" }), label);
-    const icons = document.createElement("span");
-    icons.className = "collection-icons";
-    for (const action of actions) {
-      icons.append(iconButton(action.kind, action.hint, (button) => pickCollection(button, (course) => movePage(page, titles, course))));
-    }
-    summary.append(name, icons);
-    return summary;
-  }
-
-  // The Collections to pick from, right where the move icon was clicked, and
-  // "+ New collection", which turns into a text field. Esc or a click
-  // anywhere else closes it.
-  function pickCollection(anchor, onPick) {
-    document.querySelector(".collection-choice")?.remove();
-    const box = document.createElement("div");
-    box.className = "format-choice collection-choice";
-    const close = () => {
-      box.remove();
-      document.removeEventListener("mousedown", onOutside, true);
-      document.removeEventListener("keydown", onKey, true);
-    };
-    const onOutside = (event) => {
-      if (!box.contains(event.target)) close();
-    };
-    const onKey = (event) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopPropagation();
-      close();
-    };
-    const pick = (course) => {
-      close();
-      onPick(course);
-    };
-    for (const course of notebook.courseChoices()) {
-      box.append(menuButton(course, `Move to '${course}'`, () => pick(course)));
-    }
-    const fresh = menuButton("+ New collection", "Make a collection and move the notes there", () => {
-      const input = document.createElement("input");
-      input.type = "text";
-      input.className = "menu-new-collection-input";
-      input.placeholder = "New collection";
-      input.setAttribute("aria-label", "New collection");
-      input.addEventListener("keydown", (event) => {
-        if (event.key !== "Enter") return;
-        event.preventDefault();
-        if (input.value.trim()) pick(input.value);
-      });
-      fresh.replaceWith(input);
-      input.focus();
-    });
-    box.append(fresh);
-    const rect = anchor.getBoundingClientRect();
-    box.style.top = `${rect.bottom + 2}px`;
-    box.style.right = `${Math.max(4, window.innerWidth - rect.right)}px`;
-    document.body.append(box);
-    document.addEventListener("mousedown", onOutside, true);
-    document.addEventListener("keydown", onKey, true);
-    box.querySelector("button").focus();
-  }
-
-  // Move every note of a page to a Collection; the open note goes through the
-  // Screen so it stays on screen as it is.
-  function movePage(page, titles, course) {
-    if (titles.includes(screen.note()?.title)) draw(screen.moveToCourse(course));
-    notebook.movePageToCollection(page, course);
-    autoSync.changed();
-    if (screen.note()) render();
-    refreshMenu();
-  }
-
-  function menuGroup({ label, hint, open, archive, titles, actions, sections, page }) {
-    const details = document.createElement("details");
-    details.className = archive ? "menu-archive" : "menu-course";
-    details.open = open;
-    if (page) {
-      const summary = pageSummary({ label, page, titles, actions });
-      summary.title = hint;
-      details.classList.add("page-group");
-      details.append(summary, titleList(titles));
-      return details;
-    }
-    if (sections) {
-      const summary = document.createElement("summary");
-      summary.textContent = label;
-      summary.title = hint;
-      details.append(summary);
-      for (const section of sections) {
-        const inner = document.createElement("div");
-        inner.className = "menu-course";
-        const heading = collectionSummary(section.course, section.actions, inner, "div");
-        heading.className = "menu-course-heading";
-        heading.title = "Notes in this collection";
-        inner.append(heading, titleList(section.titles, null, true));
-        details.append(inner);
-      }
-      const loose = titles.filter((title) => !sections.some((section) => section.titles.includes(title)));
-      details.append(titleList(loose, null, true));
-      return details;
-    }
-    const summary = actions ? collectionSummary(label, actions, details) : document.createElement("summary");
-    if (!actions) summary.textContent = label;
-    summary.title = hint;
-    details.append(summary, titleList(titles, null, archive));
-    return details;
-  }
-
-  // "+ New collection" under the Notebook heading turns into a text field.
-  // Enter makes an empty Collection; Esc or an empty field changes nothing.
-  function newCollectionButton({ label, hint }) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "menu-new menu-new-collection";
-    button.textContent = label;
-    button.title = hint;
-    button.addEventListener("click", () => {
-      const input = document.createElement("input");
-      input.type = "text";
-      input.className = "menu-new-collection-input";
-      input.placeholder = "New collection";
-      input.setAttribute("aria-label", "New collection");
-      input.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          notebook.newCollection(input.value);
-          refreshMenu();
-        } else if (event.key === "Escape") {
-          event.preventDefault();
-          event.stopPropagation();
-          refreshMenu();
-        }
-      });
-      button.replaceWith(input);
-      input.focus();
-    });
-    return button;
-  }
-
-  function conflictPair({ notes }) {
-    const row = document.createElement("div");
-    row.className = "conflict-pair";
-    for (const { title, label } of notes) {
-      const button = noteButton(title);
-      button.textContent = label;
-      button.prepend(originIcon(noteOrigin(notebook, title)));
-      row.append(noteRow(button, title));
-    }
-    return row;
-  }
-
-  function newForPageButton({ label, hint }) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "menu-new menu-new-for-page";
-    button.textContent = label;
-    button.title = hint;
-    button.addEventListener("click", () => {
-      closeMenu();
-      startNoteForPage();
-    });
-    return button;
-  }
-
-  // Draw the parts src/menu-contents.mjs lists for the ▾ menu.
-  function drawMenuParts(container, parts) {
-    container.replaceChildren();
-    for (const part of parts) {
-      if (part.kind === "heading") container.append(menuHeading(part.text, part.hint));
-      else if (part.kind === "notes") container.append(titleList(part.titles, part.current));
-      else if (part.kind === "newForPage") container.append(newForPageButton(part));
-      else if (part.kind === "newCollection") container.append(newCollectionButton(part));
-      else if (part.kind === "group") container.append(menuGroup(part));
-      else if (part.kind === "result") container.append(searchResult(part));
-      else if (part.kind === "pair") container.append(conflictPair(part));
-      else {
-        const none = document.createElement("p");
-        none.className = "menu-empty";
-        none.textContent = part.text;
-        container.append(none);
-      }
-    }
-  }
-
-  let refreshMenu = () => {};
+  const noteMenuButtonEl = document.querySelector(".pill-note-menu");
+  const noteMenu = createNoteMenu({
+    button: noteMenuButtonEl,
+    box: document.querySelector(".note-menu"),
+    screen,
+    onAction: (kind) => menuView.act("note", kind, { title: screen.note().title }, noteMenuButtonEl),
+    beforeOpen: () => closeOverlays(),
+  });
 
   // Only one of the ▾ menu, the ⋯ menu, the + menu, the ← box, the sync box
   // and the Shortcuts panel is open at a time (#83).
   function closeOverlays({ keepShortcuts = false } = {}) {
-    closeMenu();
-    closeNewMenu();
-    closeNoteMenu();
-    closeBackBox();
-    closeSyncBox();
+    menuView.close();
+    newMenu.close();
+    noteMenu.close();
+    backBox.close();
+    syncBoxView.close();
     if (!keepShortcuts && shortcutsPanel.on && !shortcutsPanel.folded) prefs.saveShortcutsPanel({ folded: true });
-  }
-
-  function openMenu() {
-    closeSettings({ redraw: false });
-    if (menuIsOpen()) {
-      menuPanelEl.querySelector(".menu-search").focus();
-      return;
-    }
-    closeOverlays();
-    // Flush the line being edited so the menu sees its latest text.
-    screen.flush();
-    menuPanelEl.replaceChildren();
-
-    const search = document.createElement("input");
-    search.type = "search";
-    search.className = "menu-search";
-    search.placeholder = "Search titles, or // to search inside notes";
-    search.title = "Search titles, or // to search inside notes";
-    search.setAttribute("aria-label", "Search notes");
-
-    const body = document.createElement("div");
-    body.className = "menu-body";
-    const refresh = () => drawMenuParts(body, notebookMenu(notebook, search.value, screen.note()));
-    refreshMenu = refresh;
-    search.addEventListener("input", refresh);
-    refresh();
-
-    const actions = document.createElement("div");
-    actions.className = "menu-actions";
-    const newNote = document.createElement("button");
-    newNote.type = "button";
-    newNote.className = "menu-new";
-    newNote.textContent = "+ New note";
-    newNote.title = NEW_NOTE_HINT;
-    newNote.addEventListener("click", () => {
-      draw(screen.startFreshPage({ title: search.value.trim(), editTitle: true }));
-    });
-    actions.append(newNote);
-
-    menuPanelEl.append(search, actions, body);
-    menuPanelEl.hidden = false;
-    pillMenuEl.setAttribute("aria-expanded", "true");
-    search.focus();
-  }
-
-  // Export and Restore (#13, #55). The file format lives in the Notebook
-  // core; this only downloads. "Download as a file" is in the ⋯ menu;
-  // the rest live in Settings, under Notes repo (#18). The sidebar always does
-  // the download, also for settings beside it (#21).
-  function download(data, type, name) {
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(new Blob([data], { type }));
-    link.download = name;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(link.href), 10000);
-  }
-
-  // Download a note or a Collection in the chosen format (#71). Markdown gives
-  // the file or a zip; PDF opens the browser's print window with the notes
-  // laid out on their own, where the user picks Save as PDF.
-  function printWindow(notes) {
-    const win = window.open("", "_blank");
-    if (!win) {
-      showNotice("Your browser blocked the print window");
-      return;
-    }
-    win.document.write(printHtml(notes));
-    win.document.close();
-    win.focus();
-    win.print();
-  }
-
-  function downloadNote(title, format) {
-    screen.flush();
-    if (format !== "md") return printWindow(notebook.notesToPrint(title));
-    const file = notebook.exportNote(title);
-    download(file.text, "text/markdown", file.path.split("/").pop());
-  }
-
-  // `archived` is for a Collection's Download icon in the Archive section.
-  function downloadCourse(course, format, { archived = false } = {}) {
-    screen.flush();
-    if (format !== "md") return printWindow(notebook.notesOfCourse(course, { archived }));
-    download(notebook.exportCourseZip(course, { archived }), "application/zip", `${course} ${today()}.zip`);
-  }
-
-  // The ⋯ "This note" menu (#63): the actions for the open note only, under
-  // the note's name. What it offers is decided by noteMenu.
-  const noteMenuButtonEl = document.querySelector(".pill-note-menu");
-  const noteMenuEl = document.querySelector(".note-menu");
-
-  function closeNoteMenu() {
-    noteMenuEl.hidden = true;
-    noteMenuEl.replaceChildren();
-    noteMenuButtonEl.setAttribute("aria-expanded", "false");
-  }
-
-  function updateNoteMenuButton() {
-    noteMenuButtonEl.hidden = !screen.note();
-    if (!screen.note()) closeNoteMenu();
-  }
-
-  function openNoteMenu() {
-    const menu = noteMenu(screen.note());
-    if (!menu) return;
-    closeOverlays();
-    screen.flush();
-    noteMenuEl.replaceChildren();
-    const heading = document.createElement("p");
-    heading.className = "note-menu-heading";
-    heading.textContent = menu.heading;
-    noteMenuEl.appendChild(heading);
-    for (const action of menu.actions) {
-      noteMenuEl.appendChild(
-        menuButton(action.label, action.hint, () => {
-          closeNoteMenu();
-          if (action.kind === "move") {
-            if (!noteMetaEl.querySelector(".course-list")) openCourseList();
-          } else if (action.kind === "download") {
-            askFormat(noteMenuButtonEl, (format) => downloadNote(screen.note().title, format));
-          } else if (action.kind === "archive") archiveFromMenu(screen.note().title);
-          else if (action.kind === "unarchive") draw(screen.unarchive());
-          else showDeleteQuestion();
-        }),
-      );
-    }
-    noteMenuEl.hidden = false;
-    noteMenuButtonEl.setAttribute("aria-expanded", "true");
-    noteMenuEl.querySelector("button").focus();
-  }
-
-  noteMenuButtonEl.addEventListener("click", () => {
-    if (!noteMenuEl.hidden) closeNoteMenu();
-    else openNoteMenu();
-  });
-
-  // Delete this note (#57): a short question in the sidebar, not a browser
-  // dialog. Keep or Esc puts the note back as it was. Delete removes it, and
-  // the Opening flow decides what the sidebar shows next.
-  function showDeleteQuestion() {
-    const doomed = screen.note();
-    screen.flush();
-    noteEl.replaceChildren();
-
-    const card = document.createElement("div");
-    card.className = "perm-card delete-question";
-
-    const question = document.createElement("p");
-    question.textContent = `Delete “${doomed.title}”? It is also removed from your Notes repo.`;
-    card.appendChild(question);
-
-    const buttons = document.createElement("div");
-    buttons.className = "perm-buttons";
-
-    const confirm = document.createElement("button");
-    confirm.type = "button";
-    confirm.className = "card-button";
-    confirm.textContent = "Delete";
-
-    const keep = document.createElement("button");
-    keep.type = "button";
-    keep.className = "perm-cancel";
-    keep.textContent = "Keep";
-
-    function keepNote() {
-      document.removeEventListener("keydown", onKey, true);
-      draw(screen.reopen());
-    }
-    function onKey(event) {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopPropagation();
-      keepNote();
-    }
-    confirm.addEventListener("click", () => {
-      document.removeEventListener("keydown", onKey, true);
-      draw(screen.delete());
-    });
-    keep.addEventListener("click", keepNote);
-    document.addEventListener("keydown", onKey, true);
-
-    buttons.append(confirm, keep);
-    card.appendChild(buttons);
-    noteEl.appendChild(card);
-    keep.focus();
   }
 
   // --- The Notes Repo: connecting GitHub and the first sync (#14) -----------
@@ -1261,130 +462,24 @@ async function start() {
     return { repo: notesRepo ?? "", token: githubToken ?? "" };
   }
 
-  // The sync dot in the pill shows the state by its colour; hovering it says
-  // what the state means (#70).
-  function drawSyncStatus(status) {
-    if (!syncBoxEl.hidden) drawSyncBox();
-    const { label } = syncStatusText(status);
-    syncDotEl.dataset.state = status.state;
-    syncDotEl.title = syncDotText(status);
-    syncDotEl.setAttribute("aria-label", label);
-    updateSecondVersionBar();
-  }
-
-  // Check them: the ▾ menu, which lists Two versions at the top.
-  function showConflictCopies() {
-    closeSyncBox();
-    openMenu();
-    menuPanelEl.querySelector(".menu-body").scrollTop = 0;
-  }
-
-  // The box under the sync dot (#75). What it says comes from syncBox and
-  // syncResultText; this draws it, keeps "last synced" fresh while open and
-  // shows the Sync now result in the button for a few seconds.
-  const syncBoxEl = document.querySelector(".sync-box");
-  let syncBoxTimer = null;
-  let syncResultShown = null;
-  let justSynced = false;
-  let justSyncedWritten = false;
-  let syncResultTimer = null;
-  let syncing = false;
-
-  function closeSyncBox() {
-    syncBoxEl.hidden = true;
-    syncBoxEl.replaceChildren();
-    syncDotEl.setAttribute("aria-expanded", "false");
-    clearInterval(syncBoxTimer);
-    syncBoxTimer = null;
-  }
-
-  function drawSyncBox() {
-    const status = autoSync.status();
-    const box = syncBox(status);
-    const lines = [];
-    const addLine = (className, text) => {
-      const line = document.createElement("p");
-      line.className = className;
-      line.textContent = text;
-      lines.push(line);
-    };
-    if (justSynced) lines.push(justSyncedLine(justSyncedWritten, "sync-box-status"));
-    else addLine("sync-box-status", box.status);
-    if (box.last) addLine("sync-box-last", box.last);
-
-    const button = menuButton(
-      syncing ? "Syncing…" : (justSynced ? box.action : (syncResultShown ?? box.action)),
-      status.state === "off" ? "Connect your GitHub repo" : "Pull and push your notes right away",
-      async () => {
-        if (status.state === "off") {
-          closeSyncBox();
-          openSettings("notes-repo");
-          return;
-        }
-        if (syncing) return;
-        syncing = true;
-        drawSyncBox();
-        const result = await autoSync.syncNow();
-        syncing = false;
-        syncResultShown = syncResultText(result);
-        justSynced = syncResultShown === JUST_SYNCED;
-        justSyncedWritten = false;
-        clearTimeout(syncResultTimer);
-        syncResultTimer = setTimeout(() => {
-          syncResultShown = null;
-          justSynced = false;
-          if (!syncBoxEl.hidden) drawSyncBox();
-        }, 4000);
-        if (!syncBoxEl.hidden) drawSyncBox();
-      },
-    );
-    justSyncedWritten = justSynced;
-    const parts = [...lines, button];
-    if (box.conflicts) {
-      const check = menuButton(box.conflicts, "See each note next to its second version", showConflictCopies);
-      parts.push(check);
-    }
-    if (status.state !== "off") {
-      const settings = document.createElement("button");
-      settings.type = "button";
-      settings.className = "sync-box-link";
-      settings.textContent = "Notes repo settings";
-      settings.title = "Change the repo or token";
-      settings.addEventListener("click", () => {
-        closeSyncBox();
-        openSettings("notes-repo");
-      });
-      parts.push(settings);
-    }
-    syncBoxEl.replaceChildren(...parts);
-  }
-
-  function openSyncBox() {
-    closeOverlays();
-    drawSyncBox();
-    syncBoxEl.hidden = false;
-    syncDotEl.setAttribute("aria-expanded", "true");
-    syncBoxTimer = setInterval(drawSyncBox, 15000);
-  }
-
-  syncDotEl.addEventListener("click", () => {
-    if (syncBoxEl.hidden) openSyncBox();
-    else closeSyncBox();
-  });
-  document.addEventListener("click", (event) => {
-    // A button the box redrew is no longer in the page; that click was inside the box.
-    if (!syncBoxEl.hidden && event.target.isConnected && !event.target.closest(".sync-box, .sync-dot")) closeSyncBox();
-  });
-  document.addEventListener(
-    "keydown",
-    (event) => {
-      if (event.key !== "Escape" || syncBoxEl.hidden) return;
-      event.preventDefault();
-      event.stopPropagation();
-      closeSyncBox();
+  // The sync dot and its box (#75), drawn by sidebar/sync-box-view.js.
+  const syncBoxView = createSyncBoxView({
+    dotEl: syncDotEl,
+    boxEl: document.querySelector(".sync-box"),
+    autoSync,
+    openSettings,
+    // Check them: the ▾ menu, which lists Several versions at the top.
+    showConflicts: () => {
+      menuView.open();
+      menuView.scrollToTop();
     },
-    true,
-  );
+    beforeOpen: () => closeOverlays(),
+  });
+
+  function drawSyncStatus(status) {
+    syncBoxView.drawStatus(status);
+    noteMeta.updateBar();
+  }
 
   // What the Notes repo section of Settings asks of the Notebook, wherever
   // settings are drawn (see settings-view.js). The first sync goes through the
@@ -1413,19 +508,9 @@ async function start() {
       return { notes: result.notes };
     },
 
-    exportCourse(course, format) {
-      downloadCourse(course, format);
-    },
-
-    exportAll() {
-      screen.flush();
-      download(notebook.exportZip(), "application/zip", `Glacier notes ${today()}.zip`);
-    },
-
-    exportArchive() {
-      screen.flush();
-      download(notebook.exportArchiveZip(), "application/zip", `Glacier archive ${today()}.zip`);
-    },
+    exportCourse: (course, format) => downloads.downloadCourse(course, format),
+    exportAll: () => downloads.exportAll(),
+    exportArchive: () => downloads.exportArchive(),
 
     async restore(bytes) {
       screen.flush();
@@ -1442,10 +527,6 @@ async function start() {
 
     notice: (text, ms) => showNotice(text, ms),
   };
-
-  function today() {
-    return new Date().toISOString().slice(0, 10);
-  }
 
   // --- Settings (#18) and the Shortcuts panel (#20) -------------------------
   //
@@ -1545,8 +626,8 @@ async function start() {
   }
 
   function openSettings(section) {
-    closeMenu();
-    closeNewMenu();
+    menuView.close();
+    newMenu.close();
     closeBacklinks();
     screen.flush();
     panels.openSettings(section);
@@ -1572,64 +653,18 @@ async function start() {
     else openSettings();
   });
 
-  // Glacier's own card before the browser's prompt (ADR 0008): what drawing
-  // on the page is for, and what it is never used for. Then settings open,
-  // beside the sidebar or inside it.
+  // Glacier's own card before the browser's prompt (ADR 0008). Then settings
+  // open, beside the sidebar or inside it.
   let panelsCardEl = null;
 
   function closePanelsCard() {
-    if (!panelsCardEl) return;
-    panelsCardEl.remove();
+    panelsCardEl?.remove();
     panelsCardEl = null;
   }
 
   function showPanelsCard() {
     if (panelsCardEl) return;
-    const sheet = document.createElement("aside");
-    sheet.className = "panels-card";
-    sheet.setAttribute("aria-label", "Where settings open");
-    const card = document.createElement("div");
-    card.className = "perm-card";
-
-    const title = document.createElement("h1");
-    title.className = "card-heading";
-    title.textContent = "Open settings beside the sidebar";
-
-    const why = document.createElement("p");
-    why.textContent =
-      "Settings can open next to the sidebar, over the edge of the page you're on. Your note keeps its full width and shows each change as you make it. For that, Glacier needs to draw on the pages you visit.";
-
-    const never = document.createElement("p");
-    never.className = "perm-never";
-    never.textContent = "Glacier never reads, saves or sends anything from the pages you visit.";
-
-    const next = document.createElement("p");
-    next.className = "perm-next";
-    next.textContent =
-      "Your browser will ask to confirm, in its own words about your data on all websites. If you decline, settings open inside the sidebar. You can change this later in settings, under Panels.";
-
-    const buttons = document.createElement("div");
-    buttons.className = "perm-buttons";
-    const allow = document.createElement("button");
-    allow.type = "button";
-    allow.className = "card-button";
-    allow.textContent = "Allow";
-    allow.addEventListener("click", () => panels.answerCard(true));
-    const notNow = document.createElement("button");
-    notNow.type = "button";
-    notNow.className = "perm-cancel";
-    notNow.textContent = "Not now, open it inside";
-    notNow.addEventListener("click", () => panels.answerCard(false));
-    buttons.append(allow, notNow);
-
-    card.append(title, why, never, next, buttons);
-    sheet.append(card);
-    sheet.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        closeSettings();
-      }
-    });
+    const { sheet, allow } = panelsCard({ onAnswer: (allowed) => panels.answerCard(allowed), onEscape: () => closeSettings() });
     glacierButtonEl.before(sheet);
     panelsCardEl = sheet;
     allow.focus();
@@ -1743,7 +778,7 @@ async function start() {
   function startTitleEdit() {
     const note = screen.note();
     if (titleEdit || !(note || screen.freshPage())) return;
-    closeMenu();
+    menuView.close();
     const input = document.createElement("input");
     input.type = "text";
     input.className = "pill-title-input";
@@ -1786,8 +821,8 @@ async function start() {
   // the sync dot does nothing.
   pillEl.addEventListener("click", (event) => {
     if (event.target.closest(".pill-title, .pill-title-input, .sync-dot, .pill-note-menu")) return;
-    if (menuIsOpen()) dismissMenuPanel();
-    else openMenu();
+    if (menuView.isOpen()) menuView.dismiss();
+    else menuView.open();
   });
 
   // Capture phase, so Ctrl+K reaches us before the page or the browser's own
@@ -1798,19 +833,11 @@ async function start() {
       if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "k") {
         event.preventDefault();
         event.stopPropagation();
-        openMenu();
-      } else if (event.key === "Escape" && !newMenuEl.hidden) {
+        menuView.open();
+      } else if (event.key === "Escape" && menuView.isOpen()) {
         event.preventDefault();
         event.stopPropagation();
-        closeNewMenu();
-      } else if (event.key === "Escape" && !noteMenuEl.hidden) {
-        event.preventDefault();
-        event.stopPropagation();
-        closeNoteMenu();
-      } else if (event.key === "Escape" && menuIsOpen()) {
-        event.preventDefault();
-        event.stopPropagation();
-        dismissMenuPanel();
+        menuView.dismiss();
       }
     },
     true,
@@ -2591,82 +1618,15 @@ async function start() {
     draw(screen.cancel());
   });
 
-  // The starting panel when no note is open and the permission hasn't been
-  // granted yet: one handwritten line and a quiet "+ New note for this page",
-  // so there's always a way in (#3). Clicking it either proceeds (already allowed) or
-  // shows the card.
+  // The start prompt and the card before the browser's prompt (sidebar/cards.js).
   function showStartPrompt() {
     updatePill();
-    updateNoteMeta();
-    noteEl.replaceChildren();
-
-    const wrap = document.createElement("div");
-    wrap.className = "start-prompt";
-
-    const line = document.createElement("p");
-    line.textContent = "No note for this page yet.";
-    wrap.appendChild(line);
-
-    const create = document.createElement("button");
-    create.type = "button";
-    create.className = "start-link";
-    create.textContent = "+ New note for this page";
-    create.title = PAGE_NOTE_HINT;
-    create.addEventListener("click", () => openingFlow.newNoteForPage());
-    wrap.appendChild(create);
-
-    noteEl.appendChild(wrap);
+    noteMeta.update();
+    noteEl.replaceChildren(startPrompt({ onNew: () => openingFlow.newNoteForPage() }));
   }
 
-  // Glacier's own explanation before the browser's prompt (ADR 0008): what the
-  // permission is for and what it is never used for. The browser's prompt only
-  // appears after Allow, straight from that click.
   function showPermissionCard() {
-    noteEl.replaceChildren();
-
-    const card = document.createElement("div");
-    card.className = "perm-card";
-
-    const title = document.createElement("h1");
-    title.className = "card-heading";
-    title.textContent = "Let Glacier see the page you're on";
-    card.appendChild(title);
-
-    const why = document.createElement("p");
-    why.textContent =
-      "So your notes open with the page, and “New note for this page” can use the page's title and address.";
-    card.appendChild(why);
-
-    const never = document.createElement("p");
-    never.className = "perm-never";
-    never.textContent =
-      "Glacier never reads, saves or sends anything from the pages you visit.";
-    card.appendChild(never);
-
-    const next = document.createElement("p");
-    next.className = "perm-next";
-    next.textContent =
-      "Your browser will ask to confirm. If you decline, you can still make notes by hand.";
-    card.appendChild(next);
-
-    const buttons = document.createElement("div");
-    buttons.className = "perm-buttons";
-
-    const allow = document.createElement("button");
-    allow.type = "button";
-    allow.className = "card-button";
-    allow.textContent = "Allow";
-    allow.addEventListener("click", () => openingFlow.allow());
-
-    const notNow = document.createElement("button");
-    notNow.type = "button";
-    notNow.className = "perm-cancel";
-    notNow.textContent = "Not now, new note by hand";
-    notNow.addEventListener("click", () => openingFlow.decline());
-
-    buttons.append(allow, notNow);
-    card.appendChild(buttons);
-    noteEl.appendChild(card);
+    noteEl.replaceChildren(pageCard({ onAllow: () => openingFlow.allow(), onDecline: () => openingFlow.decline() }));
   }
 
   // The welcome (#85, #90): a pixel-art scene, the greeting, three lines with
