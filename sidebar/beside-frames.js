@@ -56,6 +56,7 @@ export function drawBesideFrames(state) {
     if (!frame) {
       frame = drawn.frames[name] = document.createElement("iframe");
       frame.title = "Glacier settings";
+      frame.setAttribute("scrolling", "no");
       drawn.root.append(frame);
     }
     if (frame.getAttribute("src") !== src) frame.setAttribute("src", src);
@@ -68,9 +69,10 @@ export function drawBesideFrames(state) {
       "color-scheme: normal",
       `${edge}: ${box.offset}px`,
       `top: ${box.top}px`,
+      "bottom: 0",
       `width: ${box.width}px`,
-      box.height ? `height: ${box.height}px` : "height: 100vh",
-      box.shadow ? "box-shadow: 0 0 18px rgba(0, 0, 0, 0.25)" : "",
+      "overflow: hidden",
+      box.shadow ? `box-shadow: ${onLeft ? "" : "-"}6px 0 14px -6px rgba(0, 0, 0, 0.25)` : "",
     ].join("; ");
   };
 

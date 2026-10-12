@@ -1547,6 +1547,12 @@ code {
 
 /* Beside the sidebar (#21): each panel is drawn in its own frame over the
    edge of the web page (beside.html), so it fills that frame. */
+html.beside,
+html.beside body {
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
 html.beside body {
   background: var(--paper);
 }
@@ -1558,6 +1564,7 @@ html.beside .settings {
   border-left: 1px solid var(--rule);
   border-radius: 0;
   box-shadow: none;
+  overscroll-behavior: contain;
 }
 
 .conflict-pair {
@@ -1651,6 +1658,12 @@ html.beside .settings {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.collection-icons {
+  display: flex;
+  flex: none;
+  gap: 0.1rem;
 }
 
 .menu-course summary .icon-button,

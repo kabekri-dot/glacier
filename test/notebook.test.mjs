@@ -608,3 +608,14 @@ test("a blank new title is refused", () => {
   assert.equal(notebook.renameNote("Box model", "   ").ok, false);
   assert.notEqual(notebook.note("Box model"), undefined);
 });
+
+test("recent notes show only the last 5", () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  for (let n = 1; n <= 7; n += 1) {
+    notebook.createNote({ title: `Note ${n}` });
+    notebook.markOpened(`Note ${n}`);
+  }
+  assert.deepEqual(notebook.recentNotes().map((note) => note.title), [
+    "Note 7", "Note 6", "Note 5", "Note 4", "Note 3",
+  ]);
+});

@@ -764,3 +764,29 @@ test("a reopened note that was not opened by a page does not follow the page", (
   screen.show({ type: "open", note, byPage: false });
   assert.equal(screen.onScreen().openedByPage, false);
 });
+
+test("a new note for a page takes the Collection of the page's other notes", () => {
+  const { notebook, screen } = setup();
+  notebook.createNote({ title: "Other", course: "Last used" });
+  notebook.createNote({ title: "Loose page note", source: page.url });
+  screen.show({ type: "pageDraft", page: { url: page.url, title: "Second" } });
+  screen.confirmTitle("Second");
+  assert.equal(notebook.note("Second").course, undefined);
+});
+
+test("a new note for a page with a Collection note joins that Collection", () => {
+  const { notebook, screen } = setup();
+  notebook.createNote({ title: "Mine", source: page.url, course: "CSS" });
+  notebook.createNote({ title: "Other", course: "Last used" });
+  screen.show({ type: "pageDraft", page: { url: page.url, title: "Second" } });
+  screen.confirmTitle("Second");
+  assert.equal(notebook.note("Second").course, "CSS");
+});
+
+test("a new note for a page with no notes yet takes the last used Collection", () => {
+  const { notebook, screen } = setup();
+  notebook.createNote({ title: "Other", course: "Last used" });
+  screen.show({ type: "pageDraft", page: { url: page.url, title: "First" } });
+  screen.confirmTitle("First");
+  assert.equal(notebook.note("First").course, "Last used");
+});

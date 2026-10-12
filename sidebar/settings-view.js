@@ -11,7 +11,7 @@
 //   connection() -> { repo, token }, status(), syncNow() -> sync status,
 //   courses(), firstSync(repo, token, onProgress) -> { notes } or { error },
 //   exportCourse(course, format), exportAll(), restore(bytes) and notice(text, ms)
-import { syncStatusText } from "../src/auto-sync.mjs";
+import { syncStatusText, syncResultText, JUST_SYNCED } from "../src/auto-sync.mjs";
 import { notesRepoName } from "../src/notebook.mjs";
 import { SHORTCUT_GROUPS } from "../src/shortcuts-panel.mjs";
 import { PAPERS, paperGroups, FONT_OVERRIDES, TEXT_SIZE } from "../src/look.mjs";
@@ -115,19 +115,53 @@ export function askFormat(anchor, onPick) {
   box.querySelector("button").focus();
 }
 
-// The sync status line and "Sync now", in the pill menu and in Settings.
+const SVG = "http://www.w3.org/2000/svg";
+
+// A small pen writes "Just synced" across a line, left to right (#85). With
+// `written` the words just stand there, as on a redraw while they stay.
+export function justSyncedLine(written = false, className = "") {
+  const line = document.createElement("p");
+  line.className = `${className} sync-box-written`.trim();
+  if (written) line.classList.add("is-written");
+  const words = document.createElement("span");
+  words.className = "sync-box-words";
+  words.textContent = JUST_SYNCED;
+  const pen = document.createElementNS(SVG, "svg");
+  pen.setAttribute("class", "sync-pen");
+  pen.setAttribute("viewBox", "0 0 16 16");
+  pen.setAttribute("aria-hidden", "true");
+  const stroke = document.createElementNS(SVG, "path");
+  stroke.setAttribute("d", "M2 14 L3 10 L11 2 L14 5 L6 13 Z M9.5 3.5 L12.5 6.5");
+  pen.append(stroke);
+  line.append(words, pen);
+  return line;
+}
+
+// The sync status line and "Sync now", in the pill menu and in Settings. After
+// a good sync the status line is written out as "Just synced" for a moment.
 export function syncStatusRow({ status, syncNow, notice }, ...buttons) {
   const row = document.createElement("div");
   row.className = "menu-actions";
   row.append(...buttons);
-  const line = document.createElement("p");
+  let line = document.createElement("p");
   line.className = "menu-sync-status";
   line.textContent = syncStatusText(status).detail;
+  let restore = null;
   if (status.state !== "off") {
     row.append(menuButton("Sync now", "Pull and push your notes right away", async () => {
-      const result = syncStatusText(await syncNow());
-      line.textContent = result.detail;
-      notice(result.label === "Synced" ? "Synced just now." : result.detail, 4000);
+      const result = await syncNow();
+      const shown = syncResultText(result);
+      const detail = syncStatusText(result).detail;
+      const next = shown === JUST_SYNCED ? justSyncedLine(false, "menu-sync-status") : Object.assign(document.createElement("p"), { className: "menu-sync-status", textContent: detail });
+      line.replaceWith(next);
+      line = next;
+      if (shown !== JUST_SYNCED) notice(detail, 4000);
+      clearTimeout(restore);
+      restore = setTimeout(() => {
+        const plain = Object.assign(document.createElement("p"), { className: "menu-sync-status", textContent: detail });
+        line.replaceWith(plain);
+        line = plain;
+      }, 4000);
     }));
   }
   return [line, row];
