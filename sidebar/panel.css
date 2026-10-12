@@ -990,12 +990,6 @@ code {
   text-decoration: underline;
 }
 
-/* "+ New note for this page" under the page's notes: quiet, like a list item. */
-.menu-new.menu-new-for-page {
-  display: block;
-  width: 100%;
-}
-
 /* The open note in Notes for this page. */
 .menu-item.is-current {
   color: var(--accent);
