@@ -1,2 +1,5 @@
 # npm packages for developer tools (Sandcastle). Never committed, never shipped in the extension.
 node_modules/
+
+# Release zips (README, Making a release).
+glacier-*.zip

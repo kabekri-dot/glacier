@@ -33,7 +33,7 @@ which version.
   - `memory-storage.mjs` — an in-memory storage stand-in for tests.
   - `look.mjs` — the papers (Themes), the Font Override and the text size,
     and where the ruled lines go so the writing sits on them.
-- `test/` — `node --test` tests for the two seams.
+- `test/` — `node --test` tests for the seams named in `.sandcastle/CODING_STANDARDS.md`.
 
 ## Opening Glacier
 
@@ -66,11 +66,33 @@ sign Glacier as an **unlisted** add-on on
 [addons.mozilla.org](https://addons.mozilla.org) (private, not published):
 
 1. Create a free Firefox Add-on Developer account.
-2. Zip the extension files (with `manifest.json` at the root of the zip).
+2. Make the release zip (see [Making a release](#making-a-release)).
 3. On the AMO Developer Hub choose **Submit a New Add-on → On your own**
    (this keeps it unlisted and private).
 4. Upload the zip; AMO validates and signs it and returns a signed `.xpi`.
-5. Install the signed `.xpi` in your everyday Firefox — it stays after restart.
+5. Install the signed `.xpi` in your everyday Firefox. It stays after a restart.
+
+## An everyday Chrome copy
+
+Unpack the release zip into its own folder outside this project (for example
+`Documents/Glacier`) and load that folder with **Load unpacked**. Development
+changes in this folder then never touch your everyday notes. Chrome keeps
+the notes per extension, so the everyday copy and the development copy each
+have their own; sync both to the same Notes Repo to share them.
+
+## Making a release
+
+1. Set `"version"` in `manifest.json` (for example `1.0.1`) and commit.
+2. Make the zip from the committed files only (no tests, docs or robot files):
+
+   ```sh
+   git archive --format=zip -o glacier-1.0.1.zip HEAD manifest.json background.js sidebar src art fonts icons
+   ```
+
+3. Tag it: `git tag v1.0.1` and `git push --tags`.
+4. Firefox: upload the zip as a new version of the unlisted add-on on AMO and
+   install the signed `.xpi`. Chrome: unpack the zip over the everyday copy's
+   folder and press reload on `chrome://extensions`.
 
 ## Syncing notes with GitHub
 
@@ -98,7 +120,7 @@ When it expires, Glacier says so; make a new one and paste it in the same place.
 
 The extension and its tests run with no npm install and no build step
 (ADR 0002). Only the logic that could silently damage notes is tested, through
-the two seams.
+the seams named in `.sandcastle/CODING_STANDARDS.md`.
 
 ```sh
 node --test
