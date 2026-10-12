@@ -207,10 +207,24 @@ export function pressEnter(lines, line, col) {
   return { lines: next, line: line + 1, col: 0 };
 }
 
-// Backspace at (line, col): at the start of a line, join it with the line
-// above (the caret lands where the join happened); otherwise delete the one
-// character before the caret. At the very start of the note, nothing happens.
+// How many characters of a line are its `## `, `- `, `1. ` or `> ` mark (0 for
+// a plain line). The caret just after the mark is the line's visible start.
+export function lineMarkLength(line) {
+  return lineStart(line)?.mark.length ?? 0;
+}
+
+// Backspace at (line, col): at the start of a heading, bullet or quote line
+// (before or just after its mark), remove the mark and keep the words; at the
+// start of a plain line, join it with the line above (the caret lands where
+// the join happened); otherwise delete the one character before the caret. At
+// the very start of the note, nothing happens.
 export function pressBackspace(lines, line, col) {
+  const markLength = lineMarkLength(lines[line]);
+  if (markLength > 0 && (col === 0 || col === markLength)) {
+    const next = lines.slice();
+    next[line] = lines[line].slice(markLength);
+    return { lines: next, line, col: 0 };
+  }
   if (col > 0) {
     const current = lines[line];
     const next = lines.slice();

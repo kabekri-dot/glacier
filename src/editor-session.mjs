@@ -24,6 +24,7 @@ import {
   pressEnter,
   columnAfterFormatting,
   breakInsideFormatting,
+  lineMarkLength,
   pressBackspace,
   pressDelete,
   slashQuery,
@@ -622,10 +623,12 @@ export function createEditorSession({
     // it handled the key; false (caret not at the block start, or the top of
     // the note) leaves the keystroke to the browser.
     backspaceAtStart() {
-      if (blockStart === 0) return false;
-      if (!(focus.line === blockStart && focus.col === 0)) return false;
+      const markLength = lineMarkLength(lines[blockStart]);
+      if (blockStart === 0 && markLength === 0) return false;
+      if (focus.line !== blockStart) return false;
+      if (focus.col !== 0 && !(markLength > 0 && focus.col === markLength)) return false;
       recordStep();
-      const next = pressBackspace(lines, blockStart, 0);
+      const next = pressBackspace(lines, blockStart, focus.col);
       lines = next.lines;
       focus = { line: next.line, col: next.col };
       relayout();

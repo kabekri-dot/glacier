@@ -757,3 +757,10 @@ test("undoing the archive of other notes does not open anything", () => {
   assert.equal(screen.undoArchive(["First"]).changed, true);
   assert.equal(screen.note(), null);
 });
+
+test("a reopened note that was not opened by a page does not follow the page", () => {
+  const { screen, notebook } = setup();
+  const note = notebook.createNote({ title: "Last one" });
+  screen.show({ type: "open", note, byPage: false });
+  assert.equal(screen.onScreen().openedByPage, false);
+});

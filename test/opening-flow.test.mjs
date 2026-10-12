@@ -6,7 +6,7 @@ import { createOpeningFlow } from "../src/opening-flow.mjs";
 
 const noteA = { title: "Page A", source: "https://a.test/lesson" };
 
-function setup({ permission = false, grantOnRequest = true, pages = [], open, tabSettings = {} } = {}) {
+function setup({ lastNote = null, permission = false, grantOnRequest = true, pages = [], open, tabSettings = {} } = {}) {
   const shown = [];
   const state = { permission, tab: null, listener: null };
   let openNote = open ?? { current: null, openedByPage: false };
@@ -23,6 +23,7 @@ function setup({ permission = false, grantOnRequest = true, pages = [], open, ta
     page,
     getOpenNote: () => openNote,
     noteForPage: (url) => pages.find((n) => n.source === url) ?? null,
+    getLastNote: () => lastNote,
     show: (view) => shown.push(view),
     getTabSettings: () => tabSettings,
   });
@@ -272,4 +273,18 @@ test("New note for this page without permission shows the permission card", asyn
   const { flow, shown } = setup();
   await flow.newNoteForPage();
   assert.deepEqual(shown, [{ type: "permissionCard" }]);
+});
+
+test("a fresh sidebar on a browser page opens the note you were last on", async () => {
+  const last = { title: "Last one" };
+  const { flow, shown } = setup({ permission: true, lastNote: last });
+  await flow.start();
+  assert.deepEqual(shown, [{ type: "open", note: last, byPage: false }]);
+});
+
+test("a fresh sidebar on a website without a note still shows its empty page", async () => {
+  const { flow, shown, state } = setup({ permission: true, lastNote: { title: "Last one" } });
+  state.tab = { url: "https://new.test/x", title: "New" };
+  await flow.start();
+  assert.deepEqual(shown, [{ type: "pageDraft", page: { url: "https://new.test/x", title: "New" } }]);
 });

@@ -17,6 +17,7 @@
 //
 // `getOpenNote()` returns { current, openedByPage } for the note on screen,
 // `noteForPage(url)` returns the page's most recently edited note or null,
+// `getLastNote()` the note last opened in this browser or null (#88),
 // and `show(view)` draws one of: { type: "startPrompt" },
 // { type: "permissionCard" }, { type: "open", note },
 // { type: "pageDraft", page, editTitle? } (a fresh page for a note for the
@@ -33,6 +34,7 @@ export function createOpeningFlow({
   page,
   getOpenNote,
   noteForPage,
+  getLastNote = () => null,
   show,
   getTabSettings = () => ({}),
 }) {
@@ -58,6 +60,7 @@ export function createOpeningFlow({
       openedByPage,
       page: website,
       noteForPage,
+      lastNote: getLastNote(),
       ...getTabSettings(),
     });
     if (decision.type !== "keep") show(decision);

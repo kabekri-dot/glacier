@@ -110,6 +110,28 @@ test("Backspace at the very start of the note does nothing", () => {
   assert.deepEqual(editor.state.lines, ["hello"]);
 });
 
+test("Backspace at the start of a bullet removes the bullet, a second one joins the line above", () => {
+  const editor = createEditorSession();
+  editor.load("- first\n- second");
+  editor.moveTo(1, 0);
+  assert.equal(editor.backspaceAtStart(), true);
+  assert.deepEqual(editor.state.lines, ["- first", "second"]);
+  assert.deepEqual(editor.state.focus, { line: 1, col: 0 });
+  assert.equal(editor.backspaceAtStart(), true);
+  assert.deepEqual(editor.state.lines, ["- firstsecond"]);
+});
+
+test("Backspace just after a heading or quote mark removes the mark", () => {
+  const editor = createEditorSession();
+  editor.load("## Title\n> said");
+  editor.moveTo(0, 3);
+  assert.equal(editor.backspaceAtStart(), true);
+  assert.deepEqual(editor.state.lines, ["Title", "> said"]);
+  editor.moveTo(1, 0);
+  assert.equal(editor.backspaceAtStart(), true);
+  assert.deepEqual(editor.state.lines, ["Title", "said"]);
+});
+
 // #27: Backspace must never merge a line into a ``` fence. At the start of a
 // code block, or on the line after a closing fence, it only moves the caret to
 // the end of the line above; both fences stay intact.

@@ -236,7 +236,7 @@ export function lastNotesBox(screen, notebook) {
 // The title in the pill (#83). With no note open it is a quiet "Glacier" that
 // cannot be renamed; a fresh page offers to name its note.
 export function pillTitle({ note, freshPage }) {
-  if (note) return { text: note.title, hint: "Click to rename", renamable: true, draft: false };
+  if (note) return { text: note.title, hint: `${note.title}\nClick to rename`, renamable: true, draft: false };
   if (freshPage) return { text: freshPage.title || "Title", hint: "Click to name this note", renamable: true, draft: true };
   return { text: "Glacier", hint: "", renamable: false, draft: false };
 }
