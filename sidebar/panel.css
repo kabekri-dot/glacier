@@ -907,6 +907,21 @@ code {
   image-rendering: pixelated;
 }
 
+/* No place chosen yet (#98): a tiny pixel cloud until one is. */
+.sync-dot[data-needs="cloud"] {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 0;
+  background: url("../art/icon-cloud.svg") center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.sync-box-cloud {
+  width: 1.6rem;
+  height: 1.6rem;
+  image-rendering: pixelated;
+}
+
 @keyframes sync-pulse {
   to {
     opacity: 0.3;
