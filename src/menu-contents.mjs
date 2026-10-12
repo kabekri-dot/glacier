@@ -14,6 +14,7 @@
 //   { kind: "empty", text }               a quiet line when nothing is listed
 //   { kind: "result", title, titleMark, snippet }           a search result
 //   { kind: "pair", notes: [{ title, label, actions }] }   a Conflict Copy and its original, with the row icons
+import { COLLECTIONS_HINT } from "./guidance.mjs";
 import { PAGE_NOTE_HINT } from "./new-note-choices.mjs";
 
 const CONFLICT_SUFFIX = / \(conflict \d{4}-\d{2}-\d{2}\)( \d+)?$/;
@@ -81,7 +82,9 @@ function browse(notebook, openNote) {
     parts.push(heading("Recent"), { kind: "notes", titles: recent.map((note) => note.title) });
   }
   const outline = notebook.outline();
-  parts.push(heading("Notebook"), { kind: "newCollection", label: "+ New collection", hint: "Make an empty collection to fill later" });
+  parts.push(heading("Notebook"));
+  if (outline.courses.length === 0) parts.push({ kind: "empty", text: COLLECTIONS_HINT });
+  parts.push({ kind: "newCollection", label: "+ New collection", hint: "Make an empty collection to fill later" });
   if (outline.courses.length + outline.uncategorised.length === 0) {
     parts.push({ kind: "empty", text: "No notes yet" });
   }

@@ -129,9 +129,17 @@ test("an empty Notebook says there are no notes yet", () => {
   const menu = notebookMenu(createNotebook({ storage: memoryStorage() }), "");
   assert.deepEqual(menu, [
     { kind: "heading", text: "Notebook", hint: null },
+    { kind: "empty", text: "Collections hold notes that belong together. Make one with + New collection." },
     { kind: "newCollection", label: "+ New collection", hint: "Make an empty collection to fill later" },
     { kind: "empty", text: "No notes yet" },
   ]);
+});
+
+test("the Collections hint goes away once there is a Collection", () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  notebook.newCollection("Biology");
+  const texts = notebookMenu(notebook, "").filter((part) => part.kind === "empty").map((part) => part.text);
+  assert.ok(!texts.some((text) => text.startsWith("Collections hold")));
 });
 
 test("archived notes are listed only under a folded Archive", () => {

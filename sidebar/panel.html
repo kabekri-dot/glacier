@@ -19,7 +19,7 @@
         <button type="button" class="pill-note-menu" aria-haspopup="true" aria-expanded="false" aria-label="Actions for this note" title="Actions for this note" hidden>&#8943;</button>
         <button type="button" class="sync-dot" aria-haspopup="true" aria-expanded="false" title="Saved in this browser"></button>
       </div>
-      <button type="button" class="pill-side pill-new" aria-haspopup="true" aria-expanded="false" aria-label="New note">+</button>
+      <button type="button" class="pill-side pill-new" aria-haspopup="true" aria-expanded="false" aria-label="New note" title="New note">+</button>
     </div>
     <p class="rename-hint" role="status" hidden></p>
     <!-- Above the text of a note that is an original or a second version (#70, #80). -->
@@ -32,6 +32,8 @@
     <div class="sync-box" hidden></div>
     <!-- The note's Collection and Source, instead of its frontmatter (#13). -->
     <header class="note-meta" hidden></header>
+    <!-- The welcome on the first start, until Start writing (#85). -->
+    <section class="welcome" aria-label="Welcome" hidden></section>
     <main class="note" aria-label="Note"></main>
     <!-- Backlinks (#10): how many notes link here; a click lists them. -->
     <div class="backlinks-list" hidden></div>

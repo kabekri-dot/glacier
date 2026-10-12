@@ -1709,18 +1709,38 @@ html.beside .settings {
   display: none;
 }
 
-/* Sync now says Just synced in the Theme's handwriting, written left to right (#81). */
-.menu-new.is-just-synced,
-.menu-new.is-just-synced-still {
+/* After Sync now, a pen writes Just synced in the Theme's handwriting across the sync box (#85). */
+.sync-box-written {
+  position: relative;
   font-family: var(--font-family);
 }
 
-.menu-new.is-just-synced {
-  animation: write-in 1s steps(12, end) both, fade-back 0.6s ease 3.4s both;
+.sync-box-words {
+  display: inline-block;
+  animation: write-in 1s steps(12, end) both;
 }
 
-.menu-new.is-just-synced-still {
-  animation: fade-back 0.6s ease 3.4s both;
+.sync-pen {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 1em;
+  height: 1em;
+  margin-top: -0.5em;
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  animation: pen-across 1s steps(12, end) both, pen-away 0.3s ease 1.1s both;
+}
+
+.sync-box-written.is-written .sync-box-words {
+  animation: none;
+}
+
+.sync-box-written.is-written .sync-pen {
+  display: none;
 }
 
 @keyframes write-in {
@@ -1732,20 +1752,66 @@ html.beside .settings {
   }
 }
 
-@keyframes fade-back {
+@keyframes pen-across {
   from {
-    opacity: 1;
+    left: 0;
   }
+  to {
+    left: calc(100% - 1em);
+  }
+}
+
+@keyframes pen-away {
   to {
     opacity: 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .menu-new.is-just-synced,
-  .menu-new.is-just-synced-still {
+  .sync-box-words {
     animation: none;
   }
+
+  .sync-pen {
+    display: none;
+  }
+}
+
+/* The welcome on the first start (#85), in the Theme's handwriting. */
+.welcome {
+  margin: 1rem;
+  font-family: var(--font-family);
+  line-height: var(--line-height);
+}
+
+.welcome[hidden] {
+  display: none;
+}
+
+.welcome p {
+  margin: 0 0 0.5rem;
+}
+
+.welcome-start {
+  margin-top: 0.5rem;
+  padding: 0.2rem 0.7rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.welcome-start:hover,
+.welcome-start:focus-visible {
+  opacity: 1;
+  border-color: var(--accent);
+}
+
+.shortcuts-about {
+  margin: 0.3rem 0;
 }
 
 .menu-new-collection-input {

@@ -1,6 +1,8 @@
 // The Shortcuts panel (#20): a Markdown cheat sheet. Pure, so it can be tested
 // with node --test; the panel keeps whether it is switched on and whether it
 // is folded, per browser, next to the look.
+import { HOW_GLACIER_WORKS } from "./guidance.mjs";
+
 export const SHORTCUTS_PANEL_DEFAULTS = { on: false, folded: false };
 
 export function readShortcutsPanel(saved) {
@@ -34,8 +36,10 @@ export const HANDLED_KEYS = [
   ["Cmd", "On a Mac, use Cmd instead of Ctrl"],
 ];
 
-// Each entry is [what you type or press, what it does].
+// Each entry is [what you type or press, what it does]. The first group has
+// no entries, only the paragraphs that explain Notes and Collections (#85).
 export const SHORTCUT_GROUPS = [
+  { title: "How Glacier works", paragraphs: HOW_GLACIER_WORKS, entries: [] },
   {
     title: "Start of a line",
     entries: [
