@@ -34,7 +34,7 @@ export function createSyncBoxView({ dotEl, boxEl, autoSync, openSettings, showCo
 
   function goToSettings() {
     close();
-    openSettings("notes-repo");
+    openSettings("notes-home");
   }
 
   async function syncNow() {
@@ -71,7 +71,7 @@ export function createSyncBoxView({ dotEl, boxEl, autoSync, openSettings, showCo
 
     const button = menuButton(
       syncing ? "Syncing…" : (justSynced ? box.action : (resultShown ?? box.action)),
-      status.state === "off" ? "Connect your GitHub repo" : "Pull and push your notes right away",
+      status.state === "off" ? "Choose where your notes live" : "Pull and push your notes right away",
       () => (status.state === "off" ? goToSettings() : syncNow()),
     );
     justSyncedWritten = justSynced;
@@ -86,8 +86,8 @@ export function createSyncBoxView({ dotEl, boxEl, autoSync, openSettings, showCo
       const settings = document.createElement("button");
       settings.type = "button";
       settings.className = "sync-box-link";
-      settings.textContent = "Notes repo settings";
-      settings.title = "Change the repo or token";
+      settings.textContent = "Where your notes live";
+      settings.title = "Change where your notes live";
       settings.addEventListener("click", goToSettings);
       parts.push(settings);
     }

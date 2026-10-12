@@ -1,0 +1,150 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+
+import { createNotebook, noteToFile } from "../src/notebook.mjs";
+import { memoryStorage } from "../src/memory-storage.mjs";
+import { memoryRemote } from "../src/memory-remote.mjs";
+import { NOTES_HOMES, notesHomeName, switchQuestion, chosenNotesHome } from "../src/notes-home.mjs";
+import { createAutoSync, syncBox, syncDotText, syncStatusText } from "../src/auto-sync.mjs";
+
+// Where your notes live (#94, ADR 0011): one Notes Home at a time. Switching
+// combines the notes here and in the new place, deletes nothing and leaves
+// the old place as it was. In-memory remotes stand in for the places.
+
+const margins = { title: "Margins", created: "2026-10-02T10:00:00.000Z", body: "Space outside the border." };
+const padding = { title: "Padding", created: "2026-10-03T10:00:00.000Z", body: "Space inside the border." };
+const flexbox = { title: "Flexbox", created: "2026-10-04T10:00:00.000Z", body: "One direction at a time." };
+
+function filesOf(...notes) {
+  return Object.fromEntries(notes.map((note) => {
+    const { path, text } = noteToFile(note);
+    return [path, text];
+  }));
+}
+
+const titles = (notebook) => notebook.notes().map((note) => note.title).sort();
+const bodies = (files) => Object.values(files).map((text) => text.split("---\n").pop().trim()).sort();
+
+test("choosing a place brings its notes here and these notes there", async () => {
+  const storage = memoryStorage();
+  storage.putNote(margins);
+  const notebook = createNotebook({ storage });
+  const remote = memoryRemote(filesOf(padding));
+  await notebook.switchNotesHome("github", remote);
+  assert.deepEqual(titles(notebook), ["Margins", "Padding"]);
+  assert.deepEqual(remote.files(), filesOf(margins, padding));
+});
+
+test("switching to another place combines both ways and deletes nothing in either", async () => {
+  const storage = memoryStorage();
+  storage.putNote(margins);
+  const notebook = createNotebook({ storage });
+  const first = memoryRemote(filesOf(padding));
+  await notebook.switchNotesHome("github", first);
+  const firstAfter = first.files();
+
+  const second = memoryRemote(filesOf(flexbox, { ...margins, body: "Margins as the other place has them." }));
+  const secondBefore = Object.keys(second.files());
+  await notebook.switchNotesHome("github", second);
+
+  assert.deepEqual(first.files(), firstAfter, "the old place is left untouched");
+  for (const path of secondBefore) assert.ok(path in second.files(), `${path} is still there`);
+  assert.equal(notebook.note("Margins").body, margins.body);
+  const copy = notebook.notes().find((note) => note.title.startsWith("Margins (conflict "));
+  assert.equal(copy.body, "Margins as the other place has them.");
+  assert.deepEqual(titles(notebook), ["Flexbox", "Margins", copy.title, "Padding"].sort());
+  assert.deepEqual(bodies(second.files()), notebook.notes().map((note) => note.body).sort());
+});
+
+test("switching shows each step and is ready only once the notes are in both places", async () => {
+  const storage = memoryStorage();
+  storage.putNote(margins);
+  const notebook = createNotebook({ storage });
+  const remote = memoryRemote({});
+  const steps = [];
+  await notebook.switchNotesHome("github", remote, (step) => {
+    steps.push(step.step);
+    if (step.step === "ready") assert.deepEqual(remote.files(), filesOf(margins));
+  });
+  assert.deepEqual(steps, ["connecting", "downloading", "linking", "ready"]);
+});
+
+test("a switch that fails keeps the place there was", async () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  await notebook.switchNotesHome("github", memoryRemote({}));
+  const broken = memoryRemote({});
+  broken.failWith("unauthorized");
+  await assert.rejects(notebook.switchNotesHome("github", broken));
+  assert.equal(notebook.notesHome(), "github");
+});
+
+test("switching to only in this browser stops syncing", async () => {
+  const storage = memoryStorage();
+  storage.putNote(margins);
+  const notebook = createNotebook({ storage });
+  const remote = memoryRemote({});
+  await notebook.switchNotesHome("github", remote);
+  await notebook.switchNotesHome("browser");
+  notebook.saveBody("Margins", "Typed after leaving GitHub.");
+  await notebook.sync(remote);
+  assert.deepEqual(remote.files(), filesOf(margins));
+  assert.equal(notebook.notesHome(), "browser");
+});
+
+test("the chosen place is read back after a restart", async () => {
+  const storage = memoryStorage();
+  await createNotebook({ storage }).switchNotesHome("github", memoryRemote({}));
+  assert.equal(createNotebook({ storage }).notesHome(), "github");
+});
+
+test("before any choice there is no Notes Home saved", () => {
+  assert.equal(createNotebook({ storage: memoryStorage() }).notesHome(), null);
+});
+
+test("the places to choose from are only in this browser and GitHub, each with its pixel icon", () => {
+  assert.deepEqual(NOTES_HOMES.map((home) => home.name), ["Only in this browser", "GitHub"]);
+  for (const { icon } of NOTES_HOMES) {
+    assert.ok(existsSync(new URL(`../art/icon-${icon}.svg`, import.meta.url)), icon);
+  }
+});
+
+test("switching asks first in one plain line naming the place", () => {
+  assert.equal(switchQuestion("github"), "Your notes will be combined with the ones in GitHub. Nothing is deleted.");
+  assert.equal(notesHomeName("browser"), "Only in this browser");
+});
+
+test("the sync dot and box name the place", () => {
+  assert.equal(syncDotText({ state: "synced", place: "GitHub" }), "All saved to GitHub");
+  assert.equal(syncDotText({ state: "syncing", place: "Google Drive" }), "Saving to Google Drive");
+  assert.match(syncStatusText({ state: "synced", place: "Google Drive" }).detail, /Google Drive/);
+  assert.equal(syncBox({ state: "off" }).status, "Only in this browser");
+});
+
+test("a browser that connected GitHub before there was a choice keeps GitHub", () => {
+  assert.equal(chosenNotesHome(null, { repo: "me/notes", token: "t" }), "github");
+  assert.equal(chosenNotesHome(null, { repo: "", token: "" }), "browser");
+  assert.equal(chosenNotesHome("browser", { repo: "me/notes", token: "t" }), "browser");
+});
+
+test("auto-sync names the place it syncs with", async () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  const remote = memoryRemote({});
+  const autoSync = createAutoSync({ notebook, connect: async () => ({ remote, repo: "me/notes", place: "GitHub" }) });
+  const status = await autoSync.syncNow();
+  assert.equal(status.place, "GitHub");
+});
+
+test("a push that fails once the notes are combined keeps the new place, and the next sync sends them", async () => {
+  const storage = memoryStorage();
+  storage.putNote(margins);
+  const notebook = createNotebook({ storage });
+  const remote = memoryRemote(filesOf(padding));
+  remote.beforeNextWrite(() => remote.failWith("offline"));
+  const result = await notebook.switchNotesHome("github", remote);
+  assert.equal(result.pushed, false);
+  assert.equal(notebook.notesHome(), "github");
+  remote.failWith(null);
+  await notebook.sync(remote);
+  assert.deepEqual(remote.files(), filesOf(margins, padding));
+});

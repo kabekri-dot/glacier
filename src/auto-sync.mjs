@@ -14,7 +14,8 @@ const NOTHING_MOVED = { sent: 0, received: 0 };
 
 export function createAutoSync({
   notebook,
-  // Resolves to `{ remote, repo }`, or null while no Notes Repo is connected.
+  // Resolves to `{ remote, repo, place }`, or null while the notes live only
+  // in this browser. `place` names the Notes Home for the dot and its box.
   connect,
   beforeSync = () => {},
   onStatus = () => {},
@@ -31,9 +32,10 @@ export function createAutoSync({
   let running = null;
   let again = false;
   let warnedOffline = false;
+  let place;
 
   function setStatus(next) {
-    status = { lastSynced: notebook.lastSynced(), ...next };
+    status = { lastSynced: notebook.lastSynced(), ...(next.state !== "off" && place && { place }), ...next };
     if (status.state !== "syncing") settled = status;
     onStatus(status);
   }
@@ -65,6 +67,7 @@ export function createAutoSync({
       return NOTHING_MOVED;
     }
     beforeSync();
+    place = connection.place;
     setStatus({ state: "syncing" });
     try {
       const result = await notebook.sync(connection.remote);
@@ -160,7 +163,7 @@ const OFFLINE_SHORT = "Offline. Your changes are kept here";
 // synced line, the button's label, and the line for notes with two versions.
 export function syncBox(status, now = new Date()) {
   if (status.state === "off") {
-    return { status: "Not connected to GitHub", last: null, action: "Set up sync", conflicts: null };
+    return { status: "Only in this browser", last: null, action: "Choose where they live", conflicts: null };
   }
   const words = {
     syncing: "Syncing…",
@@ -189,13 +192,18 @@ export function conflictMessage(count) {
   return count === 1 ? "A note has two versions. Check it" : `${count} notes have two versions. Check them`;
 }
 
+// The Notes Home's name, for a status from before there was a choice.
+function placeOf(status) {
+  return status.place ?? "GitHub";
+}
+
 // What hovering the sync dot says, for every state (#70).
 export function syncDotText(status) {
   switch (status.state) {
     case "syncing":
-      return "Saving to GitHub";
+      return `Saving to ${placeOf(status)}`;
     case "synced":
-      return "All saved to GitHub";
+      return `All saved to ${placeOf(status)}`;
     case "offline":
       return `${OFFLINE_SHORT} and sync later`;
     case "conflict": {
@@ -205,7 +213,7 @@ export function syncDotText(status) {
     case "error":
       return syncStatusText(status).detail.replace(/ (Last synced|Not synced yet).*$/, "");
     default:
-      return "Not connected to GitHub. Set it up in Settings";
+      return "Your notes live only in this browser. Choose where they live in Settings";
   }
 }
 
@@ -214,13 +222,13 @@ export function syncStatusText(status, now = new Date()) {
   const last = lastSyncedText(status.lastSynced, now);
   switch (status.state) {
     case "syncing":
-      return { label: "Syncing", detail: `Syncing with your Notes repo. ${last}` };
+      return { label: "Syncing", detail: `Syncing with ${placeOf(status)}. ${last}` };
     case "synced":
-      return { label: "Synced", detail: `Your notes match your Notes repo. ${last}` };
+      return { label: "Synced", detail: `Your notes match the ones in ${placeOf(status)}. ${last}` };
     case "offline":
       return {
         label: "Offline",
-        detail: `Couldn't reach GitHub. Your changes are kept in this browser and sync when you are back online. ${last}`,
+        detail: `Couldn't reach ${placeOf(status)}. Your changes are kept in this browser and sync when you are back online. ${last}`,
       };
     case "conflict":
       return {
@@ -232,10 +240,10 @@ export function syncStatusText(status, now = new Date()) {
         label: "Not synced",
         detail:
           status.reason === "unauthorized"
-            ? "GitHub no longer accepts your token. It may have expired. Make a new one and paste it in Notes repo."
+            ? "GitHub no longer accepts your token. It may have expired. Make a new one and paste it under Where your notes live."
             : `${status.message} ${last}`,
       };
     default:
-      return { label: "Saved in this browser", detail: "Saved in this browser. Connect a Notes repo to sync." };
+      return { label: "Saved in this browser", detail: "Saved only in this browser. Choose where your notes live in Settings." };
   }
 }

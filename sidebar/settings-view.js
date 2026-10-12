@@ -7,12 +7,13 @@
 //   shortcutsPanel(), saveShortcutsPanel(change), panelPlace(),
 //   choosePanelPlace("beside" | "inside") -> Promise of the place it got
 //
-// `repo`, the Notes Repo and the Notebook, which only the sidebar holds:
-//   connection() -> { repo, token }, status(), syncNow() -> sync status,
-//   courses(), firstSync(repo, token, onProgress) -> { notes } or { error },
+// `repo`, the Notes Home and the Notebook, which only the sidebar holds:
+//   connection() -> { home, repo, token }, status(), syncNow() -> sync status,
+//   courses(), switchHome(place, repo, token, onProgress) -> { notes } or { error },
 //   exportCourse(course, format), exportAll(), restore(bytes) and notice(text, ms)
 import { syncStatusText, syncResultText, JUST_SYNCED } from "../src/auto-sync.mjs";
 import { notesRepoName } from "../src/notebook.mjs";
+import { NOTES_HOMES, notesHomeName, switchQuestion } from "../src/notes-home.mjs";
 import { SHORTCUT_GROUPS } from "../src/shortcuts-panel.mjs";
 import { PAPERS, paperGroups, FONT_OVERRIDES, TEXT_SIZE } from "../src/look.mjs";
 
@@ -176,7 +177,7 @@ const SECTIONS = [
   ["tabs", "Tabs and notes", false],
   ["shortcuts", "Shortcuts panel", false],
   ["panels", "Panels", false],
-  ["notes-repo", "Notes repo", false],
+  ["notes-home", "Where your notes live", false],
 ];
 
 // The quiet line a panel shows at its top when it opens inside the sidebar
@@ -370,7 +371,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
     );
   }
 
-  // Export and Restore (#13, #55), under Notes repo. The Notebook does the
+  // Export and Restore (#13, #55), under Where your notes live. The Notebook does the
   // files; this only picks them.
   async function backupControls() {
     const courseList = element("div", "backup-collections");
@@ -415,17 +416,70 @@ export function createSettingsView({ prefs, repo, onClose }) {
     return [element("h2", "settings-subheading", "Backup"), courseList, restoreRow];
   }
 
-  // The Notes repo section (#14): the connection form, the sync status and
-  // the Backup buttons. The repo name and token stay in this browser's
+  // Where your notes live (#14, #94, ADR 0011): one radio per place, each
+  // with its pixel icon. GitHub shows the repo and token form right under
+  // it. Switching asks first in one line, then combines. The sync status and
+  // Backup sit below. The repo name and token stay in this browser's
   // extension storage, never in the Notebook (ADR 0003).
-  async function drawNotesRepo({ repo: typedRepo, error } = {}) {
+  async function drawNotesHome({ picked, repo: typedRepo, error, ask } = {}) {
     const saved = await repo.connection();
+    const shown = picked ?? saved.home;
 
+    const choices = element("div", "home-list");
+    choices.setAttribute("role", "radiogroup");
+    choices.setAttribute("aria-label", "Where your notes live");
+    for (const home of NOTES_HOMES) {
+      const label = element("label", "home-choice");
+      label.title = home.hint;
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = "notes-home";
+      radio.value = home.id;
+      radio.checked = home.id === shown;
+      radio.addEventListener("change", () => {
+        if (home.id === "browser" && saved.home !== "browser") drawNotesHome({ picked: "browser", ask: "browser" });
+        else drawNotesHome({ picked: home.id });
+      });
+      const icon = element("img", "home-icon");
+      icon.src = `../art/icon-${home.icon}.svg`;
+      icon.alt = "";
+      label.append(radio, icon, element("span", "", home.name));
+      choices.append(label);
+    }
+
+    let place = [];
+    if (ask) place = [switchCard(ask)];
+    else if (shown === "github") place = [githubForm(saved, typedRepo, error)];
+
+    const status = await repo.status();
+    const sync = status.state === "off" || ask ? [] : syncStatusRow({ status, syncNow: repo.syncNow, notice: repo.notice });
+    bodies["notes-home"].replaceChildren(choices, ...place, ...sync, ...(await backupControls()));
+  }
+
+  // The one line asked before switching, with Switch and Keep.
+  function switchCard(place, connect = {}) {
+    const card = element("div", "perm-card home-switch");
+    card.setAttribute("role", "alert");
+    const row = element("div", "perm-buttons");
+    const yes = element("button", "card-button", "Switch");
+    yes.type = "button";
+    yes.addEventListener("click", () => showSwitch(place, connect.repo, connect.token));
+    const keep = element("button", "perm-cancel", "Keep");
+    keep.type = "button";
+    keep.addEventListener("click", () => drawNotesHome());
+    row.append(yes, keep);
+    card.append(element("p", "settings-text", switchQuestion(place)), row);
+    setTimeout(() => yes.focus());
+    return card;
+  }
+
+  // GitHub's repo and token, as in v1.
+  function githubForm(saved, typedRepo, error) {
     const form = element("form", "settings-form");
     const about = element(
       "p",
       "settings-text",
-      saved.repo
+      saved.home === "github" && saved.repo
         ? `Connected to ${saved.repo}. Change the repo or paste a new token, then sync again.`
         : "Sync your notes through a private GitHub repo, so Chrome and Firefox share them.",
     );
@@ -467,35 +521,41 @@ export function createSettingsView({ prefs, repo, onClose }) {
         errorEl.hidden = false;
         return;
       }
-      showFirstSync(name, token);
+      // A new token for the same repo is no switch; another place is.
+      if (saved.home === "github" && name === saved.repo) showSwitch("github", name, token);
+      else form.replaceWith(switchCard("github", { repo: name, token }));
     });
 
     form.append(about, field("Repo", repoInput), field("Token", tokenInput), tokenHelp, errorEl, submit);
-    const status = await repo.status();
-    const sync = status.state === "off" ? [] : syncStatusRow({ status, syncNow: repo.syncNow, notice: repo.notice });
-    bodies["notes-repo"].replaceChildren(form, ...sync, ...(await backupControls()));
+    return form;
   }
 
-  // The first sync's progress, in place of the form: connecting, downloading
+  // Switching's progress, in place of the section: connecting, downloading
   // n of N notes, linking, ready, then a confirmation. A wrong repo or token
-  // goes back to the form with a clear message.
-  let firstSyncRunning = false;
+  // goes back to the form with a clear message. Only in this browser needs
+  // no steps.
+  let switchRunning = false;
 
-  async function showFirstSync(repoName, token) {
+  async function showSwitch(place, repoName, token) {
+    if (place === "browser") {
+      await repo.switchHome("browser");
+      drawNotesHome();
+      return;
+    }
     const screen = element("div", "perm-card");
     const list = element("ol", "sync-steps");
     const steps = {};
     for (const [step, text] of [
-      ["connecting", "Connecting to GitHub"],
+      ["connecting", `Connecting to ${notesHomeName(place)}`],
       ["downloading", "Downloading notes"],
-      ["linking", "Linking notes"],
+      ["linking", "Combining notes"],
       ["ready", "Ready"],
     ]) {
       steps[step] = element("li", "", text);
       list.append(steps[step]);
     }
-    screen.append(element("h2", "settings-subheading", "First sync"), list);
-    bodies["notes-repo"].replaceChildren(screen);
+    screen.append(element("h2", "settings-subheading", `Moving to ${notesHomeName(place)}`), list);
+    bodies["notes-home"].replaceChildren(screen);
 
     const order = Object.keys(steps);
     const showStep = (progress) => {
@@ -509,15 +569,15 @@ export function createSettingsView({ prefs, repo, onClose }) {
       if (progress.step === "ready") steps.ready.className = "sync-step-done";
     };
 
-    firstSyncRunning = true;
-    const result = await repo.firstSync(repoName, token, showStep);
-    firstSyncRunning = false;
+    switchRunning = true;
+    const result = await repo.switchHome(place, repoName, token, showStep);
+    switchRunning = false;
     if (result.error) {
-      drawNotesRepo({ repo: repoName, error: result.error });
+      drawNotesHome({ picked: place, repo: repoName, error: result.error });
       return;
     }
     if (el.hidden) {
-      drawNotesRepo();
+      drawNotesHome();
       return;
     }
 
@@ -527,7 +587,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
     ok.type = "button";
     ok.addEventListener("click", () => {
       onClose();
-      drawNotesRepo();
+      drawNotesHome();
     });
     screen.append(done, ok);
     ok.focus();
@@ -549,8 +609,8 @@ export function createSettingsView({ prefs, repo, onClose }) {
       drawPanels();
       el.hidden = false;
       closeButton.focus();
-      // A first sync still running keeps its progress on screen.
-      const repoDrawn = firstSyncRunning ? Promise.resolve() : drawNotesRepo();
+      // A switch still running keeps its progress on screen.
+      const repoDrawn = switchRunning ? Promise.resolve() : drawNotesHome();
       const target = section && el.querySelector(`[data-section="${section}"]`);
       if (!target) return;
       target.open = true;

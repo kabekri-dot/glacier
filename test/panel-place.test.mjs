@@ -84,9 +84,9 @@ test("Allow on the card, on a website, opens settings beside the sidebar", async
 
 test("the card remembers the section settings were opened at", async () => {
   const { placement, last } = setup();
-  await placement.openSettings("notes-repo");
+  await placement.openSettings("notes-home");
   await placement.answerCard(false);
-  assert.equal(last().section, "notes-repo");
+  assert.equal(last().section, "notes-home");
 });
 
 test("Not now on the card opens settings inside the sidebar without the line", async () => {

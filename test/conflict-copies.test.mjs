@@ -173,7 +173,7 @@ test("the dot explains each state on hover", () => {
   assert.equal(syncDotText({ state: "synced" }), "All saved to GitHub");
   assert.equal(syncDotText({ state: "syncing" }), "Saving to GitHub");
   assert.equal(syncDotText({ state: "offline" }), "Offline. Your changes are kept here and sync later");
-  assert.equal(syncDotText({ state: "off" }), "Not connected to GitHub. Set it up in Settings");
+  assert.equal(syncDotText({ state: "off" }), "Your notes live only in this browser. Choose where they live in Settings");
 });
 
 test("the dot on a conflict says how many notes have two versions and that a click shows them", () => {

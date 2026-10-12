@@ -16,6 +16,7 @@
 import { createNotebook, importSummary, syncErrorMessage } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { githubRemote } from "../src/github-remote.mjs";
+import { chosenNotesHome, notesHomeName } from "../src/notes-home.mjs";
 import { createAutoSync } from "../src/auto-sync.mjs";
 import { createScreen } from "../src/screen.mjs";
 import { pageNoteCount, pillTitle, BACK_BUTTON_HINT } from "../src/menu-contents.mjs";
@@ -215,14 +216,16 @@ async function start() {
   // cursor maths — live behind this front door (#31, #32, ADR 0002). This file
   // only forwards what happened and draws editor.state and editor.menu; a text
   // change is forwarded to the Screen, which owns saving the open note.
-  // Sync with the Notes Repo runs by itself (#15): a pull when the sidebar
+  // Sync with the Notes Home runs by itself (#15): a pull when the sidebar
   // opens and a push a few seconds after typing stops. When to sync is
-  // auto-sync's; this connects it to GitHub and draws the status.
+  // auto-sync's; this connects it to the place chosen (#94) and draws the
+  // status.
   const autoSync = createAutoSync({
     notebook,
     connect: async () => {
-      const { repo, token } = await loadConnection();
-      return repo && token ? { remote: githubRemote({ repo, token }), repo } : null;
+      const { home, repo, token } = await loadConnection();
+      if (home !== "github" || !repo || !token) return null;
+      return { remote: githubRemote({ repo, token }), repo, place: notesHomeName(home) };
     },
     beforeSync: () => screen.flush(),
     onStatus: drawSyncStatus,
@@ -452,14 +455,16 @@ async function start() {
     if (!keepShortcuts && shortcutsPanel.on && !shortcutsPanel.folded) prefs.saveShortcutsPanel({ folded: true });
   }
 
-  // --- The Notes Repo: connecting GitHub and the first sync (#14) -----------
+  // --- Where your notes live: the Notes Home (#14, #94) --------------------
   //
-  // The connection lives in Settings, under Notes repo (#18). The repo name
-  // and token are kept only in this browser's extension storage, never in the
-  // Notebook or the Notes Repo (ADR 0003).
+  // The choice lives in Settings, under Where your notes live, and is kept in
+  // this browser's Notebook. GitHub's repo name and token are kept only in
+  // this browser's extension storage, never in the Notebook or the Notes Repo
+  // (ADR 0003).
   async function loadConnection() {
     const { notesRepo, githubToken } = await extensionStorage.get(["notesRepo", "githubToken"]);
-    return { repo: notesRepo ?? "", token: githubToken ?? "" };
+    const github = { repo: notesRepo ?? "", token: githubToken ?? "" };
+    return { home: chosenNotesHome(notebook.notesHome(), github), ...github };
   }
 
   // The sync dot and its box (#75), drawn by sidebar/sync-box-view.js.
@@ -481,22 +486,29 @@ async function start() {
     noteMeta.updateBar();
   }
 
-  // What the Notes repo section of Settings asks of the Notebook, wherever
-  // settings are drawn (see settings-view.js). The first sync goes through the
-  // GitHub remote; the repo and token are saved only once GitHub has accepted
-  // them. With settings closed meanwhile, a notice says how it went.
+  // What the Where your notes live section of Settings asks of the Notebook,
+  // wherever settings are drawn (see settings-view.js). Switching to GitHub
+  // goes through the GitHub remote; the repo and token are saved only once
+  // GitHub has accepted them. With settings closed meanwhile, a notice says
+  // how it went.
   const repoActions = {
     connection: loadConnection,
     status: async () => autoSync.status(),
     syncNow: () => autoSync.syncNow(),
     courses: async () => notebook.courses(),
 
-    async firstSync(repo, token, onProgress) {
+    async switchHome(place, repo, token, onProgress) {
+      screen.flush();
+      if (place === "browser") {
+        await notebook.switchNotesHome("browser");
+        await autoSync.syncNow();
+        return { notes: 0 };
+      }
       let result;
       try {
-        result = await notebook.firstSync(githubRemote({ repo, token }), onProgress);
+        result = await notebook.switchNotesHome(place, githubRemote({ repo, token }), onProgress);
       } catch (error) {
-        console.error("Glacier: first sync failed", error);
+        console.error("Glacier: switching where the notes live failed", error);
         if (!panels.settingsOpen()) showNotice(syncErrorMessage(error, repo), 8000);
         return { error: syncErrorMessage(error, repo) };
       }
@@ -679,8 +691,9 @@ async function start() {
     status: repoActions.status,
     syncNow: repoActions.syncNow,
     courses: repoActions.courses,
-    firstSync: (repo, token) =>
-      repoActions.firstSync(repo, token, (progress) => {
+    notesHome: async () => (await loadConnection()).home,
+    switchHome: (place, repo, token) =>
+      repoActions.switchHome(place, repo, token, (progress) => {
         api.runtime.sendMessage({ glacier: "progress", channel: besideChannel, progress }).catch(() => {});
       }),
     exportCourse: repoActions.exportCourse,
