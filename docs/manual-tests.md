@@ -11,6 +11,15 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Quotes, code block rows, Archived label, Undo reopen, focus ring, sideways scroll (#87)
+
+- [ ] Type a line starting with `> ` and move to another line: it shows as a quote with a quiet bar on the left and no `>`. Click back into it: the `>` shows faded.
+- [ ] Type a code block (three backticks, a few lines, three backticks) and a normal line after it: the code lines and the line after the block sit on the ruled lines, also while the caret is inside the block.
+- [ ] Open a note that is in a Collection, then archive the whole Collection from the ▾ menu: the pill shows "Glacier" and no "Archived" label.
+- [ ] Click Undo in the notice: the notes come back and the note that was open is on screen again.
+- [ ] Choose the Aurora paper, open settings and tab to the close button: the focus ring is the soft accent colour, not a white box.
+- [ ] Open the Shortcuts panel: there is no sideways scrollbar at its bottom, and a long key wraps to its own line.
+
 ### Welcome layout, unbroken shortcut keys, card button text (#86)
 
 - [ ] Reload with ↻, then start in a fresh profile: the welcome's first line is fully visible below the pill, every line sits on a ruled line in the handwriting font, and "No note for this page yet." does not show at the same time.

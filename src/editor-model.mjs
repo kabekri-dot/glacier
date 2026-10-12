@@ -421,6 +421,13 @@ function lineSegments(line) {
       ...inlineSegments(heading[3]),
     ];
   }
+  const quote = /^(>\s+)(.*)$/.exec(line);
+  if (quote) {
+    return [
+      { raw: quote[1], text: "", kind: "marker", marker: "quote" },
+      ...inlineSegments(quote[2]),
+    ];
+  }
   const bullet = /^(\s*-\s+)(.*)$/.exec(line);
   if (bullet) {
     return [
@@ -566,6 +573,9 @@ export function renderLineHtml(line, linkExists) {
   }
   if (first && first.marker === "bullet") {
     return `<span class="md-bullet"><span class="md-bullet-dot">•</span>${inlineHtml(segments.slice(1), linkExists)}</span>`;
+  }
+  if (first && first.marker === "quote") {
+    return `<span class="md-quote">${inlineHtml(segments.slice(1), linkExists)}</span>`;
   }
   return inlineHtml(segments, linkExists);
 }
