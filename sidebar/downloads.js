@@ -1,7 +1,7 @@
 // Export and printing (#13, #55, #71). The file formats live in the Notebook
 // core; this only hands the browser a file or opens its print window.
 // "Download as a file" is in the ⋯ menu and on the ▾ menu's hover icons; the
-// rest live in Settings, under Notes repo (#18). The sidebar always does the
+// rest live in Settings, under Where your notes live (#18, #94). The sidebar always does the
 // download, also for settings beside it (#21).
 //
 // Markdown gives the file or a zip; PDF and Print open the browser's print

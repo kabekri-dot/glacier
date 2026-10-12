@@ -1,11 +1,30 @@
-// An in-memory stand-in for the Notes Repo. The real one is GitHub
-// (github-remote.mjs); this one holds files in memory and is used by tests.
-// It answers the same questions the Notebook core asks a remote: can we
-// connect, which files are there, what does each one say, and it takes a
-// commit: several writes and deletes that land together or not at all, like
-// one Git commit (ADR 0005). Each file has a version that changes with every
-// write; a commit that names an old version is refused as a whole, like
-// GitHub does.
+// The remote contract (#94, ADR 0011). Every Notes Home (GitHub now; Google
+// Drive and a folder later) is plugged into the Notebook core as an object
+// with these four calls, and nothing else:
+//
+//   connect()            Checks the place can be reached and the person may
+//                        use it. Called before every first sync and sync.
+//   listFiles()          Every file there, as `[{ path, version }]`. An empty
+//                        place gives [].
+//   readFile(path)       One file as `{ text, version }`.
+//   commit({ writes, deletes })
+//                        `writes` is `[{ path, text, version }]`, `deletes`
+//                        `[{ path, version }]`, where `version` is the one
+//                        this browser last saw (undefined for a new file).
+//                        All land together or none do (ADR 0005). Returns the
+//                        new version of each written file, by path.
+//
+// A path is any file path with text content ("notes/Margins.md", later a
+// sketch's ".svg"), so a new kind of file needs no adapter change. A version
+// is any string that changes with every write. A failure throws an Error
+// with a `reason`: "unauthorized", "forbidden", "not-found", "offline",
+// "aborted" (cut off as the sidebar closes) or "conflict" (a version is no
+// longer the current one; the commit is refused as a whole).
+//
+// This file is the in-memory stand-in for the Notes Repo that the tests use.
+// The real one is GitHub (github-remote.mjs); this one holds files in memory.
+// Each file has a version that changes with every write; a commit that names
+// an old version is refused as a whole, like GitHub does.
 
 export function memoryRemote(initialFiles = {}) {
   const files = new Map(Object.entries(initialFiles));

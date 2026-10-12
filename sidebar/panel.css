@@ -676,7 +676,35 @@ code {
   border-color: var(--accent);
 }
 
-/* The Notes Repo settings and the first sync's steps (#14). */
+/* Where your notes live (#94): one row per place with its pixel icon, like
+   the paper choices. */
+.home-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.home-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.2rem 0.3rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.home-choice:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.home-icon {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  image-rendering: pixelated;
+}
+
+/* The GitHub settings and the first sync's steps (#14). */
 .settings-text {
   margin: 0;
   line-height: 1.45;

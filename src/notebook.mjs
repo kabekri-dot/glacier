@@ -316,6 +316,9 @@ export function createNotebook({ storage }) {
   // which side changed since (#15).
   const SYNCED = "syncedFiles";
   const LAST_SYNCED = "lastSynced";
+  // Where the notes live (ADR 0011): "browser" or a place such as "github".
+  // Kept per browser in its own storage, never synced. Unset until chosen.
+  const NOTES_HOME = "notesHome";
   // "Title (conflict 2026-10-11)", with a number after it for a second one.
   const CONFLICT_TITLE = / \(conflict \d{4}-\d{2}-\d{2}\)( \d+)?$/;
   // How much text to show on each side of a match in a search snippet.
@@ -1007,11 +1010,46 @@ export function createNotebook({ storage }) {
       return { notes: downloaded.length };
     },
 
+    // Where the notes live (#94): "browser", a place such as "github", or
+    // null before anything was chosen.
+    notesHome() {
+      return storage.getMeta(NOTES_HOME) ?? null;
+    },
+
+    // Switch the Notes Home (#94, ADR 0011). A new place is combined with
+    // this browser like a first sync, then everything here is pushed to it,
+    // so the notes end up in both; a note that differs gets two versions
+    // (ADR 0004) and nothing is deleted. The old place is never touched.
+    // "browser" just stops syncing. A place that can't be reached keeps the
+    // place there was. Once combined the place is chosen; if the push then
+    // fails (`pushed` is false), the next sync sends the notes.
+    async switchNotesHome(place, remote, onProgress = () => {}) {
+      if (place === "browser") {
+        storage.putMeta(NOTES_HOME, "browser");
+        return { notes: 0 };
+      }
+      let ready = null;
+      const result = await this.firstSync(remote, (progress) => {
+        if (progress.step === "ready") ready = progress;
+        else onProgress(progress);
+      });
+      storage.putMeta(NOTES_HOME, place);
+      try {
+        await this.sync(remote);
+      } catch {
+        return { ...result, pushed: false };
+      }
+      onProgress(ready);
+      return { ...result, pushed: true };
+    },
+
     // Sync (#15): pull what changed in the Notes Repo since this browser
     // last synced, then push what changed here as one commit (#17).
     // `pulled` lists the notes that came in, changed or went, so the screen
-    // can redraw them.
+    // can redraw them. With the notes living only in this browser there is
+    // nothing to sync.
     async sync(remote) {
+      if (storage.getMeta(NOTES_HOME) === "browser") return { pulled: [], pushed: 0, conflicts: 0 };
       await remote.connect();
       const synced = { ...storage.getMeta(SYNCED) };
       const result = { pulled: [], pushed: 0, conflicts: 0 };

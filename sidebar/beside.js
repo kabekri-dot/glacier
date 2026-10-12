@@ -2,13 +2,14 @@
 // page runs in a frame that beside-frames.js draws over the edge of the web
 // page; it never sees the page. The choices kept per browser are written to
 // extension storage, where the sidebar picks them up at once, so the note
-// shows each change live. Anything that needs the Notebook (the Notes repo
-// section) is asked of the sidebar that opened this frame, named by `channel`.
+// shows each change live. Anything that needs the Notebook (the Where your
+// notes live section) is asked of the sidebar that opened this frame, named by `channel`.
 import { readLook, applyLook } from "../src/look.mjs";
 import { readTabSettings } from "../src/tab-settings.mjs";
 import { readShortcutsPanel } from "../src/shortcuts-panel.mjs";
 import { readPanelPlace, BESIDE_PERMISSION } from "../src/panel-place.mjs";
 import { createSettingsView } from "./settings-view.js";
+import { chosenNotesHome } from "../src/notes-home.mjs";
 
 const api = typeof browser !== "undefined" ? browser : chrome;
 const storage = api.storage.local;
@@ -70,9 +71,9 @@ const prefs = {
 };
 
 // The first sync's steps arrive from the sidebar as it goes.
-let onFirstSyncProgress = () => {};
+let onSwitchProgress = () => {};
 api.runtime.onMessage.addListener((message) => {
-  if (message?.glacier === "progress" && message.channel === channel) onFirstSyncProgress(message.progress);
+  if (message?.glacier === "progress" && message.channel === channel) onSwitchProgress(message.progress);
 });
 
 // Bytes travel as text: Chrome sends messages as JSON.
@@ -85,14 +86,16 @@ function toBase64(bytes) {
 const repo = {
   async connection() {
     const { notesRepo, githubToken } = await storage.get(["notesRepo", "githubToken"]);
-    return { repo: notesRepo ?? "", token: githubToken ?? "" };
+    const github = { repo: notesRepo ?? "", token: githubToken ?? "" };
+    // The choice is kept in the sidebar's Notebook (#94).
+    return { home: (await askValue("notesHome")) ?? chosenNotesHome(null, github), ...github };
   },
   status: async () => (await askValue("status")) ?? { state: "off" },
   syncNow: async () => (await askValue("syncNow")) ?? { state: "off" },
   courses: async () => (await askValue("courses")) ?? [],
-  async firstSync(repoName, token, onProgress) {
-    onFirstSyncProgress = onProgress;
-    return (await askValue("firstSync", repoName, token)) ?? { error: "Glacier's sidebar closed. Open it and try again." };
+  async switchHome(place, repoName, token, onProgress) {
+    onSwitchProgress = onProgress;
+    return (await askValue("switchHome", place, repoName, token)) ?? { error: "Glacier's sidebar closed. Open it and try again." };
   },
   exportCourse: (course, format) => ask("exportCourse", course, format),
   exportAll: () => ask("exportAll"),

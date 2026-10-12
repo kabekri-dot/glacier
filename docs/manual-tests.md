@@ -11,6 +11,19 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Where your notes live (#94)
+
+Reload with ↻ first.
+
+- [ ] Open Settings: the last section is called "Where your notes live". It shows two choices, "Only in this browser" and "GitHub", each with a small pixel icon, and Backup under them. It looks calm, with no "For developers" text.
+- [ ] With GitHub connected from before, GitHub is chosen and its repo and token form shows right under it. Type a note: it still syncs, and the sync dot says "All saved to GitHub" on hover.
+- [ ] Click "Only in this browser": one line asks "Your notes will stay in this browser and stop syncing. Nothing is deleted." with Switch and Keep. Keep leaves GitHub chosen. Switch: the dot turns quiet and says your notes live only in this browser; type a note and check GitHub: nothing new arrives.
+- [ ] Close the sidebar and open it again: "Only in this browser" is still chosen.
+- [ ] Click "GitHub", press "Connect and sync": the line "Your notes will be combined with the ones in GitHub. Nothing is deleted." asks first. Switch shows Connecting to GitHub, Downloading, Combining notes and Ready. Afterwards the note you typed while only in this browser is on GitHub too, and nothing on GitHub was deleted.
+- [ ] Connect another, empty repo the same way: every note shows up there, and the first repo stays as it was.
+- [ ] With only this browser chosen, click the sync dot: the box says "Only in this browser" and "Choose where they live" opens this section. Connected, the box's link reads "Where your notes live".
+- [ ] Do the same switches in Settings beside the sidebar.
+
 ### The sidebar code split into parts (#93)
 
 Nothing should look or work differently. Check each in Chrome and Firefox:
@@ -42,7 +55,7 @@ Nothing should look or work differently. Check each in Chrome and Firefox:
 
 ### Collections to download stay in Settings (hand fix)
 
-- [ ] In Settings, open Notes repo and click Sync now: under Backup the Collections with their download icon sit in the list, not floating over the Settings heading. Click a note's Collection line: its list of Collections still opens under it and scrolls when long.
+- [ ] In Settings, open Where your notes live and click Sync now: under Backup the Collections with their download icon sit in the list, not floating over the Settings heading. Click a note's Collection line: its list of Collections still opens under it and scrolls when long.
 
 ### A welcoming first page (#90)
 
@@ -60,7 +73,7 @@ Nothing should look or work differently. Check each in Chrome and Firefox:
 - [ ] On a fresh install (or after clearing "welcomeSeen"), visit a website that already has a note: the note opens and the welcome is gone, with no text on top of the note. Reload: the welcome does not come back.
 - [ ] With the welcome showing, type a letter, press +, or open a note from the menu: the welcome goes in each case.
 - [ ] Click the sync dot, then "Sync now": the box stays open and the pen writes "Just synced". Press it again when nothing changed: the pen writes it again.
-- [ ] In Settings, Notes repo, press "Sync now": the status line is written out as "Just synced" by the pen, then returns to normal. With reduce motion on, the words just appear. With the network off you read the plain error text.
+- [ ] In Settings, Where your notes live, press "Sync now": the status line is written out as "Just synced" by the pen, then returns to normal. With reduce motion on, the words just appear. With the network off you read the plain error text.
 - [x] With Settings beside the sidebar: the frame touches the sidebar's edge with no overlap and no gap, fits the window height, and has no scrollbar of its own on the outside. Scroll its list to the end and keep scrolling: the web page behind does not move.
 - [ ] Open the ▾ menu: Recent lists at most 5 notes.
 - [ ] On a page whose notes are in no Collection, press "New note for this page" while another Collection was used last: the new note is in no Collection. On a page with a note in a Collection, the new note joins it. On a page with no notes yet, it is in no Collection (#92).
@@ -170,7 +183,7 @@ Reload with ↻ first.
 - [ ] Click "Sync now": the button reads "Syncing…", then a pen writes "Just synced" across the box for a few seconds, then the box shows its status again. Turn the network off and try again: the result is "Offline. Your changes are kept here".
 - [ ] Press Esc, or click anywhere outside the box: it closes.
 - [ ] Make a note with two versions (see Conflict Copies below). The box shows "1 note has two versions. Check them" style text. Clicking it opens the ▾ menu with "Several versions (n)" at the very top, each original with its second version under it.
-- [ ] Click "Notes repo settings" in the box: settings open at Notes repo. Without a Notes repo connected, the box says "Not connected to GitHub" and offers "Set up sync", which opens the same place.
+- [ ] Click "Where your notes live" in the box: settings open at Where your notes live. With the notes only in this browser, the box says "Only in this browser" and offers "Choose where they live", which opens the same place.
 - [ ] Open the ▾ menu: there is no Sync, no "Sync now" and no "Notes repo" in it. The order is search, Several versions (only while there are any), Notes for this page, Recent, Collections, Archive.
 - [ ] Nothing in the menus or the box is bold.
 
@@ -207,7 +220,7 @@ Reload with ↻ first. You need a connected Notes repo for the last two checks.
 
 - [ ] The line above the text says "Add to a collection" on a note without one. Hover it: "Click to choose a collection". Click it: the list ends with "+ New collection".
 - [ ] Open the ▾ menu: the Notebook lists Collections, then "No collection" with the rest. Hover a Collection heading: three icons show, and Download names the Collection and its note count.
-- [ ] Settings, Notes repo: the list under Backup holds Collections, and hovering a Download icon names the Collection. Nowhere in the sidebar, menus or settings does the word Course show.
+- [ ] Settings, Where your notes live: the list under Backup holds Collections, and hovering a Download icon names the Collection. Nowhere in the sidebar, menus or settings does the word Course show.
 - [ ] Put a note in "Testing Test", then click "+ New collection" on another note and type "testing test": the note joins "Testing Test", and the menu shows one Collection.
 - [ ] If you had "Testing Test" and "Testing test" before this change: after the reload they show as one Collection, spelled like the one with more notes.
 - [ ] Sync, then open the Notes repo on GitHub: the notes sit in `collections/`, the old `courses/` folder is gone, and both spellings ended up in one folder. The history shows the move as one commit.
@@ -234,7 +247,7 @@ Reload with ↻ first.
 - [ ] Click Delete: the usual question appears. Keep leaves it, Delete removes it.
 - [ ] Hover a Collection heading: three icons show (see the Collection section above). Markdown gives a zip of .md files. PDF gives one document with every note of the Collection, each on a new page.
 - [ ] In ⋯ This note, Download asks the same Markdown or PDF choice.
-- [ ] Settings, Notes repo: a list of every Collection (it scrolls when long), each with a Download icon that asks the same choice. Export everything and Export archive are still there.
+- [ ] Settings, Where your notes live: a list of every Collection (it scrolls when long), each with a Download icon that asks the same choice. Export everything and Export archive are still there.
 
 ### Conflict line you can close, guided second versions, sync dot explained (#70)
 
@@ -249,7 +262,7 @@ Reload with ↻ first. Make a conflict first (see Conflict Copies, #16).
 - [ ] Hover the dot when everything is saved: "All saved to GitHub". While syncing: "Saving to GitHub". With the network off: "Offline. Your changes are kept here and sync later".
 - [ ] Hover the orange dot: "A note has two versions. Click to see them". Click it: the list of pairs opens.
 - [ ] Break the token on purpose and sync: hovering the dot gives the error's short text.
-- [ ] Before connecting GitHub, hover the dot: "Not connected to GitHub. Set it up in Settings".
+- [ ] Before connecting GitHub, hover the dot: "Your notes live only in this browser. Choose where they live in Settings".
 
 ### Search titles, or // to search inside notes (#69)
 
@@ -458,7 +471,7 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 
 ### Export and Restore from backup file
 
-- [ ] Open settings, then Notes repo: "Export everything" and "Restore from backup file" sit under "Backup", and hovering shows what they do.
+- [ ] Open settings, then Where your notes live: "Export everything" and "Restore from backup file" sit under "Backup", and hovering shows what they do.
 - [ ] "Export everything" downloads a zip named "Glacier notes" with the date.
 - [ ] Unzip it: notes with a Collection are in `collections/<Collection>/`, all others in `notes/`, each file named after its title with a short block of details at the top.
 - [ ] In Obsidian, "Open folder as vault" on the unzipped folder: the notes open and clicking a Link goes to the other note.
@@ -500,27 +513,27 @@ Connect the same Notes repo in Chrome and in Firefox first (see #14).
 - [ ] Turn the network off (devtools, Offline) and type. The dot becomes an empty ring and hovering it says "Offline" and that your changes are kept. Turn the network on again: the dot turns green and GitHub has the text.
 - [ ] Change the same note in both browsers while one of them is offline, then let both sync. The dot turns orange, hovering says "Conflict", and the other text is kept as "Title (conflict date)".
 - [ ] Click the dot: the box has the status, the last sync and a "Sync now" button. Pressing it shows "Syncing…" and then the result for a moment.
-- [ ] Revoke or delete the token on GitHub, then type or press "Sync now": the dot turns red and the message says GitHub no longer accepts your token, it may have expired, and to paste a new one in Notes repo. Pasting a new token there makes it sync again.
-- [ ] Without a Notes repo connected, the dot stays as before, hovering it says "Saved in this browser", and the box offers "Set up sync" instead of "Sync now".
+- [ ] Revoke or delete the token on GitHub, then type or press "Sync now": the dot turns red and the message says GitHub no longer accepts your token, it may have expired, and to paste a new one under Where your notes live. Pasting a new token there makes it sync again.
+- [ ] Without a Notes repo connected, the dot stays as before, hovering it says your notes live only in this browser, and the box offers "Choose where they live" instead of "Sync now".
 
 ### Connect GitHub and the first sync
 
 You need a private GitHub repo for your notes and a fine grained token for it (GitHub, Settings, Developer settings, Fine grained tokens), limited to that repo with Contents set to read and write. Put a few notes in it first, for example from an Export zip, in `collections/` and `notes/`.
 
-- [ ] Click the sync dot and then "Notes repo settings" (or "Set up sync" when not connected). It opens settings at Notes repo, with Repo and Token fields and a short text about the token.
+- [ ] Click the sync dot and then "Where your notes live" (or "Choose where they live" when not connected). It opens settings at Where your notes live; choosing GitHub shows Repo and Token fields and a short text about the token.
 - [ ] The × in the settings header returns to the note that was open.
-- [ ] Type the repo as `yourname/notes` (pasting its GitHub address works too), paste the token, press "Connect and sync". A screen shows Connecting to GitHub, then Downloading 1 of N notes counting up, then Linking notes, then Ready, and says how many notes came in.
+- [ ] Type the repo as `yourname/notes` (pasting its GitHub address works too), paste the token, press "Connect and sync", then Switch. A screen shows Connecting to GitHub, then Downloading 1 of N notes counting up, then Combining notes, then Ready, and says how many notes came in.
 - [ ] "Start writing" closes settings. Every note from the repo is in the menu, with its Collection, text and backlinks.
 - [ ] Typing just "notes" (no owner) says to type it as owner and name.
 - [ ] A wrong token says GitHub didn't accept it. A repo name that doesn't exist says it couldn't find that repo. Nothing in the Notebook changes.
 - [ ] With the network off (devtools, Offline), it says it couldn't reach GitHub.
-- [ ] Open "Notes repo" again: it says which repo is connected, the repo is filled in and the token field says it is saved. Change the repo and sync again without pasting the token.
+- [ ] Open "Where your notes live" again: it says which repo is connected, the repo is filled in and the token field says it is saved. Change the repo and sync again without pasting the token.
 - [ ] A note you already had with different text is kept, and the repo's version shows up next to it as "Title (conflict date)".
 - [ ] The token is in neither the repo nor an Export zip. It shows only in the extension's storage (devtools of the sidebar, Application or Storage, Extension storage).
 
 ### Export: this note, a collection, or everything
 
-- [ ] Open the ⋯ This note menu after the title: "Download as a file" is there. Open settings (the round glacier button), then Notes repo: under a small "Backup" heading are a Collection list, "Export a collection", "Export everything" and "Restore from backup file". Hovering each shows what it does.
+- [ ] Open the ⋯ This note menu after the title: "Download as a file" is there. Open settings (the round glacier button), then Where your notes live: under a small "Backup" heading are a Collection list, "Export a collection", "Export everything" and "Restore from backup file". Hovering each shows what it does.
 - [ ] "Download as a file" saves one `.md` file named after the note's title, with its text.
 - [ ] Pick a Collection and press "Export a collection": the zip has only that Collection's notes.
 - [ ] "Export everything" downloads a zip of every note, as before.
@@ -539,7 +552,7 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 ### Settings, Classic papers and handwriting
 
 - [ ] With "Inside the sidebar" chosen under Panels (#21): a round glacier button sits in the bottom right corner. Clicking it opens settings over the lower part of the sidebar, with the note still showing above. Clicking it again, the × in the header, or Esc closes them.
-- [ ] Paper, Writing and Notes repo fold open and closed when you click their names. Open all three and scroll: the "Settings" header stays on top.
+- [ ] Paper, Writing and Where your notes live fold open and closed when you click their names. Open all three and scroll: the "Settings" header stays on top.
 - [ ] Under Paper, Classics, choose each one in turn: Blank Page, School Notebook (blue lines and a red margin line), Chalkboard (dark, chalk white writing), Moleskine (very faint lines) and Engineer (a green grid, darker every fifth line). The note changes at once.
 - [ ] Close the sidebar and open it again: the paper you chose is still there. In the other browser it is its own choice.
 - [ ] On Chalkboard, the pill, the menu, the search box and the settings are all readable.
@@ -592,7 +605,7 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 - [ ] With settings beside the sidebar, change the paper, the font and drag the text size: the note changes at once, also while you drag.
 - [ ] Change "Tabs and notes", and the previous note button beside the sidebar: each one works at once in the sidebar.
 - [ ] Close settings with the ×, with Esc, with the glacier button and by clicking in the note. Each way closes them.
-- [ ] Under Notes repo beside the sidebar: Sync now, Export a collection, Export everything and Restore from backup file all work, and the downloads and messages show in the sidebar. With no repo connected, connecting one shows the first sync steps beside the sidebar.
+- [ ] Under Where your notes live beside the sidebar: Sync now, Export a collection, Export everything and Restore from backup file all work, and the downloads and messages show in the sidebar. With no repo connected, connecting one shows the first sync steps beside the sidebar.
 - [ ] Switch to another website tab with settings open: they go with you. Go back: they are there and not left behind on the other tab.
 - [ ] Follow a link in the page: after it loads, settings come back beside the sidebar.
 - [ ] On a new tab, a browser settings page (`chrome://settings` or `about:preferences`) and a PDF, open settings: they open inside the sidebar. Switch back to a website: they move beside it.
@@ -624,7 +637,7 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 - [ ] Click Unarchive: the label goes, and the note is back in its Collection (or No collection) in the list.
 - [ ] A link to an archived note in another note still opens it.
 - [ ] After a sync, the archived note's file is under the archive folder on GitHub (for example archive/collections/Collection name/Title.md), and it moves back out after Unarchive and a sync.
-- [ ] In Settings, Notes repo, under Backup: "Export archive" downloads a zip with only the archived notes.
+- [ ] In Settings, Where your notes live, under Backup: "Export archive" downloads a zip with only the archived notes.
 - [ ] "Export everything" includes archived notes, and "Restore from backup file" brings them back as archived.
 
 ### The bar on notes with two versions

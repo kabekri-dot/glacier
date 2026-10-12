@@ -118,7 +118,7 @@ test("an expired token gives a clear message", async () => {
   const status = await autoSync.syncNow();
   assert.equal(status.state, "error");
   assert.match(syncStatusText(status).detail, /expired/);
-  assert.match(syncStatusText(status).detail, /Notes repo/);
+  assert.match(syncStatusText(status).detail, /Where your notes live/);
 });
 
 test("each status has a short label, and says when the last sync was", () => {
@@ -274,10 +274,10 @@ test("the box offers a way to check notes with two versions", () => {
   assert.equal(box.status, "Synced");
 });
 
-test("not connected, the box says so and offers to set up sync", () => {
+test("with the notes only in this browser, the box says so and offers to choose a place", () => {
   const box = syncBox({ state: "off" }, boxNow);
-  assert.equal(box.status, "Not connected to GitHub");
-  assert.equal(box.action, "Set up sync");
+  assert.equal(box.status, "Only in this browser");
+  assert.equal(box.action, "Choose where they live");
   assert.equal(box.last, null);
 });
 
