@@ -18,6 +18,7 @@ What Claude tested itself by clicking, typing and pressing keys in a real Chrome
 | 1 | 2026-10-12 | after #80 to #82 | bugs → #83, look → #84 |
 | 2 | 2026-10-12 | after #83 to #85 | bugs → #86 |
 | 3 | 2026-10-12 | after #86 | open findings → #87 |
+| 4 | 2026-10-12 | after #87, every user story | bugs → #88 |
 
 ## Workflows
 
@@ -68,7 +69,7 @@ What Claude tested itself by clicking, typing and pressing keys in a real Chrome
 | Print and PDF window | ➖ | ➖ | |
 | Several versions section and bar | ➖ | ➖ | |
 
-## Open findings
+## Open findings (round 3)
 
 - Quote lines (`> `) aren't formatted; the `>` stays visible.
 - Code block rows don't line up with the ruled lines.
@@ -79,7 +80,139 @@ What Claude tested itself by clicking, typing and pressing keys in a real Chrome
 
 All of these went into #87.
 
+## User stories (round 4)
+
+Every story in the spec (#1), judged against today's decisions. ✅ works, ❌ bug (ticket), ➖ for the user (not testable here), ⬜ not tested yet, ⤳ the story is outdated and was replaced (what replaced it is tested).
+
+### Opening Glacier next to a lesson
+
+| # | Story (short) | Result |
+|---|---|---|
+| 1 | Open from the toolbar or Alt+Shift+G | ➖ (user checked #47, #49) |
+| 2 | Same in Chrome and Firefox | ➖ |
+| 3 | The page's note opens by itself | ➖ |
+| 4 | Address extras match the same note, different videos don't | ➖ (covered by `node --test`) |
+| 5 | Clear prompt on a page without a note | ✅ "No note for this page yet." with "+ New note for this page" |
+| 6 | New note takes the page title and Source | ➖ |
+| 7 | Last used Course preselected | ⤳ Collection: a new note lands in the last used Collection ✅ |
+| 8 | A taken title gets the Collection added | ✅ on rename ("Box model basics (Web Basics)") |
+| 9 | Cursor in the note when it opens | ✅ |
+
+### Writing
+
+| # | Story (short) | Result |
+|---|---|---|
+| 10 | No Edit/Preview switch | ✅ |
+| 11 | Markdown formats while writing | ✅ headings, bullets, quote (#87), bold, italic, code |
+| 12 | Click lands exactly there | ✅ inside a word |
+| 13 | Enter continues a list, empty bullet ends it | ✅ |
+| 14 | Backspace at the start joins with the line above | ❌ in a bullet the `- ` ends up inside the line #88 |
+| 15 | ↑ and ↓ move between lines | ✅ also through a code block |
+| 16 | Pasting several lines keeps them as lines | ✅ plain text |
+| 17 | `/` menu shows each command's Markdown | ✅ |
+| 18 | `+` on the left opens the same menu | ❌ a mouse click doesn't open it #88 |
+| 19 | Hint on empty lines | ✅ "Type / for commands, or click + on the left" |
+| 20 | `[[` suggests titles | ✅ |
+| 21 | Drag-select across paragraphs | ✅ |
+| 22 | Ctrl+A once the line, twice the note | ✅ |
+| 23 | Copy keeps the Markdown | ✅ exact Markdown on the clipboard |
+
+### Connecting ideas
+
+| # | Story (short) | Result |
+|---|---|---|
+| 24 | `[[Title]]` links | ✅ |
+| 25 | Missing Links in red | ✅ |
+| 26 | Clicking a Missing Link creates the note | ✅ (a plain note now, ⤳ Concept) |
+| 27 | A click on a Link opens the note | ✅ |
+| 28 | Backlinks | ✅ "1 backlink" |
+| 29 | Rename rewrites every Link | ✅ `[[Box model]]` became `[[Box model guide]]` |
+| 30 | A taken name is refused with a suggestion | ✅ |
+| 31 | Concept Notes have no Course | ⤳ one kind of note (#68); notes without a Collection are listed under "No collection" ✅ |
+
+### Finding notes
+
+| # | Story (short) | Result |
+|---|---|---|
+| 32 | The note fills the sidebar | ✅ |
+| 33 | One pill with title and sync status | ✅ (long titles cut without "…" #88) |
+| 34 | Menu with search, recent notes, the Notebook | ✅ |
+| 35 | Ctrl+K opens it with the search box focused | ✅ |
+| 36 | Search titles and text, highlighted snippet | ✅ `//` searches text, the match is highlighted (snippet shows raw Markdown #88) |
+| 37 | + Lesson note / + Concept in the menu | ⤳ "+ New note", "+ New collection" ✅ |
+| 38 | Backlinks button bottom left | ✅ |
+| 39 | Esc closes any menu | ✅ |
+
+### Look and feel
+
+| # | Story (short) | Result |
+|---|---|---|
+| 40 | 11 Themes in two groups | ✅ all switch, each with its default font and pattern |
+| 41 | Glacier is the default | ✅ |
+| 42 | Panorama shows more landscape when wider | ✅ at 420 and 700 px |
+| 43 | Text never over the picture | ✅ |
+| 44 | Writing on the ruled lines at every font and size | ✅ checked at 100 and 150 % on School Notebook |
+| 45 | Font Override stays when switching Themes | ✅ |
+| 46 | Text size 85 to 150 % | ✅ and it's kept after a reload |
+| 47 | Fonts bundled | ✅ all five load from the extension |
+| 48 | Round glacier button opens settings | ✅ |
+| 49 | Settings beside the sidebar, live | ➖ needs the permission prompt |
+| 50 | Settings sections fold | ✅ |
+| 51 | Shortcuts panel, folds, stays as left | ⤳ inside on the right (#76) ✅, keeps open or folded ✅ |
+| 52 | Same art as the toolbar icon | ➖ |
+
+### Permissions
+
+| # | Story (short) | Result |
+|---|---|---|
+| 53 | No warning at install | ➖ |
+| 54 | Glacier's own card before the browser's prompt | ✅ card; ➖ the prompt |
+| 55 | Declining still works, inside the sidebar | ✅ |
+| 56 | Change it later in Settings, Panels | ➖ choosing beside asks the browser |
+
+### Sync, safety and data
+
+| # | Story (short) | Result |
+|---|---|---|
+| 57 | Saved while typing, works offline | ✅ survives a reload |
+| 58 | Connect a private repo with a token | ✅ error messages; ➖ a real connection (user did it) |
+| 59 | First sync progress | ➖ |
+| 60 | Pull on open, push after typing | ➖ |
+| 61 | Sync status | ✅ "Saved in this browser" (dot colour on School Notebook #88); ➖ the other states |
+| 62 | Sync now with a confirmation | ➖ (pen animation) |
+| 63 | Conflict Copies | ➖ |
+| 64 | Plain Markdown files with frontmatter | ⤳ `collections/` and `notes/` (#68, #73); ✅ old `courses/` and `concepts/` files restore |
+| 65 | Frontmatter hidden, small header | ✅ "Collection · 🌐 site ↗" |
+| 66 | Git history as backup | ➖ |
+| 67 | Export and Import | ⤳ Restore from backup file ✅ (old format, a changed note kept as a copy, a broken file refused); ➖ the downloaded file |
+| 68 | Token only in this browser | ➖ |
+| 69 | Clear error for an expired token | ➖ (wrong token ✅) |
+
+### Added after the spec
+
+| Feature | Result |
+|---|---|
+| One kind of note, several per page, "1 of 3" (#68) | ➖ needs websites |
+| Collections: line above the text, + New collection, Move to collection (#73, #82) | ✅ |
+| Archive, Unarchive, Undo, Archive section (#58, #71) | ✅ |
+| Delete with a question (#57) | ✅ |
+| Actions on a whole Collection (#74) | ✅ Download choice, Archive with Undo, Delete with the count |
+| ▾ Notebook and ⋯ This note menus (#63) | ✅ |
+| ← box with the last notes (#81) | ✅ |
+| Globe and pencil icons (#81) | ✅ pencil; globe on the header of a restored note |
+| Welcome once, hints, How Glacier works (#85) | ✅ |
+| Sync box from the dot (#75) | ✅ not connected; ➖ connected |
+| Several versions (#70, #81) | ➖ |
+| Delete key, Enter after Ctrl+B, Shift+Enter (#77, #78) | ✅ |
+| Ctrl+B, Ctrl+I, Ctrl+E (#44) | ✅ |
+| Undo and redo (#42) | ✅ |
+| Restore from backup file (#55) | ✅ |
+| Download as .md, PDF or Print (#71, #74) | ✅ the choice; ➖ the files and the print window |
+| Visible text rule (#51) | ✅ nothing in capitals or with dashes seen |
+
+**Round 4 bugs, all in #88:** Backspace in bullets, the `+` menu click, the dot's colour on some papers, Markdown in snippets, "Imported" instead of "Restored", long pill titles without "…", and reopening on a browser page shows the empty page instead of the last note.
+
 ## Still to test
 
-- Round 4 after #87.
+- Round 5 after #88.
 - By the user (not possible here): sync and the pen animation, tab following and several notes per page, print and PDF, several versions, Firefox.
