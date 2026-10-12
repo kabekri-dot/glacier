@@ -704,7 +704,7 @@ async function start() {
     refreshMenu();
     showNotice("Archived.", 6000, {
       label: "Undo",
-      run: () => unarchiveFromMenu(title),
+      run: () => undoArchive([title]),
     });
   }
 
@@ -778,20 +778,19 @@ async function start() {
   }
 
   function archiveCollectionFromMenu(course) {
-    screen.flush();
-    const openTitle = screen.note()?.title;
-    const titles = notebook.archiveCollection(course);
-    if (openTitle && titles.includes(openTitle)) draw(screen.archive());
-    autoSync.changed();
+    const { titles, view } = screen.archiveCollection(course);
+    draw(view);
     refreshMenu();
     showNotice(archivedNotice(titles.length), 6000, {
       label: "Undo",
-      run: () => {
-        titles.forEach((title) => notebook.unarchiveNote(title));
-        autoSync.changed();
-        refreshMenu();
-      },
+      run: () => undoArchive(titles),
     });
+  }
+
+  // Undo an archive: the notes come back, and the open note if it was closed.
+  function undoArchive(titles) {
+    draw(screen.undoArchive(titles));
+    refreshMenu();
   }
 
   function unarchiveCollectionFromMenu(course) {
@@ -1923,7 +1922,9 @@ async function start() {
       const inner = blockLines.slice(1, closed ? -1 : undefined);
       const pre = document.createElement("pre");
       pre.className = "md-code";
-      pre.textContent = inner.join("\n");
+      const code = document.createElement("span");
+      code.textContent = inner.join("\n");
+      pre.appendChild(code);
       el.appendChild(pre);
       el.dataset.code = "";
       onPlainClick(el, () => moveTo(range.start, blockLines[0].length));
@@ -2050,7 +2051,11 @@ async function start() {
       if (i > 0) el.appendChild(document.createTextNode("\n"));
       const fenceLine = i === 0 || (i === blockLines.length - 1 && isFence(line));
       if (isCode && !fenceLine) {
-        if (line !== "") el.appendChild(document.createTextNode(line));
+        if (line !== "") {
+          const code = document.createElement("span");
+          code.textContent = line;
+          el.appendChild(code);
+        }
       } else {
         el.appendChild(styledLine(line));
       }

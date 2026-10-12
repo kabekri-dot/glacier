@@ -40,6 +40,8 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
   let created = null;
   // The note after its title followed the first line (#80).
   let retitled = null;
+  // The title of the note an archive just closed, for Undo (#87).
+  let closedByArchive = null;
   const history = createNoteHistory();
   const session = createNoteSession({
     notebook,
@@ -56,6 +58,7 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
     freshPage = null;
     before = null;
     note = next;
+    closedByArchive = null;
     openedByPage = byPage;
     if (!fromHistory) history.visit(next.title);
     return { type: "note", note, reload: true };
@@ -220,8 +223,34 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
 
     archive() {
       session.flush();
+      closedByArchive = note.title;
       notebook.archiveNote(note.title);
       return leaveRemovedNote();
+    },
+
+    // Archive every note of a Collection (#87). The open note, if it is one of
+    // them, is closed like any archived note. Returns the titles, for Undo.
+    archiveCollection(course) {
+      session.flush();
+      const openTitle = note?.title;
+      const titles = notebook.archiveCollection(course);
+      if (openTitle && titles.includes(openTitle)) {
+        closedByArchive = openTitle;
+        return { titles, view: { ...leaveRemovedNote(), changed: true } };
+      }
+      return { titles, view: { type: "backlinks", changed: true } };
+    },
+
+    // Undo an archive: the notes come back, and so does the open note if the
+    // archive closed it and nothing else has been opened since.
+    undoArchive(titles) {
+      titles.forEach((title) => notebook.unarchiveNote(title));
+      const back = closedByArchive !== null && titles.includes(closedByArchive) && !note && !freshPage;
+      if (back) {
+        const reopened = notebook.note(closedByArchive);
+        return { ...showNote(reopened, { byPage: isOpenedByPage(reopened) }), changed: true };
+      }
+      return { type: "backlinks", changed: true };
     },
 
     unarchive() {

@@ -261,6 +261,18 @@ test("a heading renders without its # markers and escapes HTML", () => {
   );
 });
 
+test("a quote line renders without its > and escapes HTML", () => {
+  assert.equal(
+    renderLineHtml("> a < b"),
+    '<span class="md-quote">a &lt; b</span>',
+  );
+});
+
+test("a caret in a rendered quote maps past the > marker", () => {
+  assert.equal(renderedToRaw("> Hello", 0), 2);
+  assert.equal(renderedToRaw("> Hello", 5), 7);
+});
+
 test("bold and inline code render as strong and code", () => {
   assert.equal(
     renderLineHtml("say **hi** and `go`"),

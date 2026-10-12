@@ -703,3 +703,57 @@ test("taking the note out of its Collection keeps it open", () => {
   assert.equal(screen.note().course, undefined);
   assert.equal(notebook.note("Grid").course, undefined);
 });
+
+// --- Archiving a whole Collection with the open note (#87) -----------------
+
+test("archiving a Collection that holds the open note leaves nothing open", () => {
+  const { notebook, screen, grid } = withNotes();
+  screen.open(grid);
+  const { titles } = screen.archiveCollection("TOP");
+  assert.deepEqual(titles, ["Grid"]);
+  assert.equal(screen.note(), null);
+  assert.equal(notebook.note("Grid").archived, true);
+});
+
+test("archiving a Collection leaves the open note alone when it is elsewhere", () => {
+  const { screen, first } = withNotes();
+  screen.open(first);
+  screen.archiveCollection("TOP");
+  assert.equal(screen.note().title, "First");
+});
+
+test("undoing a Collection archive puts the open note back on screen", () => {
+  const { notebook, screen, grid } = withNotes();
+  screen.open(grid);
+  const { titles } = screen.archiveCollection("TOP");
+  const view = screen.undoArchive(titles);
+  assert.equal(view.type, "note");
+  assert.equal(view.changed, true);
+  assert.equal(screen.note().title, "Grid");
+  assert.equal(notebook.note("Grid").archived, undefined);
+});
+
+test("undoing the archive of a note puts it back on screen", () => {
+  const { screen, grid } = withNotes();
+  screen.open(grid);
+  screen.archive();
+  screen.undoArchive(["Grid"]);
+  assert.equal(screen.note().title, "Grid");
+});
+
+test("undoing an archive keeps the note you moved on to", () => {
+  const { screen, first, grid } = withNotes();
+  screen.open(grid);
+  screen.archive();
+  screen.open(first);
+  const view = screen.undoArchive(["Grid"]);
+  assert.equal(screen.note().title, "First");
+  assert.equal(view.changed, true);
+});
+
+test("undoing the archive of other notes does not open anything", () => {
+  const { notebook, screen, first } = withNotes();
+  notebook.archiveNote("First");
+  assert.equal(screen.undoArchive(["First"]).changed, true);
+  assert.equal(screen.note(), null);
+});

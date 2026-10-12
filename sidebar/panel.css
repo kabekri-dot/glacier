@@ -385,6 +385,8 @@ html[data-art="aurora"] {
 .md-quote {
   font-style: italic;
   opacity: 0.85;
+  padding-left: 0.6em;
+  border-left: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 /* Bigger letters and other fonts inside a line take no height of their own
@@ -446,6 +448,10 @@ code,
 
 .md-code {
   margin: 0;
+  /* The block keeps the body's font and row height; only the code inside takes
+     the monospace face, with no height of its own (like a heading), so its
+     baseline stays on the same ruled row as the text around it. */
+  font: inherit;
   /* No vertical padding: every line of code stays exactly one ruled row, so the
      text after a code block stays on the lines too. */
   padding: 0 0.6rem;
@@ -454,6 +460,12 @@ code,
   border-radius: 4px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.md-code > * {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.92em;
+  line-height: 0;
 }
 
 code {
@@ -1315,6 +1327,16 @@ code {
   image-rendering: pixelated;
 }
 
+.settings-close:focus {
+  outline: none;
+}
+
+.settings-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: 6px;
+}
+
 .settings-close {
   padding: 0 0.4rem;
   border: 0;
@@ -1416,6 +1438,7 @@ code {
   bottom: 0;
   z-index: 26;
   width: clamp(11rem, 34%, 15rem);
+  overflow-x: hidden;
   overflow-y: auto;
   background: var(--paper);
   border-left: 1px solid var(--rule);
@@ -1480,7 +1503,8 @@ code {
 
 .shortcuts-list dt,
 .shortcuts-list dt code {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  max-width: 100%;
   white-space: nowrap;
 }
 
