@@ -28,3 +28,9 @@ The sidebar still follows the tab and keeps the open note on browser pages (ADR 
 With one kind of note, "Course" only fit learning paths, so it is now called **Collection** (CONTEXT.md; "Folder" was turned down as not fitting Glacier). Notes in a Collection sit in `collections/<Collection>/<Title>.md` and the frontmatter key is `collection`. Old `courses/` files, `course:` lines and old Export zips still load, and the next sync moves them to `collections/` as one commit, like the `concepts/` move above. Inside the code a note's Collection is still kept as `course`, so notes already stored in a browser need no change.
 
 Collection names ignore capital letters. Two that differ only in capitals are one Collection, spelled like the one with the most notes (on a tie, the one with the oldest note), and their files move into that one folder in the same commit. Typing a name in other capitals picks the existing Collection.
+
+## Addition: Collections only by choice, page groups (#92, 2026-10-12)
+
+New notes no longer take the last used Collection (#83 had added that for every new note). People found their website notes in Collections they never picked. Now a note joins a Collection only when you put it there, with one exception: a new note for a page whose other notes are already in a Collection joins that one, since you put that page there yourself.
+
+A page with two or more notes outside any Collection shows as its own **Page group** (CONTEXT.md) under "No collection" in the ▾ menu, named after the page's title. That title is kept as an optional `pageTitle` line in the frontmatter, after `source`, so it syncs and exports with the note; notes made before it show the site and the last part of the address instead. A hover icon on the group moves all its notes to a Collection at once. Inside a Collection, a page's notes stay a plain list.

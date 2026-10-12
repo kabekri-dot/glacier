@@ -42,6 +42,7 @@ const ICONS = {
   archive: '<path d="M4 6h16v4H4zM6 10v9h12v-9M10 14h4"/>',
   unarchive: '<path d="M4 6h16v4H4zM6 10v9h12v-9M12 17v-5M9 14l3-3 3 3"/>',
   delete: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>',
+  move: '<path d="M4 6h6l2 2h8v11H4zM9 13.5h7M13 10.5l3 3-3 3"/>',
   website: '<circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c-3 3-3 13 0 16M12 4c3 3 3 13 0 16"/>',
   own: '<path d="M5 19l1-4L16 5l3 3L9 18zM14 7l3 3"/>',
 };

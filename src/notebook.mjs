@@ -80,8 +80,9 @@ function rewriteLinks(body, oldTitle, newTitle) {
 // In the Notes Repo and in an Export every note is a Markdown file named after
 // its title: `collections/<Collection>/<Title>.md` for a note in a Collection
 // and `notes/<Title>.md` for every other note (ADR 0010). A small YAML
-// frontmatter keeps `collection`, `source` (the page), `created` and `edited`,
-// then the Markdown body follows. Files written before ADR 0010 also had a
+// frontmatter keeps `collection`, `source` (the page), `pageTitle` (that
+// page's title when the note was made, #92), `created` and `edited`, then the
+// Markdown body follows. Files written before ADR 0010 also had a
 // `type` line and a `concepts/` folder, and before #73 Collections were called
 // Courses (`course:` and `courses/`); all of these are still read.
 //
@@ -92,7 +93,7 @@ function rewriteLinks(body, oldTitle, newTitle) {
 const UNSAFE_IN_NAMES = /[\\/:*?"<>|]/g;
 // Keys written in this order; any other key in a file (an old `type`) is
 // ignored when it is read.
-const FRONTMATTER_KEYS = ["title", "collection", "source", "created", "edited"];
+const FRONTMATTER_KEYS = ["title", "collection", "source", "pageTitle", "created", "edited"];
 
 function safeName(name) {
   return name.replace(UNSAFE_IN_NAMES, "-");
@@ -188,6 +189,7 @@ export function noteFromFile(path, text) {
   const course = fields.collection || fields.course || (inFolder ? parent : undefined);
   if (course) note.course = course;
   if (fields.source) note.source = fields.source;
+  if (fields.source && fields.pageTitle) note.pageTitle = fields.pageTitle;
   note.created = fields.created || new Date().toISOString();
   if (fields.edited) note.edited = fields.edited;
   note.body = body;
@@ -366,12 +368,13 @@ export function createNotebook({ storage }) {
   // Every note is just a Note (ADR 0010): its page (Source) and its Collection are
   // both optional. The title is made unique, and a Collection given becomes the
   // last used one.
-  function makeNote({ title, source, course: typed, created }) {
+  function makeNote({ title, source, pageTitle, course: typed, created }) {
     const made = created ?? new Date().toISOString();
     const course = typed && existingCollection(typed);
     const note = { title: uniqueTitle(title, course) };
     if (course) note.course = course;
     if (source) note.source = normalizeSource(source);
+    if (source && pageTitle) note.pageTitle = pageTitle;
     Object.assign(note, { created: made, edited: made, body: "" });
     storage.putNote(note);
     if (course) storage.putMeta(LAST_COURSE, course);
@@ -660,6 +663,12 @@ export function createNotebook({ storage }) {
       return moved;
     },
 
+    // Put every note for this page in a Collection at once (#92), from its
+    // page group in the menu. Returns the titles that moved.
+    movePageToCollection(url, course) {
+      return this.notesForPage(url).map((note) => this.moveToCourse(note.title, course).title);
+    },
+
     // Every note for this page, matched by Source, the most recently edited
     // first (#68). Archived notes are left out.
     notesForPage(url) {
@@ -675,11 +684,11 @@ export function createNotebook({ storage }) {
       return this.notesForPage(url)[0];
     },
 
-    // Make a note. `source` (the page) and `course` are both optional: a note
-    // for a page takes its title and remembers it as the Source; a blank note
-    // has neither.
-    createNote({ title, source, course, created } = {}) {
-      return makeNote({ title, source, course, created });
+    // Make a note. `source` (the page), its `pageTitle` and `course` are all
+    // optional: a note for a page remembers it as the Source, with the page's
+    // title for its page group (#92); a blank note has neither.
+    createNote({ title, source, pageTitle, course, created } = {}) {
+      return makeNote({ title, source, pageTitle, course, created });
     },
 
     // The titles this note links to, in order of first appearance and without

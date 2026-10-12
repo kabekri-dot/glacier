@@ -11,6 +11,14 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Collections only by choice, page groups (#92)
+
+- [ ] Use a Collection, then on a new website write a note: it is in no Collection (the line above the text says "Add to a collection"). `+` → New note: also none.
+- [ ] Put that page's note in a Collection, then make a second note for the same page: it joins that Collection.
+- [ ] On another website with no Collection, make two notes. ▾ menu, under No collection: one group with a globe and the page's title, its notes under it, newest first. A page with one note stays a plain row.
+- [ ] Hover the group: a move icon on the right. Click it: the Collections and "+ New collection". Pick one: both notes move there and the group is gone. Try "+ New collection" with a new name too. Esc or a click elsewhere closes the list.
+- [ ] Sync, then look at the note file on GitHub: it has a `pageTitle:` line under `source:`.
+
 ### How Glacier works opens the welcome page (#91)
 
 - [ ] Open a note, open the Shortcuts panel with `?` and click "How Glacier works" (dotted underline): the panel folds and the full welcome shows on the paper, with the pixel picture, greeting, three lines with icons, Start writing and the tip. The note's Collection line and backlinks are hidden while it shows.
@@ -44,7 +52,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 - [ ] In Settings, Notes repo, press "Sync now": the status line is written out as "Just synced" by the pen, then returns to normal. With reduce motion on, the words just appear. With the network off you read the plain error text.
 - [x] With Settings beside the sidebar: the frame touches the sidebar's edge with no overlap and no gap, fits the window height, and has no scrollbar of its own on the outside. Scroll its list to the end and keep scrolling: the web page behind does not move.
 - [ ] Open the ▾ menu: Recent lists at most 5 notes.
-- [ ] On a page whose notes are in no Collection, press "New note for this page" while another Collection was used last: the new note is in no Collection. On a page with a note in a Collection, the new note joins it. On a page with no notes yet, it takes the last used Collection.
+- [ ] On a page whose notes are in no Collection, press "New note for this page" while another Collection was used last: the new note is in no Collection. On a page with a note in a Collection, the new note joins it. On a page with no notes yet, it is in no Collection (#92).
 
 ### Round 4 bugs: Backspace in bullets, plus click, dot colour, snippets, Restore text, long titles, reopen (#88)
 
@@ -310,7 +318,7 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 
 ### Notes for the page you're on
 
-- [ ] On a website without a note, the empty paper shows with "No note for this page yet. Just start writing." Typing makes the note, with the page title and the last used Collection.
+- [ ] On a website without a note, the empty paper shows with "No note for this page yet. Just start writing." Typing makes the note, with the page title and no Collection (#92).
 - [ ] Clicking the paper without typing, or leaving, makes no note.
 - [ ] Reopening the sidebar on that page opens the same note again. With several notes for the page, the one you wrote in last opens, and the pill says "1 of 2" or more.
 - [ ] Two videos on the same site (different `?v=`) get different notes.
@@ -632,7 +640,7 @@ Reload the extension with the reload button first. In Settings, Panels, choose "
 Reload the extension with the reload button first.
 
 - [ ] Open a website that has no note: the sidebar shows the ruled paper with one faded line, "No note for this page yet. Just start writing." The pill shows the page's title, faded. Nothing looks like a web form: no boxes, no big buttons, no heading.
-- [ ] Click the paper and type a letter: the note exists now, with the page's title in the pill (no longer faded) and the line "Collection · site ↗" above the text, with the last used Collection.
+- [ ] Click the paper and type a letter: the note exists now, with the page's title in the pill (no longer faded) and the line "Add to a collection · site ↗" above the text (no Collection, #92).
 - [ ] On another website with no note, click the paper but type nothing, then switch tabs and back: no note was made (it is not in the pill menu).
 - [ ] Open a note, then + and "New note": the pill shows "Title" faded, ready to type. Type a name and press Enter: the caret drops onto the first line. Write something, and the note is in the menu under that name, never "Untitled".
 - [ ] + and "New note" again, then press Esc: the note from before comes back and nothing was made.

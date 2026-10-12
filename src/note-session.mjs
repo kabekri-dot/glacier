@@ -49,18 +49,15 @@ export function createNoteSession({ notebook, onSaveError, onCreate, onRetitle, 
     scheduler.flush();
   }
 
-  // Turn the fresh page into a note. Every new note takes the last used
-  // Collection, if it still exists (#83); only a page gives it a source. A
-  // page that already has notes gives the new one their Collection instead
-  // (none if they have none, #89).
+  // Turn the fresh page into a note; only a page gives it a source. A note
+  // joins a Collection only when you put it there (#92): the one exception is
+  // a new note for a page whose other notes you already put in one.
   function createFromDraft(title, { named = true } = {}) {
-    const { source } = draft;
+    const { source, title: pageTitle } = draft;
     draft = null;
     const siblings = source ? notebook.notesForPage(source) : [];
-    const last = notebook.lastCourse();
-    const lastUsed = last && notebook.courses().includes(last) ? last : undefined;
-    const course = siblings.length > 0 ? siblings.find((note) => note.course)?.course : lastUsed;
-    const note = notebook.createNote({ title, source, course });
+    const course = siblings.find((note) => note.course)?.course;
+    const note = notebook.createNote({ title, source, pageTitle, course });
     openTitle = note.title;
     following = !named;
     onCreate?.(note);

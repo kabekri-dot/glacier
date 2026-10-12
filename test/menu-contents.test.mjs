@@ -315,3 +315,70 @@ test("the pill of a fresh page offers to name the note", () => {
     draft: true,
   });
 });
+
+// Page groups (#92): a website with several notes outside any Collection is
+// its own group under "No collection", named after the page, until you move it.
+function noCollectionPart(parts) {
+  const at = parts.findIndex((part) => part.kind === "heading" && part.text === "No collection");
+  const end = parts.findIndex((part, index) => index > at && part.kind === "group" && part.archive);
+  return parts.slice(at + 1, end === -1 ? undefined : end);
+}
+
+function pageWithTwoNotes() {
+  const notebook = notebookWith();
+  notebook.createNote({ title: "Margin collapse", source: "https://example.com/loose", pageTitle: "Loose page, a guide", created: "2026-10-03T09:00:00.000Z" });
+  return notebook;
+}
+
+test("a website with two notes outside a Collection is its own group, named after the page", () => {
+  const notebook = pageWithTwoNotes();
+  assert.deepEqual(noCollectionPart(notebookMenu(notebook, "")), [
+    {
+      kind: "group",
+      label: "Loose page, a guide",
+      hint: "Notes for this website",
+      open: true,
+      archive: false,
+      page: "https://example.com/loose",
+      titles: ["Loose page", "Margin collapse"],
+      actions: [{ kind: "move", hint: "Move the notes for 'Loose page, a guide' to a collection" }],
+    },
+    { kind: "notes", titles: ["Margins"] },
+  ]);
+});
+
+test("a website with one note stays a plain row", () => {
+  const parts = noCollectionPart(notebookMenu(notebookWith(), ""));
+  assert.deepEqual(parts, [{ kind: "notes", titles: ["Loose page", "Margins"] }]);
+});
+
+test("a page group without a remembered page title is named after its short address", () => {
+  const notebook = notebookWith();
+  notebook.createNote({ title: "Second loose", source: "https://example.com/loose#part" });
+  const group = noCollectionPart(notebookMenu(notebook, "")).find((part) => part.kind === "group");
+  assert.equal(group.label, "example.com/loose");
+});
+
+test("page groups and plain rows stand in one list sorted by name", () => {
+  const notebook = pageWithTwoNotes();
+  notebook.createNote({ title: "Aside" });
+  notebook.createNote({ title: "Zebra" });
+  const parts = noCollectionPart(notebookMenu(notebook, ""));
+  assert.deepEqual(
+    parts.map((part) => (part.kind === "group" ? `group ${part.label}` : part.titles.join(", "))),
+    ["Aside", "group Loose page, a guide", "Margins, Zebra"],
+  );
+});
+
+test("a website's notes inside a Collection stay a plain list there", () => {
+  const notebook = notebookWith();
+  notebook.createNote({ title: "Flex again", course: "TOP Foundations", source: "https://odin.example/flex" });
+  const collection = notebookMenu(notebook, "").find((part) => part.kind === "group" && part.course === "TOP Foundations");
+  assert.deepEqual(collection.titles, ["Box model", "Flex again", "Flexbox"]);
+});
+
+test("archived notes don't count for a page group", () => {
+  const notebook = pageWithTwoNotes();
+  notebook.archiveNote("Margin collapse");
+  assert.deepEqual(noCollectionPart(notebookMenu(notebook, ""))[0], { kind: "notes", titles: ["Loose page", "Margins"] });
+});

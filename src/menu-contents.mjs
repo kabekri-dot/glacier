@@ -15,6 +15,7 @@
 //   { kind: "result", title, titleMark, snippet }           a search result
 //   { kind: "pair", notes: [{ title, label, actions }] }   a Conflict Copy and its original, with the row icons
 import { COLLECTIONS_HINT } from "./guidance.mjs";
+import { normalizeSource } from "./notebook.mjs";
 import { PAGE_NOTE_HINT } from "./new-note-choices.mjs";
 
 const CONFLICT_SUFFIX = / \(conflict \d{4}-\d{2}-\d{2}\)( \d+)?$/;
@@ -92,7 +93,7 @@ function browse(notebook, openNote) {
     parts.push({ kind: "group", label: course, hint: "Notes in this Collection", open: true, archive: false, titles, course, actions: collectionActions(course, titles.length) });
   }
   if (outline.uncategorised.length > 0) {
-    parts.push(heading("No collection", "Notes not in any Collection"), { kind: "notes", titles: outline.uncategorised });
+    parts.push(heading("No collection", "Notes not in any Collection"), ...withPageGroups(notebook, outline.uncategorised));
   }
   const archived = notebook.archivedNotes();
   if (archived.length > 0) {
@@ -112,6 +113,63 @@ function browse(notebook, openNote) {
     });
   }
   return parts;
+}
+
+// The notes without a Collection (#92): a website with two or more of them is
+// its own group, named after the page, with its notes newest first; every
+// other note is a plain row. Groups and rows stand in one list sorted by name.
+function withPageGroups(notebook, titles) {
+  const byPage = new Map();
+  for (const title of titles) {
+    const source = notebook.note(title)?.source;
+    if (!source) continue;
+    const key = normalizeSource(source);
+    if (!byPage.has(key)) byPage.set(key, { source, titles: [] });
+    byPage.get(key).titles.push(title);
+  }
+  const grouped = new Set();
+  const entries = titles.map((title) => ({ name: title, title }));
+  for (const { source, titles: own } of byPage.values()) {
+    if (own.length < 2) continue;
+    const notes = notebook.notesForPage(source).filter((note) => own.includes(note.title));
+    const label = notes.find((note) => note.pageTitle)?.pageTitle ?? shortAddress(source);
+    for (const title of own) grouped.add(title);
+    entries.push({ name: label, group: pageGroup(label, source, notes.map((note) => note.title)) });
+  }
+  const parts = [];
+  for (const entry of entries.filter((entry) => !grouped.has(entry.title)).sort((a, b) => a.name.localeCompare(b.name))) {
+    const last = parts.at(-1);
+    if (entry.group) parts.push(entry.group);
+    else if (last?.kind === "notes") last.titles.push(entry.title);
+    else parts.push({ kind: "notes", titles: [entry.title] });
+  }
+  return parts;
+}
+
+function pageGroup(label, page, titles) {
+  return {
+    kind: "group",
+    label,
+    hint: "Notes for this website",
+    open: true,
+    archive: false,
+    page,
+    titles,
+    actions: [{ kind: "move", hint: `Move the notes for '${label}' to a collection` }],
+  };
+}
+
+// A page without a remembered title: its site and the last part of its path,
+// e.g. "example.com/loose".
+function shortAddress(source) {
+  try {
+    const url = new URL(source);
+    const host = url.hostname.replace(/^www\./, "");
+    const last = url.pathname.split("/").filter(Boolean).at(-1);
+    return last ? `${host}/${last}` : host;
+  } catch {
+    return source;
+  }
 }
 
 // Several versions (n), at the top of the ▾ menu only while there are any (#75):

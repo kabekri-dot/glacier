@@ -111,7 +111,7 @@ test("clicking on a fresh page or leaving it without typing makes nothing", () =
   assert.deepEqual(notebook.notes().map((n) => n.title).sort(), ["First", "Grid", "Second"]);
 });
 
-test("the first character makes a note for the page with its title, Source and last Course", () => {
+test("the first character makes a note for the page with its title and Source, in no Collection", () => {
   const { notebook, screen } = withNotes();
   screen.show({ type: "pageDraft", page });
   const view = screen.edit("F");
@@ -119,7 +119,7 @@ test("the first character makes a note for the page with its title, Source and l
   const note = notebook.note("Flexbox");
   assert.deepEqual(view, { type: "note", note: { ...note, body: "", edited: view.note.created }, reload: false, changed: true });
   assert.equal(note.source, "https://odin.example/lesson");
-  assert.equal(note.course, "TOP");
+  assert.equal(note.course, undefined);
   assert.equal(note.body, "F");
   assert.equal(screen.freshPage(), null);
   assert.deepEqual(screen.onScreen(), { current: view.note, openedByPage: true });
@@ -175,12 +175,12 @@ test("an empty title is refused and makes nothing", () => {
 
 test("a confirmed title that is taken gets the Course added", () => {
   const { notebook, screen } = setup();
-  notebook.createNote({ title: "Introduction", course: "TOP" });
+  notebook.createNote({ title: "Introduction", course: "TOP", source: page.url });
   screen.show({ type: "pageDraft", page: { url: page.url, title: "Introduction" } });
   assert.equal(screen.confirmTitle("Introduction").note.title, "Introduction (TOP)");
 });
 
-test("a blank note has no page, takes the last used Collection and is not opened by the page", () => {
+test("a blank note has no page, no Collection and is not opened by the page", () => {
   const { notebook, screen } = withNotes();
   assert.deepEqual(screen.show({ type: "blankDraft" }), {
     type: "freshPage",
@@ -190,7 +190,7 @@ test("a blank note has no page, takes the last used Collection and is not opened
   });
   screen.confirmTitle("Reading notes");
   assert.equal(notebook.note("Reading notes").source, undefined);
-  assert.equal(notebook.note("Reading notes").course, notebook.lastCourse());
+  assert.equal(notebook.note("Reading notes").course, undefined);
   assert.equal(screen.onScreen().openedByPage, false);
 });
 
@@ -455,18 +455,18 @@ test("a note with nothing before it still asks the page after archiving", () => 
   assert.deepEqual(screen.archive(), { type: "followPage", changed: true });
 });
 
-test("a note made on a fresh page takes the last used Collection", () => {
+test("a note made on a fresh page joins no Collection, even after one was used", () => {
   const { notebook, screen } = setup();
   notebook.createNote({ title: "Grid", course: "CSS" });
   screen.startFreshPage({});
-  assert.equal(screen.confirmTitle("Idea").note.course, "CSS");
+  assert.equal(screen.confirmTitle("Idea").note.course, undefined);
 });
 
-test("a note made by writing takes the last used Collection too", () => {
+test("a note made by writing joins no Collection either", () => {
   const { notebook, screen } = setup();
   notebook.createNote({ title: "Grid", course: "CSS" });
   screen.startFreshPage({});
-  assert.equal(screen.edit("Some thought").note.course, "CSS");
+  assert.equal(screen.edit("Some thought").note.course, undefined);
 });
 
 test("keeping a note after the delete question shows it again as it was", () => {
@@ -774,6 +774,20 @@ test("a new note for a page takes the Collection of the page's other notes", () 
   assert.equal(notebook.note("Second").course, undefined);
 });
 
+test("a new note for a page remembers the page's title, also under a title of its own", () => {
+  const { notebook, screen } = setup();
+  screen.show({ type: "pageDraft", page });
+  screen.confirmTitle("My own words");
+  assert.equal(notebook.note("My own words").pageTitle, "Flexbox");
+});
+
+test("a blank note remembers no page title", () => {
+  const { notebook, screen } = setup();
+  screen.show({ type: "blankDraft" });
+  screen.confirmTitle("Reading notes");
+  assert.equal(notebook.note("Reading notes").pageTitle, undefined);
+});
+
 test("a new note for a page with a Collection note joins that Collection", () => {
   const { notebook, screen } = setup();
   notebook.createNote({ title: "Mine", source: page.url, course: "CSS" });
@@ -783,10 +797,10 @@ test("a new note for a page with a Collection note joins that Collection", () =>
   assert.equal(notebook.note("Second").course, "CSS");
 });
 
-test("a new note for a page with no notes yet takes the last used Collection", () => {
+test("a new note for a page with no notes yet joins no Collection", () => {
   const { notebook, screen } = setup();
   notebook.createNote({ title: "Other", course: "Last used" });
   screen.show({ type: "pageDraft", page: { url: page.url, title: "First" } });
   screen.confirmTitle("First");
-  assert.equal(notebook.note("First").course, "Last used");
+  assert.equal(notebook.note("First").course, undefined);
 });

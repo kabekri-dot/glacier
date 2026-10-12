@@ -62,6 +62,13 @@ test("awkward titles, Courses and bodies survive the round trip", () => {
   assert.deepEqual(noteFromFile(path, text), note);
 });
 
+test("a note for a page keeps the page's title in its file (#92)", () => {
+  const note = { ...plain, source: "https://developer.example/box", pageTitle: "CSS Box Model: margins & more" };
+  const { path, text } = noteToFile(note);
+  assert.match(text, /\nsource: .+\npageTitle: "CSS Box Model: margins & more"\n/);
+  assert.deepEqual(noteFromFile(path, text), note);
+});
+
 test("a note without a page or Course round-trips too", () => {
   const note = { title: "From a book", created: "2026-10-04T00:00:00.000Z", body: "" };
   const { path, text } = noteToFile(note);

@@ -862,10 +862,95 @@ async function start() {
     keep.focus();
   }
 
-  function menuGroup({ label, hint, open, archive, titles, actions, sections }) {
+  // A website's own group under No collection (#92): a globe, the page's
+  // title and one hover icon that moves all its notes to a Collection.
+  function pageSummary({ label, page, titles, actions }) {
+    const summary = document.createElement("summary");
+    const name = document.createElement("span");
+    name.className = "page-group-name";
+    name.append(originIcon({ kind: "website", hint: "From a website" }), label);
+    const icons = document.createElement("span");
+    icons.className = "collection-icons";
+    for (const action of actions) {
+      icons.append(iconButton(action.kind, action.hint, (button) => pickCollection(button, (course) => movePage(page, titles, course))));
+    }
+    summary.append(name, icons);
+    return summary;
+  }
+
+  // The Collections to pick from, right where the move icon was clicked, and
+  // "+ New collection", which turns into a text field. Esc or a click
+  // anywhere else closes it.
+  function pickCollection(anchor, onPick) {
+    document.querySelector(".collection-choice")?.remove();
+    const box = document.createElement("div");
+    box.className = "format-choice collection-choice";
+    const close = () => {
+      box.remove();
+      document.removeEventListener("mousedown", onOutside, true);
+      document.removeEventListener("keydown", onKey, true);
+    };
+    const onOutside = (event) => {
+      if (!box.contains(event.target)) close();
+    };
+    const onKey = (event) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+    };
+    const pick = (course) => {
+      close();
+      onPick(course);
+    };
+    for (const course of notebook.courseChoices()) {
+      box.append(menuButton(course, `Move to '${course}'`, () => pick(course)));
+    }
+    const fresh = menuButton("+ New collection", "Make a collection and move the notes there", () => {
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "menu-new-collection-input";
+      input.placeholder = "New collection";
+      input.setAttribute("aria-label", "New collection");
+      input.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        if (input.value.trim()) pick(input.value);
+      });
+      fresh.replaceWith(input);
+      input.focus();
+    });
+    box.append(fresh);
+    const rect = anchor.getBoundingClientRect();
+    box.style.top = `${rect.bottom + 2}px`;
+    box.style.right = `${Math.max(4, window.innerWidth - rect.right)}px`;
+    document.body.append(box);
+    document.addEventListener("mousedown", onOutside, true);
+    document.addEventListener("keydown", onKey, true);
+    box.querySelector("button").focus();
+  }
+
+  // Move every note of a page to a Collection; the open note goes through the
+  // Screen so it stays on screen as it is.
+  function movePage(page, titles, course) {
+    if (titles.includes(screen.note()?.title)) draw(screen.moveToCourse(course));
+    notebook.movePageToCollection(page, course);
+    autoSync.changed();
+    if (screen.note()) render();
+    refreshMenu();
+  }
+
+  function menuGroup({ label, hint, open, archive, titles, actions, sections, page }) {
     const details = document.createElement("details");
     details.className = archive ? "menu-archive" : "menu-course";
     details.open = open;
+    if (page) {
+      const summary = pageSummary({ label, page, titles, actions });
+      summary.title = hint;
+      details.classList.add("page-group");
+      details.append(summary, titleList(titles));
+      return details;
+    }
     if (sections) {
       const summary = document.createElement("summary");
       summary.textContent = label;

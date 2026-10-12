@@ -1703,6 +1703,22 @@ html.beside .settings {
   background: var(--paper);
 }
 
+/* The Collections a page group can move to (#92): the Download choice's
+   look, with room for a new name. */
+.collection-choice {
+  min-width: 10rem;
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+/* A website's group under No collection (#92): globe and page title. */
+.page-group-name {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
 /* The Collections to download, under Notes repo, Backup in settings. */
 .backup-collections {
   max-height: 10rem;

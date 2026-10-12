@@ -209,3 +209,15 @@ test("the Archive lists its notes by Collection", async () => {
     uncategorised: ["Loose"],
   });
 });
+
+test("moving a website to a Collection moves every note for that page (#92)", () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  notebook.createNote({ title: "First", source: "https://example.com/page" });
+  notebook.createNote({ title: "Second", source: "https://example.com/page#part" });
+  notebook.createNote({ title: "Elsewhere", source: "https://example.com/other" });
+  const moved = notebook.movePageToCollection("https://example.com/page", "Web");
+  assert.deepEqual(moved.sort(), ["First", "Second"]);
+  assert.equal(notebook.note("First").course, "Web");
+  assert.equal(notebook.note("Second").course, "Web");
+  assert.equal(notebook.note("Elsewhere").course, undefined);
+});

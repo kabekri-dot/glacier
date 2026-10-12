@@ -12,6 +12,10 @@ _Avoid_: Lesson Note, Concept Note (two kinds of note, merged into one, ADR 0010
 A named group of notes chosen by hand, e.g. "The Odin Project – Foundations", "Khan – Algebra 1" or "Book: Clean Code". Not derived from a website. Its name ignores capital letters: "Testing Test" and "Testing test" are the same Collection.
 _Avoid_: Course (its old name, which only fit learning paths), Folder, category, website
 
+**Page group**:
+The notes of one page that are in no Collection, shown together in the ▾ menu under "No collection" once there are two or more, named after the page's title as it was when its first note was made (`pageTitle`). Not something you make or name: it goes away when its notes move to a Collection, all at once from the group or one by one. A note only joins a Collection when you put it there; the one exception is a new note for a page whose other notes you already put in one.
+_Avoid_: site folder, website Collection
+
 **Source**:
 The website address (`http` or `https` only) of the page a note belongs to, called "page" on screen. It is compared without its `#fragment` and without known tracking parameters (`utm_…`, `fbclid`, `gclid`, `ref`…). Other query parameters stay part of it, because on sites like YouTube (`watch?v=…`) they identify the lesson.
 _Avoid_: URL, origin, link (reserved for Links between notes)
