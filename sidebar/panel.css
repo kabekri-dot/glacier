@@ -918,11 +918,17 @@ code {
 .menu-search {
   width: 100%;
   padding: 0.4rem 0.55rem;
+  box-sizing: border-box;
   border: 1px solid var(--rule);
-  border-radius: 6px;
+  border-radius: 10px;
   background: var(--field);
   color: var(--ink);
   font: inherit;
+  outline: none;
+}
+
+.menu-search:focus {
+  border-color: var(--accent);
 }
 
 .menu-actions {
@@ -931,18 +937,23 @@ code {
 }
 
 .menu-new {
+  display: block;
   flex: 1;
-  padding: 0.3rem 0.5rem;
-  border: 1px solid var(--accent);
-  border-radius: 6px;
+  width: 100%;
+  padding: 0.25rem 0.4rem;
+  border: 0;
+  border-radius: 5px;
   background: transparent;
-  color: var(--accent);
+  color: var(--ink);
   font: inherit;
+  text-align: left;
   cursor: pointer;
 }
 
-.menu-new:hover {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+.menu-new:hover,
+.menu-new:focus {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  outline: none;
 }
 
 .menu-body {
@@ -983,9 +994,6 @@ code {
 .menu-new.menu-new-for-page {
   display: block;
   width: 100%;
-  border: none;
-  padding: 0.2rem 0;
-  text-align: left;
 }
 
 /* The open note in Notes for this page. */
@@ -1413,13 +1421,13 @@ code {
   top: 3rem;
   bottom: 0;
   z-index: 26;
-  width: min(15rem, 80%);
+  width: clamp(11rem, 34%, 15rem);
   overflow-y: auto;
   background: var(--paper);
   border-left: 1px solid var(--rule);
   box-shadow: -6px 0 20px var(--shadow);
-  font-size: 0.9rem;
-  line-height: 1.4;
+  font-size: 0.85rem;
+  line-height: 1.35;
   animation: shortcuts-slide-in 0.18s ease-out;
 }
 
@@ -1463,12 +1471,21 @@ code {
   padding: 0.3rem 0.7rem 0.7rem;
 }
 
+/* Key on the left in a narrow column, what it does wrapping on the right. */
 .shortcuts-list {
+  display: grid;
+  grid-template-columns: 4.2rem 1fr;
+  column-gap: 0.5rem;
+  row-gap: 0.25rem;
   margin: 0;
 }
 
 .shortcuts-list dt {
-  margin-top: 0.4rem;
+  overflow-wrap: anywhere;
+}
+
+.shortcuts-list dt code {
+  font-size: 0.8rem;
 }
 
 .shortcuts-list dd {
@@ -1741,5 +1758,15 @@ html.beside .settings {
   width: 100%;
   box-sizing: border-box;
   margin: 0.3rem 0;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: var(--field);
+  color: var(--ink);
   font: inherit;
+  outline: none;
+}
+
+.menu-new-collection-input:focus {
+  border-color: var(--accent);
 }
