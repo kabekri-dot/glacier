@@ -30,7 +30,7 @@ What goes into which version. Terms are defined in [CONTEXT.md](../CONTEXT.md), 
 - Text size slider (85–150 %). Line spacing grows with it, so ruled and grid paper still lines up
 - The sidebar is resizable (Chrome and Firefox both let you drag the sidebar wider). Layouts must work from about 260 px up
 - Font Override: Theme default / Shantell Sans / Patrick Hand / Kalam Light / Caveat / Architects Daughter. Fonts bundled
-- Glacier icon: pixel-art ice on smooth sky and water. Used as the toolbar icon in Chrome and Firefox, and as a large round button floating in the bottom-right corner of the sidebar. It opens settings as a panel that expands to the left of the sidebar, over the web page. The notebook keeps its size and shows changes live. Settings sections fold open and closed: Paper, Writing (font + text size), Shortcuts panel, Tabs and notes, Notes repo (token, Sync, Export, Restore from backup file)
+- Glacier icon: pixel-art ice on smooth sky and water. Used as the toolbar icon in Chrome and Firefox, and as a large round button floating in the bottom-right corner of the sidebar. It opens settings as a panel that expands to the left of the sidebar, over the web page. The notebook keeps its size and shows changes live. Settings sections fold open and closed: Paper, Writing (font + text size), Shortcuts panel, Tabs and notes, Notes repo (token, Sync, Export, Restore from backup file; in v2 Where your notes live, ADR 0011)
 - Settings beside the sidebar use an optional permission, asked for only when settings first open, behind Glacier's own explanation card. Declined: settings open inside the sidebar instead ([ADR 0008](adr/0008-optional-on-demand-host-permission.md))
 
 ### Themes
@@ -49,19 +49,22 @@ What goes into which version. Terms are defined in [CONTEXT.md](../CONTEXT.md), 
 | Moleskine | ivory/cream | none or very faint rules | Kalam Light | near-black / burgundy |
 | Engineer | pale green | faint green grid, darker every 5th line | Architects Daughter | graphite / orange |
 
-## v1.1
-
-- Extract selected text into a new note, leaving a Link behind
-
 ## v2
 
-- Sketch blocks: insert with + or `/sketch`, then drag circles, triangles, rectangles, squares, arrows, lines and free text into a drawing area inside a note. Saved as `.svg` next to the note ([ADR 0007](adr/0007-sketch-blocks-as-svg-files.md))
+Decided in a grilling on 2026-10-13. For the user and a few people they know; nothing may block the browser stores later. Chrome first (Edge too); Firefox keeps working with the same notes, Chrome-only extras are fine. Built in this order, with a test zip after each step:
+
+1. Split `sidebar/panel.js` (#93)
+2. **Where your notes live** ([ADR 0011](adr/0011-where-your-notes-live.md)): Google Drive, a folder on this computer (Chrome only) or GitHub, one at a time; the same Markdown and `.svg` files in each; switching combines and deletes nothing; a pixel cloud reminder while notes live only in the browser
+3. **Extract to a new note**: select text, then the `/` menu, a shortcut or ⋯ makes it a new note with the same page and Collection and leaves a `[[Link]]` in its place
+4. **Clipping**: highlighted text on a web page, by right-click "Clip to Glacier" or a shortcut, lands at the end of the open note as a quote with its source link (or starts the page's note)
+5. **Sketch blocks**: insert with + or `/sketch`, then drag circles, triangles, rectangles, squares, arrows, lines and free text into a drawing area inside a note. Hand-drawn by default, switchable to clean per sketch; no freehand pen. Saved as `.svg` next to the note ([ADR 0007](adr/0007-sketch-blocks-as-svg-files.md))
+
+Also: the open polish and the user's brother's feedback, as they come (bugs first).
 
 ## Later (maybe never)
 
 - More layouts, added one at a time after using Zen for a few weeks. The prototype has all nine, grouped: Drawer (focus on writing); Course path, Breadcrumb, Home (always know where you are); Split, Index tabs, Icon rail (notebook in view); Bottom tabs, Note tabs (familiar app style)
 
-- Clipping highlighted page text into the current note (v2: reuses the optional permission from ADR 0008, and the explanation card gains one line for it)
 - More Themes (Dot Journal, Legal Pad)
 - Attaching the current page to a note made without one
 - A link shortcut (Ctrl+K is kept for search; links are typed as `[text](url)`, #43)

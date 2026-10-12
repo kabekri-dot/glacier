@@ -7,3 +7,8 @@ Notes stay Markdown. A drawing (circles, triangles, rectangles, squares, arrows,
 - **Every note is a free canvas** (like OneNote): very flexible, but notes stop being Markdown, which breaks Links, search and Obsidian compatibility ([ADR 0005](0005-obsidian-compatible-note-files.md)).
 - **Shapes inline in the text**: too limited for real diagrams.
 - **Shapes as JSON in a fenced code block inside the note**: one file per note, but unreadable everywhere except Glacier.
+
+## Addition: the look (2026-10-13)
+
+Decided in the v2 grilling: shapes look hand-drawn by default (slightly wobbly, like a pen), and each sketch can switch to clean, exact lines. Text in a sketch uses the note's handwriting font. There is no freehand pen; adding one later would not change the file format. Sketch files sync to every Notes Home (ADR 0011).
+

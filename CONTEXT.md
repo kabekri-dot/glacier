@@ -54,12 +54,16 @@ _Avoid_: Custom font, font setting
 
 ## Keeping notes safe
 
+**Notes Home**:
+The one place outside the browser that holds a copy of the Notebook as Markdown files: a Glacier folder in Google Drive, a folder on this computer, or a GitHub repository (the Notes Repo). Called "Where your notes live" on screen. There is at most one; without it the notes live only in this browser (ADR 0011).
+_Avoid_: cloud, server, remote, account
+
 **Notes Repo**:
-The private GitHub repository holding the shared copy of the Notebook as Markdown files.
+The private GitHub repository used as the Notes Home.
 _Avoid_: Backup, remote, cloud
 
 **Sync**:
-Bringing a browser's copy of the Notebook and the Notes Repo into agreement, by pulling changes in and pushing changes out.
+Bringing a browser's copy of the Notebook and the Notes Home into agreement, by pulling changes in and pushing changes out.
 _Avoid_: Save, upload, backup
 
 **Conflict Copy**:
