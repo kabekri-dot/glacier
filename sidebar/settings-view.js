@@ -115,25 +115,23 @@ export function askFormat(anchor, onPick) {
   box.querySelector("button").focus();
 }
 
-const SVG = "http://www.w3.org/2000/svg";
-
-// A small pen writes "Just synced" across a line, left to right (#85). With
-// `written` the words just stand there, as on a redraw while they stay.
+// A small pixel pencil hops across a line and writes "Just synced" a few
+// letters at a time, then flicks off a bit of ink (#85). With `written` the
+// words just stand there, as on a redraw while they stay.
 export function justSyncedLine(written = false, className = "") {
   const line = document.createElement("p");
   line.className = `${className} sync-box-written`.trim();
   if (written) line.classList.add("is-written");
+  const ink = document.createElement("span");
+  ink.className = "sync-box-ink";
   const words = document.createElement("span");
   words.className = "sync-box-words";
   words.textContent = JUST_SYNCED;
-  const pen = document.createElementNS(SVG, "svg");
-  pen.setAttribute("class", "sync-pen");
-  pen.setAttribute("viewBox", "0 0 16 16");
+  const pen = document.createElement("span");
+  pen.className = "sync-pen";
   pen.setAttribute("aria-hidden", "true");
-  const stroke = document.createElementNS(SVG, "path");
-  stroke.setAttribute("d", "M2 14 L3 10 L11 2 L14 5 L6 13 Z M9.5 3.5 L12.5 6.5");
-  pen.append(stroke);
-  line.append(words, pen);
+  ink.append(words, pen);
+  line.append(ink);
   return line;
 }
 

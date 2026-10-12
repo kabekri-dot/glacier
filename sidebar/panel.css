@@ -1762,30 +1762,58 @@ html.beside .settings {
   display: none;
 }
 
-/* After Sync now, a pen writes Just synced in the Theme's handwriting across the sync box (#85). */
+/* After Sync now, a pixel pencil hops across and writes Just synced in the
+   Theme's handwriting a few letters at a time, flicks off two specks of ink
+   and fades in steps (#85). Its tip, the pencil's bottom left pixel, sits on
+   the end of what is written so far. */
 .sync-box-written {
-  position: relative;
   font-family: var(--font-family);
+}
+
+.sync-box-ink {
+  position: relative;
+  display: inline-block;
 }
 
 .sync-box-words {
   display: inline-block;
-  animation: write-in 1s steps(12, end) both;
+  animation: write-in 1.2s steps(6, end) both;
 }
 
 .sync-pen {
   position: absolute;
   left: 0;
-  top: 50%;
-  width: 1em;
-  height: 1em;
-  margin-top: -0.5em;
-  fill: none;
-  stroke: var(--ink);
-  stroke-width: 1.2;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-  animation: pen-across 1s steps(12, end) both, pen-away 0.3s ease 1.1s both;
+  bottom: 0.15em;
+  width: 24px;
+  height: 24px;
+  margin-bottom: -2px;
+  background: url("../art/icon-pencil.svg") no-repeat 0 0 / 24px 24px;
+  image-rendering: pixelated;
+  pointer-events: none;
+  animation:
+    pen-across 1.2s steps(6, end) both,
+    pen-hop 0.2s steps(1, end) 6,
+    pen-away 0.45s steps(3, end) 1.6s both;
+}
+
+/* Two ink specks, one pixel of the pencil each, flick off the tip at the end. */
+.sync-pen::before,
+.sync-pen::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 2px;
+  width: 2px;
+  height: 2px;
+  background: #5b7fa8;
+  opacity: 0;
+  animation: ink-flick 0.4s steps(2, end) 1.2s forwards;
+}
+
+.sync-pen::after {
+  --flick-x: 6px;
+  --flick-y: -4px;
+  animation-delay: 1.3s;
 }
 
 .sync-box-written.is-written .sync-box-words {
@@ -1810,13 +1838,30 @@ html.beside .settings {
     left: 0;
   }
   to {
-    left: calc(100% - 1em);
+    left: 100%;
+  }
+}
+
+@keyframes pen-hop {
+  50% {
+    transform: translateY(-2px);
   }
 }
 
 @keyframes pen-away {
   to {
     opacity: 0;
+  }
+}
+
+@keyframes ink-flick {
+  from {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate(var(--flick-x, 4px), var(--flick-y, 2px));
   }
 }
 

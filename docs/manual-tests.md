@@ -11,6 +11,10 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Just synced with a pixel pencil (hand fix)
+
+- [ ] Click Sync now in the sync box and in Settings: a small pixel pencil (blue, with a pink eraser, hard pixel edges) hops across in six little jumps, "Just synced" appears a few letters at a time behind its tip, two specks of ink flick off at the end and the pencil fades in steps. Try it on Aurora too: the pencil is easy to see on dark paper. With reduce motion on, the words just appear.
+
 ### Collections to download stay in Settings (hand fix)
 
 - [ ] In Settings, open Notes repo and click Sync now: under Backup the Collections with their download icon sit in the list, not floating over the Settings heading. Click a note's Collection line: its list of Collections still opens under it and scrolls when long.
