@@ -246,7 +246,10 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
     undoArchive(titles) {
       titles.forEach((title) => notebook.unarchiveNote(title));
       const back = closedByArchive !== null && titles.includes(closedByArchive) && !note && !freshPage;
-      if (back) return { ...showNote(notebook.note(closedByArchive), { byPage: isOpenedByPage(notebook.note(closedByArchive)) }), changed: true };
+      if (back) {
+        const reopened = notebook.note(closedByArchive);
+        return { ...showNote(reopened, { byPage: isOpenedByPage(reopened) }), changed: true };
+      }
       return { type: "backlinks", changed: true };
     },
 
