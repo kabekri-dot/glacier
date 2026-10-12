@@ -31,7 +31,7 @@ import { readLook, lookStyle, wholeRows, applyLook } from "../src/look.mjs";
 import { readPanelPlace, createPanelPlacement } from "../src/panel-place.mjs";
 import { createBrowserPanels } from "../src/browser-panels.mjs";
 import { createSettingsView, createShortcutsView, justSyncedLine, menuButton, iconButton, originIcon, askFormat } from "./settings-view.js";
-import { HOW_GLACIER_WORKS, ADD_TO_COLLECTION_HINT, welcomeShown } from "../src/guidance.mjs";
+import { WELCOME_GREETING, WELCOME_LINES, WELCOME_TIP, ADD_TO_COLLECTION_HINT, welcomeShown } from "../src/guidance.mjs";
 import { drawBesideFrames } from "./beside-frames.js";
 import {
   blockRanges,
@@ -92,6 +92,8 @@ function drawLook() {
   // A Nature paper's panorama (#19); the stylesheet picks the picture.
   if (lookDrawn.art) root.dataset.art = lookDrawn.art;
   else delete root.dataset.art;
+  // Dark papers show the welcome's scene at night (#90).
+  root.toggleAttribute("data-dark", lookDrawn.dark);
   fitRows();
 }
 
@@ -2574,12 +2576,22 @@ async function start() {
     noteEl.appendChild(card);
   }
 
-  // The welcome (#85): three lines on the paper and one quiet button. Start
-  // writing hides it for good (kept in this browser's storage, not synced) and
-  // puts the caret on the paper.
+  // The welcome (#85, #90): a pixel-art scene, the greeting, three lines with
+  // their pictures, one soft button and a tip, each on its own ruled row.
+  // Start writing hides it for good (kept in this browser's storage, not
+  // synced) and puts the caret on the paper.
   const welcomeEl = document.querySelector(".welcome");
   function drawWelcome() {
     if (!showWelcome) return;
+    const scene = document.createElement("div");
+    scene.className = "welcome-scene";
+    const greeting = Object.assign(document.createElement("h1"), { className: "welcome-greeting", textContent: WELCOME_GREETING });
+    const lines = WELCOME_LINES.map(({ icon, text }) => {
+      const line = document.createElement("p");
+      const picture = Object.assign(document.createElement("img"), { className: "welcome-icon", src: `../art/icon-${icon}.svg`, alt: "" });
+      line.append(picture, text);
+      return line;
+    });
     const start = document.createElement("button");
     start.type = "button";
     start.className = "welcome-start";
@@ -2589,10 +2601,10 @@ async function start() {
       if (!screen.note() && !screen.freshPage()) draw(screen.startFreshPage({}));
       else focusedEl?.focus();
     });
-    welcomeEl.replaceChildren(
-      ...HOW_GLACIER_WORKS.map((text) => Object.assign(document.createElement("p"), { textContent: text })),
-      start,
-    );
+    const startRow = Object.assign(document.createElement("p"), { className: "welcome-start-row" });
+    startRow.appendChild(start);
+    const tip = Object.assign(document.createElement("p"), { className: "welcome-tip", textContent: WELCOME_TIP });
+    welcomeEl.replaceChildren(scene, greeting, ...lines, startRow, tip);
     welcomeEl.hidden = false;
   }
   drawWelcome();

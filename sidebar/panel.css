@@ -1827,9 +1827,10 @@ html.beside .settings {
   }
 }
 
-/* The welcome on the first start (#85), in the Theme's handwriting. It sits
-   on the paper where the note's text starts, every line on a ruled row, and
-   it replaces whatever the note shows while it is up. */
+/* The welcome on the first start (#85, #90), like the first page of a new
+   notebook, in the Theme's handwriting. It sits on the paper where the note's
+   text starts, below the pill, every line on a ruled row, and it replaces
+   whatever the note shows while it is up. It fades in once. */
 .welcome {
   position: absolute;
   top: var(--note-top);
@@ -1838,6 +1839,7 @@ html.beside .settings {
   z-index: 2;
   font-family: var(--font-family);
   line-height: var(--line-height);
+  animation: welcome-in 0.9s ease-out both;
 }
 
 .welcome[hidden] {
@@ -1848,28 +1850,88 @@ html.beside .settings {
   visibility: hidden;
 }
 
-.welcome p {
+.welcome p,
+.welcome h1 {
   margin: 0;
+  line-height: var(--line-height);
 }
 
-.welcome-start {
-  height: var(--line-height);
+/* The pixel-art scene drawn by tools/draw-art.mjs: four ruled rows high and
+   the full width of the paper. The paper colour under it hides the rules
+   further down, so its bottom melts into a clean page. */
+.welcome-scene {
+  height: calc(4 * var(--line-height));
+  margin: 0 -1.25rem 0 calc(-1 * var(--note-left));
+  background:
+    url("../art/welcome-day.svg") left bottom / auto 100% no-repeat,
+    linear-gradient(transparent, var(--paper) 45%);
+}
+
+html[data-dark] .welcome-scene {
+  background-image:
+    url("../art/welcome-night.svg"),
+    linear-gradient(transparent, var(--paper) 45%);
+}
+
+/* One size up, lifted a little so the bigger letters still stand on the
+   rule instead of sinking through it. */
+.welcome-greeting {
+  position: relative;
+  top: -0.08em;
+  font-size: 1.3em;
+  font-weight: inherit;
+}
+
+.welcome-icon {
+  width: 1.2em;
+  height: 1.2em;
+  margin-right: 0.5em;
+  vertical-align: -0.25em;
+  image-rendering: pixelated;
+}
+
+.welcome .welcome-start-row {
   margin-top: var(--line-height);
-  padding: 0 0.7rem;
+}
+
+/* Soft and rounded in the paper's accent colour, not a boxed form button. */
+.welcome-start {
+  height: calc(var(--line-height) - 4px);
+  padding: 0 1.1rem;
+  vertical-align: middle;
   line-height: 1;
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  background: transparent;
+  border: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--ink);
   font: inherit;
   cursor: pointer;
-  opacity: 0.8;
 }
 
-.welcome-start:hover,
+.welcome-start:hover {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
 .welcome-start:focus-visible {
-  opacity: 1;
-  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.welcome-tip {
+  font-size: 0.85em;
+  opacity: 0.65;
+}
+
+@keyframes welcome-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome {
+    animation: none;
+  }
 }
 
 .shortcuts-about {

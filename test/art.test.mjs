@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { PAPERS } from "../src/look.mjs";
+import { WELCOME_LINES } from "../src/guidance.mjs";
 
 const path = (file) => new URL(`../${file}`, import.meta.url);
 const manifest = JSON.parse(readFileSync(path("manifest.json"), "utf8"));
@@ -16,6 +17,20 @@ test("the panel stylesheet shows each panorama", () => {
   const css = readFileSync(path("sidebar/panel.css"), "utf8");
   for (const paper of PAPERS.filter((p) => p.art)) {
     assert.ok(css.includes(`url("../art/${paper.art}.svg")`), paper.art);
+  }
+});
+
+test("the welcome scene is drawn for light and dark papers", () => {
+  const css = readFileSync(path("sidebar/panel.css"), "utf8");
+  for (const file of ["welcome-day", "welcome-night"]) {
+    assert.ok(existsSync(path(`art/${file}.svg`)), file);
+    assert.ok(css.includes(`url("../art/${file}.svg")`), file);
+  }
+});
+
+test("every welcome line's picture is drawn", () => {
+  for (const { icon } of WELCOME_LINES) {
+    assert.ok(existsSync(path(`art/icon-${icon}.svg`)), icon);
   }
 });
 

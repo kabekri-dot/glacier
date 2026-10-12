@@ -11,6 +11,16 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### A welcoming first page (#90)
+
+- [ ] Reload with ↻, then open Glacier in a fresh profile (or after clearing "welcomeSeen") on the Glacier paper: at the top of the paper a small pixel picture of a glacier and a little iceberg on calm water, about four ruled rows high, across the full width, fading softly into the paper. Nothing of it is under the pill.
+- [ ] Under the picture, "Welcome to Glacier" in the handwriting, a little bigger than the text, standing on a ruled line.
+- [ ] Then three lines, each on its own ruled line with a small pixel picture before it: a page for "A note is a page you write on.", a globe for "Notes for a website open by themselves when you come back." and a stack of notebooks for "Collections keep notes on one topic together."
+- [ ] One empty row, then a soft rounded "Start writing" button in the paper's colour, and under it a quiet "Tip: open any website and just start writing."
+- [ ] The welcome fades in gently once. With reduce motion on in the system, it just appears.
+- [ ] Do the same on School Notebook (day picture on white paper) and Aurora (the picture at night, with stars): everything sits on the rules, looks calm and hand made, and nothing overlaps the pill.
+- [ ] Click Start writing: the welcome goes for good. Open the Shortcuts panel with `?`: "How Glacier works" shows the same three lines, without the picture.
+
 ### Collection icons, welcome overlap, Just synced, beside frame, Recent 5, page note Collection (#89)
 
 - [ ] Open the ▾ menu and hover a Collection heading: Download, Archive and Delete sit together on the right, as close as the icons on a note row.
@@ -280,6 +290,7 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 - [ ] Fresh start without the permission: one faded line, "No note for this page yet.", and a quiet "+ New note for this page" under it.
 - [ ] Click it: Glacier's own card explains the permission. **Allow** shows the browser's prompt, and then the page's note or the empty paper for it.
 - [ ] **Not now** leads to the empty paper, where typing makes a note without a page.
+- [ ] The first start shows the welcome: a pixel picture of a glacier (at night on dark papers), "Welcome to Glacier", three lines with small pictures, a soft "Start writing" button and a tip, all on the ruled lines and clear of the pill (#90). Start writing or opening a note makes it go for good.
 - [ ] Installing shows no permission warning. The first time settings open, Glacier's own card explains drawing beside the sidebar, and the browser asks only after **Allow** (#21).
 - [ ] Allowed, settings open beside the sidebar on websites and inside it on browser pages. Declined, they open inside. Settings, Panels changes it later.
 
