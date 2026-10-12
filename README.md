@@ -129,8 +129,8 @@ too (ADR 0005). Your code repo and your Notes Repo are separate.
    - Permissions, Repository permissions, **Contents: Read and write**.
    - Copy the token (`github_pat_…`). GitHub shows it only once.
 3. In Glacier open Settings (the round button bottom right), **Where your
-   notes live**, choose **GitHub**, type the repo as `yourname/glacier-notes`, paste the token and press
-   **Connect and sync**.
+   notes live**, choose **GitHub**, type the repo as `yourname/glacier-notes`,
+   paste the token and press **Connect and sync**.
 4. Do the same in every browser you use. A browser that already has notes with
    the same names gets Conflict Copies on its first sync (ADR 0004).
 

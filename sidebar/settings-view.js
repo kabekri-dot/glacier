@@ -419,8 +419,9 @@ export function createSettingsView({ prefs, repo, onClose }) {
 
   // Where your notes live (#14, #94, #95, ADR 0011): one radio per place,
   // each with its pixel icon. Google Drive shows its sign-in under it (or
-  // "Not set up yet" beside it), GitHub the repo and token form. Switching asks first in one line, then combines. The sync status and
-  // Backup sit below. The repo name and token stay in this browser's
+  // "Not set up yet" beside it), GitHub the repo and token form. Switching
+  // asks first in one line, then combines. The sync status and Backup sit
+  // below. The repo name and token stay in this browser's
   // extension storage, never in the Notebook (ADR 0003).
   async function drawNotesHome({ picked, repo: typedRepo, error, ask } = {}) {
     const saved = await repo.connection();

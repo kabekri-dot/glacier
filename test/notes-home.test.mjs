@@ -1,15 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
-import { createNotebook, noteToFile } from "../src/notebook.mjs";
+import { createNotebook, noteToFile, syncErrorMessage } from "../src/notebook.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { memoryRemote } from "../src/memory-remote.mjs";
 import { NOTES_HOMES, notesHomeName, switchQuestion, chosenNotesHome, notesHomeChoices, googleReady } from "../src/notes-home.mjs";
 import { createAutoSync, syncBox, syncDotText, syncStatusText } from "../src/auto-sync.mjs";
-import { syncErrorMessage } from "../src/notebook.mjs";
 import { GOOGLE_CONFIG } from "../src/google-config.mjs";
-import { readFileSync } from "node:fs";
 
 // Where your notes live (#94, ADR 0011): one Notes Home at a time. Switching
 // combines the notes here and in the new place, deletes nothing and leaves
