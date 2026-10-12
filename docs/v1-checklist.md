@@ -9,7 +9,7 @@ Three lists in one place: what's left to do before v1, what Glacier must do (req
 | # | What | Who | Status |
 |---|---|---|---|
 | T1 | Hand test of the 👤 items below, starting with Settings beside the sidebar (full height again after fix `8c719a6`) and Sync now with the pen | You | open |
-| T2 | Push `main` to GitHub (74 commits since `d8d30ff`), delete the `sandcastle/*` branches, move checked items in `manual-tests.md` from section 1 to section 2 | Claude, after T1 | open |
+| T2 | Push `main` to GitHub (75 commits since `d8d30ff`), delete the `sandcastle/*` branches, move checked items in `manual-tests.md` from section 1 to section 2 | Claude, after T1 | open |
 | T3 | Second code review from `d8d30ff`, findings into tickets | Claude, you decide | open |
 | T4 | Docs check: `scope.md`, `CONTEXT.md`, ADRs match Collections, the welcome and the menus; update ticket #41's text (still says Lesson Note, Import, Course) | Claude | open |
 | T5 | v1 release #41: version 1.0.0, a clean zip, Firefox unlisted signing on AMO, an everyday Chrome copy, final check, release notes in the README | You with Claude | open |
