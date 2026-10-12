@@ -21,6 +21,7 @@ import { createGoogleSignIn } from "./google-sign-in.js";
 import { folderRemote } from "../src/folder-remote.mjs";
 import { createFolderAccess } from "./folder-access.js";
 import { chosenNotesHome, notesHomeName } from "../src/notes-home.mjs";
+import { reminderDue, reminderOpened, reminderText } from "../src/cloud-reminder.mjs";
 import { createAutoSync, needsFolderOk } from "../src/auto-sync.mjs";
 import { createScreen } from "../src/screen.mjs";
 import { pageNoteCount, pillTitle, BACK_BUTTON_HINT } from "../src/menu-contents.mjs";
@@ -542,9 +543,30 @@ async function start() {
     beforeOpen: () => closeOverlays(),
   });
 
+  // The pixel cloud reminder (#98): after the 3rd note, while the notes live
+  // only in this browser, the sync box opens once by itself, and once more
+  // two weeks later. What was shown is kept per browser, not synced.
+  let reminderChecking = false;
+  async function remindAboutHome() {
+    if (reminderChecking) return;
+    reminderChecking = true;
+    try {
+      const { home } = await loadConnection();
+      const { cloudReminder } = await extensionStorage.get("cloudReminder");
+      const now = new Date();
+      if (!reminderDue({ home, noteCount: notebook.notes().length, saved: cloudReminder, now })) return;
+      if (syncBoxView.showReminder(reminderText(googleSignIn.ready))) {
+        await extensionStorage.set({ cloudReminder: reminderOpened(cloudReminder, now) });
+      }
+    } finally {
+      reminderChecking = false;
+    }
+  }
+
   function drawSyncStatus(status) {
     syncBoxView.drawStatus(status);
     noteMeta.updateBar();
+    if (status.state === "off") remindAboutHome().catch((error) => console.warn("Glacier: reminder failed", error));
   }
 
   // What the Where your notes live section of Settings asks of the Notebook,

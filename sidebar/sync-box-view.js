@@ -11,7 +11,9 @@
 //   signInAgain() (signs in with Google and syncs, #95), reconnectFolder()
 //   (asks Chrome again for the notes folder and syncs, #97) and
 //   beforeOpen(), which closes whatever else is open.
+// The pixel cloud reminder (#98) opens the box with showReminder(text, keep).
 import { syncDotText, syncStatusText, syncBox, syncResultText, needsFolderOk, JUST_SYNCED } from "../src/auto-sync.mjs";
+import { KEEP_THEM_SAFE, NOT_NOW } from "../src/cloud-reminder.mjs";
 import { justSyncedLine, menuButton } from "./settings-view.js";
 
 export function createSyncBoxView({ dotEl, boxEl, autoSync, signInAgain, reconnectFolder, openSettings, showConflicts, beforeOpen }) {
@@ -21,12 +23,14 @@ export function createSyncBoxView({ dotEl, boxEl, autoSync, signInAgain, reconne
   let justSyncedWritten = false;
   let resultTimer = null;
   let syncing = false;
+  let reminder = null;
 
   function isOpen() {
     return !boxEl.hidden;
   }
 
   function close() {
+    reminder = null;
     boxEl.hidden = true;
     boxEl.replaceChildren();
     dotEl.setAttribute("aria-expanded", "false");
@@ -57,7 +61,22 @@ export function createSyncBoxView({ dotEl, boxEl, autoSync, signInAgain, reconne
     if (isOpen()) drawBox();
   }
 
+  // The reminder (#98): a small pixel cloud, one sentence, two buttons.
+  function drawReminder() {
+    const cloud = Object.assign(document.createElement("img"), { className: "sync-box-cloud", src: "../art/icon-cloud.svg", alt: "" });
+    const text = document.createElement("p");
+    text.className = "sync-box-status";
+    text.textContent = reminder.text;
+    const keep = menuButton(KEEP_THEM_SAFE, "Choose where your notes live", () => {
+      close();
+      openSettings("notes-home");
+    });
+    const notNow = menuButton(NOT_NOW, "Ask me again later", close);
+    boxEl.replaceChildren(cloud, text, keep, notNow);
+  }
+
   function drawBox() {
+    if (reminder) return drawReminder();
     const status = autoSync.status();
     const box = syncBox(status);
     const lines = [];
@@ -137,13 +156,23 @@ export function createSyncBoxView({ dotEl, boxEl, autoSync, signInAgain, reconne
   return {
     close,
 
+    // Open the box by itself with the reminder, unless it is already open.
+    showReminder(text) {
+      if (isOpen()) return false;
+      reminder = { text };
+      open();
+      return true;
+    },
+
     // Draw the dot for a sync status, and the box again while it is open.
     drawStatus(status) {
       if (isOpen()) drawBox();
       const { label } = syncStatusText(status);
       dotEl.dataset.state = status.state;
-      // A small pixel folder while Chrome needs its OK for the folder (#97).
+      // A small pixel folder while Chrome needs its OK for the folder (#97), a
+      // tiny pixel cloud while no place is chosen (#98).
       if (needsFolderOk(status)) dotEl.dataset.needs = "folder";
+      else if (status.state === "off") dotEl.dataset.needs = "cloud";
       else delete dotEl.dataset.needs;
       dotEl.title = syncDotText(status);
       dotEl.setAttribute("aria-label", label);

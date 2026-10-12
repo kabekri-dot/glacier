@@ -11,6 +11,17 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Pixel cloud reminder (#98)
+
+Needs a browser where the notes live only in this browser (the default). To start again, clear `cloudReminder` from the extension's storage.
+
+- [ ] With fewer than 3 notes, the sync dot is a tiny pixel cloud and the sync box does not open by itself.
+- [ ] Write a 3rd note and wait a few seconds: the sync box opens by itself with a small pixel cloud and "Your notes live only in this browser for now. Give them a safe home." (with "in your Google Drive" once Google Drive is set up), and two buttons, Keep them safe and Not now.
+- [ ] Keep them safe closes the box and opens Settings at Where your notes live.
+- [ ] Not now closes the box. Write more notes or reopen the sidebar: the box does not open again by itself.
+- [ ] Two weeks later (set `lastOpened` in `cloudReminder` back by 15 days) the box opens once more after a change. After that it never opens by itself again.
+- [ ] Choose any place under Where your notes live: the cloud on the dot goes and the reminder does not come back.
+
 ### A folder on this computer as a Notes Home (#97)
 
 Chrome or Edge only. Have Obsidian (or any text editor) at hand.
