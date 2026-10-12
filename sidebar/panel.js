@@ -791,7 +791,7 @@ async function start() {
   }
 
   function collectionAction(kind, course, anchor, details) {
-    if (kind === "download") askFormat(anchor, (format) => downloadCourse(course, format));
+    if (kind === "download") askFormat(anchor, (format) => downloadCourse(course, format, { archived: Boolean(details.closest(".menu-archive")) }));
     else if (kind === "archive") archiveCollectionFromMenu(course);
     else if (kind === "unarchive") unarchiveCollectionFromMenu(course);
     else askDeleteCollection(course, details);
@@ -1142,10 +1142,11 @@ async function start() {
     download(file.text, "text/markdown", file.path.split("/").pop());
   }
 
-  function downloadCourse(course, format) {
+  // `archived` is for a Collection's Download icon in the Archive section.
+  function downloadCourse(course, format, { archived = false } = {}) {
     screen.flush();
-    if (format !== "md") return printWindow(notebook.notesOfCourse(course));
-    download(notebook.exportCourseZip(course), "application/zip", `${course} ${today()}.zip`);
+    if (format !== "md") return printWindow(notebook.notesOfCourse(course, { archived }));
+    download(notebook.exportCourseZip(course, { archived }), "application/zip", `${course} ${today()}.zip`);
   }
 
   // The ⋯ "This note" menu (#63): the actions for the open note only, under

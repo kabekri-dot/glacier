@@ -751,6 +751,15 @@ test("undoing an archive keeps the note you moved on to", () => {
   assert.equal(view.changed, true);
 });
 
+test("undoing the archive of a note deleted in the meantime opens nothing and doesn't fail", () => {
+  const { notebook, screen, grid } = withNotes();
+  screen.open(grid);
+  screen.archive();
+  notebook.deleteNote("Grid");
+  assert.equal(screen.undoArchive(["Grid"]).changed, true);
+  assert.equal(screen.note(), null);
+});
+
 test("undoing the archive of other notes does not open anything", () => {
   const { notebook, screen, first } = withNotes();
   notebook.archiveNote("First");

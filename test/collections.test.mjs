@@ -221,3 +221,33 @@ test("moving a website to a Collection moves every note for that page (#92)", ()
   assert.equal(notebook.note("Second").course, "Web");
   assert.equal(notebook.note("Elsewhere").course, undefined);
 });
+
+test("moving a website's group leaves its notes that are already in another Collection", () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  notebook.createNote({ title: "Loose one", source: "https://example.com/page" });
+  notebook.createNote({ title: "Loose two", source: "https://example.com/page" });
+  notebook.createNote({ title: "Filed", source: "https://example.com/page", course: "Elsewhere" });
+  assert.deepEqual(notebook.movePageToCollection("https://example.com/page", "Web").sort(), ["Loose one", "Loose two"]);
+  assert.equal(notebook.note("Filed").course, "Elsewhere");
+});
+
+test("an archived Collection downloads and prints its archived notes", async () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  notebook.createNote({ title: "Old", course: "Done", created: "2026-10-01T09:30:00.000Z" });
+  notebook.saveBody("Old", "kept");
+  notebook.archiveCollection("Done");
+  assert.deepEqual(notebook.notesOfCourse("Done", { archived: true }), [{ title: "Old", body: "kept" }]);
+  const copy = createNotebook({ storage: memoryStorage() });
+  await copy.importZip(notebook.exportCourseZip("Done", { archived: true }));
+  assert.deepEqual(copy.notes().map((note) => note.title), ["Old"]);
+});
+
+test("a Collection downloads whole even when its notes differ in capitals", async () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  notebook.createNote({ title: "One", course: "Web" });
+  notebook.createNote({ title: "Two", course: "Web" });
+  assert.deepEqual(notebook.notesOfCourse("web").map((note) => note.title), ["One", "Two"]);
+  const copy = createNotebook({ storage: memoryStorage() });
+  await copy.importZip(notebook.exportCourseZip("WEB"));
+  assert.deepEqual(copy.notes().map((note) => note.title).sort(), ["One", "Two"]);
+});

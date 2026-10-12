@@ -586,6 +586,12 @@ export function createNotebook({ storage }) {
     return storage.allNotes().filter((note) => !note.archived);
   }
 
+  // One Collection's notes, in any capitals (#73): the listed ones, or with
+  // `archived` the ones in the Archive.
+  function notesIn(course, archived = false) {
+    return storage.allNotes().filter((note) => Boolean(note.archived) === archived && note.course && sameCollection(note.course, course));
+  }
+
   // Notes saved before #73 may hold one Collection in different capitals.
   mergeCollectionCases();
 
@@ -663,10 +669,12 @@ export function createNotebook({ storage }) {
       return moved;
     },
 
-    // Put every note for this page in a Collection at once (#92), from its
-    // page group in the menu. Returns the titles that moved.
+    // Put every note of this page's group (the ones in no Collection) in a
+    // Collection at once (#92). Returns the titles that moved.
     movePageToCollection(url, course) {
-      return this.notesForPage(url).map((note) => this.moveToCourse(note.title, course).title);
+      return this.notesForPage(url)
+        .filter((note) => !note.course)
+        .map((note) => this.moveToCourse(note.title, course).title);
     },
 
     // Every note for this page, matched by Source, the most recently edited
@@ -935,9 +943,10 @@ export function createNotebook({ storage }) {
       return zipNotes(storage.allNotes());
     },
 
-    // The same zip with only one Collection's notes.
-    exportCourseZip(course) {
-      return zipNotes(listed().filter((note) => note.course === course));
+    // The same zip with only one Collection's notes; `archived` gives the
+    // ones in the Archive instead, for its Download icon.
+    exportCourseZip(course, { archived = false } = {}) {
+      return zipNotes(notesIn(course, archived));
     },
 
     // The same zip with only the archived notes.
@@ -952,9 +961,8 @@ export function createNotebook({ storage }) {
       return note ? [{ title: note.title, body: note.body ?? "" }] : [];
     },
 
-    notesOfCourse(course) {
-      return listed()
-        .filter((note) => note.course === course)
+    notesOfCourse(course, { archived = false } = {}) {
+      return notesIn(course, archived)
         .sort((a, b) => a.title.localeCompare(b.title))
         .map((note) => ({ title: note.title, body: note.body ?? "" }));
     },

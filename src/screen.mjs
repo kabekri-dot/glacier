@@ -245,9 +245,8 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
     // archive closed it and nothing else has been opened since.
     undoArchive(titles) {
       titles.forEach((title) => notebook.unarchiveNote(title));
-      const back = closedByArchive !== null && titles.includes(closedByArchive) && !note && !freshPage;
-      if (back) {
-        const reopened = notebook.note(closedByArchive);
+      const reopened = closedByArchive !== null && titles.includes(closedByArchive) && !note && !freshPage ? notebook.note(closedByArchive) : undefined;
+      if (reopened) {
         return { ...showNote(reopened, { byPage: isOpenedByPage(reopened) }), changed: true };
       }
       return { type: "backlinks", changed: true };
