@@ -49,12 +49,13 @@ export function createNoteSession({ notebook, onSaveError, onCreate, onRetitle, 
     scheduler.flush();
   }
 
-  // Turn the fresh page into a note. A note for a page takes the last used
-  // Collection; a blank note has no page and no Collection (#68).
+  // Turn the fresh page into a note. Every new note takes the last used
+  // Collection, if it still exists (#83); only a page gives it a source.
   function createFromDraft(title, { named = true } = {}) {
     const { source } = draft;
     draft = null;
-    const course = source ? notebook.lastCourse() : undefined;
+    const last = notebook.lastCourse();
+    const course = last && notebook.courses().includes(last) ? last : undefined;
     const note = notebook.createNote({ title, source, course });
     openTitle = note.title;
     following = !named;

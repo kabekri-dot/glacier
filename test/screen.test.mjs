@@ -180,7 +180,7 @@ test("a confirmed title that is taken gets the Course added", () => {
   assert.equal(screen.confirmTitle("Introduction").note.title, "Introduction (TOP)");
 });
 
-test("a blank note has no page or Course and is not opened by the page", () => {
+test("a blank note has no page, takes the last used Collection and is not opened by the page", () => {
   const { notebook, screen } = withNotes();
   assert.deepEqual(screen.show({ type: "blankDraft" }), {
     type: "freshPage",
@@ -190,7 +190,7 @@ test("a blank note has no page or Course and is not opened by the page", () => {
   });
   screen.confirmTitle("Reading notes");
   assert.equal(notebook.note("Reading notes").source, undefined);
-  assert.equal(notebook.note("Reading notes").course, undefined);
+  assert.equal(notebook.note("Reading notes").course, notebook.lastCourse());
   assert.equal(screen.onScreen().openedByPage, false);
 });
 
@@ -417,6 +417,56 @@ test("deleting leaves no note on screen and asks the page what to show", () => {
   assert.deepEqual(screen.delete(), { type: "followPage", changed: true });
   assert.equal(screen.note(), null);
   assert.equal(notebook.note("First"), undefined);
+});
+
+test("archiving the open note shows the note you were on before", () => {
+  const { notebook, screen, first, grid } = withNotes();
+  screen.open(first);
+  screen.open(grid);
+  const view = screen.archive();
+  assert.equal(view.type, "note");
+  assert.equal(view.reload, true);
+  assert.equal(view.changed, true);
+  assert.equal(view.note.title, "First");
+  assert.equal(screen.note().title, "First");
+  assert.equal(notebook.note("Grid").archived, true);
+});
+
+test("deleting the open note shows the note you were on before", () => {
+  const { notebook, screen, first, grid } = withNotes();
+  screen.open(first);
+  screen.open(grid);
+  const view = screen.delete();
+  assert.equal(view.note.title, "First");
+  assert.equal(view.changed, true);
+  assert.equal(notebook.note("Grid"), undefined);
+});
+
+test("after a delete the note before is skipped if it was archived", () => {
+  const { notebook, screen, first, second, grid } = withNotes();
+  for (const note of [first, second, grid]) screen.open(note);
+  notebook.archiveNote("Second");
+  assert.equal(screen.delete().note.title, "First");
+});
+
+test("a note with nothing before it still asks the page after archiving", () => {
+  const { screen, grid } = withNotes();
+  screen.open(grid);
+  assert.deepEqual(screen.archive(), { type: "followPage", changed: true });
+});
+
+test("a note made on a fresh page takes the last used Collection", () => {
+  const { notebook, screen } = setup();
+  notebook.createNote({ title: "Grid", course: "CSS" });
+  screen.startFreshPage({});
+  assert.equal(screen.confirmTitle("Idea").note.course, "CSS");
+});
+
+test("a note made by writing takes the last used Collection too", () => {
+  const { notebook, screen } = setup();
+  notebook.createNote({ title: "Grid", course: "CSS" });
+  screen.startFreshPage({});
+  assert.equal(screen.edit("Some thought").note.course, "CSS");
 });
 
 test("keeping a note after the delete question shows it again as it was", () => {

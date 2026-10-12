@@ -11,6 +11,21 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Bugs from the browser test: Collection click, overlaps, after archive or delete (#83)
+
+Reload with ↻ first.
+
+- [ ] Click in the text of a note, then click "Add to a collection" with the mouse: the list opens every time. Do it also right after pressing Enter or typing.
+- [ ] The Collection list has a solid background: the note's text does not show through it.
+- [ ] Open ▾, ⋯, the ← box, the sync box and the Shortcuts panel one after another: the round Glacier button is always under them, and opening one closes the one that was open.
+- [ ] With the Shortcuts panel open, open ▾: the panel closes. With ▾ open, open the Shortcuts panel: the menu closes. A Collection heading's Archive and Delete icons are never hidden.
+- [ ] Choose a Collection on a note, then press + and "New note" and type: the new note is already in that Collection, shown above the text. The same from ▾ and "+ New note".
+- [ ] Without permission for the page, press "New note for this page" and decline: the card says settings open inside the sidebar, and does not talk about two panels.
+- [ ] With no note open, the pill shows a quiet "Glacier". Hovering shows no text and no pointer, and clicking does nothing.
+- [ ] Open note A, then note B. In ⋯ choose Archive: note A shows, with "Archived. Undo". Undo puts B back in the Notebook, not archived.
+- [ ] Open note A, then note B, and delete B from ⋯ or from the trash icon on its row: note A shows. With no earlier note, you see the page's note or the empty page.
+- [ ] The ▾ menu heading reads "No collection".
+
 ### Putting a note into a Collection (#82)
 
 Reload with ↻ first.
@@ -93,7 +108,7 @@ Reload with ↻ first.
 Reload with ↻ first. You need a connected Notes repo for the last two checks.
 
 - [ ] The line above the text says "Add to a collection" on a note without one. Hover it: "Click to choose a collection". Click it: the list ends with "+ New collection".
-- [ ] Open the ▾ menu: the Notebook lists Collections, then "No Collection" with the rest. Hover a Collection heading: three icons show, and Download names the Collection and its note count.
+- [ ] Open the ▾ menu: the Notebook lists Collections, then "No collection" with the rest. Hover a Collection heading: three icons show, and Download names the Collection and its note count.
 - [ ] Settings, Notes repo: the list under Backup holds Collections, and hovering a Download icon names the Collection. Nowhere in the sidebar, menus or settings does the word Course show.
 - [ ] Put a note in "Testing Test", then click "+ New collection" on another note and type "testing test": the note joins "Testing Test", and the menu shows one Collection.
 - [ ] If you had "Testing Test" and "Testing test" before this change: after the reload they show as one Collection, spelled like the one with more notes.
@@ -235,7 +250,7 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 - [ ] Clicking the ▾ after the title, the bare part of the pill, or pressing Ctrl+K, opens the menu with the search box ready.
 - [ ] Search finds words in titles and in the text, with the match highlighted. Clicking a result opens it and closes the menu.
 - [ ] Recent notes are listed, including notes made by hand.
-- [ ] The Notebook is listed: Collections with their notes, then "No Collection" with the rest.
+- [ ] The Notebook is listed: Collections with their notes, then "No collection" with the rest.
 - [ ] On a note with a page, the menu starts with "Notes for this page", newest first, and "+ New note for this page" under them.
 - [ ] Esc closes the menu.
 - [ ] `←` appears after the note changed. Hovering shows "Your last notes". Clicking opens a box with the last 3 notes, newest first.
@@ -507,7 +522,7 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 - [ ] Click it: the note leaves the Notebook list, recent notes and search. On a page that had only this note, the empty paper for a new note shows.
 - [ ] Open the pill menu: an "Archive" section is at the bottom, folded shut. Open it and the archived note is listed.
 - [ ] Click the archived note: a small "Archived" label shows in the pill, and the ⋯ This note menu has "Unarchive" instead of "Archive".
-- [ ] Click Unarchive: the label goes, and the note is back in its Collection (or No Collection) in the list.
+- [ ] Click Unarchive: the label goes, and the note is back in its Collection (or No collection) in the list.
 - [ ] A link to an archived note in another note still opens it.
 - [ ] After a sync, the archived note's file is under the archive folder on GitHub (for example archive/collections/Collection name/Title.md), and it moves back out after Unarchive and a sync.
 - [ ] In Settings, Notes repo, under Backup: "Export archive" downloads a zip with only the archived notes.
