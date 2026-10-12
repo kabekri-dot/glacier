@@ -9,7 +9,6 @@ export const HOW_GLACIER_WORKS = [
 
 export const COLLECTIONS_HINT = "Collections hold notes that belong together. Make one with + New collection.";
 export const ADD_TO_COLLECTION_HINT = "Collections hold notes that belong together, like a notebook for one topic.";
-export const NEW_NOTE_BUTTON_HINT = "New note";
 
 // The welcome shows until it has been dismissed once. `saved` is what the
 // extension's (not synced) storage holds under "welcomeSeen".
