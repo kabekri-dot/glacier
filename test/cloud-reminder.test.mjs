@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { reminderDue, reminderOpened, reminderText, showsDotCloud } from "../src/cloud-reminder.mjs";
+import { reminderDue, reminderOpened, reminderText } from "../src/cloud-reminder.mjs";
 
 const day = 24 * 60 * 60 * 1000;
 const t0 = new Date("2026-10-13T10:00:00Z");
@@ -28,11 +28,6 @@ test("it never shows a third time", () => {
 
 test("it never shows once a place is chosen", () => {
   for (const home of ["google-drive", "folder", "github"]) assert.equal(due(5, undefined, t0, home), false);
-});
-
-test("the cloud on the dot stays only while no place is chosen", () => {
-  assert.equal(showsDotCloud("browser"), true);
-  assert.equal(showsDotCloud("github"), false);
 });
 
 test("the wording names Google Drive only when it can be chosen", () => {

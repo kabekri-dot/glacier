@@ -19,11 +19,6 @@ export function reminderOpened(saved, now) {
   return { opened: (saved?.opened ?? 0) + 1, lastOpened: now.toISOString() };
 }
 
-// The tiny cloud on the sync dot stays until a place is chosen.
-export function showsDotCloud(home) {
-  return home === "browser";
-}
-
 // `driveReady`: whether Google Drive can be chosen in this build yet.
 export function reminderText(driveReady) {
   const home = driveReady ? "Give them a safe home in your Google Drive." : "Give them a safe home.";
