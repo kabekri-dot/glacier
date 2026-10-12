@@ -143,25 +143,22 @@ export function syncStatusRow({ status, syncNow, notice }, ...buttons) {
   const row = document.createElement("div");
   row.className = "menu-actions";
   row.append(...buttons);
-  let line = document.createElement("p");
-  line.className = "menu-sync-status";
-  line.textContent = syncStatusText(status).detail;
+  const plainLine = (text) => Object.assign(document.createElement("p"), { className: "menu-sync-status", textContent: text });
+  let line = plainLine(syncStatusText(status).detail);
   let restore = null;
+  const showLine = (next) => {
+    line.replaceWith(next);
+    line = next;
+  };
   if (status.state !== "off") {
     row.append(menuButton("Sync now", "Pull and push your notes right away", async () => {
       const result = await syncNow();
-      const shown = syncResultText(result);
       const detail = syncStatusText(result).detail;
-      const next = shown === JUST_SYNCED ? justSyncedLine(false, "menu-sync-status") : Object.assign(document.createElement("p"), { className: "menu-sync-status", textContent: detail });
-      line.replaceWith(next);
-      line = next;
-      if (shown !== JUST_SYNCED) notice(detail, 4000);
+      const written = syncResultText(result) === JUST_SYNCED;
+      showLine(written ? justSyncedLine(false, "menu-sync-status") : plainLine(detail));
+      if (!written) notice(detail, 4000);
       clearTimeout(restore);
-      restore = setTimeout(() => {
-        const plain = Object.assign(document.createElement("p"), { className: "menu-sync-status", textContent: detail });
-        line.replaceWith(plain);
-        line = plain;
-      }, 4000);
+      restore = setTimeout(() => showLine(plainLine(detail)), 4000);
     }));
   }
   return [line, row];
