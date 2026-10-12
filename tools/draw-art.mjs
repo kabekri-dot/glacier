@@ -5,6 +5,10 @@
 //   settings header.
 // - art/<name>.svg: one panorama per Nature paper, a strip of smooth sky and
 //   water with pixel subjects, read left to right, that fades out upwards.
+// - art/welcome-day.svg and art/welcome-night.svg: the scene at the top of
+//   the welcome (#90), a glacier and a little iceberg on calm water, in day
+//   colours for light papers and night colours for dark ones.
+// - art/icon-<name>.svg: the small pictures before the welcome's lines.
 //
 // A developer tool, never loaded by the extension. Run it again after
 // changing the art:  node tools/draw-art.mjs
@@ -276,6 +280,203 @@ function drawAurora({ grid, random, horizon, smooth }) {
   scatter(grid, random, WIDTH / 6, horizon + 1, HEIGHT - 1, (x, y) => run(grid, x, y, 2 + Math.floor(random() * 5), "#2f7f68"));
 }
 
+// ------------------------------------------------------ the welcome scene
+
+// In art pixels, about three CSS pixels each: four ruled rows high and wide
+// enough for a wide sidebar. The big glacier and the iceberg sit on the left,
+// so even a narrow sidebar shows both.
+const SCENE_WIDTH = 360;
+const SCENE_HEIGHT = 40;
+const SCENE_HORIZON = 29;
+
+// Day for the light papers, night (like Aurora) for the dark ones.
+const SCENES = {
+  "welcome-day": {
+    sky: ["#cfe5f8", "#f2f8fd"],
+    water: ["#9cc4ea", "#6a9bd2"],
+    far: "#dcebf8",
+    ice: { light: "#f4fbff", shade: "#a9d2f0" },
+    crack: "#c4e0f6",
+    under: "#b4d4f1",
+    shine: "#e6f3fc",
+    bird: "#7d9cbc",
+    opacity: 0.85,
+  },
+  "welcome-night": {
+    sky: ["#0b1329", "#1a2848"],
+    water: ["#13213f", "#0b1529"],
+    far: "#1f2b48",
+    ice: { light: "#c9d4ec", shade: "#7f93bd" },
+    crack: "#a3b3d6",
+    under: "#2a3d63",
+    shine: "#3c5a80",
+    star: "#e4ecfa",
+    opacity: 0.9,
+  },
+};
+
+function sceneSvg(name) {
+  const colours = SCENES[name];
+  const random = seeded(name);
+  const grid = emptyGrid(SCENE_WIDTH, SCENE_HEIGHT);
+  const smooth = [];
+  drawScene({ grid, random, colours, smooth });
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SCENE_WIDTH} ${SCENE_HEIGHT}" width="${SCENE_WIDTH * PIXEL}" height="${SCENE_HEIGHT * PIXEL}">`,
+    `<defs>`,
+    gradient("sky", colours.sky),
+    gradient("water", colours.water),
+    // Gone at the top and the bottom, so the scene melts into the paper
+    // above and below, and gone at the far right on a very wide sidebar.
+    `<linearGradient id="fade-y" x1="0" y1="0" x2="0" y2="1">`,
+    `<stop offset="0" stop-color="#fff" stop-opacity="0"/>`,
+    `<stop offset="0.3" stop-color="#fff" stop-opacity="1"/>`,
+    `<stop offset="0.8" stop-color="#fff" stop-opacity="1"/>`,
+    `<stop offset="1" stop-color="#fff" stop-opacity="0"/>`,
+    `</linearGradient>`,
+    `<linearGradient id="fade-x" x1="0" y1="0" x2="1" y2="0">`,
+    `<stop offset="0.85" stop-color="#fff" stop-opacity="1"/>`,
+    `<stop offset="1" stop-color="#fff" stop-opacity="0"/>`,
+    `</linearGradient>`,
+    `<mask id="soft-y" maskUnits="userSpaceOnUse" x="0" y="0" width="${SCENE_WIDTH}" height="${SCENE_HEIGHT}">`,
+    `<rect width="${SCENE_WIDTH}" height="${SCENE_HEIGHT}" fill="url(#fade-y)"/>`,
+    `</mask>`,
+    `<mask id="soft-x" maskUnits="userSpaceOnUse" x="0" y="0" width="${SCENE_WIDTH}" height="${SCENE_HEIGHT}">`,
+    `<rect width="${SCENE_WIDTH}" height="${SCENE_HEIGHT}" fill="url(#fade-x)"/>`,
+    `</mask>`,
+    ...smooth.filter((part) => part.defs).map((part) => part.defs),
+    `</defs>`,
+    `<g mask="url(#soft-y)">`,
+    `<g mask="url(#soft-x)" opacity="${colours.opacity}">`,
+    `<rect width="${SCENE_WIDTH}" height="${SCENE_HORIZON}" fill="url(#sky)"/>`,
+    `<rect y="${SCENE_HORIZON}" width="${SCENE_WIDTH}" height="${SCENE_HEIGHT - SCENE_HORIZON}" fill="url(#water)"/>`,
+    ...smooth.map((part) => part.shape),
+    `<g shape-rendering="crispEdges">${pixelPaths(grid)}</g>`,
+    `</g>`,
+    `</g>`,
+    `</svg>`,
+  ].join("\n");
+}
+
+// A big glacier on the left, a little iceberg floating beside it with its
+// larger part under the water, a quiet range further off, the ice mirrored
+// in the water, a few floes, and birds by day or stars and light by night.
+function drawScene({ grid, random, colours, smooth }) {
+  const horizon = SCENE_HORIZON;
+  if (colours.star) {
+    smooth.push({
+      defs: [
+        `<linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">`,
+        `<stop offset="0" stop-color="#9b7bf0" stop-opacity="0"/>`,
+        `<stop offset="0.5" stop-color="#5fe0a0" stop-opacity="0.6"/>`,
+        `<stop offset="1" stop-color="#5fe0a0" stop-opacity="0"/>`,
+        `</linearGradient>`,
+      ].join(""),
+      shape: `<path d="${ribbon(random, 8, 16, 6)}" fill="url(#glow)"/>`,
+    });
+    scatter(grid, random, SCENE_WIDTH / 6, 6, horizon - 12, (x, y) => set(grid, x, y, random() < 0.3 ? "#ffffff" : colours.star));
+  }
+  const far = ridge(random, horizon - 5, 2);
+  for (let x = 0; x < SCENE_WIDTH; x++) column(grid, x, far[x], horizon, colours.far);
+
+  // The big glacier, two tops side by side, with cracks and a broken edge
+  // where it meets the water.
+  peak(grid, random, 8, 46, 17, horizon, colours.ice);
+  peak(grid, random, 36, 30, 11, horizon, colours.ice);
+  for (let i = 0; i < 14; i++) {
+    const x = 14 + Math.floor(random() * 44);
+    const y = horizon - 2 - Math.floor(random() * 8);
+    if (grid[y][x]) run(grid, x, y, 2, colours.crack);
+  }
+  for (let x = 10; x < 64; x += 2 + Math.floor(random() * 3)) set(grid, x, horizon - 1, colours.crack);
+
+  // The little iceberg: a small top above the water, a bigger part below.
+  for (let y = 0; y < 5; y++) run(grid, 74 - y, horizon + 1 + y, 16 + y * 2 - (y === 4 ? 6 : 0), colours.under);
+  peak(grid, random, 76, 12, 5, horizon + 1, colours.ice);
+
+  // Smaller glaciers further off, for a wide sidebar.
+  for (let x = 110; x < SCENE_WIDTH - 20; x += 40 + Math.floor(random() * 50)) {
+    const width = 12 + Math.floor(random() * 22);
+    peak(grid, random, x, width, 3 + Math.floor(random() * (width / 3)), horizon, colours.ice);
+  }
+
+  // The ice mirrored in calm water, broken into short streaks.
+  const ice = [colours.ice.light, colours.ice.shade, colours.crack];
+  for (let x = 0; x < SCENE_WIDTH; x++) {
+    if (!ice.includes(grid[horizon - 1][x])) continue;
+    for (let y = horizon + 1; y < horizon + 5; y++) {
+      if (!grid[y][x] && random() < 0.55 - (y - horizon) * 0.1) set(grid, x, y, colours.shine);
+    }
+  }
+  scatter(grid, random, SCENE_WIDTH / 12, horizon + 5, SCENE_HEIGHT - 3, (x, y) => run(grid, x, y, 2 + Math.floor(random() * 4), colours.shine));
+  if (colours.bird) birds(grid, random, 4, 6, horizon - 18, colours.bird);
+}
+
+// ------------------------------------------------- the welcome's pictures
+
+// 12 by 12 art pixels each, in colours that read on light and dark papers.
+const PICTURES = {
+  page: {
+    rows: [
+      ".ooooooo....",
+      ".owwwwwfo...",
+      ".owwwwwffo..",
+      ".owwwwwfffo.",
+      ".owlllllwwo.",
+      ".owwwwwwwwo.",
+      ".owllllllwo.",
+      ".owwwwwwwwo.",
+      ".owllllwwwo.",
+      ".owwwwwwwwo.",
+      ".oooooooooo.",
+      "............",
+    ],
+    colours: { o: "#5b7fa8", w: "#f8fbff", f: "#cfe2f4", l: "#9ccbee" },
+  },
+  globe: {
+    rows: [
+      "....oooo....",
+      "..oobbggoo..",
+      ".ohbggggbbo.",
+      ".obgggbbbbo.",
+      "obbbggbbbggo",
+      "obbbbgbbgggo",
+      "obbbbbbbgggo",
+      "obggbbbbbgbo",
+      ".obgggbbbbo.",
+      ".obbggbbbbo.",
+      "..oobbbboo..",
+      "....oooo....",
+    ],
+    colours: { o: "#3f6c9e", b: "#6aa8e6", g: "#78b96f", h: "#cfe7fb" },
+  },
+  notebooks: {
+    rows: [
+      "............",
+      "..rrrrrrrp..",
+      "..ryyrrrrp..",
+      "..rrrrrrrp..",
+      ".bbbbbbbbbp.",
+      ".byybbbbbbp.",
+      ".bbbbbbbbbp.",
+      "ggggggggggp.",
+      "gyygggggggp.",
+      "ggggggggggp.",
+      "............",
+      "............",
+    ],
+    colours: { r: "#d9584a", b: "#4a86cf", g: "#5d9a5a", y: "#f6e7b0", p: "#efe8d6" },
+  },
+};
+
+function pictureSvg({ rows, colours }) {
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" width="24" height="24">`,
+    `<g shape-rendering="crispEdges">${pixelPaths(gridFromRows(rows, colours))}</g>`,
+    `</svg>`,
+  ].join("\n");
+}
+
 // ------------------------------------------------------- the small subjects
 
 const CABIN = ["...r....", "..rrr...", ".rrrrr..", "rrrrrrr.", ".wwdww..", ".wwdww.."];
@@ -372,7 +573,7 @@ function cactus(grid, random, x, base, height) {
 
 function birds(grid, random, count, top, bottom, colour) {
   for (let i = 0; i < count; i++) {
-    const x = Math.floor(random() * (WIDTH - 4));
+    const x = Math.floor(random() * (grid[0].length - 4));
     const y = top + Math.floor(random() * (bottom - top));
     set(grid, x, y, colour);
     set(grid, x + 1, y + 1, colour);
@@ -382,7 +583,7 @@ function birds(grid, random, count, top, bottom, colour) {
 
 function scatter(grid, random, count, top, bottom, draw) {
   for (let i = 0; i < count; i++) {
-    draw(Math.floor(random() * WIDTH), top + Math.floor(random() * (bottom - top + 1)));
+    draw(Math.floor(random() * grid[0].length), top + Math.floor(random() * (bottom - top + 1)));
   }
 }
 
@@ -507,4 +708,6 @@ for (const size of [16, 32, 48, 128]) writeFileSync(out(`icons/glacier-${size}.p
 for (const paper of PAPERS.filter((p) => p.art)) {
   writeFileSync(out(`art/${paper.art}.svg`), panoramaSvg(paper) + "\n");
 }
-console.log("Drew the glacier icon and", PAPERS.filter((p) => p.art).length, "panoramas.");
+for (const name of Object.keys(SCENES)) writeFileSync(out(`art/${name}.svg`), sceneSvg(name) + "\n");
+for (const [name, picture] of Object.entries(PICTURES)) writeFileSync(out(`art/icon-${name}.svg`), pictureSvg(picture) + "\n");
+console.log("Drew the glacier icon,", PAPERS.filter((p) => p.art).length, "panoramas, the welcome scenes and their pictures.");
