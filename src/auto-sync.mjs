@@ -179,7 +179,27 @@ export function syncBox(status, now = new Date()) {
   };
   // Google's quiet renewal failed (#95): one button signs in again.
   if (needsGoogleSignIn(status)) return { ...box, action: "Sign in with Google", signIn: true };
+  // Chrome forgot the folder's permission and the quiet ask didn't do (#97).
+  if (needsFolderOk(status)) return { ...box, action: "Reconnect", reconnect: true };
   return box;
+}
+
+// The words the notes folder goes by in a status (src/notes-home.mjs).
+const NOTES_FOLDER = "your notes folder";
+
+// Chrome forgot that Glacier may write to the notes folder, as it does after
+// a restart (#97). The notes keep saving in this browser meanwhile.
+export function needsFolderOk(status) {
+  return status.state === "error" && status.reason === "unauthorized" && status.place === NOTES_FOLDER;
+}
+
+function errorDetail(status, last) {
+  if (needsGoogleSignIn(status)) return "Google asks you to sign in again. Your changes are kept in this browser until you do.";
+  if (needsFolderOk(status)) return "Chrome needs your OK to write to your notes folder again.";
+  if (status.reason === "unauthorized") {
+    return "GitHub no longer accepts your token. It may have expired. Make a new one and paste it under Where your notes live.";
+  }
+  return `${status.message} ${last}`;
 }
 
 function needsGoogleSignIn(status) {
@@ -245,12 +265,7 @@ export function syncStatusText(status, now = new Date()) {
     case "error":
       return {
         label: "Not synced",
-        detail:
-          needsGoogleSignIn(status)
-            ? "Google asks you to sign in again. Your changes are kept in this browser until you do."
-            : status.reason === "unauthorized"
-              ? "GitHub no longer accepts your token. It may have expired. Make a new one and paste it under Where your notes live."
-              : `${status.message} ${last}`,
+        detail: errorDetail(status, last),
       };
     default:
       return { label: "Saved in this browser", detail: "Saved only in this browser. Choose where your notes live in Settings." };

@@ -10,10 +10,12 @@
 // `repo`, the Notes Home and the Notebook, which only the sidebar holds:
 //   connection() -> { home, repo, token }, status(), syncNow() -> sync status,
 //   courses(), switchHome(place, repo, token, onProgress) -> { notes } or { error },
+//   pickFolder() -> "picked", "closed" or "inside" (settings moved inside the
+//   sidebar to pick it there), called straight from the click,
 //   exportCourse(course, format), exportAll(), restore(bytes) and notice(text, ms)
 import { syncStatusText, syncResultText, JUST_SYNCED } from "../src/auto-sync.mjs";
 import { notesRepoName } from "../src/notebook.mjs";
-import { notesHomeChoices, notesHomeName, switchQuestion, googleReady } from "../src/notes-home.mjs";
+import { notesHomeChoices, notesHomeName, switchQuestion, googleReady, folderReady } from "../src/notes-home.mjs";
 import { GOOGLE_CONFIG } from "../src/google-config.mjs";
 import { SHORTCUT_GROUPS } from "../src/shortcuts-panel.mjs";
 import { PAPERS, paperGroups, FONT_OVERRIDES, TEXT_SIZE } from "../src/look.mjs";
@@ -417,9 +419,10 @@ export function createSettingsView({ prefs, repo, onClose }) {
     return [element("h2", "settings-subheading", "Backup"), courseList, restoreRow];
   }
 
-  // Where your notes live (#14, #94, #95, ADR 0011): one radio per place,
-  // each with its pixel icon. Google Drive shows its sign-in under it (or
-  // "Not set up yet" beside it), GitHub the repo and token form. Switching
+  // Where your notes live (#14, #94, #95, #97, ADR 0011): one radio per
+  // place, each with its pixel icon. Google Drive shows its sign-in under it
+  // (or "Not set up yet" beside it), a folder its Choose a folder button (or
+  // "Only in Chrome and Edge"), GitHub the repo and token form. Switching
   // asks first in one line, then combines. The sync status and Backup sit
   // below. The repo name and token stay in this browser's
   // extension storage, never in the Notebook (ADR 0003).
@@ -430,7 +433,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
     const choices = element("div", "home-list");
     choices.setAttribute("role", "radiogroup");
     choices.setAttribute("aria-label", "Where your notes live");
-    for (const home of notesHomeChoices({ googleReady: googleReady(GOOGLE_CONFIG) })) {
+    for (const home of notesHomeChoices({ googleReady: googleReady(GOOGLE_CONFIG), folderReady: folderReady(globalThis) })) {
       const label = element("label", "home-choice");
       label.title = home.hint;
       const radio = document.createElement("input");
@@ -455,6 +458,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
     if (ask) place = [switchCard(ask)];
     else if (shown === "github") place = [githubForm(saved, typedRepo, error)];
     else if (shown === "google-drive") place = [googleCard(saved, error)];
+    else if (shown === "folder") place = [folderCard(saved, error)];
 
     const status = await repo.status();
     const sync = status.state === "off" || ask ? [] : syncStatusRow({ status, syncNow: repo.syncNow, notice: repo.notice });
@@ -504,6 +508,43 @@ export function createSettingsView({ prefs, repo, onClose }) {
       signIn.addEventListener("click", () => card.replaceWith(switchCard("google-drive")));
       card.append(signIn);
     }
+    return card;
+  }
+
+  // A folder on this computer: one button opens the browser's folder picker,
+  // straight from the click, then the switch asks first.
+  function folderCard(saved, error) {
+    const card = element("div", "settings-form");
+    const connected = saved.home === "folder";
+    card.append(
+      element(
+        "p",
+        "settings-text",
+        connected
+          ? "Connected to your notes folder. Each note is a Markdown file there."
+          : "Your notes go into a folder you pick on this computer, one Markdown file per note.",
+      ),
+      element("p", "settings-hint", "Obsidian and other editors can open the same folder. Changes made there come in here."),
+    );
+    if (error) {
+      const errorEl = element("p", "settings-error", error);
+      errorEl.setAttribute("role", "alert");
+      card.append(errorEl);
+    }
+    const choose = element("button", "card-button", connected ? "Choose another folder" : "Choose a folder");
+    choose.type = "button";
+    choose.addEventListener("click", async () => {
+      let picked;
+      try {
+        picked = await repo.pickFolder();
+      } catch (problem) {
+        console.error("Glacier: the folder picker failed", problem);
+        drawNotesHome({ picked: "folder", error: "Couldn't open the folder picker. Please try again." });
+        return;
+      }
+      if (picked === "picked") card.replaceWith(switchCard("folder"));
+    });
+    card.append(choose);
     return card;
   }
 
@@ -635,8 +676,9 @@ export function createSettingsView({ prefs, repo, onClose }) {
       return !el.hidden;
     },
 
-    // Draw every section and show them, folded open at `section` if given.
-    open(section) {
+    // Draw every section and show them, folded open at `section` if given,
+    // with `picked` shown chosen under Where your notes live.
+    open(section, picked) {
       drawPapers();
       drawWriting();
       drawTabs();
@@ -645,7 +687,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
       el.hidden = false;
       closeButton.focus();
       // A switch still running keeps its progress on screen.
-      const repoDrawn = switchRunning ? Promise.resolve() : drawNotesHome();
+      const repoDrawn = switchRunning ? Promise.resolve() : drawNotesHome({ picked: picked ?? undefined });
       const target = section && el.querySelector(`[data-section="${section}"]`);
       if (!target) return;
       target.open = true;

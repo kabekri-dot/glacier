@@ -18,8 +18,10 @@ import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { githubRemote } from "../src/github-remote.mjs";
 import { driveRemote } from "../src/drive-remote.mjs";
 import { createGoogleSignIn } from "./google-sign-in.js";
+import { folderRemote } from "../src/folder-remote.mjs";
+import { createFolderAccess } from "./folder-access.js";
 import { chosenNotesHome, notesHomeName } from "../src/notes-home.mjs";
-import { createAutoSync } from "../src/auto-sync.mjs";
+import { createAutoSync, needsFolderOk } from "../src/auto-sync.mjs";
 import { createScreen } from "../src/screen.mjs";
 import { pageNoteCount, pillTitle, BACK_BUTTON_HINT } from "../src/menu-contents.mjs";
 import { createOpeningFlow } from "../src/opening-flow.mjs";
@@ -84,6 +86,8 @@ const api = typeof browser !== "undefined" ? browser : chrome;
 const extensionStorage = api.storage.local;
 // Signing in with Google for the Google Drive Notes Home (#95).
 const googleSignIn = createGoogleSignIn({ api, storage: extensionStorage });
+// The picked folder for the folder Notes Home (#97).
+const folderAccess = createFolderAccess();
 
 // The paper, font and text size (#18). Drawn by setting the custom
 // properties from src/look.mjs on the page; the stylesheet does the rest.
@@ -229,6 +233,7 @@ async function start() {
     connect: async () => {
       const { home, repo, token } = await loadConnection();
       if (home === "google-drive") return { remote: driveRemote({ getToken: googleSignIn.getToken }), repo: "", place: notesHomeName(home) };
+      if (home === "folder") return { remote: folderRemote({ getFolder: folderAccess.folder }), repo: "", place: notesHomeName(home) };
       if (home !== "github" || !repo || !token) return null;
       return { remote: githubRemote({ repo, token }), repo, place: notesHomeName(home) };
     },
@@ -472,10 +477,22 @@ async function start() {
     return { home: chosenNotesHome(notebook.notesHome(), github), ...github };
   }
 
-  // Disconnecting Google Drive signs out of Google; the files stay in Drive.
-  async function signOutOfGoogle(leaving, place) {
-    if (leaving !== "google-drive" || place === "google-drive") return;
-    await googleSignIn.signOut().catch((error) => console.warn("Glacier: could not sign out of Google", error));
+  // Disconnecting Google Drive signs out of Google, and leaving a folder
+  // forgets it here; the files stay where they are.
+  async function leaveOldHome(leaving, place) {
+    if (leaving === place) return;
+    if (leaving === "google-drive") {
+      await googleSignIn.signOut().catch((error) => console.warn("Glacier: could not sign out of Google", error));
+    }
+    if (leaving === "folder") {
+      await folderAccess.forget().catch((error) => console.warn("Glacier: could not forget the notes folder", error));
+    }
+  }
+
+  function remoteFor(place, repo, token) {
+    if (place === "google-drive") return driveRemote({ getToken: googleSignIn.getToken });
+    if (place === "folder") return folderRemote({ getFolder: folderAccess.pickedFolder });
+    return githubRemote({ repo, token });
   }
 
   // When Google's quiet renewal failed, the sync box's one button signs in
@@ -489,12 +506,33 @@ async function start() {
     return autoSync.syncNow();
   }
 
+  // After a restart Chrome forgets the notes folder's permission (#97). The
+  // first click or key anywhere in Glacier asks for it again, quietly, and
+  // syncs; if that doesn't do, Reconnect in the sync box asks again.
+  let folderAskedQuietly = false;
+
+  async function reconnectFolder() {
+    if (await folderAccess.askAgain()) folderAskedQuietly = false;
+    return autoSync.syncNow();
+  }
+
+  function askForFolderQuietly() {
+    if (folderAskedQuietly || !needsFolderOk(autoSync.status())) return;
+    folderAskedQuietly = true;
+    folderAccess.askAgain().then((granted) => {
+      if (granted) autoSync.syncNow();
+    });
+  }
+  document.addEventListener("click", askForFolderQuietly, true);
+  document.addEventListener("keydown", askForFolderQuietly, true);
+
   // The sync dot and its box (#75), drawn by sidebar/sync-box-view.js.
   const syncBoxView = createSyncBoxView({
     dotEl: syncDotEl,
     boxEl: document.querySelector(".sync-box"),
     autoSync,
     signInAgain,
+    reconnectFolder,
     openSettings,
     // Check them: the ▾ menu, which lists Several versions at the top.
     showConflicts: () => {
@@ -513,20 +551,24 @@ async function start() {
   // wherever settings are drawn (see settings-view.js). Switching to GitHub
   // goes through the GitHub remote; the repo and token are saved only once
   // GitHub has accepted them. Switching to Google Drive signs in first, and
-  // leaving it signs out, leaving the files in Drive as they are (#95). With
+  // leaving it signs out, leaving the files in Drive as they are (#95). A
+  // folder is picked before the switch and kept once it worked; leaving it
+  // forgets it here (#97). With
   // settings closed meanwhile, a notice says how it went.
   const repoActions = {
     connection: loadConnection,
     status: async () => autoSync.status(),
     syncNow: () => autoSync.syncNow(),
     courses: async () => notebook.courses(),
+    // Opens the folder picker straight from the click (#97).
+    pickFolder: async () => ((await folderAccess.pick()) ? "picked" : "closed"),
 
     async switchHome(place, repo, token, onProgress) {
       screen.flush();
       const leaving = (await loadConnection()).home;
       if (place === "browser") {
         await notebook.switchNotesHome("browser");
-        await signOutOfGoogle(leaving, place);
+        await leaveOldHome(leaving, place);
         await autoSync.syncNow();
         return { notes: 0 };
       }
@@ -534,8 +576,7 @@ async function start() {
       let result;
       try {
         if (place === "google-drive") await googleSignIn.signIn();
-        const remote = place === "google-drive" ? driveRemote({ getToken: googleSignIn.getToken }) : githubRemote({ repo, token });
-        result = await notebook.switchNotesHome(place, remote, onProgress);
+        result = await notebook.switchNotesHome(place, remoteFor(place, repo, token), onProgress);
       } catch (error) {
         console.error("Glacier: switching where the notes live failed", error);
         const message = syncErrorMessage(error, repo, notesHomeName(place));
@@ -543,7 +584,8 @@ async function start() {
         return { error: message };
       }
       if (place === "github") await extensionStorage.set({ notesRepo: repo, githubToken: token });
-      await signOutOfGoogle(leaving, place);
+      await leaveOldHome(leaving, place);
+      if (place === "folder") await folderAccess.keepPicked();
       autoSync.syncNow();
       if (!screen.note()) openingFlow.start();
       else updateBacklinks();
@@ -658,13 +700,17 @@ async function start() {
     choice: savedPanelPlace,
   });
 
+  // The place to show picked when settings next open inside (#97).
+  let settingsPicked = null;
+
   function drawPanels(view) {
     if (view.card) showPanelsCard();
     else closePanelsCard();
     glacierButtonEl.setAttribute("aria-expanded", String(view.open));
     settingsView.showInsideNote(view.explain);
     if (view.settings === "inside") {
-      if (!settingsView.isOpen()) settingsView.open(view.section);
+      if (!settingsView.isOpen()) settingsView.open(view.section, settingsPicked);
+      settingsPicked = null;
     } else settingsView.close();
   }
 
@@ -722,6 +768,12 @@ async function start() {
     status: repoActions.status,
     syncNow: repoActions.syncNow,
     courses: repoActions.courses,
+    // No browser shows its folder picker in a frame on a web page, so
+    // settings move inside the sidebar to pick the folder there (#97).
+    chooseFolderInside: () => {
+      settingsPicked = "folder";
+      panels.openSettings("notes-home", { inside: true });
+    },
     notesHome: async () => (await loadConnection()).home,
     switchHome: (place, repo, token) =>
       repoActions.switchHome(place, repo, token, (progress) => {

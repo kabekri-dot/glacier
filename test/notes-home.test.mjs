@@ -5,8 +5,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { createNotebook, noteToFile, syncErrorMessage } from "../src/notebook.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { memoryRemote } from "../src/memory-remote.mjs";
-import { NOTES_HOMES, notesHomeName, switchQuestion, chosenNotesHome, notesHomeChoices, googleReady } from "../src/notes-home.mjs";
-import { createAutoSync, syncBox, syncDotText, syncStatusText } from "../src/auto-sync.mjs";
+import { NOTES_HOMES, notesHomeName, switchQuestion, chosenNotesHome, notesHomeChoices, googleReady, folderReady } from "../src/notes-home.mjs";
+import { createAutoSync, syncBox, syncDotText, syncStatusText, needsFolderOk } from "../src/auto-sync.mjs";
 import { GOOGLE_CONFIG } from "../src/google-config.mjs";
 
 // Where your notes live (#94, ADR 0011): one Notes Home at a time. Switching
@@ -104,7 +104,7 @@ test("before any choice there is no Notes Home saved", () => {
 });
 
 test("the places to choose from start with Google Drive, each with its pixel icon", () => {
-  assert.deepEqual(NOTES_HOMES.map((home) => home.name), ["Google Drive", "Only in this browser", "GitHub"]);
+  assert.deepEqual(NOTES_HOMES.map((home) => home.name), ["Google Drive", "A folder on this computer", "Only in this browser", "GitHub"]);
   for (const { icon } of NOTES_HOMES) {
     assert.ok(existsSync(new URL(`../art/icon-${icon}.svg`, import.meta.url)), icon);
   }
@@ -185,4 +185,34 @@ test("when Google asks to sign in again, the sync box says so with one button", 
   assert.equal(box.action, "Sign in with Google");
   assert.equal(box.signIn, true);
   assert.equal(syncBox({ state: "error", reason: "unauthorized", place: "GitHub" }).signIn, undefined);
+});
+
+// A folder on this computer (#97).
+
+test("a folder can be chosen only where the browser has a folder picker", () => {
+  const missing = notesHomeChoices({ googleReady: true, folderReady: false }).find((home) => home.id === "folder");
+  assert.equal(missing.note, "Only in Chrome and Edge");
+  assert.equal(missing.disabled, true);
+  const there = notesHomeChoices({ googleReady: true, folderReady: true }).find((home) => home.id === "folder");
+  assert.equal(there.note, undefined);
+  assert.equal(there.disabled, false);
+  assert.equal(folderReady({}), false);
+  assert.equal(folderReady({ showDirectoryPicker: () => {} }), true);
+});
+
+test("the folder is called your notes folder in sentences", () => {
+  assert.equal(switchQuestion("folder"), "Your notes will be combined with the ones in your notes folder. Nothing is deleted.");
+  assert.equal(syncDotText({ state: "synced", place: notesHomeName("folder") }), "All saved to your notes folder");
+});
+
+test("when Chrome forgot the folder, the sync box asks for its OK with one Reconnect button", () => {
+  const status = { state: "error", reason: "unauthorized", place: "your notes folder" };
+  assert.equal(syncStatusText(status).detail, "Chrome needs your OK to write to your notes folder again.");
+  const box = syncBox(status);
+  assert.equal(box.status, "Chrome needs your OK to write to your notes folder again.");
+  assert.equal(box.action, "Reconnect");
+  assert.equal(box.reconnect, true);
+  assert.equal(box.signIn, undefined);
+  assert.equal(needsFolderOk(status), true);
+  assert.equal(needsFolderOk({ ...status, place: "GitHub" }), false);
 });

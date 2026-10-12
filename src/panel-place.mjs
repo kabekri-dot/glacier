@@ -61,6 +61,10 @@ export function createPanelPlacement({ browser, show, keepChoice = () => {}, cho
   let panelPlace = readPanelPlace(choice);
   let settingsWanted = false;
   let settingsSection = null;
+  // Settings kept inside the sidebar until they close, whatever the choice,
+  // to pick a folder: no browser shows its folder picker in a frame on a
+  // web page (#97).
+  let insideOnce = false;
   // The section settings open at once the card is answered, while it shows.
   let card = null;
 
@@ -89,7 +93,7 @@ export function createPanelPlacement({ browser, show, keepChoice = () => {}, cho
     if (run !== latestPlacing) return;
 
     const url = tab?.url;
-    const besideWanted = wantsBeside({ choice: panelPlace, granted, url }) && settingsWanted;
+    const besideWanted = wantsBeside({ choice: panelPlace, granted, url }) && settingsWanted && !insideOnce;
     if (besideTabId !== null && (!besideWanted || besideTabId !== tab.id)) {
       browser.drawFrames(besideTabId, { settings: null });
       besideTabId = null;
@@ -104,7 +108,7 @@ export function createPanelPlacement({ browser, show, keepChoice = () => {}, cho
     }
 
     const refused = besideWanted && !beside;
-    placed = { beside, explain: !beside && explainsInside({ choice: panelPlace, granted, url, refused }) };
+    placed = { beside, explain: !beside && !insideOnce && explainsInside({ choice: panelPlace, granted, url, refused }) };
     report();
   }
 
@@ -113,8 +117,9 @@ export function createPanelPlacement({ browser, show, keepChoice = () => {}, cho
     keepChoice(panelPlace);
   }
 
-  // The first time, Glacier's own card shows instead (ADR 0008).
-  function openSettings(section) {
+  // The first time, Glacier's own card shows instead (ADR 0008). With
+  // `inside`, settings open inside the sidebar until they close.
+  function openSettings(section, { inside = false } = {}) {
     if (panelPlace === "ask") {
       card = { section: section ?? null };
       report();
@@ -123,6 +128,7 @@ export function createPanelPlacement({ browser, show, keepChoice = () => {}, cho
     card = null;
     settingsWanted = true;
     settingsSection = section ?? null;
+    insideOnce = inside;
     return place();
   }
 
@@ -151,6 +157,7 @@ export function createPanelPlacement({ browser, show, keepChoice = () => {}, cho
       if (!settingsWanted) return false;
       settingsWanted = false;
       settingsSection = null;
+      insideOnce = false;
       place();
       return true;
     },
