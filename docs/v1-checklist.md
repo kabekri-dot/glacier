@@ -8,11 +8,12 @@ Three lists in one place: what's left to do before v1, what Glacier must do (req
 
 | # | What | Who | Status |
 |---|---|---|---|
-| T1 | Hand test of the 👤 items below, starting with Settings beside the sidebar (full height again after fix `8c719a6`) and Sync now with the pen | You | open |
-| T2 | Push `main` to GitHub (75 commits since `d8d30ff`), delete the `sandcastle/*` branches, move checked items in `manual-tests.md` from section 1 to section 2 | Claude, after T1 | open |
-| T3 | Second code review from `d8d30ff`, findings into tickets | Claude, you decide | open |
-| T4 | Docs check: `scope.md`, `CONTEXT.md`, ADRs match Collections, the welcome and the menus; update ticket #41's text (still says Lesson Note, Import, Course) | Claude | open |
-| T5 | v1 release #41: version 1.0.0, a clean zip, Firefox unlisted signing on AMO, an everyday Chrome copy, final check, release notes in the README | You with Claude | open |
+| T1 | Hand test of the 👤 items: done so far Settings beside the sidebar and Sync now. Left: `manual-tests.md` section 1 (websites and page groups, How Glacier works, the pixel pencil on Aurora, several versions, print and PDF, Firefox) | You | in progress |
+| T2 | Push `main`, delete the `sandcastle/*` branches | Claude | ✅ pushed `c601884`, no robot branches left |
+| T3 | Second code review from `d8d30ff` | Claude | ✅ both axes; 8 bugs and wording fixes done (`6e8b09a`, `cb91c70`), docs aligned (`d7ed7a4`); the panel.js split is #93 for after v1 |
+| T4 | Docs check and #41's text | Claude | ✅ scope, CONTEXT (Page group), ADR 0005 and 0010, README, #41 |
+| T5 | v1 release #41: version 1.0.0 ✅, zip command ✅, README ✅; left: tag, Firefox unlisted signing on AMO, everyday Chrome copy, final check | You with Claude | open |
+| T6 | New GitHub key for the robots: the `GH_TOKEN` in `.sandcastle/.env` has expired (fine-grained, Issues read and write, Metadata read) | You | open |
 | P1 | Polish (optional): noisy white pixels on the welcome's water line; the welcome's wrapped second line starts at the margin; Start writing and the tip sit a little off the rules | Robot ticket if you want it | open |
 | P2 | Polish (optional): without the page permission, reopening shows the start prompt instead of the last note | Robot ticket if you want it | open |
 
