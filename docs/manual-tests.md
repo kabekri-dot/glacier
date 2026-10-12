@@ -11,6 +11,12 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### How Glacier works opens the welcome page (#91)
+
+- [ ] Open a note, open the Shortcuts panel with `?` and click "How Glacier works" (dotted underline): the panel folds and the full welcome shows on the paper, with the pixel picture, greeting, three lines with icons, Start writing and the tip. The note's Collection line and backlinks are hidden while it shows.
+- [ ] Click Start writing: you are back in the same note with the cursor in it. Show it again and press Esc: the same.
+- [ ] Do it on School Notebook and Aurora: the day and the night picture. Do it with no note open: Start writing gives the fresh page.
+
 ### Just synced with a pixel pencil (hand fix)
 
 - [ ] Click Sync now in the sync box and in Settings: a small pixel pencil (blue, with a pink eraser, hard pixel edges) hops across in six little jumps, "Just synced" appears a few letters at a time behind its tip, two specks of ink flick off at the end and the pencil fades in steps. Try it on Aurora too: the pencil is easy to see on dark paper. With reduce motion on, the words just appear.
@@ -27,7 +33,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 - [ ] One empty row, then a soft rounded "Start writing" button in the paper's colour, and under it a quiet "Tip: open any website and just start writing."
 - [ ] The welcome fades in gently once. With reduce motion on in the system, it just appears.
 - [ ] Do the same on School Notebook (day picture on white paper) and Aurora (the picture at night, with stars): everything sits on the rules, looks calm and hand made, and nothing overlaps the pill.
-- [ ] Click Start writing: the welcome goes for good. Open the Shortcuts panel with `?`: "How Glacier works" shows the same three lines, without the picture.
+- [ ] Click Start writing: the welcome goes for good. Open the Shortcuts panel with `?`: it starts with the link "How Glacier works" (#91).
 
 ### Collection icons, welcome overlap, Just synced, beside frame, Recent 5, page note Collection (#89)
 
@@ -73,7 +79,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 - [ ] In a fresh profile, open Glacier: three lines in the handwriting font explain notes, website notes and Collections, with a quiet "Start writing" button. Click it: the welcome goes and the caret is on the paper. Reload the extension and open Glacier again: the welcome does not come back.
 - [ ] With no Collections, open the ▾ menu: under "Notebook" a quiet line says "Collections hold notes that belong together. Make one with + New collection." Make a Collection: the line is gone.
 - [ ] On a note without a Collection, hover "Add to a collection" above the text: it explains what Collections are. Hover the `+` in the pill: it says "New note".
-- [ ] Open the Shortcuts panel with `?`: it starts with "How Glacier works" and the same three sentences.
+- [ ] Open the Shortcuts panel with `?`: it starts with the link "How Glacier works" (#91).
 - [ ] Click the sync dot, then "Sync now": a small pen moves across the box and writes "Just synced" in the handwriting font, left to right. After a few seconds the box shows its normal status again. With the network off you get the plain words and no pen.
 - [ ] With "reduce motion" turned on in your system, "Just synced" just appears, with no pen.
 

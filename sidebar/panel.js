@@ -1407,6 +1407,12 @@ async function start() {
       closeOverlays({ keepShortcuts: true });
       prefs.saveShortcutsPanel({ folded: false });
     },
+    onWelcome: () => {
+      closeOverlays();
+      closeSettings({ redraw: false });
+      showWelcome = true;
+      drawWelcome({ again: true });
+    },
   });
   // The tab sits in the pill bar next to +, the drawer on the sidebar's right
   // edge (#76).
@@ -2579,9 +2585,10 @@ async function start() {
   // The welcome (#85, #90): a pixel-art scene, the greeting, three lines with
   // their pictures, one soft button and a tip, each on its own ruled row.
   // Start writing hides it for good (kept in this browser's storage, not
-  // synced) and puts the caret on the paper.
+  // synced) and puts the caret on the paper, back in the open note when it
+  // was shown again from the Shortcuts panel (#91). Esc does the same.
   const welcomeEl = document.querySelector(".welcome");
-  function drawWelcome() {
+  function drawWelcome({ again = false } = {}) {
     if (!showWelcome) return;
     const scene = document.createElement("div");
     scene.className = "welcome-scene";
@@ -2606,7 +2613,13 @@ async function start() {
     const tip = Object.assign(document.createElement("p"), { className: "welcome-tip", textContent: WELCOME_TIP });
     welcomeEl.replaceChildren(scene, greeting, ...lines, startRow, tip);
     welcomeEl.hidden = false;
+    if (again) welcomeEl.scrollIntoView({ block: "start" });
   }
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || welcomeEl.hidden) return;
+    event.preventDefault();
+    welcomeEl.querySelector(".welcome-start")?.click();
+  });
   drawWelcome();
 
   openingFlow.listen();

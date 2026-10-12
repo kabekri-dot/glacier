@@ -570,7 +570,8 @@ export function createSettingsView({ prefs, repo, onClose }) {
 }
 
 // The cheat sheet drawer and its small tab, or nothing when switched off.
-export function createShortcutsView({ onFold, onUnfold }) {
+// "How Glacier works" at its top shows the welcome page again (#91).
+export function createShortcutsView({ onFold, onUnfold, onWelcome }) {
   const sheet = element("aside", "shortcuts");
   sheet.setAttribute("aria-label", "Shortcuts");
   const header = element("header", "shortcuts-header");
@@ -582,9 +583,15 @@ export function createShortcutsView({ onFold, onUnfold }) {
   header.append(element("h1", "shortcuts-title", "Shortcuts"), fold);
 
   const body = element("div", "shortcuts-body");
-  for (const { title, entries, paragraphs } of SHORTCUT_GROUPS) {
-    if (paragraphs) {
-      body.append(element("h2", "settings-subheading", title), ...paragraphs.map((text) => element("p", "shortcuts-about", text)));
+  for (const { title, entries, opensWelcome, hint } of SHORTCUT_GROUPS) {
+    if (opensWelcome) {
+      const link = element("button", "shortcuts-welcome", title);
+      link.type = "button";
+      link.title = hint;
+      link.addEventListener("click", () => onWelcome());
+      const heading = element("h2", "settings-subheading");
+      heading.append(link);
+      body.append(heading);
       continue;
     }
     const list = element("dl", "shortcuts-list");

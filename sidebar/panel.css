@@ -1894,7 +1894,8 @@ html.beside .settings {
   display: none;
 }
 
-.welcome:not([hidden]) ~ .note > * {
+.welcome:not([hidden]) ~ .note > *,
+body:has(.welcome:not([hidden])) :is(.note-meta, .second-version-bar, .backlinks-list, .backlinks-button) {
   visibility: hidden;
 }
 
@@ -1982,8 +1983,23 @@ html[data-dark] .welcome-scene {
   }
 }
 
-.shortcuts-about {
-  margin: 0.3rem 0;
+/* "How Glacier works" at the top of the Shortcuts panel: the heading itself
+   is the link to the welcome page (#91). */
+.shortcuts-welcome {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.shortcuts-welcome:hover,
+.shortcuts-welcome:focus-visible {
+  outline: none;
+  text-decoration-style: solid;
 }
 
 .menu-new-collection-input {
