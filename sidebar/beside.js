@@ -93,6 +93,12 @@ const repo = {
   status: async () => (await askValue("status")) ?? { state: "off" },
   syncNow: async () => (await askValue("syncNow")) ?? { state: "off" },
   courses: async () => (await askValue("courses")) ?? [],
+  // No browser shows its folder picker in a frame on a web page, so the
+  // sidebar opens settings inside itself to pick the folder there (#97).
+  async pickFolder() {
+    await ask("chooseFolderInside");
+    return "inside";
+  },
   async switchHome(place, repoName, token, onProgress) {
     onSwitchProgress = onProgress;
     return (await askValue("switchHome", place, repoName, token)) ?? { error: "Glacier's sidebar closed. Open it and try again." };

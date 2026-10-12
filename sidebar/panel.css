@@ -897,6 +897,16 @@ code {
   background: #c8443a;
 }
 
+/* Chrome needs its OK to write to the notes folder again (#97): the dot
+   becomes a small pixel folder. */
+.sync-dot[data-needs="folder"] {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 0;
+  background: url("../art/icon-folder.svg") center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
 @keyframes sync-pulse {
   to {
     opacity: 0.3;

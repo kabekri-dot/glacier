@@ -115,6 +115,16 @@ the Drive scope). The manifest's `key` fixes the Chrome extension ID
 (`hgcijcdlojpoichmknfepgllmkeopaak`) so the redirect stays the same; its
 private key is not kept in the repo. Firefox's ID is the `gecko.id`.
 
+## Keeping notes in a folder on this computer
+
+In Chrome and Edge, **Where your notes live**, **A folder on this computer**
+keeps the notes as Markdown files in a folder you pick with the browser's
+folder picker (ADR 0011), laid out like the Notes Repo, so Obsidian can open
+the same folder. Firefox has no folder picker, so there the choice is greyed.
+The folder stays known to the browser in IndexedDB. After a restart Chrome
+forgets that Glacier may write there; the first click in Glacier asks again,
+and if Chrome still wants an answer the sync box offers **Reconnect**.
+
 ## Syncing notes with GitHub
 
 Notes live in the browser and sync to a private GitHub repo of your own, the

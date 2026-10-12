@@ -11,6 +11,24 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### A folder on this computer as a Notes Home (#97)
+
+Chrome or Edge only. Have Obsidian (or any text editor) at hand.
+
+- [ ] Open Settings, Where your notes live: "A folder on this computer" is the second choice, with a small pixel folder. In Firefox it is greyed and says "Only in Chrome and Edge", and can't be picked.
+- [ ] In Chrome click it: a short text says each note becomes a Markdown file in a folder you pick, with a "Choose a folder" button. Click it: the browser's folder picker opens. Close the picker: nothing changes.
+- [ ] Click "Choose a folder" again and pick an empty folder. Chrome may ask to let Glacier edit files there; allow it. One line asks "Your notes will be combined with the ones in your notes folder. Nothing is deleted." Keep leaves the old place chosen. Switch shows Connecting to your notes folder, Downloading, Combining notes and Ready.
+- [ ] Open the folder in your file manager: `notes/`, `collections/<Collection>/` and, with archived notes, `archive/` hold one `.md` file per note.
+- [ ] Hover the sync dot: "All saved to your notes folder".
+- [ ] Edit a note's file in another editor and save it, then press Sync now in the sync box (or close and open the sidebar): the edit comes in.
+- [ ] Type in the same note in Glacier and edit its file in another editor before Glacier syncs: after the sync the note has two versions and nothing is lost.
+- [ ] Move a note to another Collection: its file moves to the new Collection's folder, and the old Collection's folder goes once it is empty.
+- [ ] Open the folder in Obsidian as a vault: the notes and Links show, and Obsidian's own `.obsidian` folder is left alone by Glacier.
+- [ ] Close Chrome completely and start it again, open the sidebar and type: the first click or key reconnects the folder without asking, and the note reaches the folder.
+- [ ] If Chrome still asks or refuses after a restart: the sync dot becomes a small pixel folder, and its box says "Chrome needs your OK to write to your notes folder again." with one Reconnect button. Notes keep saving in the browser meanwhile. Reconnect asks and syncs.
+- [ ] Choose a folder with Settings open beside the sidebar: clicking "Choose a folder" moves Settings inside the sidebar with the folder choice shown; click "Choose a folder" there to pick it. Closing Settings and opening them again puts them beside the sidebar again.
+- [ ] Choose "Only in this browser" or GitHub: the folder keeps every file, and Glacier stops writing to it.
+
 ### Google Drive as a Notes Home (#95)
 
 Before reloading in Chrome: Glacier now has a fixed extension ID, so Chrome sees it as a new extension with an empty Notebook. Sync or press Export everything first, then after the reload connect the same place again or use Restore from backup file.
@@ -30,7 +48,7 @@ Before reloading in Chrome: Glacier now has a fixed extension ID, so Chrome sees
 
 Reload with ↻ first.
 
-- [ ] Open Settings: the last section is called "Where your notes live". It shows the choices "Google Drive", "Only in this browser" and "GitHub", each with a small pixel icon, and Backup under them. It looks calm, with no "For developers" text.
+- [ ] Open Settings: the last section is called "Where your notes live". It shows the choices "Google Drive", "A folder on this computer", "Only in this browser" and "GitHub", each with a small pixel icon, and Backup under them. It looks calm, with no "For developers" text.
 - [ ] With GitHub connected from before, GitHub is chosen and its repo and token form shows right under it. Type a note: it still syncs, and the sync dot says "All saved to GitHub" on hover.
 - [ ] Click "Only in this browser": one line asks "Your notes will stay in this browser and stop syncing. Nothing is deleted." with Switch and Keep. Keep leaves GitHub chosen. Switch: the dot turns quiet and says your notes live only in this browser; type a note and check GitHub: nothing new arrives.
 - [ ] Close the sidebar and open it again: "Only in this browser" is still chosen.
