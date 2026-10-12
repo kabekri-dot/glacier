@@ -23,6 +23,7 @@ What Claude tested itself by clicking, typing and pressing keys in a real Chrome
 | 4 | 2026-10-12 | after #87, every user story | bugs → #88 |
 | 5 | 2026-10-12 | after #88 | all fixes work; see Round 5 |
 | 6 | 2026-10-12 | after #89, #90 | see Round 6 |
+| 7 | 2026-10-12 | after the user's hand test, #91, #92 | see Round 7 |
 
 ## Workflows
 
@@ -241,6 +242,20 @@ User stories 14 and 18 are now ✅. Every user story testable here works.
 | Just synced pen in the sync box and in Settings (#89) | ➖ needs a connected repo |
 | Settings beside the sidebar fits, no page scroll (#89) | ❌ #89 made the frame 150 px high (an iframe doesn't stretch between top and bottom); fixed by hand in 8c719a6. ✅ checked on example.com by drawing the frame the same way: full window height (800 of 800 px), settings scroll inside. ➖ the real permission flow |
 | New page note takes the page's Collection (#89) | ➖ needs websites |
+
+## Round 7 (user hand test, #91, #92)
+
+The robots couldn't build #91 and #92 (their GitHub key had expired), so Claude built them in the session, test-first.
+
+| Point | Result |
+|---|---|
+| User: Settings beside the sidebar at full height | ✅ by the user |
+| User: Sync now, the pen writes Just synced | ✅ by the user; the user wanted it more pixel-art → pixel pencil (1905d7d) |
+| User: a popup with a download icon over the Settings heading | ❌ the Backup list shared the floating Collection list's class; fixed in a14cfa9. ✅ the list sits under Backup |
+| Pixel pencil: six hops, words in chunks behind its tip, ink specks, fade in steps | ✅ frozen at 0.2, 1.25, 1.45, 1.8, 2.1 s; ➖ Aurora |
+| How Glacier works opens the welcome (#91) | ✅ full welcome with picture over an open note, Collection line and backlinks hidden; Start writing and Esc return to the note with the cursor; welcomeSeen stays true |
+| New note joins no Collection (#92) | ✅ + New note after using a Collection: "Add to a collection" |
+| Page group under No collection (#92) | ✅ globe and page title, notes newest first; the move icon on hover lists the Collections and + New collection; a new name moves both notes and the group goes |
 
 ## Still to test
 
