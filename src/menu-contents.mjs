@@ -89,7 +89,7 @@ function browse(notebook, openNote) {
     parts.push({ kind: "group", label: course, hint: "Notes in this Collection", open: true, archive: false, titles, course, actions: collectionActions(course, titles.length) });
   }
   if (outline.uncategorised.length > 0) {
-    parts.push(heading("No Collection", "Notes not in any Collection"), { kind: "notes", titles: outline.uncategorised });
+    parts.push(heading("No collection", "Notes not in any Collection"), { kind: "notes", titles: outline.uncategorised });
   }
   const archived = notebook.archivedNotes();
   if (archived.length > 0) {
@@ -228,4 +228,12 @@ export const BACK_BUTTON_HINT = "Your last notes";
 // The box under ← (#81): the last notes you were on, newest first.
 export function lastNotesBox(screen, notebook) {
   return screen.lastNotes().map((title) => ({ title, origin: noteOrigin(notebook, title) }));
+}
+
+// The title in the pill (#83). With no note open it is a quiet "Glacier" that
+// cannot be renamed; a fresh page offers to name its note.
+export function pillTitle({ note, freshPage }) {
+  if (note) return { text: note.title, hint: "Click to rename", renamable: true, draft: false };
+  if (freshPage) return { text: freshPage.title || "Title", hint: "Click to name this note", renamable: true, draft: true };
+  return { text: "Glacier", hint: "", renamable: false, draft: false };
 }

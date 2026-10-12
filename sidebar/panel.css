@@ -127,7 +127,10 @@ body {
   line-height: var(--line-height);
   white-space: nowrap;
   text-overflow: ellipsis;
-  opacity: 0.7;
+  /* Above the note, which is positioned later and would swallow real clicks.
+     The fade is on the colour, so the Collection list keeps a solid background. */
+  z-index: 2;
+  color: color-mix(in srgb, var(--ink) 70%, transparent);
 }
 
 .note-meta[hidden] {
@@ -136,6 +139,7 @@ body {
 
 .note-meta a {
   color: var(--accent);
+  opacity: 0.7;
 }
 
 /* The Collection on that line is a quiet button that opens a small list right
@@ -1109,6 +1113,10 @@ code {
 }
 
 /* A fresh page that is not a note yet shows its title faded (#61). */
+.pill-title.is-quiet {
+  cursor: default;
+}
+
 .pill-title.is-draft {
   opacity: 0.55;
 }
@@ -1225,7 +1233,7 @@ code {
   position: fixed;
   right: 0.6rem;
   bottom: 0.6rem;
-  z-index: 30;
+  z-index: 12;
   width: 3.25rem;
   height: 3.25rem;
   padding: 0;

@@ -21,7 +21,7 @@ import { printHtml } from "../src/print-layout.mjs";
 import { createScreen } from "../src/screen.mjs";
 import { isOpenedByPage } from "../src/page-open.mjs";
 import { newNoteChoices, NEW_NOTE_HINT, PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
-import { notebookMenu, noteMenu, rowActions, archivedNotice, deleteCollectionQuestion, pageNoteCount, secondVersionBar, noteOrigin, lastNotesBox, BACK_BUTTON_HINT } from "../src/menu-contents.mjs";
+import { notebookMenu, noteMenu, rowActions, archivedNotice, deleteCollectionQuestion, pageNoteCount, secondVersionBar, noteOrigin, lastNotesBox, pillTitle, BACK_BUTTON_HINT } from "../src/menu-contents.mjs";
 import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
@@ -492,9 +492,18 @@ async function start() {
     stopTitleEdit();
     const note = screen.note();
     const freshPage = screen.freshPage();
-    pillTitleEl.textContent = note ? note.title : freshPage ? freshPage.title || "Title" : "Glacier";
-    pillTitleEl.classList.toggle("is-draft", Boolean(freshPage));
-    pillTitleEl.title = freshPage ? "Click to name this note" : "Click to rename";
+    const title = pillTitle({ note, freshPage });
+    pillTitleEl.textContent = title.text;
+    pillTitleEl.classList.toggle("is-draft", title.draft);
+    pillTitleEl.classList.toggle("is-quiet", !title.renamable);
+    pillTitleEl.title = title.hint;
+    if (title.renamable) {
+      pillTitleEl.setAttribute("role", "button");
+      pillTitleEl.tabIndex = 0;
+    } else {
+      pillTitleEl.removeAttribute("role");
+      pillTitleEl.removeAttribute("tabindex");
+    }
     pillArchivedEl.hidden = !note?.archived;
     // "1 of 3": the page has more notes (#68). Like the rest of the pill, a
     // click opens the ▾ menu, which starts with Notes for this page.
@@ -540,9 +549,7 @@ async function start() {
 
   backEl.addEventListener("click", () => {
     if (backBoxEl.hidden) {
-      closeMenu();
-      closeNewMenu();
-      closeNoteMenu();
+      closeOverlays();
       openBackBox();
     } else closeBackBox();
   });
@@ -605,8 +612,7 @@ async function start() {
   newButtonEl.addEventListener("click", () => {
     if (!newMenuEl.hidden) closeNewMenu();
     else {
-      closeMenu();
-      closeNoteMenu();
+      closeOverlays();
       openNewMenu();
     }
   });
@@ -935,14 +941,24 @@ async function start() {
 
   let refreshMenu = () => {};
 
-  function openMenu() {
-    closeSettings({ redraw: false });
+  // Only one of the ▾ menu, the ⋯ menu, the + menu, the ← box, the sync box
+  // and the Shortcuts panel is open at a time (#83).
+  function closeOverlays({ keepShortcuts = false } = {}) {
+    closeMenu();
+    closeNewMenu();
     closeNoteMenu();
     closeBackBox();
+    closeSyncBox();
+    if (!keepShortcuts && shortcutsPanel.on && !shortcutsPanel.folded) prefs.saveShortcutsPanel({ folded: true });
+  }
+
+  function openMenu() {
+    closeSettings({ redraw: false });
     if (menuIsOpen()) {
       menuPanelEl.querySelector(".menu-search").focus();
       return;
     }
+    closeOverlays();
     // Flush the line being edited so the menu sees its latest text.
     screen.flush();
     menuPanelEl.replaceChildren();
@@ -1038,7 +1054,7 @@ async function start() {
   function openNoteMenu() {
     const menu = noteMenu(screen.note());
     if (!menu) return;
-    closeMenu();
+    closeOverlays();
     screen.flush();
     noteMenuEl.replaceChildren();
     const heading = document.createElement("p");
@@ -1053,7 +1069,7 @@ async function start() {
             if (!noteMetaEl.querySelector(".course-list")) openCourseList();
           } else if (action.kind === "download") {
             askFormat(noteMenuButtonEl, (format) => downloadNote(screen.note().title, format));
-          } else if (action.kind === "archive") draw(screen.archive());
+          } else if (action.kind === "archive") archiveFromMenu(screen.note().title);
           else if (action.kind === "unarchive") draw(screen.unarchive());
           else showDeleteQuestion();
         }),
@@ -1230,8 +1246,7 @@ async function start() {
   }
 
   function openSyncBox() {
-    closeNoteMenu();
-    closeMenu();
+    closeOverlays();
     drawSyncBox();
     syncBoxEl.hidden = false;
     syncDotEl.setAttribute("aria-expanded", "true");
@@ -1360,7 +1375,10 @@ async function start() {
   const settingsView = createSettingsView({ prefs, repo: repoActions, onClose: () => closeSettings() });
   const shortcutsView = createShortcutsView({
     onFold: () => prefs.saveShortcutsPanel({ folded: true }),
-    onUnfold: () => prefs.saveShortcutsPanel({ folded: false }),
+    onUnfold: () => {
+      closeOverlays({ keepShortcuts: true });
+      prefs.saveShortcutsPanel({ folded: false });
+    },
   });
   // The tab sits in the pill bar next to +, the drawer on the sidebar's right
   // edge (#76).
@@ -1467,7 +1485,7 @@ async function start() {
     const next = document.createElement("p");
     next.className = "perm-next";
     next.textContent =
-      "Your browser will ask to confirm, in its own words about your data on all websites. If you decline, both panels open inside the sidebar. You can change this later in settings, under Panels.";
+      "Your browser will ask to confirm, in its own words about your data on all websites. If you decline, settings open inside the sidebar. You can change this later in settings, under Panels.";
 
     const buttons = document.createElement("div");
     buttons.className = "perm-buttons";

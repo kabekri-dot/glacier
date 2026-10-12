@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createNotebook } from "../src/notebook.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
-import { notebookMenu, noteMenu, pageNoteCount, deleteCollectionQuestion, archivedNotice, secondVersionBar, rowActions, noteOrigin, lastNotesBox } from "../src/menu-contents.mjs";
+import { notebookMenu, noteMenu, pageNoteCount, deleteCollectionQuestion, archivedNotice, secondVersionBar, rowActions, noteOrigin, lastNotesBox, pillTitle } from "../src/menu-contents.mjs";
 
 // What the ▾ Notebook and ⋯ This note menus list (#67), as plain data the
 // sidebar only has to draw.
@@ -73,7 +73,7 @@ test("the Notebook lists Collections with their notes, then the notes without a 
       { kind: "archive", hint: "Archive 'TOP Foundations', 2 notes" },
       { kind: "delete", hint: "Delete 'TOP Foundations', 2 notes" },
     ] },
-    { kind: "heading", text: "No Collection", hint: "Notes not in any Collection" },
+    { kind: "heading", text: "No collection", hint: "Notes not in any Collection" },
     { kind: "notes", titles: ["Loose page", "Margins"] },
   ]);
 });
@@ -288,4 +288,22 @@ test("the Notebook part offers + New collection, and an empty Collection only De
   const group = parts.find((part) => part.kind === "group" && part.course === "Biology");
   assert.deepEqual(group.actions.map((action) => action.kind), ["delete"]);
   assert.equal(deleteCollectionQuestion("Biology", 0), "Delete the empty collection 'Biology'?");
+});
+
+test("with no note open the pill says Glacier quietly and cannot be renamed", () => {
+  assert.deepEqual(pillTitle({ note: null, freshPage: null }), { text: "Glacier", hint: "", renamable: false, draft: false });
+});
+
+test("the pill of an open note shows its title and offers to rename it", () => {
+  const pill = pillTitle({ note: { title: "Grid" }, freshPage: null });
+  assert.deepEqual(pill, { text: "Grid", hint: "Click to rename", renamable: true, draft: false });
+});
+
+test("the pill of a fresh page offers to name the note", () => {
+  assert.deepEqual(pillTitle({ note: null, freshPage: { title: "" } }), {
+    text: "Title",
+    hint: "Click to name this note",
+    renamable: true,
+    draft: true,
+  });
 });

@@ -99,6 +99,17 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
     return { type: "note", note, reload: false, changed: true };
   }
 
+  // The open note was archived or deleted: show the note you were on before
+  // (#83), or leave the choice to the page when there is none.
+  function leaveRemovedNote() {
+    for (let title = history.back(); title !== null; title = history.back()) {
+      const found = notebook.note(title);
+      if (found && !found.archived) return { ...showNote(found, { byPage: isOpenedByPage(found), fromHistory: true }), changed: true };
+    }
+    showNothing();
+    return { type: "followPage", changed: true };
+  }
+
   return {
     note: () => note,
     freshPage: () => freshPage,
@@ -210,8 +221,7 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
     archive() {
       session.flush();
       notebook.archiveNote(note.title);
-      showNothing();
-      return { type: "followPage", changed: true };
+      return leaveRemovedNote();
     },
 
     unarchive() {
@@ -224,8 +234,7 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
     delete() {
       session.flush();
       notebook.deleteNote(note.title);
-      showNothing();
-      return { type: "followPage", changed: true };
+      return leaveRemovedNote();
     },
 
     // The note on screen again, as stored (Keep after the delete question).
