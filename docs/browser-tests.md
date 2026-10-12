@@ -4,6 +4,8 @@ What Claude tested itself by clicking, typing and pressing keys in a real Chrome
 
 ## How
 
+- Settings beside the sidebar can be checked without the permission prompt: open a website in the test Chrome and add the frame (`sidebar/beside.html?panel=settings`, a web-accessible page) with the same styles `sidebar/beside-frames.js` uses, then measure it.
+
 - Chrome DevTools MCP starts its own test Chrome, separate from the user's Chrome and the Claude extension.
 - `install_extension` loads the repo folder as an unpacked extension; the sidebar is opened as a tab at `chrome-extension://<id>/sidebar/panel.html`, sized 420 × 800 like a sidebar.
 - A fresh start: clear `chrome.storage.local` and delete the `glacier` IndexedDB, then reload.
@@ -237,7 +239,7 @@ User stories 14 and 18 are now ✅. Every user story testable here works.
 | Collection heading icons close together (#89) | ✅ 22 px apart, like note rows |
 | Recent shows the last 5 (#89) | ✅ 5 of 6 notes |
 | Just synced pen in the sync box and in Settings (#89) | ➖ needs a connected repo |
-| Settings beside the sidebar fits, no page scroll (#89) | ➖ needs the permission |
+| Settings beside the sidebar fits, no page scroll (#89) | ❌ #89 made the frame 150 px high (an iframe doesn't stretch between top and bottom); fixed by hand in 8c719a6. ✅ checked on example.com by drawing the frame the same way: full window height (800 of 800 px), settings scroll inside. ➖ the real permission flow |
 | New page note takes the page's Collection (#89) | ➖ needs websites |
 
 ## Still to test
