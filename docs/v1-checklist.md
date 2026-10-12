@@ -74,7 +74,7 @@ Three lists in one place: what's left to do before v1, what Glacier must do (req
 | R30 | welcome first-time users once, with pixel art and three plain sentences | ✅ ⚠️ P1 |
 | R31 | explain itself: hover texts, How Glacier works, hints | ✅ |
 | R32 | follow the visible-text rule (no dashes as punctuation, no all caps, no emoji) | ✅ |
-| R33 | open Settings beside the sidebar on websites at full height, inside on browser pages with a short reason | ✅ size checked on example.com; 👤 the real flow |
+| R33 | open Settings beside the sidebar on websites at full height, inside on browser pages with a short reason | ✅ size checked on example.com; ✅ user checked full height (2026-10-12) |
 | R34 | keep the Shortcuts panel on the right, listing every key | ✅ |
 
 ### Sync and safety
