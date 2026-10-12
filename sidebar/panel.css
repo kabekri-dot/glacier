@@ -704,6 +704,23 @@ code {
   image-rendering: pixelated;
 }
 
+/* Google Drive before its sign-in is registered (#95): greyed, with a quiet
+   "Not set up yet" at the end of the row. */
+.home-choice:has(input:disabled) {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.home-choice:has(input:disabled):hover {
+  background: none;
+}
+
+.home-note {
+  margin-left: auto;
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
 /* The GitHub settings and the first sync's steps (#14). */
 .settings-text {
   margin: 0;

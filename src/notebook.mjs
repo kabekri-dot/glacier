@@ -267,7 +267,8 @@ export function notesRepoName(input) {
 
 // What went wrong talking to the Notes Repo, in one sentence for the screen.
 // A remote marks its errors with a `reason`; anything else is unexpected.
-export function syncErrorMessage(error, repo) {
+export function syncErrorMessage(error, repo, place = "GitHub") {
+  if (place === "Google Drive") return driveErrorMessage(error);
   switch (error?.reason) {
     case "unauthorized":
       return "GitHub didn't accept this token. Check that you pasted all of it, or make a new one.";
@@ -279,6 +280,19 @@ export function syncErrorMessage(error, repo) {
       return "Couldn't reach GitHub. Check your connection and try again.";
     default:
       return "Something went wrong talking to GitHub. Please try again in a moment.";
+  }
+}
+
+// The same for Google Drive (#95), where only signing in can go wrong.
+function driveErrorMessage(error) {
+  switch (error?.reason) {
+    case "unauthorized":
+    case "forbidden":
+      return "Google Drive didn't let Glacier in. Sign in with Google again under Where your notes live.";
+    case "offline":
+      return "Couldn't reach Google Drive. Check your connection and try again.";
+    default:
+      return "Something went wrong talking to Google Drive. Please try again in a moment.";
   }
 }
 

@@ -1,12 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
-import { createNotebook, noteToFile } from "../src/notebook.mjs";
+import { createNotebook, noteToFile, syncErrorMessage } from "../src/notebook.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { memoryRemote } from "../src/memory-remote.mjs";
-import { NOTES_HOMES, notesHomeName, switchQuestion, chosenNotesHome } from "../src/notes-home.mjs";
+import { NOTES_HOMES, notesHomeName, switchQuestion, chosenNotesHome, notesHomeChoices, googleReady } from "../src/notes-home.mjs";
 import { createAutoSync, syncBox, syncDotText, syncStatusText } from "../src/auto-sync.mjs";
+import { GOOGLE_CONFIG } from "../src/google-config.mjs";
 
 // Where your notes live (#94, ADR 0011): one Notes Home at a time. Switching
 // combines the notes here and in the new place, deletes nothing and leaves
@@ -102,8 +103,8 @@ test("before any choice there is no Notes Home saved", () => {
   assert.equal(createNotebook({ storage: memoryStorage() }).notesHome(), null);
 });
 
-test("the places to choose from are only in this browser and GitHub, each with its pixel icon", () => {
-  assert.deepEqual(NOTES_HOMES.map((home) => home.name), ["Only in this browser", "GitHub"]);
+test("the places to choose from start with Google Drive, each with its pixel icon", () => {
+  assert.deepEqual(NOTES_HOMES.map((home) => home.name), ["Google Drive", "Only in this browser", "GitHub"]);
   for (const { icon } of NOTES_HOMES) {
     assert.ok(existsSync(new URL(`../art/icon-${icon}.svg`, import.meta.url)), icon);
   }
@@ -147,4 +148,41 @@ test("a push that fails once the notes are combined keeps the new place, and the
   remote.failWith(null);
   await notebook.sync(remote);
   assert.deepEqual(remote.files(), filesOf(margins, padding));
+});
+
+// Google Drive (#95).
+
+test("Google Drive shows Not set up yet until its sign-in is registered", () => {
+  const unset = notesHomeChoices({ googleReady: false }).find((home) => home.id === "google-drive");
+  assert.equal(unset.note, "Not set up yet");
+  assert.equal(unset.disabled, true);
+  const ready = notesHomeChoices({ googleReady: true }).find((home) => home.id === "google-drive");
+  assert.equal(ready.note, undefined);
+  assert.equal(ready.disabled, false);
+  assert.equal(googleReady({ webClientId: "" }), false);
+  assert.equal(googleReady({ webClientId: "123.apps.googleusercontent.com" }), true);
+});
+
+test("Chrome finds the same Google client in the manifest as in google-config.mjs", () => {
+  const manifest = JSON.parse(readFileSync(new URL("../manifest.json", import.meta.url), "utf8"));
+  assert.equal(manifest.oauth2?.client_id ?? "", GOOGLE_CONFIG.chromeClientId);
+  assert.ok(manifest.permissions.includes("identity"));
+  assert.ok(manifest.key, "a fixed extension ID keeps the sign-in address the same");
+});
+
+test("Google Drive's problems are explained in its own words", () => {
+  const messageFor = (reason) => syncErrorMessage(Object.assign(new Error(), { reason }), "", "Google Drive");
+  assert.match(messageFor("offline"), /Couldn't reach Google Drive/);
+  assert.match(messageFor("forbidden"), /Sign in with Google/);
+  assert.doesNotMatch(messageFor("unknown"), /GitHub/);
+});
+
+test("when Google asks to sign in again, the sync box says so with one button", () => {
+  const status = { state: "error", reason: "unauthorized", place: "Google Drive" };
+  assert.match(syncStatusText(status).detail, /sign in again/i);
+  assert.doesNotMatch(syncStatusText(status).detail, /token/);
+  const box = syncBox(status);
+  assert.equal(box.action, "Sign in with Google");
+  assert.equal(box.signIn, true);
+  assert.equal(syncBox({ state: "error", reason: "unauthorized", place: "GitHub" }).signIn, undefined);
 });

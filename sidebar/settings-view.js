@@ -13,7 +13,8 @@
 //   exportCourse(course, format), exportAll(), restore(bytes) and notice(text, ms)
 import { syncStatusText, syncResultText, JUST_SYNCED } from "../src/auto-sync.mjs";
 import { notesRepoName } from "../src/notebook.mjs";
-import { NOTES_HOMES, notesHomeName, switchQuestion } from "../src/notes-home.mjs";
+import { notesHomeChoices, notesHomeName, switchQuestion, googleReady } from "../src/notes-home.mjs";
+import { GOOGLE_CONFIG } from "../src/google-config.mjs";
 import { SHORTCUT_GROUPS } from "../src/shortcuts-panel.mjs";
 import { PAPERS, paperGroups, FONT_OVERRIDES, TEXT_SIZE } from "../src/look.mjs";
 
@@ -416,10 +417,11 @@ export function createSettingsView({ prefs, repo, onClose }) {
     return [element("h2", "settings-subheading", "Backup"), courseList, restoreRow];
   }
 
-  // Where your notes live (#14, #94, ADR 0011): one radio per place, each
-  // with its pixel icon. GitHub shows the repo and token form right under
-  // it. Switching asks first in one line, then combines. The sync status and
-  // Backup sit below. The repo name and token stay in this browser's
+  // Where your notes live (#14, #94, #95, ADR 0011): one radio per place,
+  // each with its pixel icon. Google Drive shows its sign-in under it (or
+  // "Not set up yet" beside it), GitHub the repo and token form. Switching
+  // asks first in one line, then combines. The sync status and Backup sit
+  // below. The repo name and token stay in this browser's
   // extension storage, never in the Notebook (ADR 0003).
   async function drawNotesHome({ picked, repo: typedRepo, error, ask } = {}) {
     const saved = await repo.connection();
@@ -428,7 +430,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
     const choices = element("div", "home-list");
     choices.setAttribute("role", "radiogroup");
     choices.setAttribute("aria-label", "Where your notes live");
-    for (const home of NOTES_HOMES) {
+    for (const home of notesHomeChoices({ googleReady: googleReady(GOOGLE_CONFIG) })) {
       const label = element("label", "home-choice");
       label.title = home.hint;
       const radio = document.createElement("input");
@@ -436,6 +438,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
       radio.name = "notes-home";
       radio.value = home.id;
       radio.checked = home.id === shown;
+      radio.disabled = home.disabled;
       radio.addEventListener("change", () => {
         if (home.id === "browser" && saved.home !== "browser") drawNotesHome({ picked: "browser", ask: "browser" });
         else drawNotesHome({ picked: home.id });
@@ -444,12 +447,14 @@ export function createSettingsView({ prefs, repo, onClose }) {
       icon.src = `../art/icon-${home.icon}.svg`;
       icon.alt = "";
       label.append(radio, icon, element("span", "", home.name));
+      if (home.note) label.append(element("span", "home-note", home.note));
       choices.append(label);
     }
 
     let place = [];
     if (ask) place = [switchCard(ask)];
     else if (shown === "github") place = [githubForm(saved, typedRepo, error)];
+    else if (shown === "google-drive") place = [googleCard(saved, error)];
 
     const status = await repo.status();
     const sync = status.state === "off" || ask ? [] : syncStatusRow({ status, syncNow: repo.syncNow, notice: repo.notice });
@@ -470,6 +475,35 @@ export function createSettingsView({ prefs, repo, onClose }) {
     row.append(yes, keep);
     card.append(element("p", "settings-text", switchQuestion(place)), row);
     setTimeout(() => yes.focus());
+    return card;
+  }
+
+  // Google Drive: one button to sign in, then the switch asks first. Glacier
+  // keeps the notes in a folder named Glacier and sees only its own files.
+  function googleCard(saved, error) {
+    const card = element("div", "settings-form");
+    const connected = saved.home === "google-drive";
+    card.append(
+      element(
+        "p",
+        "settings-text",
+        connected
+          ? "Connected to your Google Drive. Your notes are in a folder named Glacier there."
+          : "Your notes go into a folder named Glacier in your Google Drive, so every browser where you sign in shares them.",
+      ),
+      element("p", "settings-hint", "Glacier only sees the files it makes, nothing else in your Drive."),
+    );
+    if (error) {
+      const errorEl = element("p", "settings-error", error);
+      errorEl.setAttribute("role", "alert");
+      card.append(errorEl);
+    }
+    if (!connected) {
+      const signIn = element("button", "card-button", "Sign in with Google");
+      signIn.type = "button";
+      signIn.addEventListener("click", () => card.replaceWith(switchCard("google-drive")));
+      card.append(signIn);
+    }
     return card;
   }
 
@@ -582,7 +616,8 @@ export function createSettingsView({ prefs, repo, onClose }) {
     }
 
     const notes = result.notes === 1 ? "1 note" : `${result.notes} notes`;
-    const done = element("p", "settings-text", `Your notes are here. Brought in ${notes} from ${repoName}.`);
+    const from = place === "github" ? repoName : notesHomeName(place);
+    const done = element("p", "settings-text", `Your notes are here. Brought in ${notes} from ${from}.`);
     const ok = element("button", "card-button", "Start writing");
     ok.type = "button";
     ok.addEventListener("click", () => {

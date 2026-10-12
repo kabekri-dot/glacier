@@ -7,12 +7,13 @@
 // few seconds. Esc or a click anywhere else closes it.
 //
 // The sidebar (panel.js) plugs in the dot and the box, auto-sync and these:
-//   openSettings(section), showConflicts() (opens the ▾ menu at the top) and
-//   beforeOpen(), which closes whatever else is open.
+//   openSettings(section), showConflicts() (opens the ▾ menu at the top),
+//   signInAgain() (signs in with Google and syncs, #95) and beforeOpen(),
+//   which closes whatever else is open.
 import { syncDotText, syncStatusText, syncBox, syncResultText, JUST_SYNCED } from "../src/auto-sync.mjs";
 import { justSyncedLine, menuButton } from "./settings-view.js";
 
-export function createSyncBoxView({ dotEl, boxEl, autoSync, openSettings, showConflicts, beforeOpen }) {
+export function createSyncBoxView({ dotEl, boxEl, autoSync, signInAgain, openSettings, showConflicts, beforeOpen }) {
   let boxTimer = null;
   let resultShown = null;
   let justSynced = false;
@@ -37,11 +38,11 @@ export function createSyncBoxView({ dotEl, boxEl, autoSync, openSettings, showCo
     openSettings("notes-home");
   }
 
-  async function syncNow() {
+  async function syncNow(run = () => autoSync.syncNow()) {
     if (syncing) return;
     syncing = true;
     drawBox();
-    const result = await autoSync.syncNow();
+    const result = await run();
     syncing = false;
     resultShown = syncResultText(result);
     justSynced = resultShown === JUST_SYNCED;
@@ -69,10 +70,14 @@ export function createSyncBoxView({ dotEl, boxEl, autoSync, openSettings, showCo
     else addLine("sync-box-status", box.status);
     if (box.last) addLine("sync-box-last", box.last);
 
+    const hint =
+      status.state === "off" ? "Choose where your notes live"
+      : box.signIn ? "Sign in with Google again, then sync"
+      : "Pull and push your notes right away";
     const button = menuButton(
       syncing ? "Syncing…" : (justSynced ? box.action : (resultShown ?? box.action)),
-      status.state === "off" ? "Choose where your notes live" : "Pull and push your notes right away",
-      () => (status.state === "off" ? goToSettings() : syncNow()),
+      hint,
+      () => (status.state === "off" ? goToSettings() : box.signIn ? syncNow(signInAgain) : syncNow()),
     );
     justSyncedWritten = justSynced;
     const parts = [...lines, button];

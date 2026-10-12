@@ -100,6 +100,21 @@ have their own; sync both to the same Notes Repo to share them.
    install the signed `.xpi`. Chrome: unpack the zip over the everyday copy's
    folder and press reload on `chrome://extensions`.
 
+## Keeping notes in Google Drive
+
+In Settings, **Where your notes live**, **Google Drive** keeps the notes as
+Markdown files in a folder named `Glacier` in your Drive (ADR 0011). Glacier
+asks only for the `drive.file` scope, so it sees only the files it made.
+
+Until Glacier's sign-in is registered with Google, the choice says "Not set up
+yet". Registering fills in `src/google-config.mjs`: a Web application client
+(Edge and Firefox) with the redirects `https://<extension id>.chromiumapp.org/`
+and Firefox's `http://127.0.0.1/mozoauth2/<id>`, and a Chrome extension client
+whose ID also goes into the manifest's `oauth2` (`client_id`, and `scopes` with
+the Drive scope). The manifest's `key` fixes the Chrome extension ID
+(`hgcijcdlojpoichmknfepgllmkeopaak`) so the redirect stays the same; its
+private key is not kept in the repo. Firefox's ID is the `gecko.id`.
+
 ## Syncing notes with GitHub
 
 Notes live in the browser and sync to a private GitHub repo of your own, the
@@ -113,9 +128,9 @@ too (ADR 0005). Your code repo and your Notes Repo are separate.
    - Repository access: **Only select repositories**, and pick the notes repo.
    - Permissions, Repository permissions, **Contents: Read and write**.
    - Copy the token (`github_pat_…`). GitHub shows it only once.
-3. In Glacier open Settings (the round button bottom right), **Notes repo**,
-   type the repo as `yourname/glacier-notes`, paste the token and press
-   **Connect and sync**.
+3. In Glacier open Settings (the round button bottom right), **Where your
+   notes live**, choose **GitHub**, type the repo as `yourname/glacier-notes`,
+   paste the token and press **Connect and sync**.
 4. Do the same in every browser you use. A browser that already has notes with
    the same names gets Conflict Copies on its first sync (ADR 0004).
 
