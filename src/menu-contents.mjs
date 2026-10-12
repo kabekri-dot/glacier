@@ -90,10 +90,10 @@ function browse(notebook, openNote) {
     parts.push({ kind: "empty", text: "No notes yet" });
   }
   for (const { course, titles } of outline.courses) {
-    parts.push({ kind: "group", label: course, hint: "Notes in this Collection", open: true, archive: false, titles, course, actions: collectionActions(course, titles.length) });
+    parts.push({ kind: "group", label: course, hint: "Notes in this collection", open: true, archive: false, titles, course, actions: collectionActions(course, titles.length) });
   }
   if (outline.uncategorised.length > 0) {
-    parts.push(heading("No collection", "Notes not in any Collection"), ...withPageGroups(notebook, outline.uncategorised));
+    parts.push(heading("No collection", "Notes not in any collection"), ...withPageGroups(notebook, outline.uncategorised));
   }
   const archived = notebook.archivedNotes();
   if (archived.length > 0) {
@@ -229,7 +229,7 @@ export function noteMenu(note) {
     heading: note.title,
     actions: [
       { kind: "move", label: "Move to collection…", hint: "Put this note in a collection" },
-      { kind: "download", label: "Download as a file", hint: "Save this note as a Markdown file" },
+      { kind: "download", label: "Download as a file", hint: "Save this note as Markdown or PDF, or print it" },
       note.archived
         ? { kind: "unarchive", label: "Unarchive", hint: "Put this note back in your lists" }
         : { kind: "archive", label: "Archive", hint: "Hide this note from your lists. You can bring it back any time" },

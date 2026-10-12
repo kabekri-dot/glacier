@@ -271,6 +271,7 @@ test("the box says when nothing was synced yet", () => {
 test("the box offers a way to check notes with two versions", () => {
   const box = syncBox({ state: "conflict", conflicts: ["a", "b", "c", "d", "e", "f"], lastSynced: twoMinutesAgo }, boxNow);
   assert.equal(box.conflicts, "6 notes have two versions. Check them");
+  assert.equal(box.status, "Synced");
 });
 
 test("not connected, the box says so and offers to set up sync", () => {

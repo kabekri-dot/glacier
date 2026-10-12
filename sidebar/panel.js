@@ -961,7 +961,7 @@ async function start() {
         inner.className = "menu-course";
         const heading = collectionSummary(section.course, section.actions, inner, "div");
         heading.className = "menu-course-heading";
-        heading.title = "Notes in this Collection";
+        heading.title = "Notes in this collection";
         inner.append(heading, titleList(section.titles, null, true));
         details.append(inner);
       }

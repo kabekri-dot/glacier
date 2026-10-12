@@ -68,12 +68,12 @@ test("the Notebook lists Collections with their notes, then the notes without a 
   assert.deepEqual(menu, [
     { kind: "heading", text: "Notebook", hint: null },
     { kind: "newCollection", label: "+ New collection", hint: "Make an empty collection to fill later" },
-    { kind: "group", label: "TOP Foundations", hint: "Notes in this Collection", open: true, archive: false, titles: ["Box model", "Flexbox"], course: "TOP Foundations", actions: [
+    { kind: "group", label: "TOP Foundations", hint: "Notes in this collection", open: true, archive: false, titles: ["Box model", "Flexbox"], course: "TOP Foundations", actions: [
       { kind: "download", hint: "Download 'TOP Foundations', 2 notes" },
       { kind: "archive", hint: "Archive 'TOP Foundations', 2 notes" },
       { kind: "delete", hint: "Delete 'TOP Foundations', 2 notes" },
     ] },
-    { kind: "heading", text: "No collection", hint: "Notes not in any Collection" },
+    { kind: "heading", text: "No collection", hint: "Notes not in any collection" },
     { kind: "notes", titles: ["Loose page", "Margins"] },
   ]);
 });
@@ -381,4 +381,9 @@ test("archived notes don't count for a page group", () => {
   const notebook = pageWithTwoNotes();
   notebook.archiveNote("Margin collapse");
   assert.deepEqual(noCollectionPart(notebookMenu(notebook, ""))[0], { kind: "notes", titles: ["Loose page", "Margins"] });
+});
+
+test("the note's Download says it can save or print the note", () => {
+  const download = noteMenu({ title: "Grid" }).actions.find((action) => action.kind === "download");
+  assert.equal(download.hint, "Save this note as Markdown or PDF, or print it");
 });

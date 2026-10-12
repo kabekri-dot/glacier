@@ -166,6 +166,7 @@ export function syncBox(status, now = new Date()) {
     syncing: "Syncing…",
     offline: OFFLINE_SHORT,
     error: syncDotText(status),
+    conflict: "Synced",
   };
   return {
     status: words[status.state] ?? "Up to date",
