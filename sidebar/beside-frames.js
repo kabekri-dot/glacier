@@ -69,7 +69,9 @@ export function drawBesideFrames(state) {
       "color-scheme: normal",
       `${edge}: ${box.offset}px`,
       `top: ${box.top}px`,
-      "bottom: 0",
+      // An iframe doesn't stretch between top and bottom like a box does, so
+      // its height is set outright: the whole window below `top`.
+      `height: calc(100vh - ${box.top}px)`,
       `width: ${box.width}px`,
       "overflow: hidden",
       box.shadow ? `box-shadow: ${onLeft ? "" : "-"}6px 0 14px -6px rgba(0, 0, 0, 0.25)` : "",
