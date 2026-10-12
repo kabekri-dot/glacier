@@ -374,10 +374,10 @@ export function createSettingsView({ prefs, repo, onClose }) {
   // Export and Restore (#13, #55), under Notes repo. The Notebook does the
   // files; this only picks them.
   async function backupControls() {
-    const courseList = element("div", "course-list");
+    const courseList = element("div", "backup-collections");
     courseList.setAttribute("aria-label", "Collections to download");
     for (const course of await repo.courses()) {
-      const row = element("div", "course-row");
+      const row = element("div", "backup-collection");
       row.append(
         element("span", "course-name", course),
         iconButton("download", `Download the Collection '${course}'`, (button) =>

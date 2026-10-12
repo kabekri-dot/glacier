@@ -11,6 +11,10 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Collections to download stay in Settings (hand fix)
+
+- [ ] In Settings, open Notes repo and click Sync now: under Backup the Collections with their download icon sit in the list, not floating over the Settings heading. Click a note's Collection line: its list of Collections still opens under it and scrolls when long.
+
 ### A welcoming first page (#90)
 
 - [ ] Reload with ↻, then open Glacier in a fresh profile (or after clearing "welcomeSeen") on the Glacier paper: at the top of the paper a small pixel picture of a glacier and a little iceberg on calm water, about four ruled rows high, across the full width, fading softly into the paper. Nothing of it is under the pill.
