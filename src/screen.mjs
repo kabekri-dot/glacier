@@ -18,6 +18,12 @@
 //   { type: "pageChanged" }  a pulled note may belong to this page.
 //   { type: "backlinks" }    only the Backlinks may have changed.
 //   { type: "titleRefused", suggestion? }  the title in the pill is refused.
+//   { type: "welcome" }      the welcome shows over whatever is on screen.
+//   { type: "welcomeGone" }  the welcome went; what was under it stays.
+//
+// The welcome (#85, #89, #91) shows on the first start until it is seen, and
+// again from "How Glacier works". Opening a note, typing or Start writing
+// hides it and counts it as seen: `onWelcomeSeen()` is called to remember that.
 //
 // `changed: true` means the Notebook changed, for Sync. `beforeLeave()` is
 // called just before the note on screen is left, so the editor can take an
@@ -28,8 +34,9 @@ import { isOpenedByPage } from "./page-open.mjs";
 
 const LAST_NOTES_SHOWN = 3;
 
-export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ...timers }) {
+export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, welcomeSeen = true, onWelcomeSeen = () => {}, ...timers }) {
   let note = null;
+  let welcome = !welcomeSeen;
   // Whether the page opened the note, so a later page change may replace it
   // (only with the "keep a note I opened myself" setting, ADR 0009).
   let openedByPage = false;
@@ -51,7 +58,14 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
     ...timers,
   });
 
+  function hideWelcome() {
+    if (!welcome) return;
+    welcome = false;
+    onWelcomeSeen();
+  }
+
   function showNote(next, { byPage = false, fromHistory = false } = {}) {
+    hideWelcome();
     beforeLeave();
     session.open(next);
     notebook.markOpened(next.title);
@@ -91,6 +105,7 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
   // The Note session made the note on the fresh page: from here it is a
   // normal note, with its text as typed.
   function freshPageBecameNote() {
+    hideWelcome();
     const made = created;
     created = null;
     freshPage = null;
@@ -102,13 +117,21 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
     return { type: "note", note, reload: false, changed: true };
   }
 
+  // Walk ← back to the newest note that is still there and `usable`, and
+  // show it; null when there is none. Notes that have gone are skipped.
+  function showNoteBefore(usable = () => true) {
+    for (let title = history.back(); title !== null; title = history.back()) {
+      const found = notebook.note(title);
+      if (found && usable(found)) return showNote(found, { byPage: isOpenedByPage(found), fromHistory: true });
+    }
+    return null;
+  }
+
   // The open note was archived or deleted: show the note you were on before
   // (#83), or leave the choice to the page when there is none.
   function leaveRemovedNote() {
-    for (let title = history.back(); title !== null; title = history.back()) {
-      const found = notebook.note(title);
-      if (found && !found.archived) return { ...showNote(found, { byPage: isOpenedByPage(found), fromHistory: true }), changed: true };
-    }
+    const shown = showNoteBefore((found) => !found.archived);
+    if (shown) return { ...shown, changed: true };
     showNothing();
     return { type: "followPage", changed: true };
   }
@@ -116,6 +139,21 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
   return {
     note: () => note,
     freshPage: () => freshPage,
+    welcome: () => welcome,
+
+    // "How Glacier works" (#91): the welcome again, over the open note.
+    showWelcome() {
+      welcome = true;
+      return { type: "welcome" };
+    },
+
+    // Start writing: back to the note or fresh page under the welcome, or a
+    // fresh page when there was nothing.
+    startWriting() {
+      hideWelcome();
+      if (!note && !freshPage) return startFreshPage({});
+      return { type: "welcomeGone" };
+    },
     // For the Opening flow's decision.
     onScreen: () => ({ current: note, openedByPage }),
     // The title ← would open, or null.
@@ -162,6 +200,7 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
 
     // The text changed. The first character on a fresh page makes the note.
     edit(body) {
+      hideWelcome();
       session.edit(body);
       if (created) return freshPageBecameNote();
       if (!retitled) return null;
@@ -195,11 +234,7 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, ..
     // ← opens the note that was on screen before. A note that has since gone
     // is skipped, so it never lands nowhere; null when there is none.
     back() {
-      for (let title = history.back(); title !== null; title = history.back()) {
-        const found = notebook.note(title);
-        if (found) return showNote(found, { byPage: isOpenedByPage(found), fromHistory: true });
-      }
-      return null;
+      return showNoteBefore();
     },
 
     rename(title) {

@@ -30,17 +30,20 @@ function manualTimer() {
   };
 }
 
-function setup({ onSaveError = () => {}, notebook = createNotebook({ storage: memoryStorage() }) } = {}) {
+function setup({ onSaveError = () => {}, notebook = createNotebook({ storage: memoryStorage() }), welcomeSeen = true } = {}) {
   const timer = manualTimer();
   const left = [];
+  const seen = [];
   const screen = createScreen({
     notebook,
     onSaveError,
     beforeLeave: () => left.push(screen.note()?.title ?? null),
+    welcomeSeen,
+    onWelcomeSeen: () => seen.push(true),
     setTimer: timer.setTimer,
     clearTimer: timer.clearTimer,
   });
-  return { notebook, screen, timer, left };
+  return { notebook, screen, timer, left, seen };
 }
 
 function withNotes() {
@@ -812,4 +815,50 @@ test("a new note for a page with no notes yet joins no Collection", () => {
   screen.show({ type: "pageDraft", page: { url: page.url, title: "First" } });
   screen.confirmTitle("First");
   assert.equal(notebook.note("First").course, undefined);
+});
+
+// --- The welcome (#85, #89, #91) --------------------------------------------
+
+test("the welcome shows on the first start and not once it was seen", () => {
+  assert.equal(setup({ welcomeSeen: false }).screen.welcome(), true);
+  assert.equal(setup({ welcomeSeen: true }).screen.welcome(), false);
+});
+
+test("opening a note hides the welcome and counts it as seen", () => {
+  const { notebook, screen, seen } = setup({ welcomeSeen: false });
+  screen.open(notebook.createNote({ title: "Grid" }));
+  assert.equal(screen.welcome(), false);
+  assert.deepEqual(seen, [true]);
+});
+
+test("a note opened by the page hides the welcome too", () => {
+  const { notebook, screen } = setup({ welcomeSeen: false });
+  screen.show({ type: "open", note: notebook.createNote({ title: "Grid", source: page.url }) });
+  assert.equal(screen.welcome(), false);
+});
+
+test("typing hides the welcome", () => {
+  const { screen, seen } = setup({ welcomeSeen: false });
+  screen.startFreshPage({});
+  screen.edit("A");
+  assert.equal(screen.welcome(), false);
+  assert.deepEqual(seen, [true]);
+});
+
+test("Start writing on the first start gives a fresh page", () => {
+  const { screen, seen } = setup({ welcomeSeen: false });
+  assert.equal(screen.startWriting().type, "freshPage");
+  assert.equal(screen.welcome(), false);
+  assert.deepEqual(seen, [true]);
+});
+
+test("How Glacier works shows the welcome over the open note, and Start writing goes back to it", () => {
+  const { notebook, screen, seen } = setup();
+  screen.open(notebook.createNote({ title: "Grid" }));
+  assert.deepEqual(screen.showWelcome(), { type: "welcome" });
+  assert.equal(screen.welcome(), true);
+  assert.deepEqual(screen.startWriting(), { type: "welcomeGone" });
+  assert.equal(screen.note().title, "Grid");
+  assert.equal(screen.welcome(), false);
+  assert.deepEqual(seen, [true]);
 });

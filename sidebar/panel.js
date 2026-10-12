@@ -131,20 +131,16 @@ let shortcutsPanel = readShortcutsPanel(undefined);
 // the explanation card has been answered. The Panel placement keeps it after.
 let savedPanelPlace = readPanelPlace(undefined);
 
-// Whether the welcome (#85) is still to be shown: until Start writing, once.
+// Whether the welcome (#85) was still to be shown when the sidebar started.
+// From then on the Screen knows (#89, #91).
 let showWelcome = false;
 
-// Hide the welcome and count it as seen: Start writing, a note opening or
-// anything typed all do it (#89).
-function dismissWelcome() {
-  if (!showWelcome) return;
-  showWelcome = false;
+// Take the welcome off the paper once the Screen says it went.
+function clearWelcome() {
   const welcomeEl = document.querySelector(".welcome");
+  if (welcomeEl.hidden) return;
   welcomeEl.hidden = true;
   welcomeEl.replaceChildren();
-  extensionStorage.set({ welcomeSeen: true }).catch((error) => {
-    console.warn("Glacier: could not remember the welcome", error);
-  });
 }
 
 async function start() {
@@ -207,6 +203,11 @@ async function start() {
     // Leaving a note with the menu open is a dismissal, so an untouched + `/`
     // is taken back out before the note we're leaving is saved (#28).
     beforeLeave: () => editor.dismissMenu(),
+    welcomeSeen: !showWelcome,
+    onWelcomeSeen: () =>
+      extensionStorage.set({ welcomeSeen: true }).catch((error) => {
+        console.warn("Glacier: could not remember the welcome", error);
+      }),
   });
 
   // The editing decisions — the note's lines and caret, typing, Enter,
@@ -247,9 +248,9 @@ async function start() {
   function draw(view) {
     if (!view) return;
     if (view.changed) autoSync.changed();
+    if (!screen.welcome()) clearWelcome();
     switch (view.type) {
       case "note":
-        dismissWelcome();
         if (view.reload) {
           // The note's lines in the editor, with the caret at the top.
           editor.load(view.note.body ?? "");
@@ -1496,7 +1497,7 @@ async function start() {
     onWelcome: () => {
       closeOverlays();
       closeSettings({ redraw: false });
-      showWelcome = true;
+      screen.showWelcome();
       drawWelcome({ again: true });
     },
   });
@@ -2211,8 +2212,8 @@ async function start() {
     };
 
     el.addEventListener("input", (event) => {
-      dismissWelcome();
       applyEdit(el.textContent, selectionIn(el).start, event.isComposing);
+      if (!screen.welcome()) clearWelcome();
     });
     el.addEventListener("compositionend", () => {
       applyEdit(el.textContent, selectionIn(el).start);
@@ -2675,7 +2676,7 @@ async function start() {
   // was shown again from the Shortcuts panel (#91). Esc does the same.
   const welcomeEl = document.querySelector(".welcome");
   function drawWelcome({ again = false } = {}) {
-    if (!showWelcome) return;
+    if (!screen.welcome()) return;
     const scene = document.createElement("div");
     scene.className = "welcome-scene";
     const greeting = Object.assign(document.createElement("h1"), { className: "welcome-greeting", textContent: WELCOME_GREETING });
@@ -2690,9 +2691,10 @@ async function start() {
     start.className = "welcome-start";
     start.textContent = "Start writing";
     start.addEventListener("click", () => {
-      dismissWelcome();
-      if (!screen.note() && !screen.freshPage()) draw(screen.startFreshPage({}));
-      else focusedEl?.focus();
+      const view = screen.startWriting();
+      clearWelcome();
+      if (view.type === "welcomeGone") focusedEl?.focus();
+      else draw(view);
     });
     const startRow = Object.assign(document.createElement("p"), { className: "welcome-start-row" });
     startRow.appendChild(start);
