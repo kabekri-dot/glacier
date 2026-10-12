@@ -11,11 +11,26 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Google Drive as a Notes Home (#95)
+
+Before reloading in Chrome: Glacier now has a fixed extension ID, so Chrome sees it as a new extension with an empty Notebook. Sync or press Export everything first, then after the reload connect the same place again or use Restore from backup file.
+
+- [ ] Open Settings, Where your notes live: "Google Drive" is the first choice, with a small pixel cloud. While `src/google-config.mjs` is still empty it is greyed and says "Not set up yet", and can't be picked.
+- [ ] Fill in `src/google-config.mjs` (and the manifest's `oauth2` for Chrome), reload, and click Google Drive: a short text says the notes go into a folder named Glacier and that Glacier only sees its own files, with a "Sign in with Google" button.
+- [ ] Click "Sign in with Google": one line asks "Your notes will be combined with the ones in Google Drive. Nothing is deleted." Switch opens Google's sign-in (Chrome may sign in straight away), then shows Connecting to Google Drive, Downloading, Combining notes and Ready.
+- [ ] Open drive.google.com: there is one folder named Glacier with `notes/` and `collections/` inside, and each note is a `.md` file you can open.
+- [ ] Do the same in Firefox with the same Google account: the notes from Chrome show up. Edit a note in Firefox, then open Chrome's sidebar: the edit comes in. Rename a note: the old file is in Drive's trash and the new one in its folder.
+- [ ] Hover the sync dot: "All saved to Google Drive".
+- [ ] Close the browser and start it again, open the sidebar: it still syncs without asking to sign in. In Firefox wait more than an hour, then type: it still syncs without asking.
+- [ ] Sign out of Google in the browser (or remove Glacier's access at myaccount.google.com, Security, Third party access), wait an hour in Firefox, then type: the dot turns red, the box says Google asks you to sign in again and has one "Sign in with Google" button. Clicking it signs in and syncs.
+- [ ] Choose "Only in this browser" or GitHub: after the switch Glacier is signed out of Google, and the Glacier folder in Drive still has every file.
+- [ ] Do the same switches in Settings beside the sidebar.
+
 ### Where your notes live (#94)
 
 Reload with ↻ first.
 
-- [ ] Open Settings: the last section is called "Where your notes live". It shows two choices, "Only in this browser" and "GitHub", each with a small pixel icon, and Backup under them. It looks calm, with no "For developers" text.
+- [ ] Open Settings: the last section is called "Where your notes live". It shows the choices "Google Drive", "Only in this browser" and "GitHub", each with a small pixel icon, and Backup under them. It looks calm, with no "For developers" text.
 - [ ] With GitHub connected from before, GitHub is chosen and its repo and token form shows right under it. Type a note: it still syncs, and the sync dot says "All saved to GitHub" on hover.
 - [ ] Click "Only in this browser": one line asks "Your notes will stay in this browser and stop syncing. Nothing is deleted." with Switch and Keep. Keep leaves GitHub chosen. Switch: the dot turns quiet and says your notes live only in this browser; type a note and check GitHub: nothing new arrives.
 - [ ] Close the sidebar and open it again: "Only in this browser" is still chosen.

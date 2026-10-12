@@ -16,6 +16,8 @@
 import { createNotebook, importSummary, syncErrorMessage } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { githubRemote } from "../src/github-remote.mjs";
+import { driveRemote } from "../src/drive-remote.mjs";
+import { createGoogleSignIn } from "./google-sign-in.js";
 import { chosenNotesHome, notesHomeName } from "../src/notes-home.mjs";
 import { createAutoSync } from "../src/auto-sync.mjs";
 import { createScreen } from "../src/screen.mjs";
@@ -80,6 +82,8 @@ const glacierButtonEl = document.querySelector(".glacier-button");
 // chosen look. Neither is ever written into the Notebook (ADR 0003).
 const api = typeof browser !== "undefined" ? browser : chrome;
 const extensionStorage = api.storage.local;
+// Signing in with Google for the Google Drive Notes Home (#95).
+const googleSignIn = createGoogleSignIn({ api, storage: extensionStorage });
 
 // The paper, font and text size (#18). Drawn by setting the custom
 // properties from src/look.mjs on the page; the stylesheet does the rest.
@@ -224,6 +228,7 @@ async function start() {
     notebook,
     connect: async () => {
       const { home, repo, token } = await loadConnection();
+      if (home === "google-drive") return { remote: driveRemote({ getToken: googleSignIn.getToken }), repo: "", place: notesHomeName(home) };
       if (home !== "github" || !repo || !token) return null;
       return { remote: githubRemote({ repo, token }), repo, place: notesHomeName(home) };
     },
@@ -467,11 +472,29 @@ async function start() {
     return { home: chosenNotesHome(notebook.notesHome(), github), ...github };
   }
 
+  // Disconnecting Google Drive signs out of Google; the files stay in Drive.
+  async function signOutOfGoogle(leaving, place) {
+    if (leaving !== "google-drive" || place === "google-drive") return;
+    await googleSignIn.signOut().catch((error) => console.warn("Glacier: could not sign out of Google", error));
+  }
+
+  // When Google's quiet renewal failed, the sync box's one button signs in
+  // again and syncs.
+  async function signInAgain() {
+    try {
+      await googleSignIn.signIn();
+    } catch (error) {
+      console.warn("Glacier: signing in with Google failed", error);
+    }
+    return autoSync.syncNow();
+  }
+
   // The sync dot and its box (#75), drawn by sidebar/sync-box-view.js.
   const syncBoxView = createSyncBoxView({
     dotEl: syncDotEl,
     boxEl: document.querySelector(".sync-box"),
     autoSync,
+    signInAgain,
     openSettings,
     // Check them: the ▾ menu, which lists Several versions at the top.
     showConflicts: () => {
@@ -489,8 +512,9 @@ async function start() {
   // What the Where your notes live section of Settings asks of the Notebook,
   // wherever settings are drawn (see settings-view.js). Switching to GitHub
   // goes through the GitHub remote; the repo and token are saved only once
-  // GitHub has accepted them. With settings closed meanwhile, a notice says
-  // how it went.
+  // GitHub has accepted them. Switching to Google Drive signs in first, and
+  // leaving it signs out, leaving the files in Drive as they are (#95). With
+  // settings closed meanwhile, a notice says how it went.
   const repoActions = {
     connection: loadConnection,
     status: async () => autoSync.status(),
@@ -499,24 +523,31 @@ async function start() {
 
     async switchHome(place, repo, token, onProgress) {
       screen.flush();
+      const leaving = (await loadConnection()).home;
       if (place === "browser") {
         await notebook.switchNotesHome("browser");
+        await signOutOfGoogle(leaving, place);
         await autoSync.syncNow();
         return { notes: 0 };
       }
+      const name = place === "github" ? repo : notesHomeName(place);
       let result;
       try {
-        result = await notebook.switchNotesHome(place, githubRemote({ repo, token }), onProgress);
+        if (place === "google-drive") await googleSignIn.signIn();
+        const remote = place === "google-drive" ? driveRemote({ getToken: googleSignIn.getToken }) : githubRemote({ repo, token });
+        result = await notebook.switchNotesHome(place, remote, onProgress);
       } catch (error) {
         console.error("Glacier: switching where the notes live failed", error);
-        if (!panels.settingsOpen()) showNotice(syncErrorMessage(error, repo), 8000);
-        return { error: syncErrorMessage(error, repo) };
+        const message = syncErrorMessage(error, repo, notesHomeName(place));
+        if (!panels.settingsOpen()) showNotice(message, 8000);
+        return { error: message };
       }
-      await extensionStorage.set({ notesRepo: repo, githubToken: token });
+      if (place === "github") await extensionStorage.set({ notesRepo: repo, githubToken: token });
+      await signOutOfGoogle(leaving, place);
       autoSync.syncNow();
       if (!screen.note()) openingFlow.start();
       else updateBacklinks();
-      if (!panels.settingsOpen()) showNotice(`Your notes from ${repo} are here.`);
+      if (!panels.settingsOpen()) showNotice(`Your notes from ${name} are here.`);
       return { notes: result.notes };
     },
 

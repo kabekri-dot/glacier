@@ -95,7 +95,7 @@ export function createAutoSync({
         console.error("Glacier: sync failed", error);
         // A version that changed under this push is picked up by the next
         // sync's pull, so trying again soon is enough.
-        setStatus({ state: "error", message: syncErrorMessage(error, connection.repo) });
+        setStatus({ state: "error", message: syncErrorMessage(error, connection.repo, connection.place) });
         plan(retryDelay);
       }
     }
@@ -171,12 +171,19 @@ export function syncBox(status, now = new Date()) {
     error: syncDotText(status),
     conflict: "Synced",
   };
-  return {
+  const box = {
     status: words[status.state] ?? "Up to date",
     last: lastSyncedPhrase(status.lastSynced, now),
     action: "Sync now",
     conflicts: status.state === "conflict" ? conflictMessage(status.conflicts?.length ?? 1) : null,
   };
+  // Google's quiet renewal failed (#95): one button signs in again.
+  if (needsGoogleSignIn(status)) return { ...box, action: "Sign in with Google", signIn: true };
+  return box;
+}
+
+function needsGoogleSignIn(status) {
+  return status.state === "error" && status.reason === "unauthorized" && status.place === "Google Drive";
 }
 
 // What the Sync now button shows for a few seconds once a sync is done.
@@ -239,9 +246,11 @@ export function syncStatusText(status, now = new Date()) {
       return {
         label: "Not synced",
         detail:
-          status.reason === "unauthorized"
-            ? "GitHub no longer accepts your token. It may have expired. Make a new one and paste it under Where your notes live."
-            : `${status.message} ${last}`,
+          needsGoogleSignIn(status)
+            ? "Google asks you to sign in again. Your changes are kept in this browser until you do."
+            : status.reason === "unauthorized"
+              ? "GitHub no longer accepts your token. It may have expired. Make a new one and paste it under Where your notes live."
+              : `${status.message} ${last}`,
       };
     default:
       return { label: "Saved in this browser", detail: "Saved only in this browser. Choose where your notes live in Settings." };
