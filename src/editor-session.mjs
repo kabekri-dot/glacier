@@ -45,6 +45,8 @@ export function createEditorSession({
   titles = () => [],
   // Makes the note for extracted text and returns its title (#99).
   extractNote = () => null,
+  // Starts a new sketch in the note and returns its embed line (#101).
+  newSketch = () => null,
   pause = 800,
   setTimer = setTimeout,
   clearTimer = clearTimeout,
@@ -243,6 +245,10 @@ export function createEditorSession({
       pickExtract();
       return;
     }
+    if (command.id === "sketch") {
+      pickSketch();
+      return;
+    }
     recordStep({ before: plusOrigin && beforePlus ? beforePlus : snapshot() });
     plusOrigin = null;
     beforePlus = null;
@@ -284,6 +290,23 @@ export function createEditorSession({
     const rest = lines[line].slice(focus.col).trim();
     const done = replaceWithNote({ line, col: 0 }, { line, col: lines[line].length }, rest);
     if (!done) menu = null;
+  }
+
+  // The Sketch command (#101): the line with the typed `/query` becomes the
+  // new sketch's embed line, and the caret goes to the line below, which
+  // takes any text that was after the caret.
+  function pickSketch() {
+    const line = newSketch();
+    menu = null;
+    if (!line) return;
+    recordStep({ before: plusOrigin && beforePlus ? beforePlus : snapshot() });
+    plusOrigin = null;
+    beforePlus = null;
+    const rest = lines[focus.line].slice(focus.col).trimStart();
+    lines.splice(focus.line, 1, line, rest);
+    focus = { line: focus.line + 1, col: 0 };
+    relayout();
+    notifyChange();
   }
 
   // Close the menu without picking (Esc, clicking elsewhere, scrolling out, or

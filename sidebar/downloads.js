@@ -38,6 +38,11 @@ export function createDownloads({ notebook, screen, notice }) {
     downloadNote(title, format) {
       screen.flush();
       if (format !== "md") return printWindow(notebook.notesToPrint(title));
+      // A note with sketches comes as a zip, its svg files next to it (#101).
+      if (notebook.hasSketches(title)) {
+        download(notebook.exportNoteZip(title), "application/zip", `${title} ${today()}.zip`);
+        return;
+      }
       const file = notebook.exportNote(title);
       download(file.text, "text/markdown", file.path.split("/").pop());
     },

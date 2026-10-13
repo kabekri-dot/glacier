@@ -251,3 +251,18 @@ test("a Collection downloads whole even when its notes differ in capitals", asyn
   await copy.importZip(notebook.exportCourseZip("WEB"));
   assert.deepEqual(copy.notes().map((note) => note.title).sort(), ["One", "Two"]);
 });
+
+test("a note moved to a Collection in one browser moves in the other, without a Conflict Copy", async () => {
+  const remote = memoryRemote({});
+  const chrome = createNotebook({ storage: memoryStorage() });
+  chrome.createNote({ title: "Flexbox" });
+  chrome.saveBody("Flexbox", "Rows and columns.");
+  await chrome.sync(remote);
+  const firefox = createNotebook({ storage: memoryStorage() });
+  await firefox.firstSync(remote);
+  chrome.moveToCourse("Flexbox", "TOP");
+  await chrome.sync(remote);
+  const result = await firefox.sync(remote);
+  assert.equal(result.conflicts, 0);
+  assert.deepEqual(firefox.notes().map((note) => [note.title, note.course]), [["Flexbox", "TOP"]]);
+});

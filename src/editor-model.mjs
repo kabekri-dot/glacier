@@ -76,8 +76,9 @@ const BULLET = /^(\s*)-(\s+)(.*)$/;
 // A Link is `[[Title]]` somewhere in the text (CONTEXT.md). The title is the
 // run between the brackets with no bracket inside, so `[[A]] [[B]]` are two
 // Links. findLinks returns each title and the raw span it occupies, so the
-// notebook can list a note's outgoing Links and a rename can rewrite them.
-const LINK_PATTERN = /\[\[([^[\]]+)\]\]/g;
+// notebook can list a note's outgoing Links and a rename can rewrite them. An
+// embed, `![[…]]` (a Sketch, #101), is no Link.
+const LINK_PATTERN = /(?<!!)\[\[([^[\]]+)\]\]/g;
 
 export function findLinks(text) {
   const links = [];
@@ -107,6 +108,7 @@ export const SLASH_COMMANDS = [
   { id: "code", label: "Inline code", markdown: "`code`", insert: "``", caret: 1 },
   { id: "codeblock", label: "Code block", markdown: "```", insert: "```\n\n```", caret: 4 },
   { id: "extract", label: "Extract to a new note", markdown: "[[Title]]", insert: "", caret: 0 },
+  { id: "sketch", label: "Sketch", markdown: "/sketch", insert: "", caret: 0 },
 ];
 
 // The command query a caret is in, or null when the menu should stay closed.

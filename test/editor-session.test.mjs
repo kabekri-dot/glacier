@@ -1172,3 +1172,67 @@ test("the extract command in the / menu takes the rest of the line", () => {
   editor.undo();
   assert.deepEqual(editor.state.lines, ["/ex tail of it"]);
 });
+
+// Sketch blocks (#101): `/sketch` or + then Sketch puts the embed line the
+// sidebar made for a new sketch in place of the line, and the caret goes to
+// a fresh line below it.
+
+function sketcher(line = "![[Note – sketch 1.svg]]") {
+  const changes = [];
+  const editor = createEditorSession({ onChange: (body) => changes.push(body), newSketch: () => line });
+  return { editor, changes };
+}
+
+function pickSketch(editor) {
+  editor.refreshMenu();
+  editor.menuSelect(editor.menu.commands.findIndex((command) => command.id === "sketch"));
+  editor.pickMenu();
+}
+
+test("typing /sketch offers a Sketch in the menu", () => {
+  const { editor } = sketcher();
+  editor.load("");
+  editor.edit("/sketch", 7);
+  editor.refreshMenu();
+  assert.deepEqual(editor.menu.commands.map((command) => command.label), ["Sketch"]);
+});
+
+test("picking Sketch puts its embed line there and the caret on a new line below", () => {
+  const { editor, changes } = sketcher();
+  editor.load("Boxes:\n");
+  editor.moveTo(1, 0);
+  editor.edit("/sk", 3);
+  pickSketch(editor);
+  assert.deepEqual(editor.state.lines, ["Boxes:", "![[Note – sketch 1.svg]]", ""]);
+  assert.deepEqual(editor.state.focus, { line: 2, col: 0 });
+  assert.equal(editor.menu, null);
+  assert.equal(changes.at(-1), "Boxes:\n![[Note – sketch 1.svg]]\n");
+});
+
+test("picking Sketch from the + menu puts the sketch below the line", () => {
+  const { editor } = sketcher();
+  editor.load("hello\nworld");
+  editor.moveTo(0, 5);
+  editor.openMenuFromPlus(0);
+  pickSketch(editor);
+  assert.deepEqual(editor.state.lines, ["hello", "![[Note – sketch 1.svg]]", "", "world"]);
+  assert.deepEqual(editor.state.focus, { line: 2, col: 0 });
+});
+
+test("text after the caret moves below a new sketch", () => {
+  const { editor } = sketcher();
+  editor.load("/sk rest");
+  editor.moveTo(0, 3);
+  pickSketch(editor);
+  assert.deepEqual(editor.state.lines, ["![[Note – sketch 1.svg]]", "rest"]);
+  assert.deepEqual(editor.state.focus, { line: 1, col: 0 });
+});
+
+test("Undo takes a new sketch's line out again", () => {
+  const { editor } = sketcher();
+  editor.load("");
+  editor.edit("/sketch", 7);
+  pickSketch(editor);
+  editor.undo();
+  assert.deepEqual(editor.state.lines, ["/sketch"]);
+});

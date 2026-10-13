@@ -11,6 +11,22 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Sketch blocks: boxes and circles (#101)
+
+- [ ] In a note, click + at the left of an empty line and pick Sketch: a drawing area appears between the lines, as wide as the text and a few ruled rows high, and the caret goes to the line below. Type `/sketch` and press Enter on another line: a second one appears. The text after them still sits on the ruled lines.
+- [ ] Click the drawing area: a small toolbar shows above it with rectangle, square, circle, triangle, select and delete. Hover each button: its name shows.
+- [ ] Pick the rectangle and drag in the area: a rectangle is drawn. Do the same with square, circle and triangle. The square and the circle keep equal sides however you drag.
+- [ ] Drag a shape: it moves and stays inside the area. Click a shape and press Delete: it goes. Pick another shape and click the delete button in the toolbar: it goes too.
+- [ ] Drag the small bar at the bottom of the area down and up: the area gets taller or lower in whole rows, and the text below stays on the lines.
+- [ ] Click the text next to the sketch: the toolbar goes away. Press Esc in a picked sketch: the same.
+- [ ] Switch to a dark paper such as Chalkboard: the shapes are still easy to see.
+- [ ] Open another note and come back, or close and reopen the sidebar: the drawing is still there.
+- [ ] Sync, then open the Notes Repo on GitHub: next to the note is a file named like the note with "sketch 1.svg" after it, and opening it shows the picture. The note's text holds a line like `![[My note – sketch 1.svg]]`.
+- [ ] In the other browser, sync: the sketch shows in the same note. Move a shape there, sync both: the move arrives.
+- [ ] Rename the note: the sketch still shows, and after a sync the svg file on GitHub has the new name. Move the note to a Collection, archive it and unarchive it: the svg file moves with the note each time. Delete the note: the svg file goes too.
+- [ ] ⋯ then Download as a file on a note with a sketch: a zip comes with the note and its svg. Export everything, then Restore from backup file in a fresh browser profile: the sketches come back.
+- [ ] `/sketch` is listed in the Shortcuts panel, and Delete there mentions removing the picked shape.
+
 ### Pin a note, ← in one click (asked for 2026-10-13)
 
 - [ ] Open a website's note, then ⋯ → Pin this note: a small pixel pin shows after the title. Switch to other tabs and websites (with Tabs and notes set to follow the tab): the pinned note stays. Click the pin: it goes, and the sidebar shows the note of the tab you are on.
@@ -604,7 +620,7 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 ### Export: this note, a collection, or everything
 
 - [ ] Open the ⋯ This note menu after the title: "Download as a file" is there. Open settings (the round glacier button), then Where your notes live: under a small "Backup" heading are a Collection list, "Export a collection", "Export everything" and "Restore from backup file". Hovering each shows what it does.
-- [ ] "Download as a file" saves one `.md` file named after the note's title, with its text.
+- [ ] "Download as a file" saves one `.md` file named after the note's title, with its text. A note with a sketch comes as a zip with its svg files.
 - [ ] Pick a Collection and press "Export a collection": the zip has only that Collection's notes.
 - [ ] "Export everything" downloads a zip of every note, as before.
 - [ ] "Restore from backup file" works as before (see section 2).
