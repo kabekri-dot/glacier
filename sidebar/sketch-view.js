@@ -167,14 +167,13 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
     function startDrag(event, onMove, onEnd) {
       event.preventDefault();
       area.setPointerCapture(event.pointerId);
-      const move = (moved) => onMove(moved);
       const end = (ended) => {
-        area.removeEventListener("pointermove", move);
+        area.removeEventListener("pointermove", onMove);
         area.removeEventListener("pointerup", end);
         area.removeEventListener("pointercancel", end);
         onEnd(ended);
       };
-      area.addEventListener("pointermove", move);
+      area.addEventListener("pointermove", onMove);
       area.addEventListener("pointerup", end);
       area.addEventListener("pointercancel", end);
     }
