@@ -16,6 +16,7 @@
 //
 // This module only runs in the browser; tests give it the in-memory Drive
 // (memory-drive.mjs) as its `fetch`.
+import { fewAtATime } from "./few-at-a-time.mjs";
 
 const API = "https://www.googleapis.com/drive/v3/files";
 const UPLOAD = "https://www.googleapis.com/upload/drive/v3/files";
@@ -191,23 +192,28 @@ export function driveRemote({ getToken, fetch = globalThis.fetch }) {
     // against a fresh listing before anything is sent, and the writes go
     // before the deletes: a commit cut off halfway leaves a renamed note
     // twice rather than not at all, and the next sync finishes it. Drive's
-    // batch requests take no file contents, so each file is one request.
+    // batch requests take no file contents, so each file is one request;
+    // they go a few at a time, after the folders they need are made one by
+    // one (so no folder is made twice).
     async commit({ writes = [], deletes = [] }) {
       await readListing();
       for (const { path, version } of [...writes, ...deletes]) {
         if (files.get(path)?.version !== version) throw failure("conflict", `Stale version of ${path}`);
       }
+      for (const { path } of writes) {
+        if (!files.has(path)) await folderFor(path);
+      }
       const versions = {};
-      for (const { path, text } of writes) {
+      await fewAtATime(writes, async ({ path, text }) => {
         const known = files.get(path);
         const written = known ? await update(known.id, path, text) : await create(path, text);
         files.set(path, { id: written.id, version: written.version });
         versions[path] = written.version;
-      }
-      for (const { path } of deletes) {
+      });
+      await fewAtATime(deletes, async ({ path }) => {
         await trash(files.get(path).id);
         files.delete(path);
-      }
+      });
       return versions;
     },
   };

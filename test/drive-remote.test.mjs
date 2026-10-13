@@ -196,3 +196,58 @@ test("a sync with nothing new reads no file again", async () => {
   // Finding the folder and one page of listing; no reads, no writes.
   assert.equal(drive.requests() - before, 2);
 });
+
+// The first connect with many notes was slow: one upload after the other.
+test("many notes go up a few at a time, never more than six at once, each folder made once", async () => {
+  const drive = memoryDrive();
+  let inFlight = 0;
+  let most = 0;
+  const slowFetch = async (address, options) => {
+    const upload = address.includes("/upload/");
+    if (upload) most = Math.max(most, (inFlight += 1));
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    try {
+      return await drive.fetch(address, options);
+    } finally {
+      if (upload) inFlight -= 1;
+    }
+  };
+  const token = drive.signIn();
+  const remote = driveRemote({ getToken: async () => token, fetch: slowFetch });
+  const storage = memoryStorage();
+  for (let i = 0; i < 20; i += 1) {
+    storage.putNote({ title: `Note ${i}`, created: "2026-10-01T10:00:00.000Z", body: `Text ${i}`, ...(i % 2 === 0 && { course: "CSS" }) });
+  }
+  const notebook = createNotebook({ storage });
+  await notebook.switchNotesHome("google-drive", remote);
+
+  assert.equal(Object.keys(drive.files()).length, 20);
+  assert.ok(most > 1, `uploads ran one at a time (${most})`);
+  assert.ok(most <= 6, `too many uploads at once (${most})`);
+  assert.equal(drive.glacierFolders(), 1);
+});
+
+test("a second computer reads the notes from Drive a few at a time", async () => {
+  const drive = memoryDrive();
+  const first = browser(drive, ...Array.from({ length: 12 }, (_, i) => ({ title: `Note ${i}`, created: "2026-10-01T10:00:00.000Z", body: `Text ${i}` })));
+  await first.notebook.switchNotesHome("google-drive", first.remote);
+
+  let inFlight = 0;
+  let most = 0;
+  const slowFetch = async (address, options) => {
+    const read = address.includes("alt=media");
+    if (read) most = Math.max(most, (inFlight += 1));
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    try {
+      return await drive.fetch(address, options);
+    } finally {
+      if (read) inFlight -= 1;
+    }
+  };
+  const token = drive.signIn();
+  const notebook = createNotebook({ storage: memoryStorage() });
+  await notebook.switchNotesHome("google-drive", driveRemote({ getToken: async () => token, fetch: slowFetch }));
+
+  assert.equal(notebook.notes().length, 12);
+  assert.ok(most > 1 && most <= 6, `reads at once: ${most}`);
+});

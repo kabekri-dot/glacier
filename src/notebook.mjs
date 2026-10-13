@@ -3,6 +3,7 @@
 // browser APIs; storage and GitHub (the remote) are plugged in from outside
 // (ADR 0003), so the core can be tested with in-memory stand-ins.
 
+import { fewAtATime } from "./few-at-a-time.mjs";
 import { findLinks } from "./editor-model.mjs";
 import { zipFiles, unzipFiles } from "./zip.mjs";
 
@@ -526,11 +527,10 @@ export function createNotebook({ storage }) {
   async function pull(remote, synced, result) {
     const listed = (await remote.listFiles()).filter(({ path }) => isNoteFile(path));
     const changed = [];
-    for (const { path, version } of listed) {
-      if (synced[path]?.version === version) continue;
-      const file = await remote.readFile(path);
-      changed.push({ path, ...file });
-    }
+    const toRead = listed.filter(({ path, version }) => synced[path]?.version !== version);
+    await fewAtATime(toRead, async ({ path }, at) => {
+      changed[at] = { path, ...(await remote.readFile(path)) };
+    });
     for (const { path, version, text } of changed) {
       pullFile(path, version, text, synced, result);
     }
@@ -1014,11 +1014,13 @@ export function createNotebook({ storage }) {
       const paths = (await remote.listFiles()).map(({ path }) => path).filter(isNoteFile);
       const downloaded = [];
       onProgress({ step: "downloading", done: 0, total: paths.length });
-      for (const path of paths) {
+      let done = 0;
+      await fewAtATime(paths, async (path, at) => {
         const { text, version } = await remote.readFile(path);
-        downloaded.push({ path, version, text, note: noteFromFile(path, text) });
-        onProgress({ step: "downloading", done: downloaded.length, total: paths.length });
-      }
+        downloaded[at] = { path, version, text, note: noteFromFile(path, text) };
+        done += 1;
+        onProgress({ step: "downloading", done, total: paths.length });
+      });
       onProgress({ step: "linking" });
       const synced = {};
       for (const { path, version, text, note } of downloaded) {
