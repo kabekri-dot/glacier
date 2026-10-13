@@ -862,3 +862,45 @@ test("How Glacier works shows the welcome over the open note, and Start writing 
   assert.equal(screen.welcome(), false);
   assert.deepEqual(seen, [true]);
 });
+
+// --- Extract to a new note (#99) -----------------------------------------
+
+test("extracted text becomes a note named after its first line", () => {
+  const { screen, notebook, first } = withNotes();
+  screen.open(first);
+  const title = screen.extract("Flexbox basics\nrow and column");
+  assert.equal(title, "Flexbox basics");
+  assert.equal(notebook.note("Flexbox basics").body, "Flexbox basics\nrow and column");
+  assert.equal(screen.note().title, "First");
+});
+
+test("an extracted note gets the page and Collection of the note it came from", () => {
+  const { screen, notebook, grid } = withNotes();
+  screen.open(grid);
+  const title = screen.extract("A grid tip");
+  const made = notebook.note(title);
+  assert.equal(made.course, "TOP");
+  assert.equal(made.source, "https://odin.example/grid");
+});
+
+test("an extracted note from a note with no page or Collection has neither", () => {
+  const { screen, notebook, first } = withNotes();
+  screen.open(first);
+  const made = notebook.note(screen.extract("Plain"));
+  assert.equal(made.course, undefined);
+  assert.equal(made.source, undefined);
+});
+
+test("an extracted title that is taken gets a free name", () => {
+  const { screen, notebook, grid } = withNotes();
+  screen.open(grid);
+  const title = screen.extract("Second\nmore");
+  assert.notEqual(title, "Second");
+  assert.equal(notebook.note("Second").body ?? "", "");
+  assert.equal(notebook.note(title).body, "Second\nmore");
+});
+
+test("extracting with no note open makes nothing", () => {
+  const { screen } = withNotes();
+  assert.equal(screen.extract("text"), null);
+});

@@ -229,6 +229,7 @@ export function noteMenu(note) {
     heading: note.title,
     actions: [
       { kind: "move", label: "Move to collection…", hint: "Put this note in a collection" },
+      { kind: "extract", label: "Extract to a new note", hint: "Select some text in the note first. It becomes a new note and a link takes its place" },
       { kind: "download", label: "Download as a file", hint: "Save this note as Markdown or PDF, or print it" },
       note.archived
         ? { kind: "unarchive", label: "Unarchive", hint: "Put this note back in your lists" }

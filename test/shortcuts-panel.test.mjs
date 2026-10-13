@@ -38,7 +38,7 @@ test("every key the sidebar handles is in the panel", () => {
 
 test("the list of handled keys names the keys Glacier reacts to", () => {
   const handled = HANDLED_KEYS.map(([keys]) => keys);
-  for (const wanted of ["Enter", "Shift Enter", "Delete", "Ctrl B", "Ctrl I", "Ctrl E", "Ctrl Z", "Ctrl Shift Z or Ctrl Y", "Tab or Enter", "Alt Shift G", "Ctrl K", "//", "Esc", "Cmd"]) {
+  for (const wanted of ["Enter", "Shift Enter", "Delete", "Ctrl B", "Ctrl I", "Ctrl E", "Ctrl Shift E", "Ctrl Z", "Ctrl Shift Z or Ctrl Y", "Tab or Enter", "Alt Shift G", "Ctrl K", "//", "Esc", "Cmd"]) {
     assert.ok(handled.includes(wanted), `missing ${wanted}`);
   }
 });

@@ -251,6 +251,7 @@ async function start() {
       autoSync.changed();
     },
     titles: () => notebook.notes().map((note) => note.title),
+    extractNote: (text) => screen.extract(text),
   });
 
   const downloads = createDownloads({ notebook, screen, notice: (text) => showNotice(text) });
@@ -451,7 +452,10 @@ async function start() {
     button: noteMenuButtonEl,
     box: document.querySelector(".note-menu"),
     screen,
-    onAction: (kind) => menuView.act("note", kind, { title: screen.note().title }, noteMenuButtonEl),
+    onAction: (kind) => {
+      if (kind === "extract") extractSelection();
+      else menuView.act("note", kind, { title: screen.note().title }, noteMenuButtonEl);
+    },
     beforeOpen: () => closeOverlays(),
   });
 
@@ -1589,6 +1593,37 @@ async function start() {
     if (blockEl.dataset.code !== undefined) return { code: start, offset: drawn };
     return { line: start, rendered: drawn };
   }
+
+  // Extract to a new note (#99): the selected text becomes a note and a Link
+  // takes its place. The new note does not open and nothing floats next to the
+  // selection.
+  function extractSelection() {
+    const selection = window.getSelection();
+    const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+    if (!range || range.collapsed || !noteShown() || !noteEl.contains(range.commonAncestorContainer)) {
+      showNotice("Select some text in the note first.");
+      return;
+    }
+    const done = editor.extract(
+      selectionEdge(range.startContainer, range.startOffset),
+      selectionEdge(range.endContainer, range.endOffset),
+    );
+    if (!done) {
+      showNotice("Select some text in the note first.");
+      return;
+    }
+    render();
+    showNotice(`Made the note '${done.title}'.`);
+  }
+
+  document.addEventListener("keydown", (event) => {
+    const isExtract =
+      (event.ctrlKey || event.metaKey) && !event.altKey && event.shiftKey &&
+      event.key.toLowerCase() === "e";
+    if (!isExtract || !noteShown()) return;
+    event.preventDefault();
+    if (!event.isComposing) extractSelection();
+  });
 
   const copiedEl = document.querySelector(".copied");
   let copiedTimer = null;

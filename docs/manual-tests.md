@@ -11,6 +11,17 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Extract to a new note (#99)
+
+- [ ] Select one line of text in a note and press Ctrl Shift E (Cmd Shift E on a Mac): the text turns into a link in its place, and a new note with that title exists. You stay in the note you were writing.
+- [ ] Select several lines, including a bold or italic word, and use ⋯ then Extract to a new note: one link replaces them, and the new note has all the lines with the formatting kept.
+- [ ] Type `/ex` at the start of a line with some text after it and pick Extract to a new note: the text after it becomes the new note and a link replaces it.
+- [ ] The new note has the same page and Collection as the note it came from. Open it from the link to check.
+- [ ] Extract text whose first line is the title of a note that already exists: the new note gets a free name instead of overwriting.
+- [ ] Press Ctrl Z right after: the text comes back and the new note stays.
+- [ ] Nothing floats next to the selection. Hover over Extract to a new note in ⋯ with nothing selected: the hover text says to select some text first. Clicking it with nothing selected shows a short message.
+- [ ] Ctrl Shift E is listed in the Shortcuts panel.
+
 ### Pixel cloud reminder (#98)
 
 Needs a browser where the notes live only in this browser (the default). To start again, clear `cloudReminder` from the extension's storage.

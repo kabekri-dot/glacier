@@ -28,7 +28,7 @@
 // `changed: true` means the Notebook changed, for Sync. `beforeLeave()` is
 // called just before the note on screen is left, so the editor can take an
 // untouched `/` back out before it is saved (#28). Timers are injected.
-import { createNoteSession } from "./note-session.mjs";
+import { createNoteSession, titleFromText } from "./note-session.mjs";
 import { createNoteHistory } from "./note-history.mjs";
 import { isOpenedByPage } from "./page-open.mjs";
 
@@ -242,6 +242,18 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, we
       const result = notebook.renameNote(note.title, title);
       if (!result.ok) return { type: "titleRefused", suggestion: result.suggestion };
       return { ...showNote(result.note, { byPage: openedByPage }), changed: true };
+    },
+
+    // Extract to a new note (#99): the text becomes a note named after its
+    // first line (a free name when that is taken), on the same page and in the
+    // same Collection as the open note. It does not open. Returns its title.
+    extract(text) {
+      if (!note) return null;
+      session.flush();
+      const { source, pageTitle, course } = note;
+      const made = notebook.createNote({ title: titleFromText(text), source, pageTitle, course });
+      notebook.saveBody(made.title, text);
+      return made.title;
     },
 
     moveToCourse(course) {
