@@ -95,15 +95,21 @@ have their own; sync both to the same Notes Repo to share them.
 
 ## Making a release
 
-1. Set `"version"` in `manifest.json` (for example `1.0.1`) and commit.
-2. Make the zip from the committed files only (no tests, docs or robot files):
+Every test version and release gets its own number, `major.minor.fix`:
 
-   ```sh
-   git archive --format=zip -o glacier-1.0.1.zip HEAD manifest.json background.js sidebar src art fonts icons
-   ```
+| Change | Command | Example |
+|---|---|---|
+| small fixes | `node tools/new-version.mjs fix` | 1.1.0 → 1.1.1 |
+| new features | `node tools/new-version.mjs feature` | 1.1.0 → 1.2.0 |
+| a big new version | `node tools/new-version.mjs big` | 1.4.2 → 2.0.0 |
 
-3. Tag it: `git tag v1.0.1` and `git push --tags`.
-4. Firefox: upload the zip as a new version of the unlisted add-on on AMO and
+The command raises the version in `manifest.json`, commits it, and builds
+`Glacier-<version>.zip` from the committed extension files only (no tests,
+docs or robot files) in the `Glacier for testing` folder next to the project.
+It refuses to run with uncommitted changes. Then:
+
+1. `git push`, and for a release also `git tag v<version>` and `git push --tags`.
+2. Firefox: upload the zip as a new version of the unlisted add-on on AMO and
    install the signed `.xpi`. Chrome: unpack the zip over the everyday copy's
    folder and press reload on `chrome://extensions`.
 
