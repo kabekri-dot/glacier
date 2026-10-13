@@ -13,7 +13,7 @@
 //   pickFolder() -> "picked", "closed" or "inside" (settings moved inside the
 //   sidebar to pick it there), called straight from the click,
 //   exportCourse(course, format), exportAll(), restore(bytes) and notice(text, ms)
-import { syncStatusText, syncResultText, JUST_SYNCED } from "../src/auto-sync.mjs";
+import { syncStatusText, syncResultText, syncBox, JUST_SYNCED } from "../src/auto-sync.mjs";
 import { notesRepoName } from "../src/notebook.mjs";
 import { notesHomeChoices, notesHomeName, switchQuestion, googleReady, folderReady } from "../src/notes-home.mjs";
 import { GOOGLE_CONFIG } from "../src/google-config.mjs";
@@ -140,31 +140,38 @@ export function justSyncedLine(written = false, className = "") {
   return line;
 }
 
-// The sync status line and "Sync now", in the pill menu and in Settings. After
-// a good sync the status line is written out as "Just synced" for a moment.
-export function syncStatusRow({ status, syncNow, notice }, ...buttons) {
-  const row = document.createElement("div");
-  row.className = "menu-actions";
-  row.append(...buttons);
-  const plainLine = (text) => Object.assign(document.createElement("p"), { className: "menu-sync-status", textContent: text });
-  let line = plainLine(syncStatusText(status).detail);
-  let restore = null;
-  const showLine = (next) => {
-    line.replaceWith(next);
-    line = next;
+// The sync status in Settings, on one ruled line: the place's pixel icon,
+// a few words ("Last synced just now", "Offline...") and a quiet Sync now at
+// the end. After a good sync the pixel pencil writes "Just synced" there for
+// a moment (#85).
+export function homeStatusLine({ status, syncNow, notice, icon }) {
+  const line = element("div", "home-status");
+  const picture = element("img", "home-icon");
+  picture.src = `../art/icon-${icon}.svg`;
+  picture.alt = "";
+  const words = (state) => {
+    const box = syncBox(state);
+    return state.state === "synced" && box.last ? box.last : box.status;
   };
-  if (status.state !== "off") {
-    row.append(menuButton("Sync now", "Pull and push your notes right away", async () => {
-      const result = await syncNow();
-      const detail = syncStatusText(result).detail;
-      const written = syncResultText(result) === JUST_SYNCED;
-      showLine(written ? justSyncedLine(false, "menu-sync-status") : plainLine(detail));
-      if (!written) notice(detail, 4000);
-      clearTimeout(restore);
-      restore = setTimeout(() => showLine(plainLine(detail)), 4000);
-    }));
-  }
-  return [line, row];
+  let text = element("span", "home-status-text", words(status));
+  let restore = null;
+  const showText = (next) => {
+    text.replaceWith(next);
+    text = next;
+  };
+  const sync = element("button", "home-sync", "Sync now");
+  sync.type = "button";
+  sync.title = "Pull and push your notes right away";
+  sync.addEventListener("click", async () => {
+    const result = await syncNow();
+    const written = syncResultText(result) === JUST_SYNCED;
+    if (written) showText(justSyncedLine(false, "home-status-text"));
+    else notice(syncStatusText(result).detail, 4000);
+    clearTimeout(restore);
+    restore = setTimeout(() => showText(element("span", "home-status-text", words(result))), 4000);
+  });
+  line.append(picture, text, sync);
+  return line;
 }
 
 function element(tag, className, text) {
@@ -376,25 +383,38 @@ export function createSettingsView({ prefs, repo, onClose }) {
 
   // Export and Restore (#13, #55), under Where your notes live. The Notebook does the
   // files; this only picks them.
+  // One Backup line: what it is on the left, its small line icon on the
+  // right, the whole line clickable, like a note row in the menu.
+  function backupRow(label, kind, hint, onClick) {
+    const row = element("button", "backup-row");
+    row.type = "button";
+    row.title = hint;
+    const icon = element("span", "backup-icon");
+    icon.innerHTML =
+      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" ' +
+      `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[kind]}</svg>`;
+    row.append(element("span", "", label), icon);
+    row.addEventListener("click", () => onClick(row));
+    return row;
+  }
+
   async function backupControls() {
+    const courses = await repo.courses();
     const courseList = element("div", "backup-collections");
     courseList.setAttribute("aria-label", "Collections to download");
-    for (const course of await repo.courses()) {
-      const row = element("div", "backup-collection");
-      row.append(
-        element("span", "course-name", course),
-        iconButton("download", `Download the Collection '${course}'`, (button) =>
-          askFormat(button, (format) => repo.exportCourse(course, format)),
+    for (const course of courses) {
+      courseList.append(
+        backupRow(course, "download", `Download the collection '${course}'`, (row) =>
+          askFormat(row, (format) => repo.exportCourse(course, format)),
         ),
       );
-      courseList.append(row);
     }
 
-    const exportAll = menuButton("Export everything", "Download every note, archived ones too, as a zip of Markdown files", () =>
+    const exportAll = backupRow("Everything", "download", "Download every note, archived ones too, as a zip of Markdown files", () =>
       repo.exportAll(),
     );
 
-    const exportArchive = menuButton("Export archive", "Download only the archived notes as a zip", () =>
+    const exportArchive = backupRow("The archive", "download", "Download only the archived notes as a zip", () =>
       repo.exportArchive(),
     );
 
@@ -408,15 +428,15 @@ export function createSettingsView({ prefs, repo, onClose }) {
       await repo.restore(new Uint8Array(await file.arrayBuffer()));
       picker.value = "";
     });
-    const restore = menuButton(
-      "Restore from backup file",
-      "Bring back notes from an Export zip. Notes you already have are never overwritten",
+    const restore = backupRow(
+      "Restore from a backup file",
+      "unarchive",
+      "Bring back notes from a backup zip. Notes you already have are never overwritten",
       () => picker.click(),
     );
-    const restoreRow = element("div", "menu-actions");
-    restoreRow.append(exportAll, exportArchive, restore, picker);
 
-    return [element("h2", "settings-subheading", "Backup"), courseList, restoreRow];
+    const collections = courses.length > 0 ? [element("p", "backup-label", "Collections"), courseList] : [];
+    return [element("h2", "settings-subheading", "Backup"), exportAll, exportArchive, ...collections, restore, picker];
   }
 
   // Where your notes live (#14, #94, #95, #97, ADR 0011): one radio per
@@ -461,8 +481,10 @@ export function createSettingsView({ prefs, repo, onClose }) {
     else if (shown === "folder") place = [folderCard(saved, error)];
 
     const status = await repo.status();
-    const sync = status.state === "off" || ask ? [] : syncStatusRow({ status, syncNow: repo.syncNow, notice: repo.notice });
-    bodies["notes-home"].replaceChildren(choices, ...place, ...sync, ...(await backupControls()));
+    const icon = notesHomeChoices({ googleReady: true, folderReady: true }).find((home) => home.id === saved.home)?.icon ?? "browser";
+    const connected = status.state !== "off" && !ask && shown === saved.home;
+    const sync = connected ? [homeStatusLine({ status, syncNow: repo.syncNow, notice: repo.notice, icon })] : [];
+    bodies["notes-home"].replaceChildren(choices, ...sync, ...place, ...(await backupControls()));
   }
 
   // The one line asked before switching, with Switch and Keep.
@@ -488,15 +510,11 @@ export function createSettingsView({ prefs, repo, onClose }) {
     const card = element("div", "settings-form");
     const connected = saved.home === "google-drive";
     card.append(
-      element(
-        "p",
-        "settings-text",
-        connected
-          ? "Connected to your Google Drive. Your notes are in a folder named Glacier there."
-          : "Your notes go into a folder named Glacier in your Google Drive, so every browser where you sign in shares them.",
-      ),
-      element("p", "settings-hint", "Glacier only sees the files it makes, nothing else in your Drive."),
+      connected
+        ? element("p", "settings-hint", "In the Glacier folder of your Drive. Glacier only sees its own files.")
+        : element("p", "settings-text", "Your notes go into a folder named Glacier in your Google Drive, so every browser where you sign in shares them."),
     );
+    if (!connected) card.append(element("p", "settings-hint", "Glacier only sees the files it makes, nothing else in your Drive."));
     if (error) {
       const errorEl = element("p", "settings-error", error);
       errorEl.setAttribute("role", "alert");
@@ -517,21 +535,17 @@ export function createSettingsView({ prefs, repo, onClose }) {
     const card = element("div", "settings-form");
     const connected = saved.home === "folder";
     card.append(
-      element(
-        "p",
-        "settings-text",
-        connected
-          ? "Connected to your notes folder. Each note is a Markdown file there."
-          : "Your notes go into a folder you pick on this computer, one Markdown file per note.",
-      ),
-      element("p", "settings-hint", "Obsidian and other editors can open the same folder. Changes made there come in here."),
+      connected
+        ? element("p", "settings-hint", "One Markdown file per note. Obsidian can open the same folder.")
+        : element("p", "settings-text", "Your notes go into a folder you pick on this computer, one Markdown file per note."),
     );
+    if (!connected) card.append(element("p", "settings-hint", "Obsidian and other editors can open the same folder. Changes made there come in here."));
     if (error) {
       const errorEl = element("p", "settings-error", error);
       errorEl.setAttribute("role", "alert");
       card.append(errorEl);
     }
-    const choose = element("button", "card-button", connected ? "Choose another folder" : "Choose a folder");
+    const choose = element("button", connected ? "home-sync" : "card-button", connected ? "Choose another folder" : "Choose a folder");
     choose.type = "button";
     choose.addEventListener("click", async () => {
       let picked;
