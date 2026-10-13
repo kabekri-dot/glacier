@@ -202,9 +202,9 @@ export function noteFromFile(path, text) {
 // --- Sketch files (#101, ADR 0007) ------------------------------------------
 //
 // A Sketch is kept inside its note as `note.sketches`, numbered from 1:
-// `{ 1: { width, height, shapes } }`, each shape `{ kind, x, y, w, h }`. In
-// the Notes Home and in an Export each one is an `.svg` file next to the
-// note's file, `<Title> – sketch <n>.svg`, which GitHub, Obsidian and any
+// `{ 1: { width, height, shapes } }`, the shapes as src/sketch-model.mjs
+// describes them. In the Notes Home and in an Export each one is an `.svg`
+// file next to the note's file, `<Title> – sketch <n>.svg`, which GitHub, Obsidian and any
 // browser show as a picture. The shapes are kept as JSON in the file's
 // `<metadata>`, so Glacier reads its own drawing back unchanged. The note's
 // text holds the embed line `![[<Title> – sketch <n>.svg]]` where it sits.
@@ -249,7 +249,7 @@ export function sketchToSvg(sketch) {
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">\n` +
     `<metadata>${data}</metadata>\n` +
-    `<g fill="none" stroke="${SKETCH_INK}" stroke-width="2" stroke-linejoin="round">\n` +
+    `<g fill="none" stroke="${SKETCH_INK}" color="${SKETCH_INK}" stroke-width="2" stroke-linejoin="round">\n` +
     shapesSvg(shapes) +
     "</g>\n</svg>\n"
   );

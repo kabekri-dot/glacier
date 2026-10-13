@@ -70,6 +70,22 @@ test("the shapes come back from the svg file unchanged", () => {
   assert.deepEqual(sketchFromSvg(svg), drawing);
 });
 
+test("lines, arrows and text come back from the svg file unchanged", () => {
+  const diagram = {
+    width: 320,
+    height: 120,
+    shapes: [
+      { kind: "rectangle", x: 10, y: 10, w: 80, h: 40, id: 1 },
+      { kind: "arrow", x1: 90, y1: 30, x2: 200, y2: 30, stuck1: { id: 1, fx: 1, fy: 0.5 } },
+      { kind: "line", x1: 10, y1: 100, x2: 300, y2: 100 },
+      { kind: "text", x: 210, y: 20, w: 70, h: 28, text: "Server <main> & \"cache\"" },
+    ],
+  };
+  const svg = sketchToSvg(diagram);
+  assert.match(svg, /<text [^>]*>Server &lt;main&gt; &amp; /);
+  assert.deepEqual(sketchFromSvg(svg), diagram);
+});
+
 test("an svg that Glacier didn't draw is not read as a sketch", () => {
   assert.equal(sketchFromSvg('<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>'), undefined);
 });
