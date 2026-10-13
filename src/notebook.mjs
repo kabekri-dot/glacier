@@ -6,6 +6,7 @@
 import { fewAtATime } from "./few-at-a-time.mjs";
 import { findLinks } from "./editor-model.mjs";
 import { zipFiles, unzipFiles } from "./zip.mjs";
+import { readShapes, shapesSvg } from "./sketch-model.mjs";
 
 // Query parameters that only record where a click came from, never which
 // lesson it is, so they're dropped before matching a Source (CONTEXT.md).
@@ -198,6 +199,119 @@ export function noteFromFile(path, text) {
   return note;
 }
 
+// --- Sketch files (#101, ADR 0007) ------------------------------------------
+//
+// A Sketch is kept inside its note as `note.sketches`, numbered from 1:
+// `{ 1: { width, height, shapes } }`, each shape `{ kind, x, y, w, h }`. In
+// the Notes Home and in an Export each one is an `.svg` file next to the
+// note's file, `<Title> – sketch <n>.svg`, which GitHub, Obsidian and any
+// browser show as a picture. The shapes are kept as JSON in the file's
+// `<metadata>`, so Glacier reads its own drawing back unchanged. The note's
+// text holds the embed line `![[<Title> – sketch <n>.svg]]` where it sits.
+
+// The en dash ADR 0007 puts in a sketch's file name.
+const SKETCH_DASH = "\u2013";
+const SKETCH_NAME = new RegExp(`^(.*) ${SKETCH_DASH} sketch (\\d+)\\.svg$`);
+const SKETCH_LINE = new RegExp(`^!\\[\\[(.*) ${SKETCH_DASH} sketch (\\d+)\\.svg\\]\\]$`);
+// The pen the picture is drawn with outside Glacier, on a light page.
+const SKETCH_INK = "#2b2b2b";
+// The size given to a sketch file that doesn't say its own.
+const SKETCH_SIZE = 160;
+
+function sketchFileName(stem, n) {
+  return `${stem} ${SKETCH_DASH} sketch ${n}.svg`;
+}
+
+// The embed line that shows a note's sketch number `n`.
+export function sketchEmbed(title, n) {
+  return `![[${sketchFileName(safeName(title), n)}]]`;
+}
+
+// The file name and number an embed line points at, or null for any other
+// line: `{ stem, n }`.
+export function sketchInLine(line) {
+  const match = SKETCH_LINE.exec((line ?? "").trim());
+  return match ? { stem: match[1], n: Number(match[2]) } : null;
+}
+
+function escapeXml(text) {
+  return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+}
+
+function unescapeXml(text) {
+  return text.replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&quot;", '"').replaceAll("&amp;", "&");
+}
+
+// A sketch as its svg file's text.
+export function sketchToSvg(sketch) {
+  const { width, height, shapes } = sketch;
+  const data = escapeXml(JSON.stringify({ glacier: "sketch", width, height, shapes }));
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">\n` +
+    `<metadata>${data}</metadata>\n` +
+    `<g fill="none" stroke="${SKETCH_INK}" stroke-width="2" stroke-linejoin="round">\n` +
+    shapesSvg(shapes) +
+    "</g>\n</svg>\n"
+  );
+}
+
+// A sketch from its svg file's text, or undefined when the file isn't one
+// of Glacier's sketches. Only plain numbers and known shapes are kept.
+export function sketchFromSvg(text) {
+  const match = /<metadata>([\s\S]*?)<\/metadata>/.exec(text ?? "");
+  if (!match) return undefined;
+  try {
+    const data = JSON.parse(unescapeXml(match[1]));
+    if (data?.glacier !== "sketch" || !Array.isArray(data.shapes)) return undefined;
+    const size = (value) => (Number.isFinite(value) && value > 0 ? value : SKETCH_SIZE);
+    return { width: size(data.width), height: size(data.height), shapes: readShapes(data.shapes) };
+  } catch {
+    return undefined;
+  }
+}
+
+// The note's sketch numbers, in order.
+function sketchNumbers(note) {
+  return Object.keys(note.sketches ?? {}).map(Number).sort((a, b) => a - b);
+}
+
+function nextSketchNumber(note) {
+  return (sketchNumbers(note).at(-1) ?? 0) + 1;
+}
+
+// The note with another title, its embed lines pointing at its sketch files
+// under that title.
+function withTitle(note, title) {
+  const renamed = { ...note, title };
+  if (note.sketches && note.body) {
+    renamed.body = note.body.replaceAll(`![[${safeName(note.title)} ${SKETCH_DASH} sketch `, `![[${safeName(title)} ${SKETCH_DASH} sketch `);
+  }
+  return renamed;
+}
+
+// A note's files: its Markdown file, then one svg file per sketch in the
+// same folder, `{ path, text, sketch }` with the sketch's number.
+function noteFiles(note, stem = safeName(note.title)) {
+  const file = fileFor(note, stem);
+  const folder = file.path.slice(0, file.path.lastIndexOf("/") + 1);
+  return [
+    file,
+    ...sketchNumbers(note).map((n) => ({
+      path: folder + sketchFileName(stem, n),
+      text: sketchToSvg(note.sketches[n]),
+      sketch: n,
+    })),
+  ];
+}
+
+// For a sketch file's path: the path of its note's Markdown file and the
+// sketch's number, or null when the file is no sketch.
+function sketchFilePath(path) {
+  const at = path.lastIndexOf("/") + 1;
+  const match = SKETCH_NAME.exec(path.slice(at));
+  return match ? { notePath: `${path.slice(0, at)}${match[1]}.md`, n: Number(match[2]) } : null;
+}
+
 // Collection names ignore capital letters (#73), so "Testing Test" and
 // "Testing test" are the same Collection.
 function sameCollection(a, b) {
@@ -212,20 +326,20 @@ function sameNote(a, b, { ignoreArchived = false } = {}) {
   );
 }
 
-// Note files for these notes, zipped. Two titles that only differ in
-// characters a filename can't hold get a number, and their frontmatter keeps
-// the title.
+// Note files for these notes, with their sketch files, zipped. Two titles
+// that only differ in characters a filename can't hold get a number, and their
+// frontmatter keeps the title.
 function zipNotes(notes) {
   const taken = new Set();
   const files = [];
   for (const note of notes) {
     const base = safeName(note.title);
-    let file = fileFor(note, base);
-    for (let n = 2; taken.has(file.path.toLowerCase()); n++) {
-      file = fileFor(note, `${base} ${n}`);
+    let stem = base;
+    for (let n = 2; taken.has(fileFor(note, stem).path.toLowerCase()); n++) {
+      stem = `${base} ${n}`;
     }
-    taken.add(file.path.toLowerCase());
-    files.push(file);
+    taken.add(fileFor(note, stem).path.toLowerCase());
+    files.push(...noteFiles(note, stem).map(({ path, text }) => ({ path, text })));
   }
   files.sort((a, b) => a.path.localeCompare(b.path));
   return zipFiles(files);
@@ -315,6 +429,16 @@ function folderErrorMessage(error) {
 // folder or pictures in the Notes Repo are left alone.
 function isNoteFile(path) {
   return /^(archive\/)?(collections|courses|notes|concepts)\/.+\.md$/i.test(path);
+}
+
+// A sketch file sits in the same folders and is named after its note
+// (#101). Any other picture there is not Glacier's.
+function isSketchFile(path) {
+  return /^(archive\/)?(collections|notes)\/.+\.svg$/i.test(path) && sketchFilePath(path) !== null;
+}
+
+function isNotebookFile(path) {
+  return isNoteFile(path) || isSketchFile(path);
 }
 
 // When a note was last written in, for "the page opens its most recently
@@ -485,6 +609,9 @@ export function createNotebook({ storage }) {
     const known = synced[path];
     const incoming = noteFromFile(path, text);
     const local = storage.getNote(known ? known.title : incoming.title);
+    // A note moved to another folder (another Collection) comes in under a
+    // new path: what its old file said tells whether it changed here since.
+    const movedFrom = !known && Object.keys(synced).find((other) => !synced[other].sketch && synced[other].title === incoming.title);
     if (!local) {
       const note = { ...incoming, title: uniqueTitle(incoming.title) };
       storage.putNote(note);
@@ -492,10 +619,13 @@ export function createNotebook({ storage }) {
       synced[path] = { title: note.title, version, text };
     } else if (
       unchangedSince(local, { text }, path) ||
-      (known ? unchangedSince(local, known, path) : sameNote(local, incoming, { ignoreArchived: true }))
+      (known ? unchangedSince(local, known, path) : sameNote(local, incoming, { ignoreArchived: true })) ||
+      (movedFrom && unchangedSince(local, synced[movedFrom], movedFrom))
     ) {
       if (local.title !== incoming.title) storage.deleteNote(local.title);
-      storage.putNote(incoming);
+      // The note's file holds no drawings: its sketches stay as they are here
+      // and come with their own files.
+      storage.putNote(local.sketches ? { ...incoming, sketches: local.sketches } : incoming);
       if (!sameNote(local, incoming) || local.title !== incoming.title) result.pulled.push(incoming.title);
       synced[path] = { title: incoming.title, version, text };
     } else {
@@ -513,10 +643,66 @@ export function createNotebook({ storage }) {
     const local = storage.getNote(title);
     // A file only moved to another folder (another browser moved courses/ to
     // collections/, #73) already came in under its new path: keep the note.
-    const moved = Object.keys(synced).some((other) => other !== path && synced[other].title === title);
+    const moved = Object.keys(synced).some(
+      (other) => other !== path && synced[other].title === title && !synced[other].sketch,
+    );
     if (local && !moved && unchangedSince(local, synced[path], path)) {
       storage.deleteNote(local.title);
       result.pulled.push(local.title);
+    }
+    delete synced[path];
+  }
+
+  // The note whose Markdown file is at this path, or undefined.
+  function noteAtPath(path) {
+    return storage.allNotes().find((note) => noteToFile(note).path === path);
+  }
+
+  // Put a sketch from a file into its note (#101). One the note doesn't have
+  // yet, or has unchanged since `known` (the file's text when last synced),
+  // is taken as it is. One that changed here as well is never overwritten
+  // (ADR 0004): the incoming drawing becomes a new sketch below the note's
+  // text. Returns "same", "taken" or "both".
+  function adoptSketch(note, n, incoming, known) {
+    const local = note.sketches?.[n];
+    const localText = local && sketchToSvg(local);
+    if (localText === sketchToSvg(incoming)) return "same";
+    if (!local || (known !== undefined && localText === known)) {
+      storage.putNote({ ...note, sketches: { ...note.sketches, [n]: incoming } });
+      return "taken";
+    }
+    const free = nextSketchNumber(note);
+    const body = `${note.body ?? ""}\n${sketchEmbed(note.title, free)}`;
+    storage.putNote({ ...note, body, sketches: { ...note.sketches, [free]: incoming } });
+    return "both";
+  }
+
+  // Bring one changed or new sketch file into its note. A file whose note
+  // isn't here is left for a later sync.
+  function pullSketch(path, version, text, synced, result) {
+    const { notePath, n } = sketchFilePath(path);
+    const note = noteAtPath(notePath);
+    const incoming = sketchFromSvg(text);
+    if (!note || !incoming) return;
+    const outcome = adoptSketch(note, n, incoming, synced[path]?.text);
+    if (outcome !== "same" && !result.pulled.includes(note.title)) result.pulled.push(note.title);
+    if (outcome === "both") result.conflicts += 1;
+    synced[path] = { title: note.title, sketch: n, version, text };
+  }
+
+  // A sketch file gone from the Notes Repo takes the sketch with it, unless
+  // it changed here since or only moved with its note to another folder.
+  function pullSketchDeletion(path, synced, result) {
+    const { title, sketch: n, text } = synced[path];
+    const moved = Object.keys(synced).some(
+      (other) => other !== path && synced[other].title === title && synced[other].sketch === n,
+    );
+    const note = storage.getNote(title);
+    const local = note?.sketches?.[n];
+    if (!moved && local && sketchToSvg(local) === text) {
+      const { [n]: gone, ...sketches } = note.sketches;
+      storage.putNote({ ...note, sketches });
+      if (!result.pulled.includes(title)) result.pulled.push(title);
     }
     delete synced[path];
   }
@@ -525,18 +711,24 @@ export function createNotebook({ storage }) {
   // Changed files are all downloaded before any note changes, so a lost
   // connection while pulling leaves the Notebook as it was.
   async function pull(remote, synced, result) {
-    const listed = (await remote.listFiles()).filter(({ path }) => isNoteFile(path));
+    const listed = (await remote.listFiles()).filter(({ path }) => isNotebookFile(path));
     const changed = [];
     const toRead = listed.filter(({ path, version }) => synced[path]?.version !== version);
     await fewAtATime(toRead, async ({ path }, at) => {
       changed[at] = { path, ...(await remote.readFile(path)) };
     });
+    // Notes first, so each sketch finds its note where it now is.
     for (const { path, version, text } of changed) {
-      pullFile(path, version, text, synced, result);
+      if (isNoteFile(path)) pullFile(path, version, text, synced, result);
+    }
+    for (const { path, version, text } of changed) {
+      if (isSketchFile(path)) pullSketch(path, version, text, synced, result);
     }
     const listedPaths = new Set(listed.map(({ path }) => path));
     for (const path of Object.keys(synced)) {
-      if (!listedPaths.has(path)) pullDeletion(path, synced, result);
+      if (listedPaths.has(path)) continue;
+      if (synced[path].sketch) pullSketchDeletion(path, synced, result);
+      else pullDeletion(path, synced, result);
     }
     storage.putMeta(SYNCED, { ...synced });
     mergeCollectionCases();
@@ -551,14 +743,15 @@ export function createNotebook({ storage }) {
   async function pushRound(remote, synced, result) {
     const wanted = new Map();
     for (const note of storage.allNotes()) {
-      const file = noteToFile(note);
-      wanted.set(file.path, { title: note.title, text: file.text });
+      for (const { path, text, sketch } of noteFiles(note)) {
+        wanted.set(path, { title: note.title, text, sketch });
+      }
     }
     const writes = [];
-    for (const [path, { title, text }] of wanted) {
+    for (const [path, { title, text, sketch }] of wanted) {
       const known = synced[path];
       if (known && known.title === title && known.text === text) continue;
-      writes.push({ path, title, text, version: known?.version });
+      writes.push({ path, title, text, sketch, version: known?.version });
     }
     const deletes = Object.keys(synced)
       .filter((path) => !wanted.has(path))
@@ -575,7 +768,9 @@ export function createNotebook({ storage }) {
       await pull(remote, synced, result);
       return false;
     }
-    for (const { path, title, text } of writes) synced[path] = { title, version: versions[path], text };
+    for (const { path, title, text, sketch } of writes) {
+      synced[path] = { title, version: versions[path], text, ...(sketch && { sketch }) };
+    }
     for (const { path } of deletes) delete synced[path];
     storage.putMeta(SYNCED, { ...synced });
     result.pushed += writes.length + deletes.length;
@@ -864,7 +1059,7 @@ export function createNotebook({ storage }) {
           storage.putNote({ ...other, body });
         }
       }
-      const renamed = { ...storage.getNote(oldTitle), title };
+      const renamed = withTitle(storage.getNote(oldTitle), title);
       storage.deleteNote(oldTitle);
       storage.putNote(renamed);
       const recent = storage.getMeta(RECENT);
@@ -967,6 +1162,48 @@ export function createNotebook({ storage }) {
       return updated;
     },
 
+    // Sketches (#101, ADR 0007). Start a new, empty sketch in a note, as wide
+    // as the text it sits in. Returns its number and the embed line for the
+    // editor to put in the text, or undefined for an unknown note.
+    addSketch(title, { width = 320, height = 160 } = {}) {
+      const note = storage.getNote(title);
+      if (!note) return undefined;
+      const n = nextSketchNumber(note);
+      const sketches = { ...note.sketches, [n]: { width, height, shapes: [] } };
+      storage.putNote({ ...note, sketches, edited: new Date().toISOString() });
+      return { n, line: sketchEmbed(title, n) };
+    },
+
+    // One sketch of a note, `{ width, height, shapes }`, or undefined.
+    sketch(title, n) {
+      return storage.getNote(title)?.sketches?.[n];
+    },
+
+    // The sketch an embed line shows, `{ title, n, sketch }`, or null when the
+    // line is no embed or its note or sketch isn't here. A Conflict Copy's
+    // line still points at its original's sketch, so that one shows.
+    sketchForLine(line) {
+      const embed = sketchInLine(line);
+      if (!embed) return null;
+      const note = storage.allNotes().find((one) => safeName(one.title) === embed.stem && one.sketches?.[embed.n]);
+      return note ? { title: note.title, n: embed.n, sketch: note.sketches[embed.n] } : null;
+    },
+
+    // Save a sketch as it is drawn. Like the text, it marks the note as just
+    // edited, and Sync sends its file.
+    saveSketch(title, n, sketch) {
+      const note = storage.getNote(title);
+      if (!note?.sketches?.[n]) return undefined;
+      const sketches = { ...note.sketches, [n]: sketch };
+      const updated = { ...note, sketches, edited: new Date().toISOString() };
+      storage.putNote(updated);
+      return updated;
+    },
+
+    hasSketches(title) {
+      return sketchNumbers(storage.getNote(title) ?? {}).length > 0;
+    },
+
     // Export (#13): the whole Notebook as a zip of note files, ready to open
     // as an Obsidian vault.
     exportZip() {
@@ -997,6 +1234,11 @@ export function createNotebook({ storage }) {
         .map((note) => ({ title: note.title, body: note.body ?? "" }));
     },
 
+    // One note with its sketch files, zipped (#101).
+    exportNoteZip(title) {
+      return zipNotes([storage.getNote(title)]);
+    },
+
     // One note as its single Markdown file, `{ path, text }`.
     exportNote(title) {
       return noteToFile(storage.getNote(title));
@@ -1011,19 +1253,25 @@ export function createNotebook({ storage }) {
     async firstSync(remote, onProgress = () => {}) {
       onProgress({ step: "connecting" });
       await remote.connect();
-      const paths = (await remote.listFiles()).map(({ path }) => path).filter(isNoteFile);
+      const paths = (await remote.listFiles()).map(({ path }) => path).filter(isNotebookFile);
+      const notePaths = paths.filter(isNoteFile);
       const downloaded = [];
-      onProgress({ step: "downloading", done: 0, total: paths.length });
+      const sketchFiles = [];
+      onProgress({ step: "downloading", done: 0, total: notePaths.length });
       let done = 0;
       await fewAtATime(paths, async (path, at) => {
         const { text, version } = await remote.readFile(path);
+        if (isSketchFile(path)) {
+          sketchFiles.push({ path, version, text });
+          return;
+        }
         downloaded[at] = { path, version, text, note: noteFromFile(path, text) };
         done += 1;
-        onProgress({ step: "downloading", done, total: paths.length });
+        onProgress({ step: "downloading", done, total: notePaths.length });
       });
       onProgress({ step: "linking" });
       const synced = {};
-      for (const { path, version, text, note } of downloaded) {
+      for (const { path, version, text, note } of downloaded.filter(Boolean)) {
         const existing = storage.getNote(note.title);
         if (!existing) {
           storage.putNote(note);
@@ -1032,11 +1280,14 @@ export function createNotebook({ storage }) {
         }
         synced[path] = { title: note.title, version, text };
       }
+      for (const { path, version, text } of sketchFiles) {
+        pullSketch(path, version, text, synced, { pulled: [], conflicts: 0 });
+      }
       storage.putMeta(SYNCED, synced);
       storage.putMeta(LAST_SYNCED, new Date().toISOString());
       mergeCollectionCases();
-      onProgress({ step: "ready", notes: downloaded.length });
-      return { notes: downloaded.length };
+      onProgress({ step: "ready", notes: notePaths.length });
+      return { notes: notePaths.length };
     },
 
     // Where the notes live (#94): "browser", a place such as "github", or
@@ -1099,25 +1350,37 @@ export function createNotebook({ storage }) {
     // Import (#13): turn such a zip back into notes. A note the Notebook
     // doesn't have is added; one it has with the same text is left alone; one
     // whose text differs is never overwritten (ADR 0004): the imported version
-    // is added next to it under a free title. Files that aren't `.md` (an
-    // `.obsidian` folder, pictures) are skipped. A broken zip is refused before
-    // anything changes.
+    // is added next to it under a free title. A note's sketch files come
+    // back into it (#101). Other files (an `.obsidian` folder, pictures) are
+    // skipped. A broken zip is refused before anything changes.
     async importZip(bytes) {
-      const files = (await unzipFiles(bytes)).filter(({ path }) => /\.md$/i.test(path));
+      const files = await unzipFiles(bytes);
       const today = new Date().toISOString().slice(0, 10);
       const result = { added: 0, unchanged: 0, copies: 0 };
-      for (const { path, text } of files) {
+      // Which note each Markdown file became, so its sketch files follow it.
+      const landed = new Map();
+      for (const { path, text } of files.filter(({ path }) => /\.md$/i.test(path))) {
         const note = noteFromFile(path, text);
         const existing = storage.getNote(note.title);
         if (!existing) {
           storage.putNote(note);
           result.added += 1;
+          landed.set(path, note.title);
         } else if (sameNote(existing, note, { ignoreArchived: true })) {
           result.unchanged += 1;
+          landed.set(path, note.title);
         } else {
-          storage.putNote({ ...note, title: uniqueTitle(`${note.title} (imported ${today})`) });
+          const copy = withTitle({ ...note, sketches: {} }, uniqueTitle(`${note.title} (imported ${today})`));
+          storage.putNote(copy);
           result.copies += 1;
+          landed.set(path, copy.title);
         }
+      }
+      for (const { path, text } of files.filter(({ path }) => /\.svg$/i.test(path))) {
+        const where = sketchFilePath(path);
+        const note = where && storage.getNote(landed.get(where.notePath));
+        const sketch = sketchFromSvg(text);
+        if (note && sketch) adoptSketch(note, where.n, sketch);
       }
       mergeCollectionCases();
       return result;

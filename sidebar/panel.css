@@ -477,6 +477,112 @@ code {
   border-radius: 3px;
 }
 
+/* A sketch block (#101): the drawing area between the lines, as wide as the
+   text. Its height is whole ruled rows, so the text below stays on the lines.
+   The toolbar floats above it while it is picked and takes no room. */
+.sketch-block {
+  position: relative;
+  white-space: normal;
+}
+
+.sketch-area {
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+.sketch-area:focus {
+  outline: none;
+}
+
+.sketch-block.is-picked .sketch-area {
+  background: var(--tint);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.sketch-svg {
+  display: block;
+  width: 100%;
+}
+
+.sketch-shapes {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.sketch-pick {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
+.sketch-resize {
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  width: 2.2rem;
+  height: 6px;
+  margin-left: -1.1rem;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  cursor: ns-resize;
+  visibility: hidden;
+}
+
+.sketch-block.is-picked .sketch-resize {
+  visibility: visible;
+}
+
+.sketch-toolbar {
+  position: absolute;
+  z-index: 5;
+  right: 0;
+  bottom: 100%;
+  display: none;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 6px;
+  background: var(--paper);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--ink) 20%, transparent);
+}
+
+.sketch-block.is-picked .sketch-toolbar {
+  display: flex;
+}
+
+.sketch-tool {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.sketch-tool:hover,
+.sketch-tool.is-chosen {
+  background: var(--tint);
+  color: var(--accent);
+  opacity: 1;
+}
+
+.sketch-tool:disabled {
+  cursor: default;
+  opacity: 0.3;
+  background: transparent;
+}
+
 /* The focused line and its + button (#6). The row lets the + sit in the left
    gutter without pushing the text off the ruled lines: the line keeps the
    full width and the button is lifted out into the padding. */

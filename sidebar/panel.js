@@ -39,6 +39,7 @@ import { createDownloads } from "./downloads.js";
 import { createSyncBoxView } from "./sync-box-view.js";
 import { createBackBox, createNewMenu, createNoteMenu } from "./pill-menus.js";
 import { createNoteMetaView } from "./note-meta-view.js";
+import { createSketchView } from "./sketch-view.js";
 import { pageCard, panelsCard, startPrompt } from "./cards.js";
 import { WELCOME_GREETING, WELCOME_LINES, WELCOME_TIP, welcomeShown } from "../src/guidance.mjs";
 import { drawBesideFrames } from "./beside-frames.js";
@@ -60,6 +61,9 @@ const EMPTY_LINE_HINT = "Type / for commands, or click + on the left";
 // The one quiet line on a fresh page (#61), where the note starts as you type.
 const PAGE_DRAFT_HINT = "No note for this page yet. Just start writing.";
 const DRAFT_HINT = "Just start writing.";
+
+// How many ruled rows high a new sketch starts (#101).
+const NEW_SKETCH_ROWS = 5;
 
 // The formatting shortcuts (#44): Ctrl (Cmd on a Mac) plus these keys. Ctrl+K
 // is kept free for search.
@@ -253,7 +257,28 @@ async function start() {
     },
     titles: () => notebook.notes().map((note) => note.title),
     extractNote: (text) => screen.extract(text),
+    newSketch,
   });
+
+  // Sketch blocks (#101): the drawing area for an embed line, drawn by
+  // sidebar/sketch-view.js. A drawing is saved into the note at once, and
+  // sync sends its svg file.
+  const sketchView = createSketchView({
+    notebook,
+    rowHeight: () => lookDrawn.lineHeight,
+    onSaved: () => autoSync.changed(),
+  });
+
+  // The Sketch command in the + and / menu: a new, empty sketch as wide as
+  // the text and a few rows high. The title stops following the first line,
+  // so the new embed line keeps naming this note.
+  function newSketch() {
+    const note = screen.note();
+    if (!note) return null;
+    screen.leaveFirstLine();
+    const width = Math.round((focusedEl ?? noteEl).clientWidth);
+    return notebook.addSketch(note.title, { width, height: NEW_SKETCH_ROWS * lookDrawn.lineHeight })?.line ?? null;
+  }
 
   const downloads = createDownloads({ notebook, screen, notice: (text) => showNotice(text) });
 
@@ -1210,6 +1235,13 @@ async function start() {
     }
 
     const line = blockLines[0];
+    // A sketch's embed line shows the drawing instead (#101). Its raw line
+    // only shows when the caret is moved onto it with the keys.
+    const sketch = sketchView.draw(line);
+    if (sketch) {
+      sketch.dataset.start = range.start;
+      return sketch;
+    }
     el.innerHTML = renderLineHtml(line, linkExists);
     onPlainClick(el, (event) => {
       // The sidebar finds which drawn character the click landed on; the Editor
