@@ -74,9 +74,60 @@ function toggleSidePanel(windowId) {
   }
 }
 
+// Clipping (#100): the sidebar opens, and the clip waits in storage for it.
+// The panel takes it when it starts, or when it appears while the panel is
+// already open. Nothing is kept once the panel has taken it.
+function openPanelFor(tab) {
+  if (api.sidePanel && api.sidePanel.open && tab) {
+    // No await before open(): the click or shortcut's gesture must be alive.
+    api.sidePanel.open({ windowId: tab.windowId }).catch((error) => {
+      console.warn("Glacier: could not open the side panel", error);
+    });
+  } else if (api.sidebarAction && api.sidebarAction.open) {
+    api.sidebarAction.open();
+  }
+}
+
+function handOverClip(text, tab) {
+  if (!text || !text.trim() || !tab || !tab.url) return;
+  api.storage.local
+    .set({ pendingClip: { text, title: tab.title ?? "", url: tab.url, at: Date.now() } })
+    .catch((error) => {
+      console.warn("Glacier: could not hand over the clip", error);
+    });
+}
+
+// Right-click on a selection: the click hands over the selected text.
+if (api.contextMenus && api.contextMenus.onClicked) {
+  api.runtime.onInstalled.addListener(() => {
+    api.contextMenus.create({
+      id: "clip-to-glacier",
+      title: "Clip to Glacier",
+      contexts: ["selection"],
+    });
+  });
+  api.contextMenus.onClicked.addListener((info, tab) => {
+    if (info.menuItemId !== "clip-to-glacier") return;
+    openPanelFor(tab);
+    handOverClip(info.selectionText, tab);
+  });
+}
+
 // Keyboard shortcut (Alt+Shift+G by default).
 if (api.commands && api.commands.onCommand) {
   api.commands.onCommand.addListener((command, tab) => {
+    if (command === "clip-selection") {
+      openPanelFor(tab);
+      if (!tab || !api.scripting) return;
+      // The shortcut grants activeTab, so the selection can be read here.
+      api.scripting
+        .executeScript({ target: { tabId: tab.id }, func: () => String(window.getSelection()) })
+        .then((results) => handOverClip(results?.[0]?.result, tab))
+        .catch((error) => {
+          console.warn("Glacier: could not read the selection", error);
+        });
+      return;
+    }
     if (command !== "open-glacier") return;
 
     if (api.sidePanel && api.sidePanel.open && tab) {

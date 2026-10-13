@@ -11,6 +11,15 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Clip highlighted text from a web page (#100)
+
+- [ ] Select a sentence on a web page, right-click and choose Clip to Glacier. With a note open in the sidebar, the sentence appears at its end as a quote, with a line under it linking to the page. A short message says Clipped.
+- [ ] Select two or three lines and press Alt Shift C: every line is quoted.
+- [ ] Close the sidebar, select text and use the right-click menu: the sidebar opens and the clip is in the note. Do the same with Alt Shift C.
+- [ ] Clip on a page you have no note for, with no note open: a new note for that page is made with the clip in it.
+- [ ] Right-click with nothing selected: Clip to Glacier is not offered. Alt Shift C with nothing selected does nothing.
+- [ ] The clip is saved and synced like typing. Alt Shift C is listed in the Shortcuts panel.
+
 ### Extract to a new note (#99)
 
 - [ ] Select one line of text in a note and press Ctrl Shift E (Cmd Shift E on a Mac): the text turns into a link in its place, and a new note with that title exists. You stay in the note you were writing.

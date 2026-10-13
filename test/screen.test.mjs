@@ -904,3 +904,28 @@ test("extracting with no note open makes nothing", () => {
   const { screen } = withNotes();
   assert.equal(screen.extract("text"), null);
 });
+
+// --- Clipping (#100) ---------------------------------------------------------
+
+test("a clip goes at the end of the open note as a quote with its source link", () => {
+  const { screen, notebook, first } = withNotes();
+  notebook.saveBody("First", "My notes");
+  screen.open(notebook.note("First"));
+  const view = screen.clip({ text: "Flex is neat", title: "Flexbox", url: "https://a.example/x" });
+  assert.equal(view.type, "note");
+  assert.equal(view.reload, true);
+  assert.equal(notebook.note("First").body, "My notes\n\n> Flex is neat\n> — [Flexbox](https://a.example/x)");
+});
+
+test("a clip with no note open starts the note for that page", () => {
+  const { screen, notebook } = withNotes();
+  const view = screen.clip({ text: "Flex is neat", title: "Flexbox", url: "https://a.example/x" });
+  assert.equal(screen.note().title, "Flexbox");
+  assert.equal(view.note.source, "https://a.example/x");
+  assert.equal(notebook.note("Flexbox").body, "> Flex is neat\n> — [Flexbox](https://a.example/x)");
+});
+
+test("an empty clip changes nothing", () => {
+  const { screen } = withNotes();
+  assert.equal(screen.clip({ text: "  ", title: "T", url: "https://a.example" }), null);
+});
