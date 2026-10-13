@@ -15,7 +15,7 @@ import { createSaveScheduler } from "./save-scheduler.mjs";
 
 // A few words of the first line, Markdown marks left out, for a note that was
 // written on before it was given a title.
-function titleFromText(body) {
+export function titleFromText(body) {
   const firstLine = body.split("\n").find((line) => line.trim() !== "") ?? "";
   const words = firstLine
     .replace(/\[\[|\]\]/g, "")

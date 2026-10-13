@@ -43,6 +43,8 @@ import {
 export function createEditorSession({
   onChange,
   titles = () => [],
+  // Makes the note for extracted text and returns its title (#99).
+  extractNote = () => null,
   pause = 800,
   setTimer = setTimeout,
   clearTimer = clearTimeout,
@@ -237,6 +239,10 @@ export function createEditorSession({
   function pickMenu() {
     if (!menu) return;
     const command = menu.commands[menu.selected];
+    if (command.id === "extract") {
+      pickExtract();
+      return;
+    }
     recordStep({ before: plusOrigin && beforePlus ? beforePlus : snapshot() });
     plusOrigin = null;
     beforePlus = null;
@@ -249,6 +255,35 @@ export function createEditorSession({
     menu = null;
     relayout();
     notifyChange();
+  }
+
+  // Replace the text between two raw points with a Link to a new note made from
+  // `text` (#99). Returns the new note's title, or null when there is nothing
+  // to extract. Undo brings the text back; the note stays.
+  function replaceWithNote(from, to, text) {
+    if (text.trim() === "") return null;
+    const title = extractNote(text);
+    if (!title) return null;
+    recordStep();
+    const head = `${lines[from.line].slice(0, from.col)}[[${title}]]`;
+    lines.splice(from.line, to.line - from.line + 1, head + lines[to.line].slice(to.col));
+    focus = { line: from.line, col: head.length };
+    menu = null;
+    plusOrigin = null;
+    beforePlus = null;
+    formatSelection = null;
+    relayout();
+    notifyChange();
+    return { title };
+  }
+
+  // The "Extract to a new note" command in the / menu: the text after the
+  // typed `/query` becomes the note. With nothing after it the menu just closes.
+  function pickExtract() {
+    const line = focus.line;
+    const rest = lines[line].slice(focus.col).trim();
+    const done = replaceWithNote({ line, col: 0 }, { line, col: lines[line].length }, rest);
+    if (!done) menu = null;
   }
 
   // Close the menu without picking (Esc, clicking elsewhere, scrolling out, or
@@ -683,6 +718,14 @@ export function createEditorSession({
     copy(from, to) {
       const text = markdownSlice(lines, rawPoint(from), rawPoint(to));
       return { text, count: splitIntoLines(text).length };
+    },
+
+    // Extract to a new note (#99): the text between two selection edges (see
+    // rawPoint) becomes a new note, and a Link takes its place.
+    extract(from, to) {
+      const start = rawPoint(from);
+      const end = rawPoint(to);
+      return replaceWithNote(start, end, markdownSlice(lines, start, end));
     },
 
     // Ctrl+A in the focused block [selStart, selEnd] (#7): the first press

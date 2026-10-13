@@ -106,6 +106,7 @@ export const SLASH_COMMANDS = [
   { id: "italic", label: "Italic", markdown: "*italic*", insert: "**", caret: 1 },
   { id: "code", label: "Inline code", markdown: "`code`", insert: "``", caret: 1 },
   { id: "codeblock", label: "Code block", markdown: "```", insert: "```\n\n```", caret: 4 },
+  { id: "extract", label: "Extract to a new note", markdown: "[[Title]]", insert: "", caret: 0 },
 ];
 
 // The command query a caret is in, or null when the menu should stay closed.

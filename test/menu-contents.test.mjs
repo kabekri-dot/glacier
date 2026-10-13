@@ -197,7 +197,7 @@ test("no note open means no This note menu", () => {
   assert.equal(noteMenu(null), null);
 });
 
-test("an open note gets its name, Download as a file, Archive and Delete", () => {
+test("an open note gets its name, Extract, Download as a file, Archive and Delete", () => {
   const notebook = notebookWith();
   const menu = noteMenu(notebook.note("Flexbox"));
   assert.equal(menu.heading, "Flexbox");
@@ -205,6 +205,7 @@ test("an open note gets its name, Download as a file, Archive and Delete", () =>
     menu.actions.map((action) => [action.kind, action.label]),
     [
       ["move", "Move to collection…"],
+      ["extract", "Extract to a new note"],
       ["download", "Download as a file"],
       ["archive", "Archive"],
       ["delete", "Delete"],
@@ -217,7 +218,7 @@ test("an archived note offers Unarchive instead of Archive", () => {
   const notebook = notebookWith();
   notebook.archiveNote("Flexbox");
   const menu = noteMenu(notebook.note("Flexbox"));
-  assert.deepEqual(menu.actions.map((action) => action.label), ["Move to collection…", "Download as a file", "Unarchive", "Delete"]);
+  assert.deepEqual(menu.actions.map((action) => action.label), ["Move to collection…", "Extract to a new note", "Download as a file", "Unarchive", "Delete"]);
 });
 
 test("a second version shows a bar naming the original and the two buttons", () => {
@@ -386,4 +387,10 @@ test("archived notes don't count for a page group", () => {
 test("the note's Download says it can save or print the note", () => {
   const download = noteMenu({ title: "Grid" }).actions.find((action) => action.kind === "download");
   assert.equal(download.hint, "Save this note as Markdown or PDF, or print it");
+});
+
+test("the This note menu offers Extract to a new note and says to select text first", () => {
+  const action = noteMenu({ title: "A" }).actions.find((a) => a.kind === "extract");
+  assert.equal(action.label, "Extract to a new note");
+  assert.match(action.hint, /Select some text/);
 });

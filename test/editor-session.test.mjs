@@ -1092,3 +1092,83 @@ test("without a titles source [[ opens nothing", () => {
   editor.refreshMenu();
   assert.equal(editor.menu, null);
 });
+
+// Extract to a new note (#99): the selection becomes a [[Link]] to the note the
+// sidebar made from it. The session only swaps the text and keeps Undo.
+
+function extractor(titleFor = (text) => text.split("\n")[0]) {
+  const made = [];
+  const editor = createEditorSession({
+    extractNote: (text) => {
+      made.push(text);
+      return titleFor(text);
+    },
+  });
+  return { editor, made };
+}
+
+test("extracting a one-line selection leaves a Link in its place", () => {
+  const { editor, made } = extractor(() => "Flex");
+  editor.load("Use flex for rows");
+  const result = editor.extract({ line: 0, col: 4 }, { line: 0, col: 8 });
+  assert.deepEqual(made, ["flex"]);
+  assert.deepEqual(result, { title: "Flex" });
+  assert.deepEqual(editor.state.lines, ["Use [[Flex]] for rows"]);
+  assert.deepEqual(editor.state.focus, { line: 0, col: 12 });
+});
+
+test("extracting several lines hands over all of them and leaves one Link", () => {
+  const { editor, made } = extractor(() => "Rows");
+  editor.load("intro\nfirst\n- second\nlast words\noutro");
+  editor.extract({ line: 1, col: 2 }, { line: 3, col: 4 });
+  assert.deepEqual(made, ["rst\n- second\nlast"]);
+  assert.deepEqual(editor.state.lines, ["intro", "fi[[Rows]] words", "outro"]);
+});
+
+test("Undo brings the extracted text back", () => {
+  const { editor } = extractor(() => "Flex");
+  editor.load("Use flex now");
+  editor.extract({ line: 0, col: 4 }, { line: 0, col: 8 });
+  editor.undo();
+  assert.deepEqual(editor.state.lines, ["Use flex now"]);
+});
+
+test("extracting reports the changed note body", () => {
+  const changes = [];
+  const editor = createEditorSession({ onChange: (body) => changes.push(body), extractNote: () => "Flex" });
+  editor.load("Use flex now");
+  editor.extract({ line: 0, col: 4 }, { line: 0, col: 8 });
+  assert.deepEqual(changes, ["Use [[Flex]] now"]);
+});
+
+test("extracting nothing, or only spaces, changes nothing", () => {
+  const { editor, made } = extractor();
+  editor.load("a  b");
+  assert.equal(editor.extract({ line: 0, col: 1 }, { line: 0, col: 1 }), null);
+  assert.equal(editor.extract({ line: 0, col: 1 }, { line: 0, col: 3 }), null);
+  assert.deepEqual(made, []);
+  assert.deepEqual(editor.state.lines, ["a  b"]);
+});
+
+test("extracting formatted text keeps its Markdown in the new note", () => {
+  const { editor, made } = extractor(() => "Bold");
+  editor.load("see **bold** here");
+  editor.extract({ line: 0, rendered: 4 }, { line: 0, rendered: 8 });
+  assert.deepEqual(made, ["**bold**"]);
+  assert.deepEqual(editor.state.lines, ["see [[Bold]] here"]);
+});
+
+test("the extract command in the / menu takes the rest of the line", () => {
+  const { editor, made } = extractor(() => "Rest");
+  editor.load("");
+  editor.edit("/ex tail of it", 3);
+  editor.refreshMenu();
+  const command = editor.menu.commands.find((c) => c.id === "extract");
+  assert.ok(command);
+  editor.menu.selected = editor.menu.commands.indexOf(command);
+  editor.menuKey("Enter", { value: "/ex tail of it", caret: 3 });
+  assert.deepEqual(made, ["tail of it"]);
+  assert.deepEqual(editor.state.lines, ["[[Rest]]"]);
+  editor.undo();
+  assert.deepEqual(editor.state.lines, ["/ex tail of it"]);
+});
