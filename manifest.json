@@ -17,6 +17,10 @@
       "32": "icons/glacier-32.png"
     }
   },
+  "oauth2": {
+    "client_id": "406175144858-tu4k4mqsvhp6lamb8o6fa2vsq3hs2lg9.apps.googleusercontent.com",
+    "scopes": ["https://www.googleapis.com/auth/drive.file"]
+  },
   "permissions": ["sidePanel", "storage", "scripting", "identity", "contextMenus", "activeTab"],
   "optional_permissions": ["tabs"],
   "optional_host_permissions": ["<all_urls>"],

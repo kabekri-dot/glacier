@@ -15,8 +15,8 @@
 // Client IDs are not secrets. The only scope is drive.file: Glacier sees
 // only the files it made.
 export const GOOGLE_CONFIG = {
-  webClientId: "",
-  chromeClientId: "",
+  webClientId: "406175144858-2nqddb80nnj67g69a9tm4falv59bf726.apps.googleusercontent.com",
+  chromeClientId: "406175144858-tu4k4mqsvhp6lamb8o6fa2vsq3hs2lg9.apps.googleusercontent.com",
 };
 
 export const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
