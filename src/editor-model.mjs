@@ -75,6 +75,14 @@ const BULLET = /^(\s*)-(\s+)(.*)$/;
 
 // A Link is `[[Title]]` somewhere in the text (CONTEXT.md). The title is the
 // run between the brackets with no bracket inside, so `[[A]] [[B]]` are two
+const SKETCH_EMBED = /^!\[\[.* \u2013 sketch \d+\.svg\]\]$/;
+
+// Is this line a sketch's embed line (#101)? It shows as a drawing, never as
+// text, so the caret steps over it as one block (#104).
+export function isSketchLine(line) {
+  return SKETCH_EMBED.test((line ?? "").trim());
+}
+
 // Links. findLinks returns each title and the raw span it occupies, so the
 // notebook can list a note's outgoing Links and a rename can rewrite them. An
 // embed, `![[…]]` (a Sketch, #101), is no Link.

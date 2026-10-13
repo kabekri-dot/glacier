@@ -11,6 +11,16 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Sketch blocks: the drawing, selection and empty ones (#104)
+
+- [ ] Open a note that starts with a sketch: the caret is on the first line and you see the drawing, not the text between double square brackets.
+- [ ] Draw a shape, then click on the text below or press the arrow key down: the grey area, toolbar and dashed frame go and the sketch looks like a drawing on the paper.
+- [ ] Press the arrow keys up and down through a note with a sketch: the caret steps over the sketch like over one block. Press Enter on a sketch: an empty line appears after it.
+- [ ] Put the caret at the start of the line after a sketch and press Backspace: the sketch is picked. Press Backspace again: it is removed, after a question when it has shapes. Say no to the question: it stays.
+- [ ] Press Esc in a picked sketch, or open another note: the sketch is no longer picked.
+- [ ] Insert an empty sketch with `/sketch`: it shows a faint dashed outline and the words Click to draw in the middle. Draw a shape: the outline and words go.
+- [ ] Insert an empty sketch, leave it empty and open another note, then come back: the sketch is gone from the note.
+
 ### Sketch blocks: boxes and circles (#101)
 
 - [ ] In a note, click + at the left of an empty line and pick Sketch: a drawing area appears between the lines, as wide as the text and a few ruled rows high, and the caret goes to the line below. Type `/sketch` and press Enter on another line: a second one appears. The text after them still sits on the ruled lines.

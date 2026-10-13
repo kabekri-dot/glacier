@@ -3,7 +3,9 @@
 // picked, a small toolbar floats above it: the four shapes, select and
 // delete. A drag draws the chosen shape, then the new shape is picked so a
 // drag moves it; Delete removes the picked shape. The handle at the bottom
-// makes the area taller or lower, in whole rows.
+// makes the area taller or lower, in whole rows. A sketch shows its drawing
+// even with the caret on its line; it is picked (frames and toolbar) only
+// while you draw in it (#104). An empty one says "Click to draw".
 //
 // The drawing rules live in src/sketch-model.mjs and the sketch itself in
 // the Notebook core; this file only turns the mouse into calls to them and
@@ -52,6 +54,12 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
     el.redraw();
   }
 
+  // Let go of the picked sketch unless `line` is its embed line.
+  function unpickExcept(line) {
+    const found = notebook.sketchForLine(line);
+    if (picked && (!found || picked !== `${found.title}/${found.n}`)) unpick();
+  }
+
   // A press anywhere outside the picked sketch lets go of it.
   document.addEventListener(
     "pointerdown",
@@ -62,8 +70,11 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
   );
 
   // The sketch block for an embed line, or null when the line shows no
-  // sketch that is here.
-  function draw(line) {
+  // sketch that is here. `selected` picks it at once. The caller's `hooks`
+  // are told what the user does: onPick (a press picked it), onStep(-1 or 1)
+  // for the arrow keys, onEnter, onRemove (Backspace on a picked sketch
+  // without a picked shape) and onLeave (Esc).
+  function draw(line, { selected = false, ...hooks } = {}) {
     const found = notebook.sketchForLine(line);
     if (!found) return null;
     const { title, n } = found;
@@ -89,7 +100,10 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
     const handle = document.createElement("div");
     handle.className = "sketch-resize";
     handle.title = "Drag to make the sketch taller or lower";
-    area.append(svg, handle);
+    const hint = document.createElement("div");
+    hint.className = "sketch-hint";
+    hint.textContent = "Click to draw";
+    area.append(svg, hint, handle);
     block.append(toolbar, area);
 
     function save(next) {
@@ -102,6 +116,7 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
     // The shapes as they are, plus a dashed box around the picked one.
     function drawShapes(shapes = sketch.shapes, preview = null) {
       area.style.height = `${sketch.height}px`;
+      block.classList.toggle("is-empty", sketch.shapes.length === 0 && !preview);
       svg.setAttribute("height", sketch.height);
       shapesEl.innerHTML = shapesSvg(preview ? [...shapes, preview] : shapes);
       const shape = picked === key ? shapes[pickedShape] : undefined;
@@ -138,7 +153,7 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
     }
     block.redraw = redraw;
 
-    function pick() {
+    function pick({ notify = true } = {}) {
       if (picked === key) return;
       unpick();
       picked = key;
@@ -146,6 +161,7 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
       pickedShape = -1;
       tool = "select";
       block.classList.add("is-picked");
+      if (notify) hooks.onPick?.();
     }
 
     function removePicked() {
@@ -243,14 +259,26 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
     area.addEventListener("keydown", (event) => {
       if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();
-        removePicked();
+        if (pickedShape !== -1) removePicked();
+        else if (picked === key) hooks.onRemove?.();
+        else {
+          pick({ notify: false });
+          redraw();
+        }
+      } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+        event.preventDefault();
+        hooks.onStep?.(event.key === "ArrowUp" ? -1 : 1);
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        hooks.onEnter?.();
       } else if (event.key === "Escape") {
         event.preventDefault();
-        unpick();
+        hooks.onLeave?.();
       }
     });
 
-    if (picked === key) {
+    if (selected) pick({ notify: false });
+    else if (picked === key) {
       pickedEl = block;
       block.classList.add("is-picked");
     }
@@ -258,5 +286,5 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
     return block;
   }
 
-  return { draw, unpick };
+  return { draw, unpick, unpickExcept };
 }

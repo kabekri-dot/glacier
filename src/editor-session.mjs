@@ -21,6 +21,7 @@ import {
   editorTextToBody,
   blockRanges,
   isFence,
+  isSketchLine,
   pressEnter,
   columnAfterFormatting,
   breakInsideFormatting,
@@ -576,6 +577,14 @@ export function createEditorSession({
     // Enter at the caret: split the line, continuing a list or ending an empty
     // bullet (editor-model). A selection [selStart, selEnd] is deleted first.
     enter(value, selStart, selEnd) {
+      if (isSketchLine(lines[focus.line])) {
+        recordStep();
+        lines.splice(focus.line + 1, 0, "");
+        focus = { line: focus.line + 1, col: 0 };
+        relayout();
+        notifyChange();
+        return;
+      }
       const here = lineColFromOffset(value, selStart);
       const kept = formatSelection;
       formatSelection = null;
@@ -681,6 +690,12 @@ export function createEditorSession({
     // it handled the key; false (caret not at the block start, or the top of
     // the note) leaves the keystroke to the browser.
     backspaceAtStart() {
+      // A sketch above is picked first: the caret lands on it and a second
+      // Backspace removes it (#104).
+      if (blockStart > 0 && focus.line === blockStart && !isSketchLine(lines[blockStart]) && isSketchLine(lines[blockStart - 1])) {
+        moveTo(blockStart - 1, 0);
+        return true;
+      }
       const markLength = lineMarkLength(lines[blockStart]);
       if (blockStart === 0 && markLength === 0) return false;
       if (focus.line !== blockStart) return false;
@@ -689,6 +704,21 @@ export function createEditorSession({
       const next = pressBackspace(lines, blockStart, focus.col);
       lines = next.lines;
       focus = { line: next.line, col: next.col };
+      relayout();
+      notifyChange();
+      return true;
+    },
+
+    // Take out the sketch line the caret is on (#104). The caret goes to the
+    // start of the line that followed it, or to the end of the one before.
+    // Returns false when the caret is on no sketch line.
+    removeSketchLine() {
+      if (!isSketchLine(lines[focus.line])) return false;
+      recordStep();
+      lines.splice(focus.line, 1);
+      if (lines.length === 0) lines.push("");
+      const line = Math.min(focus.line, lines.length - 1);
+      focus = { line, col: focus.line < lines.length ? 0 : lines[line].length };
       relayout();
       notifyChange();
       return true;

@@ -16,7 +16,7 @@ export function readShortcutsPanel(saved) {
 export const HANDLED_KEYS = [
   ["Enter", "New line, or a new list item. Inside bold or italic, steps out of it"],
   ["Shift Enter", "A plain new line, with no new bullet"],
-  ["Backspace", "At the start of a line, removes its formatting or joins it to the line above"],
+  ["Backspace", "At the start of a line, removes its formatting or joins it to the line above. After a sketch, picks the sketch first, then removes it"],
   ["Delete", "At the end of a line, pulls the next line up. In a sketch, removes the picked shape"],
   ["Up and down", "Move between lines"],
   ["Ctrl B", "Bold the selection. Press again to remove it"],
