@@ -25,12 +25,15 @@
 export function decidePageOpen({
   current,
   openedByPage,
+  pinned = false,
   page,
   noteForPage,
   lastNote = null,
   keepUserOpenedNotes = false,
   onNonWebsite = "keep",
 }) {
+  // A pinned note stays whatever the page and the settings say.
+  if (pinned && current) return { type: "keep" };
   if (keepUserOpenedNotes && current && !openedByPage) return { type: "keep" };
 
   if (!page) {

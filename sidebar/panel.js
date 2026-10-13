@@ -24,7 +24,7 @@ import { chosenNotesHome, notesHomeName } from "../src/notes-home.mjs";
 import { reminderDue, reminderOpened, reminderText } from "../src/cloud-reminder.mjs";
 import { createAutoSync, needsFolderOk } from "../src/auto-sync.mjs";
 import { createScreen } from "../src/screen.mjs";
-import { pageNoteCount, pillTitle, BACK_BUTTON_HINT } from "../src/menu-contents.mjs";
+import { pageNoteCount, pillTitle, BACK_BUTTON_HINT, PIN_HINT } from "../src/menu-contents.mjs";
 import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
@@ -70,6 +70,7 @@ const saveErrorEl = document.querySelector(".save-error");
 const pillEl = document.querySelector(".pill");
 const pillTitleEl = document.querySelector(".pill-title");
 const pillArchivedEl = document.querySelector(".pill-archived");
+const pillPinEl = document.querySelector(".pill-pin");
 const pillCountEl = document.querySelector(".pill-count");
 const pillMenuEl = document.querySelector(".pill-menu");
 const syncDotEl = document.querySelector(".sync-dot");
@@ -410,6 +411,7 @@ async function start() {
       pillTitleEl.removeAttribute("tabindex");
     }
     pillArchivedEl.hidden = !note?.archived;
+    pillPinEl.hidden = !screen.pinned();
     // "1 of 3": the page has more notes (#68). Like the rest of the pill, a
     // click opens the ▾ menu, which starts with Notes for this page.
     const count = pageNoteCount(notebook, note);
@@ -429,8 +431,20 @@ async function start() {
     screen,
     notebook,
     openNote,
+    onBack: () => draw(screen.back()),
     beforeOpen: () => closeOverlays(),
   });
+
+  // A pinned note stays when the page changes; unpinning catches up with the
+  // tab you are on.
+  pillPinEl.title = PIN_HINT;
+  function setPinned(pin) {
+    if (pin) screen.pin();
+    else screen.unpin();
+    updatePill();
+    if (!pin) openingFlow.pageChanged();
+  }
+  pillPinEl.addEventListener("click", () => setPinned(false));
 
   function startNoteForPage() {
     draw(screen.startNoteForPage());
@@ -454,6 +468,7 @@ async function start() {
     screen,
     onAction: (kind) => {
       if (kind === "extract") extractSelection();
+      else if (kind === "pin" || kind === "unpin") setPinned(kind === "pin");
       else menuView.act("note", kind, { title: screen.note().title }, noteMenuButtonEl);
     },
     beforeOpen: () => closeOverlays(),
@@ -1755,7 +1770,7 @@ async function start() {
   const browserPage = createBrowserPage(api);
   const openingFlow = createOpeningFlow({
     page: browserPage,
-    getOpenNote: () => screen.onScreen(),
+    getOpenNote: () => ({ ...screen.onScreen(), pinned: screen.pinned() }),
     noteForPage: (url) => notebook.noteForPage(url),
     getLastNote: () => notebook.recentNotes(1)[0] ?? null,
     show: (view) => draw(screen.show(view)),

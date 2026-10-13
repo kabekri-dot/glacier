@@ -11,6 +11,12 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Pin a note, ← in one click (asked for 2026-10-13)
+
+- [ ] Open a website's note, then ⋯ → Pin this note: a small pixel pin shows after the title. Switch to other tabs and websites (with Tabs and notes set to follow the tab): the pinned note stays. Click the pin: it goes, and the sidebar shows the note of the tab you are on.
+- [ ] Pinned, open another note from the menu: the pin goes with it. Rename the pinned note: it stays pinned.
+- [ ] Let a tab switch change the note, then click ← once: you are back on the note before, in one click. Right-click ← (or hold it): the list of your last notes opens.
+
 ### Clip highlighted text from a web page (#100)
 
 - [ ] Select a sentence on a web page, right-click and choose Clip to Glacier. With a note open in the sidebar, the sentence appears at its end as a quote, with a line under it linking to the page. A short message says Clipped.

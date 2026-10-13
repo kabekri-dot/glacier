@@ -15,7 +15,7 @@
 //   page.requestPermission() -> asks for it; must be called straight from a click
 //   page.onPageChange(fn)    -> calls fn when the active tab or its address changes
 //
-// `getOpenNote()` returns { current, openedByPage } for the note on screen,
+// `getOpenNote()` returns { current, openedByPage, pinned? } for the note on screen,
 // `noteForPage(url)` returns the page's most recently edited note or null,
 // `getLastNote()` the note last opened in this browser or null (#88),
 // and `show(view)` draws one of: { type: "startPrompt" },
@@ -54,10 +54,11 @@ export function createOpeningFlow({
     const read = (latestRead += 1);
     const website = await readWebsite();
     if (read !== latestRead) return;
-    const { current, openedByPage } = getOpenNote();
+    const { current, openedByPage, pinned } = getOpenNote();
     const decision = decidePageOpen({
       current,
       openedByPage,
+      pinned,
       page: website,
       noteForPage,
       lastNote: getLastNote(),

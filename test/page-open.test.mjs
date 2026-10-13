@@ -141,3 +141,26 @@ test("by default a blank note is replaced by the website's note", () => {
   });
   assert.deepEqual(decision, { type: "open", note: noteA });
 });
+
+// A pinned note stays whatever the page and the setting say.
+test("a pinned note stays when the page changes to another website with its own note", () => {
+  const decision = decidePageOpen({
+    current: noteA,
+    openedByPage: true,
+    pinned: true,
+    page: { url: noteB.source, title: "Page B" },
+    noteForPage: notebook([noteA, noteB]),
+  });
+  assert.deepEqual(decision, { type: "keep" });
+});
+
+test("a pinned note stays on a website without a note too", () => {
+  const decision = decidePageOpen({
+    current: noteA,
+    openedByPage: true,
+    pinned: true,
+    page: { url: "https://c.test/new", title: "New" },
+    noteForPage: notebook([noteA]),
+  });
+  assert.deepEqual(decision, { type: "keep" });
+});

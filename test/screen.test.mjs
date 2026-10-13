@@ -929,3 +929,48 @@ test("an empty clip changes nothing", () => {
   const { screen } = withNotes();
   assert.equal(screen.clip({ text: "  ", title: "T", url: "https://a.example" }), null);
 });
+
+// --- Pinning a note (asked for by the user, 2026-10-13) ---------------------
+
+test("a pinned note is on screen as pinned until it is unpinned", () => {
+  const { screen, grid } = withNotes();
+  screen.open(grid);
+  screen.pin();
+  assert.equal(screen.pinned(), true);
+  screen.unpin();
+  assert.equal(screen.pinned(), false);
+});
+
+test("opening another note drops the pin", () => {
+  const { screen, grid, first } = withNotes();
+  screen.open(grid);
+  screen.pin();
+  screen.open(first);
+  assert.equal(screen.pinned(), false);
+});
+
+test("going back drops the pin too", () => {
+  const { screen, grid, first } = withNotes();
+  screen.open(first);
+  screen.open(grid);
+  screen.pin();
+  screen.back();
+  assert.equal(screen.pinned(), false);
+});
+
+test("renaming or editing a pinned note keeps it pinned", () => {
+  const { screen, grid } = withNotes();
+  screen.open(grid);
+  screen.pin();
+  screen.edit("new words");
+  screen.rename("Grid renamed");
+  assert.equal(screen.pinned(), true);
+});
+
+test("archiving a pinned note drops the pin", () => {
+  const { screen, grid } = withNotes();
+  screen.open(grid);
+  screen.pin();
+  screen.archive();
+  assert.equal(screen.pinned(), false);
+});

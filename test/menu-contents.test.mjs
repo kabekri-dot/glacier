@@ -204,6 +204,7 @@ test("an open note gets its name, Extract, Download as a file, Archive and Delet
   assert.deepEqual(
     menu.actions.map((action) => [action.kind, action.label]),
     [
+      ["pin", "Pin this note"],
       ["move", "Move to collection…"],
       ["extract", "Extract to a new note"],
       ["download", "Download as a file"],
@@ -218,7 +219,7 @@ test("an archived note offers Unarchive instead of Archive", () => {
   const notebook = notebookWith();
   notebook.archiveNote("Flexbox");
   const menu = noteMenu(notebook.note("Flexbox"));
-  assert.deepEqual(menu.actions.map((action) => action.label), ["Move to collection…", "Extract to a new note", "Download as a file", "Unarchive", "Delete"]);
+  assert.deepEqual(menu.actions.map((action) => action.label), ["Pin this note", "Move to collection…", "Extract to a new note", "Download as a file", "Unarchive", "Delete"]);
 });
 
 test("a second version shows a bar naming the original and the two buttons", () => {
@@ -393,4 +394,10 @@ test("the This note menu offers Extract to a new note and says to select text fi
   const action = noteMenu({ title: "A" }).actions.find((a) => a.kind === "extract");
   assert.equal(action.label, "Extract to a new note");
   assert.match(action.hint, /Select some text/);
+});
+
+test("a pinned note offers Unpin this note instead", () => {
+  const action = noteMenu({ title: "A" }, { pinned: true }).actions[0];
+  assert.deepEqual([action.kind, action.label], ["unpin", "Unpin this note"]);
+  assert.match(action.hint, /follows your tabs again/);
 });

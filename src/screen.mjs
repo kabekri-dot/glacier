@@ -41,6 +41,9 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, we
   // Whether the page opened the note, so a later page change may replace it
   // (only with the "keep a note I opened myself" setting, ADR 0009).
   let openedByPage = false;
+  // A pinned note stays on screen when the page changes, whatever the
+  // settings say; showing any other note drops the pin.
+  let pinned = false;
   // The fresh page on screen: { title, source }, `source` only for a page.
   let freshPage = null;
   // The note on screen when a fresh page took its place, so Esc can go back.
@@ -67,6 +70,7 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, we
 
   function showNote(next, { byPage = false, fromHistory = false } = {}) {
     hideWelcome();
+    if (next.title !== note?.title) pinned = false;
     beforeLeave();
     session.open(next);
     notebook.markOpened(next.title);
@@ -81,6 +85,7 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, we
 
   function showNothing() {
     session.close();
+    pinned = false;
     note = null;
     openedByPage = false;
     freshPage = null;
@@ -141,6 +146,15 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, we
     note: () => note,
     freshPage: () => freshPage,
     welcome: () => welcome,
+    pinned: () => pinned,
+
+    // Pin the open note, so changing the page doesn't replace it; unpin.
+    pin() {
+      if (note) pinned = true;
+    },
+    unpin() {
+      pinned = false;
+    },
 
     // "How Glacier works" (#91): the welcome again, over the open note.
     showWelcome() {
@@ -242,7 +256,10 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, we
       session.flush();
       const result = notebook.renameNote(note.title, title);
       if (!result.ok) return { type: "titleRefused", suggestion: result.suggestion };
-      return { ...showNote(result.note, { byPage: openedByPage }), changed: true };
+      const keepPin = pinned;
+      const view = { ...showNote(result.note, { byPage: openedByPage }), changed: true };
+      pinned = keepPin;
+      return view;
     },
 
     // Extract to a new note (#99): the text becomes a note named after its

@@ -30,10 +30,13 @@ function closeOnEscape(box, close) {
   );
 }
 
-// ← opens a small box with the last notes you were on, newest first (#81).
-// A click on one opens it. Esc or a click outside closes the box, and ↑/↓ and
-// Enter work too.
-export function createBackBox({ button, box, screen, notebook, openNote, beforeOpen }) {
+// ← goes back to the note before in one click (`onBack`). Like the
+// browser's back button, a right-click or holding it opens a small box with
+// the last notes you were on, newest first (#81). A click on one opens it.
+// Esc or a click outside closes the box, and ↑/↓ and Enter work too.
+const HOLD_MS = 500;
+
+export function createBackBox({ button, box, screen, notebook, openNote, onBack, beforeOpen }) {
   const close = () => shown(box, button, false);
 
   function open() {
@@ -55,7 +58,31 @@ export function createBackBox({ button, box, screen, notebook, openNote, beforeO
     box.querySelector("button")?.focus();
   }
 
+  // A hold opens the box; the click that ends the hold doesn't also go back.
+  let holdTimer = null;
+  let held = false;
+  button.addEventListener("pointerdown", () => {
+    held = false;
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(() => {
+      held = true;
+      open();
+    }, HOLD_MS);
+  });
+  for (const type of ["pointerup", "pointerleave", "pointercancel"]) {
+    button.addEventListener(type, () => clearTimeout(holdTimer));
+  }
   button.addEventListener("click", () => {
+    if (held) {
+      held = false;
+      return;
+    }
+    if (!box.hidden) close();
+    else onBack();
+  });
+  button.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    clearTimeout(holdTimer);
     if (box.hidden) open();
     else close();
   });
@@ -116,7 +143,7 @@ export function createNoteMenu({ button, box, screen, onAction, beforeOpen }) {
   const close = () => shown(box, button, false);
 
   function open() {
-    const menu = noteMenu(screen.note());
+    const menu = noteMenu(screen.note(), { pinned: screen.pinned() });
     if (!menu) return;
     beforeOpen();
     screen.flush();

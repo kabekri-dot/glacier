@@ -1074,6 +1074,26 @@ code {
   color: var(--accent);
 }
 
+/* A pinned note (stays when the page changes): a small pixel pin after the
+   title; a click unpins. */
+.pill-pin {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.pill-pin[hidden] {
+  display: none;
+}
+
+.pill-pin img {
+  width: 0.9rem;
+  height: 0.9rem;
+  image-rendering: pixelated;
+}
+
 .pill-archived {
   font-size: 0.7rem;
   color: var(--accent);

@@ -222,12 +222,15 @@ export function secondVersionBar(notebook, note) {
 }
 
 // The ⋯ "This note" menu (#63): the open note's name and its actions. No note
-// open means no menu.
-export function noteMenu(note) {
+// open means no menu. A pinned note stays when you change the page.
+export function noteMenu(note, { pinned = false } = {}) {
   if (!note) return null;
   return {
     heading: note.title,
     actions: [
+      pinned
+        ? { kind: "unpin", label: "Unpin this note", hint: "The sidebar follows your tabs again" }
+        : { kind: "pin", label: "Pin this note", hint: "Keep this note open when you change the page or tab" },
       { kind: "move", label: "Move to collection…", hint: "Put this note in a collection" },
       { kind: "extract", label: "Extract to a new note", hint: "Select some text in the note first. It becomes a new note and a link takes its place" },
       { kind: "download", label: "Download as a file", hint: "Save this note as Markdown or PDF, or print it" },
@@ -285,7 +288,8 @@ export function noteOrigin(notebook, title) {
     : { kind: "own", hint: "Your own note" };
 }
 
-export const BACK_BUTTON_HINT = "Your last notes";
+export const BACK_BUTTON_HINT = "Back to the note before. Right-click or hold for your last notes";
+export const PIN_HINT = "Pinned: stays when you change the page. Click to unpin";
 
 // The box under ← (#81): the last notes you were on, newest first.
 export function lastNotesBox(screen, notebook) {
