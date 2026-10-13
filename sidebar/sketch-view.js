@@ -5,8 +5,8 @@
 // shape, then the new shape is picked so a drag moves it, its corners
 // resize it (Shift keeps its proportions) and a line's ends can be dragged
 // onto a shape to stick there. The text tool places a text where you click;
-// a double click changes it. Delete removes the picked shape. The handle at the bottom
-// makes the area taller or lower, in whole rows. A sketch shows its drawing
+// a double click changes it. Delete removes the picked shape. The handle at
+// the bottom makes the area taller or lower, in whole rows. A sketch shows its drawing
 // even with the caret on its line; it is picked (frames and toolbar) only
 // while you draw in it (#104). An empty one says "Click to draw".
 //
@@ -329,7 +329,8 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
     area.addEventListener("pointermove", (event) => {
       const shape = picked === key && tool === "select" ? sketch.shapes[pickedShape] : undefined;
       const grabbed = shape && event.buttons === 0 ? handleAt(shape, pointIn(event)) : null;
-      area.style.cursor = grabbed !== null ? HANDLE_CURSORS[grabbed] : tool === "text" ? "text" : "";
+      if (grabbed !== null) area.style.cursor = HANDLE_CURSORS[grabbed];
+      else area.style.cursor = tool === "text" ? "text" : "";
     });
 
     area.addEventListener("pointerdown", (event) => {
