@@ -18,6 +18,7 @@ export const HANDLED_KEYS = [
   ["Shift Enter", "A plain new line, with no new bullet"],
   ["Backspace", "At the start of a line, removes its formatting or joins it to the line above. After a sketch, picks the sketch first, then removes it"],
   ["Delete", "At the end of a line, pulls the next line up. In a sketch, removes the picked shape"],
+  ["Shift", "While resizing a shape in a sketch, keeps its proportions"],
   ["Up and down", "Move between lines"],
   ["Ctrl B", "Bold the selection. Press again to remove it"],
   ["Ctrl I", "Italic the selection. Press again to remove it"],
@@ -50,7 +51,7 @@ export const SHORTCUT_GROUPS = [
       ["-", "Bullet list"],
       [">", "Quote"],
       ["```", "Code block"],
-      ["/sketch", "A drawing with boxes, circles and triangles"],
+      ["/sketch", "A drawing with boxes, circles, triangles, lines, arrows and text"],
     ],
   },
   {

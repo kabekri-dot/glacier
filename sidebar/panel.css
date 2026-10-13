@@ -540,6 +540,36 @@ code {
   stroke-dasharray: 4 3;
 }
 
+.sketch-pick .sketch-handle {
+  fill: var(--paper);
+  stroke-dasharray: none;
+}
+
+/* Text in a sketch (#102) is written in the note's handwriting font, both
+   drawn and while it is typed. */
+.sketch-shapes {
+  color: var(--ink);
+}
+
+.sketch-shapes text {
+  font-family: var(--font-family);
+}
+
+.sketch-text {
+  position: absolute;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px dashed var(--accent);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-family);
+  line-height: 1;
+  outline: none;
+  user-select: text;
+}
+
 .sketch-resize {
   position: absolute;
   left: 50%;

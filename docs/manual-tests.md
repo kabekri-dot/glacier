@@ -11,6 +11,19 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Sketch blocks: lines, arrows, text and resizing (#102)
+
+- [ ] Pick a sketch: the toolbar shows Line, Arrow and Text after the four shapes, each with its own small picture and hover text.
+- [ ] Draw two boxes. With Arrow, drag from inside the first box to inside the second: an arrow with a head at the second box appears. Do the same with Line.
+- [ ] Select one of the boxes and drag it around: the arrows and lines stuck to it follow it. Delete the box: the arrows stay where they were.
+- [ ] Draw a line that starts on empty paper: moving a box does not move that end.
+- [ ] Pick an arrow: a small square shows on each end. Drag an end onto another box, then move that box: the arrow follows. Drag the end onto empty paper, then move the box: the arrow stays.
+- [ ] With Text, click in the sketch and type a label: it is written in the note's handwriting font. Press Enter: the label stays. Press Esc while typing a new label: nothing is added.
+- [ ] Double click a label, change the words and click elsewhere: the label shows the new words. Empty a label this way: it goes.
+- [ ] Pick a box: a small square shows on each corner. Drag a corner: the box changes size while the opposite corner stays put. Hold Shift while dragging: it keeps its proportions. A square stays square and a label grows with its letters.
+- [ ] Draw a small diagram with boxes, arrows and labels, sync, then open the svg file on GitHub: the picture shows the arrows and labels. Open the note in the other browser after a sync: the arrows still follow a moved box.
+- [ ] The Shortcuts panel lists Shift for resizing in a sketch, and `/sketch` mentions lines, arrows and text.
+
 ### Sketch blocks: the drawing, selection and empty ones (#104)
 
 - [ ] Open a note that starts with a sketch: the caret is on the first line and you see the drawing, not the text between double square brackets.
