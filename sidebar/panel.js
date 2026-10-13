@@ -826,9 +826,22 @@ async function start() {
     return true;
   });
 
+  // Clipping (#100): the background leaves the clip in storage. Taking it
+  // out first means it lands once, whichever way it arrived.
+  async function takePendingClip() {
+    const { pendingClip } = await api.storage.local.get("pendingClip");
+    if (!pendingClip) return;
+    await api.storage.local.remove("pendingClip");
+    const view = screen.clip(pendingClip);
+    if (!view) return;
+    draw(view);
+    showNotice("Clipped.");
+  }
+
   // A choice made beside the sidebar, or in another window, arrives here.
   api.storage.onChanged.addListener((changes, area) => {
     if (area !== "local") return;
+    if (changes.pendingClip?.newValue) takePendingClip();
     if (changes.look) {
       look = readLook(changes.look.newValue);
       drawLook();
@@ -1824,7 +1837,9 @@ async function start() {
   drawWelcome();
 
   openingFlow.listen();
-  openingFlow.start();
+  // A clip waiting from before the sidebar was open lands once the page's
+  // note is on screen (#100).
+  openingFlow.start().finally(takePendingClip);
   autoSync.syncNow();
 
   document.addEventListener("visibilitychange", () => {

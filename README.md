@@ -47,6 +47,13 @@ Once loaded, open Glacier from the toolbar button or with the keyboard
 shortcut **Alt+Shift+G** (free in both Chrome and Firefox). You'll see an
 empty Zen page on Glacier paper.
 
+## Clipping
+
+Select text on a web page, then right-click and choose **Clip to Glacier**, or
+press **Alt+Shift+C**. The text is added at the end of the open note as a quote
+with a link back to the page. With no note open, it starts the note for that
+page. If the sidebar is closed, it opens.
+
 ## Loading the extension while developing
 
 ### Chrome (Load unpacked)

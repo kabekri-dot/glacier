@@ -31,6 +31,7 @@
 import { createNoteSession, titleFromText } from "./note-session.mjs";
 import { createNoteHistory } from "./note-history.mjs";
 import { isOpenedByPage } from "./page-open.mjs";
+import { clipQuote, appendClip } from "./clip.mjs";
 
 const LAST_NOTES_SHOWN = 3;
 
@@ -254,6 +255,24 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, we
       const made = notebook.createNote({ title: titleFromText(text), source, pageTitle, course });
       notebook.saveBody(made.title, text);
       return made.title;
+    },
+
+    // Clip text from a web page (#100): a quote with its source link goes at
+    // the end of the open note. With no note open it starts the note for that
+    // page, in the page's Collection if its other notes are in one. Nothing
+    // is clipped from an empty selection (null).
+    clip({ text, title, url }) {
+      if (!text || text.trim() === "" || !url) return null;
+      const quote = clipQuote(text, title, url);
+      if (note) {
+        session.flush();
+        notebook.saveBody(note.title, appendClip(notebook.note(note.title)?.body, quote));
+        return { ...showNote(notebook.note(note.title), { byPage: openedByPage }), changed: true };
+      }
+      const course = notebook.notesForPage(url).find((other) => other.course)?.course;
+      const made = notebook.createNote({ title: (title ?? "").trim() || titleFromText(text), source: url, pageTitle: title, course });
+      notebook.saveBody(made.title, quote);
+      return { ...showNote(notebook.note(made.title), { byPage: true }), changed: true };
     },
 
     moveToCourse(course) {

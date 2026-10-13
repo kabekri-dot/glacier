@@ -17,7 +17,7 @@
       "32": "icons/glacier-32.png"
     }
   },
-  "permissions": ["sidePanel", "storage", "scripting", "identity"],
+  "permissions": ["sidePanel", "storage", "scripting", "identity", "contextMenus", "activeTab"],
   "optional_permissions": ["tabs"],
   "optional_host_permissions": ["<all_urls>"],
   "web_accessible_resources": [
@@ -48,6 +48,12 @@
         "default": "Alt+Shift+G"
       },
       "description": "Open or close Glacier"
+    },
+    "clip-selection": {
+      "suggested_key": {
+        "default": "Alt+Shift+C"
+      },
+      "description": "Clip the selected text to Glacier"
     }
   },
   "browser_specific_settings": {

@@ -31,6 +31,7 @@ export const HANDLED_KEYS = [
   ["Ctrl K", "Search your notes"],
   ["//", "In the search, search inside notes"],
   ["Alt Shift G", "Open or close Glacier"],
+  ["Alt Shift C", "Clip the selected text on a web page to the open note"],
   ["Esc", "Close a menu"],
   ["Cmd", "On a Mac, use Cmd instead of Ctrl"],
 ];
