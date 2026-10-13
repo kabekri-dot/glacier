@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createNotebook } from "../src/notebook.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
-import { notebookMenu, noteMenu, pageNoteCount, deleteCollectionQuestion, archivedNotice, secondVersionBar, rowActions, noteOrigin, lastNotesBox, pillTitle } from "../src/menu-contents.mjs";
+import { notebookMenu, noteMenu, pinButton, pageNoteCount, deleteCollectionQuestion, archivedNotice, secondVersionBar, rowActions, noteOrigin, lastNotesBox, pillTitle } from "../src/menu-contents.mjs";
 
 // What the ▾ Notebook and ⋯ This note menus list (#67), as plain data the
 // sidebar only has to draw.
@@ -400,4 +400,9 @@ test("a pinned note offers Unpin this note instead", () => {
   const action = noteMenu({ title: "A" }, { pinned: true }).actions[0];
   assert.deepEqual([action.kind, action.label], ["unpin", "Unpin this note"]);
   assert.match(action.hint, /follows your tabs again/);
+});
+
+test("the pin in the pill says what one click does, pinned or not", () => {
+  assert.deepEqual(pinButton(false), { pinned: false, label: "Pin this note", hint: "Pin this note: it stays when you change the page or tab" });
+  assert.deepEqual(pinButton(true), { pinned: true, label: "Unpin this note", hint: "Pinned: it stays when you change the page. Click to follow your tabs again" });
 });

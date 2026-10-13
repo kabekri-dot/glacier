@@ -13,7 +13,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ### Pin a note, ← in one click (asked for 2026-10-13)
 
-- [ ] Open a website's note, then ⋯ → Pin this note: a small pixel pin shows after the title. Switch to other tabs and websites (with Tabs and notes set to follow the tab): the pinned note stays. Click the pin: it goes, and the sidebar shows the note of the tab you are on.
+- [ ] Open a website's note: a faint grey pin sits after the title. Click it (or ⋯ → Pin this note): it turns red and the menu does not open. Switch to other tabs and websites (with Tabs and notes set to follow the tab): the pinned note stays. Click the pin again: it turns grey, and the sidebar shows the note of the tab you are on. With no note open there is no pin.
 - [ ] Pinned, open another note from the menu: the pin goes with it. Rename the pinned note: it stays pinned.
 - [ ] Let a tab switch change the note, then click ← once: you are back on the note before, in one click. Right-click ← (or hold it): the list of your last notes opens.
 

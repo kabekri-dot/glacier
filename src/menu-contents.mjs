@@ -289,7 +289,13 @@ export function noteOrigin(notebook, title) {
 }
 
 export const BACK_BUTTON_HINT = "Back to the note before. Right-click or hold for your last notes";
-export const PIN_HINT = "Pinned: stays when you change the page. Click to unpin";
+// The pin in the pill, there while a note is open: one click pins the note
+// so it stays when the page changes, another lets it follow the tabs again.
+export function pinButton(pinned) {
+  return pinned
+    ? { pinned, label: "Unpin this note", hint: "Pinned: it stays when you change the page. Click to follow your tabs again" }
+    : { pinned, label: "Pin this note", hint: "Pin this note: it stays when you change the page or tab" };
+}
 
 // The box under ← (#81): the last notes you were on, newest first.
 export function lastNotesBox(screen, notebook) {

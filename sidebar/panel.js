@@ -24,7 +24,7 @@ import { chosenNotesHome, notesHomeName } from "../src/notes-home.mjs";
 import { reminderDue, reminderOpened, reminderText } from "../src/cloud-reminder.mjs";
 import { createAutoSync, needsFolderOk } from "../src/auto-sync.mjs";
 import { createScreen } from "../src/screen.mjs";
-import { pageNoteCount, pillTitle, BACK_BUTTON_HINT, PIN_HINT } from "../src/menu-contents.mjs";
+import { pageNoteCount, pillTitle, BACK_BUTTON_HINT, pinButton } from "../src/menu-contents.mjs";
 import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
@@ -411,7 +411,12 @@ async function start() {
       pillTitleEl.removeAttribute("tabindex");
     }
     pillArchivedEl.hidden = !note?.archived;
-    pillPinEl.hidden = !screen.pinned();
+    const pin = pinButton(screen.pinned());
+    pillPinEl.hidden = !note;
+    pillPinEl.classList.toggle("is-pinned", pin.pinned);
+    pillPinEl.setAttribute("aria-pressed", String(pin.pinned));
+    pillPinEl.setAttribute("aria-label", pin.label);
+    pillPinEl.title = pin.hint;
     // "1 of 3": the page has more notes (#68). Like the rest of the pill, a
     // click opens the ▾ menu, which starts with Notes for this page.
     const count = pageNoteCount(notebook, note);
@@ -437,14 +442,17 @@ async function start() {
 
   // A pinned note stays when the page changes; unpinning catches up with the
   // tab you are on.
-  pillPinEl.title = PIN_HINT;
   function setPinned(pin) {
     if (pin) screen.pin();
     else screen.unpin();
     updatePill();
     if (!pin) openingFlow.pageChanged();
   }
-  pillPinEl.addEventListener("click", () => setPinned(false));
+  // The pin sits in the pill, where a click opens the ▾ menu; not this one.
+  pillPinEl.addEventListener("click", (event) => {
+    event.stopPropagation();
+    setPinned(!screen.pinned());
+  });
 
   function startNoteForPage() {
     draw(screen.startNoteForPage());
