@@ -1236,3 +1236,67 @@ test("Undo takes a new sketch's line out again", () => {
   editor.undo();
   assert.deepEqual(editor.state.lines, ["/sketch"]);
 });
+
+// A sketch line is one block the caret steps over (#104): ↑/↓ move past it,
+// Backspace on the line after it lands on it first, a second removes it and
+// Enter adds a line after it.
+
+const EMBED = "![[Note – sketch 1.svg]]";
+
+function withSketchBetween() {
+  const { editor, changes } = sketcher();
+  editor.load(`above\n${EMBED}\nbelow`);
+  return { editor, changes };
+}
+
+test("the caret moves up onto a sketch line and on past it", () => {
+  const { editor } = withSketchBetween();
+  editor.moveTo(2, 0);
+  assert.equal(editor.moveUp("below", 0), true);
+  assert.equal(editor.state.focus.line, 1);
+  assert.equal(editor.moveUp("", 0), true);
+  assert.equal(editor.state.focus.line, 0);
+});
+
+test("the caret moves down onto a sketch line and on past it", () => {
+  const { editor } = withSketchBetween();
+  editor.moveTo(0, 2);
+  assert.equal(editor.moveDown("above", 2), true);
+  assert.equal(editor.state.focus.line, 1);
+  assert.equal(editor.moveDown("", 0), true);
+  assert.deepEqual(editor.state.focus, { line: 2, col: 0 });
+});
+
+test("Backspace at the start of the line after a sketch picks the sketch first", () => {
+  const { editor } = withSketchBetween();
+  editor.moveTo(2, 0);
+  assert.equal(editor.backspaceAtStart(), true);
+  assert.deepEqual(editor.state.lines, ["above", EMBED, "below"]);
+  assert.equal(editor.state.focus.line, 1);
+});
+
+test("removing the sketch line takes it out and the caret goes to the line after", () => {
+  const { editor, changes } = withSketchBetween();
+  editor.moveTo(1, 0);
+  assert.equal(editor.removeSketchLine(), true);
+  assert.deepEqual(editor.state.lines, ["above", "below"]);
+  assert.deepEqual(editor.state.focus, { line: 1, col: 0 });
+  assert.equal(changes.at(-1), "above\nbelow");
+  editor.undo();
+  assert.deepEqual(editor.state.lines, ["above", EMBED, "below"]);
+});
+
+test("removeSketchLine does nothing when the caret is not on a sketch", () => {
+  const { editor } = withSketchBetween();
+  editor.moveTo(0, 0);
+  assert.equal(editor.removeSketchLine(), false);
+  assert.equal(editor.state.lines.length, 3);
+});
+
+test("Enter on a sketch line adds an empty line after it", () => {
+  const { editor } = withSketchBetween();
+  editor.moveTo(1, 0);
+  editor.enter("", 0, 0);
+  assert.deepEqual(editor.state.lines, ["above", EMBED, "", "below"]);
+  assert.deepEqual(editor.state.focus, { line: 2, col: 0 });
+});

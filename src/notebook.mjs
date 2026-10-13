@@ -1200,6 +1200,24 @@ export function createNotebook({ storage }) {
       return updated;
     },
 
+    // Take out the note's sketches that have no shape, and their embed
+    // lines (#104): an empty sketch left empty is not kept. Returns true when
+    // the note changed.
+    dropEmptySketches(title) {
+      const note = storage.getNote(title);
+      const empty = sketchNumbers(note ?? {}).filter((n) => note.sketches[n].shapes.length === 0);
+      if (empty.length === 0) return false;
+      const sketches = { ...note.sketches };
+      for (const n of empty) delete sketches[n];
+      const isEmptyEmbed = (line) => {
+        const embed = sketchInLine(line);
+        return embed !== null && embed.stem === safeName(title) && empty.includes(embed.n);
+      };
+      const body = (note.body ?? "").split("\n").filter((line) => !isEmptyEmbed(line)).join("\n");
+      storage.putNote({ ...note, body, sketches, edited: new Date().toISOString() });
+      return true;
+    },
+
     hasSketches(title) {
       return sketchNumbers(storage.getNote(title) ?? {}).length > 0;
     },

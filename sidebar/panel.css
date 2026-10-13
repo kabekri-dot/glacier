@@ -503,6 +503,24 @@ code {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
+/* An empty sketch: a faint dashed outline and a quiet line in the middle
+   (#104), gone when it has a shape or is picked. */
+.sketch-hint {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed color-mix(in srgb, var(--ink) 30%, transparent);
+  border-radius: 4px;
+  color: color-mix(in srgb, var(--ink) 45%, transparent);
+  pointer-events: none;
+}
+
+.sketch-block.is-empty .sketch-hint {
+  display: flex;
+}
+
 .sketch-svg {
   display: block;
   width: 100%;

@@ -974,3 +974,27 @@ test("archiving a pinned note drops the pin", () => {
   screen.archive();
   assert.equal(screen.pinned(), false);
 });
+
+// An empty sketch that is left empty goes when the note is left (#104).
+
+test("an empty sketch is removed from the note when another note is opened", () => {
+  const { notebook, screen, first, second } = withNotes();
+  screen.open(first);
+  const { n, line } = notebook.addSketch("First");
+  screen.edit(`Boxes:\n${line}\nafter`);
+  const view = screen.open(second);
+  assert.equal(notebook.sketch("First", n), undefined);
+  assert.equal(notebook.note("First").body, "Boxes:\nafter");
+  assert.equal(view.changed, true);
+});
+
+test("a sketch with a shape stays when the note is left", () => {
+  const { notebook, screen, first, second } = withNotes();
+  screen.open(first);
+  const { n, line } = notebook.addSketch("First");
+  notebook.saveSketch("First", n, { width: 300, height: 100, shapes: [{ type: "rectangle", x: 1, y: 1, w: 20, h: 20 }] });
+  screen.edit(line);
+  screen.open(second);
+  assert.equal(notebook.sketch("First", n).shapes.length, 1);
+  assert.equal(notebook.note("First").body, line);
+});

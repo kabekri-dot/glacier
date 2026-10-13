@@ -49,6 +49,7 @@ import {
   editorTextToBody,
   focusedLineSpans,
   isFence,
+  isSketchLine,
   lineMarkLength,
   renderLineHtml,
 } from "../src/editor-model.mjs";
@@ -318,6 +319,7 @@ async function start() {
       case "note":
         if (view.reload) {
           // The note's lines in the editor, with the caret at the top.
+          sketchView.unpick();
           editor.load(view.note.body ?? "");
           render();
           menuView.close();
@@ -1210,6 +1212,25 @@ async function start() {
     });
   }
 
+  // Backspace on a picked sketch removes it, after a question when it has
+  // shapes (#104). Its data goes when the note is left.
+  function removeSketchLine() {
+    const found = notebook.sketchForLine(editor.lines[editor.state.focus.line]);
+    if (found?.sketch.shapes.length > 0 && !window.confirm("Remove this sketch and its shapes?")) return;
+    editor.removeSketchLine();
+    render();
+  }
+
+  // Esc in a sketch: the caret goes to the next line, or the one before.
+  function leaveSketch() {
+    if (!editor.moveDown("", 0)) editor.moveUp("", 0);
+    render();
+  }
+
+  // Set when Backspace has just landed the caret on a sketch, so it shows
+  // as picked: the next Backspace removes it.
+  let pickSketchOnRender = false;
+
   // Build one rendered (non-focused) block.
   function renderedBlock(range) {
     const blockLines = editor.lines.slice(range.start, range.end);
@@ -1237,7 +1258,19 @@ async function start() {
     const line = blockLines[0];
     // A sketch's embed line shows the drawing instead (#101). Its raw line
     // only shows when the caret is moved onto it with the keys.
-    const sketch = sketchView.draw(line);
+    const sketch = sketchView.draw(line, {
+      selected: pickSketchOnRender && editor.state.focus.line === range.start,
+      onPick: () => editor.moveTo(range.start, 0),
+      onStep: (direction) => {
+        if (direction < 0 ? editor.moveUp("", 0) : editor.moveDown("", 0)) render();
+      },
+      onEnter: () => {
+        editor.enter("", 0, 0);
+        render();
+      },
+      onRemove: removeSketchLine,
+      onLeave: leaveSketch,
+    });
     if (sketch) {
       sketch.dataset.start = range.start;
       return sketch;
@@ -1570,6 +1603,7 @@ async function start() {
         event.preventDefault();
         editor.setFocus(start, selection.start);
         editor.backspaceAtStart();
+        pickSketchOnRender = isSketchLine(editor.lines[editor.state.focus.line]);
         render();
         return;
       }
@@ -1755,11 +1789,12 @@ async function start() {
     const { lines, focus } = editor.state;
     const ranges = blockRanges(lines);
     let focused = null;
+    sketchView.unpickExcept(isSketchLine(lines[focus.line]) ? lines[focus.line] : null);
     // A new note's title follows its first line until the caret leaves it (#80).
     if (focus.line > 0) screen.leaveFirstLine();
 
     for (const range of ranges) {
-      if (focus.line >= range.start && focus.line < range.end) {
+      if (focus.line >= range.start && focus.line < range.end && !isSketchLine(lines[focus.line])) {
         const built = focusedBlock(range);
         // The + button opens the command menu from the left of the current
         // line; the session drops the `/` and opens the menu (#32).
@@ -1785,7 +1820,11 @@ async function start() {
       }
     }
 
+    pickSketchOnRender = false;
     fitRows();
+    // The caret on a sketch line sits in the drawing's area (#104).
+    const sketchAt = isSketchLine(lines[focus.line]) ? noteEl.querySelector(`[data-start="${focus.line}"] .sketch-area`) : null;
+    if (sketchAt && !panels.settingsOpen()) sketchAt.focus();
     // With settings open the focus stays in them; closing puts it back here.
     if (focused) {
       focusedEl = focused;

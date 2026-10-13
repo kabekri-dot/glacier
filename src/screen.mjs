@@ -68,10 +68,19 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, we
     onWelcomeSeen();
   }
 
+  // Leaving the note on screen: an empty sketch left empty goes (#104).
+  // True when that changed the note.
+  function dropEmptySketches() {
+    if (!note) return false;
+    session.flush();
+    return notebook.dropEmptySketches(note.title);
+  }
+
   function showNote(next, { byPage = false, fromHistory = false } = {}) {
     hideWelcome();
     if (next.title !== note?.title) pinned = false;
     beforeLeave();
+    const dropped = next.title !== note?.title && dropEmptySketches();
     session.open(next);
     notebook.markOpened(next.title);
     freshPage = null;
@@ -80,10 +89,11 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, we
     closedByArchive = null;
     openedByPage = byPage;
     if (!fromHistory) history.visit(next.title);
-    return { type: "note", note, reload: true };
+    return { type: "note", note, reload: true, ...(dropped && { changed: true }) };
   }
 
   function showNothing() {
+    dropEmptySketches();
     session.close();
     pinned = false;
     note = null;
@@ -101,6 +111,7 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, we
   function startFreshPage({ title = "", source, editTitle = false }) {
     rememberNoteBefore();
     beforeLeave();
+    dropEmptySketches();
     session.openDraft({ title, source });
     note = null;
     openedByPage = false;
