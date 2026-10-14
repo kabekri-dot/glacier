@@ -11,6 +11,12 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Montserrat, each font in its own lettering (asked for 2026-10-14)
+
+- [ ] Settings, Writing: every font is one line written in that font (Caveat looks like Caveat, and so on); Theme default shows the paper's font. The last one is Montserrat, a clean sans-serif.
+- [ ] Pick Montserrat: the note, the pill and the Collection line switch to it at once, with ä, ö, ü and ß.
+- [ ] In a note that has only a drawing, click on the paper under the drawing and type: the text goes on the line under it.
+
 ### Sketch blocks: hand-drawn or clean look (#103)
 
 - [ ] Draw a rectangle, a circle, a triangle, a line and an arrow in a new sketch: the strokes are slightly wobbly, like a pen.

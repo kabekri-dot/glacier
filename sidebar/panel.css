@@ -4,6 +4,20 @@
 
 /* All fonts are bundled, so Glacier looks the same offline (#18). */
 @font-face {
+  font-family: "Montserrat";
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/montserrat-400.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Montserrat";
+  font-weight: 700;
+  font-display: swap;
+  src: url("../fonts/montserrat-700.woff2") format("woff2");
+}
+
+@font-face {
   font-family: "Shantell Sans";
   font-weight: 400;
   font-display: swap;
@@ -1669,6 +1683,30 @@ code {
   padding: 0.2rem 0.3rem;
   border-radius: 6px;
   cursor: pointer;
+}
+
+/* The fonts in Writing: one line each, written in that font. */
+.font-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.font-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.15rem 0.3rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.font-choice:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.font-name {
+  font-size: 1.05rem;
 }
 
 .paper-choice:hover {

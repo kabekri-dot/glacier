@@ -4,6 +4,7 @@ import {
   PAPERS,
   paperGroups,
   FONT_OVERRIDES,
+  fontPreview,
   TEXT_SIZE,
   readLook,
   lookStyle,
@@ -99,7 +100,7 @@ test("a Classic paper has no panorama to leave room for", () => {
   assert.equal(style.vars["--panorama-height"], "0px");
 });
 
-test("the Font Override offers the five fonts and Theme default", () => {
+test("the Font Override offers the six fonts and Theme default", () => {
   assert.deepEqual(FONT_OVERRIDES, [
     "Theme default",
     "Shantell Sans",
@@ -107,7 +108,21 @@ test("the Font Override offers the five fonts and Theme default", () => {
     "Kalam Light",
     "Caveat",
     "Architects Daughter",
+    "Montserrat",
   ]);
+});
+
+test("Montserrat can be chosen as the Font Override", () => {
+  const look = readLook({ paper: "Glacier", font: "Montserrat" });
+  assert.equal(lookStyle(look).font, "Montserrat");
+  assert.match(lookStyle(look).vars["--font-family"], /Montserrat/);
+});
+
+test("each font choice is shown in its own font, Theme default in the paper's", () => {
+  assert.deepEqual(fontPreview("Caveat", "Glacier"), { family: "Caveat", weight: 400 });
+  assert.deepEqual(fontPreview("Kalam Light", "Glacier"), { family: "Kalam", weight: 300 });
+  assert.deepEqual(fontPreview("Montserrat", "Glacier"), { family: "Montserrat", weight: 400 });
+  assert.deepEqual(fontPreview("Theme default", "Engineer"), { family: '"Architects Daughter"', weight: 400 });
 });
 
 test("a Font Override stays when the paper changes", () => {

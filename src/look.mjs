@@ -152,6 +152,7 @@ const FONTS = [
   { name: "Kalam Light", family: "Kalam", weight: 300, ascent: 1.063, descent: 0.531, scale: 0.95 },
   { name: "Caveat", family: "Caveat", weight: 400, ascent: 0.96, descent: 0.3, scale: 1.2 },
   { name: "Architects Daughter", family: '"Architects Daughter"', weight: 400, ascent: 0.986, descent: 0.403, scale: 1 },
+  { name: "Montserrat", family: "Montserrat", weight: 400, ascent: 0.968, descent: 0.251, scale: 0.92 },
 ];
 
 // The papers as settings show them: the Nature group, then the Classics.
@@ -169,7 +170,16 @@ export const FONT_OVERRIDES = [
   "Kalam Light",
   "Caveat",
   "Architects Daughter",
+  "Montserrat",
 ];
+
+// How a font choice in settings is written, so each shows in its own font:
+// Theme default in the paper's font.
+export function fontPreview(choice, paperName) {
+  const name = choice === "Theme default" ? PAPERS.find((paper) => paper.name === paperName).font : choice;
+  const { family, weight } = FONTS.find((font) => font.name === name);
+  return { family, weight };
+}
 
 export const TEXT_SIZE = { min: 85, max: 150, step: 5, standard: 100 };
 

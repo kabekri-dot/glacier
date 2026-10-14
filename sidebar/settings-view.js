@@ -18,7 +18,7 @@ import { notesRepoName } from "../src/notebook.mjs";
 import { notesHomeChoices, notesHomeName, switchQuestion, googleReady, folderReady } from "../src/notes-home.mjs";
 import { GOOGLE_CONFIG } from "../src/google-config.mjs";
 import { SHORTCUT_GROUPS } from "../src/shortcuts-panel.mjs";
-import { PAPERS, paperGroups, FONT_OVERRIDES, TEXT_SIZE } from "../src/look.mjs";
+import { PAPERS, paperGroups, FONT_OVERRIDES, TEXT_SIZE, fontPreview } from "../src/look.mjs";
 
 // A labelled control row, for the settings.
 export function field(labelText, control) {
@@ -266,17 +266,30 @@ export function createSettingsView({ prefs, repo, onClose }) {
     return label;
   }
 
-  // The Font Override and the text size. "Theme default" names the paper's
-  // own font, so it is clear what it gives; a new paper redraws this.
+  // The Font Override and the text size. Each font is one line, written in
+  // that font, like the papers; "Theme default" names the paper's own font
+  // and shows in it. A new paper redraws this.
   function drawWriting() {
     const look = prefs.look();
     const themeFont = PAPERS.find((paper) => paper.name === look.paper).font;
-    const font = document.createElement("select");
+    const font = element("div", "font-list");
+    font.setAttribute("role", "radiogroup");
+    font.setAttribute("aria-label", "Font");
     for (const name of FONT_OVERRIDES) {
-      const text = name === "Theme default" ? `Theme default (${themeFont})` : name;
-      font.add(new Option(text, name, false, name === look.font));
+      const label = element("label", "font-choice");
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = "font";
+      radio.value = name;
+      radio.checked = name === look.font;
+      radio.addEventListener("change", () => prefs.saveLook({ font: name }));
+      const text = element("span", "font-name", name === "Theme default" ? `Theme default (${themeFont})` : name);
+      const { family, weight } = fontPreview(name, look.paper);
+      text.style.fontFamily = family;
+      text.style.fontWeight = String(weight);
+      label.append(radio, text);
+      font.append(label);
     }
-    font.addEventListener("change", () => prefs.saveLook({ font: font.value }));
 
     const size = document.createElement("input");
     size.type = "range";
@@ -294,7 +307,10 @@ export function createSettingsView({ prefs, repo, onClose }) {
     const sizeRow = element("div", "text-size-row");
     sizeRow.append(size, shown);
 
-    bodies.writing.replaceChildren(field("Font", font), field("Text size", sizeRow));
+    // Not a <label> like field(): the font choices are labels themselves.
+    const fontField = element("div", "form-field");
+    fontField.append(element("span", "form-label", "Font"), font);
+    bodies.writing.replaceChildren(fontField, field("Text size", sizeRow));
   }
 
   function choice(labelText, options, value, onChange) {
