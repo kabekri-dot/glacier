@@ -270,3 +270,15 @@ test("a sketch is hand-drawn unless it says clean", () => {
   assert.equal(sketchLook({ look: "clean" }), "clean");
   assert.equal(sketchLook({ look: "other" }), "hand");
 });
+
+test("a hand-drawn circle is one smooth round stroke that stays close to the circle", () => {
+  const circle = { kind: "circle", x: 0, y: 0, w: 100, h: 100 };
+  const d = /d="([^"]+)"/.exec(shapesSvg([circle], "hand"))[1];
+  assert.doesNotMatch(d, /Q/, "no small bends between points, which make corners");
+  assert.match(d, /C/, "smooth curves");
+  const numbers = d.match(/-?[\d.]+/g).map(Number);
+  for (let i = 0; i < numbers.length; i += 2) {
+    const distance = Math.hypot(numbers[i] - 50, numbers[i + 1] - 50);
+    assert.ok(distance > 44 && distance < 58, `point ${i / 2} is ${distance.toFixed(1)} from the middle`);
+  }
+});

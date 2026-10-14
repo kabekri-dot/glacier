@@ -50,10 +50,17 @@ const TOOL_ICONS = {
   delete: '<path d="M3 4.5 H13 M6.5 4.5 V3 H9.5 V4.5 M4.5 4.5 L5.3 13.5 H10.7 L11.5 4.5"/>',
 };
 
+// The look switch's two pictures: a wavy pen line for hand-drawn, a
+// straight one with ruler ticks for clean.
+const LOOK_ICONS = {
+  hand: '<path d="M2 10c2-3 3-3 4 0s2 3 4 0 3-3 4 0"/>',
+  clean: '<path d="M2 11h12M4 11v-2M8 11v-3M12 11v-2"/>',
+};
+
 function icon(id) {
   return (
     '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" ' +
-    `stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">${TOOL_ICONS[id]}</svg>`
+    `stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">${TOOL_ICONS[id] ?? LOOK_ICONS[id]}</svg>`
   );
 }
 
@@ -203,26 +210,26 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
       );
     }
 
-    // The Hand-drawn / Clean switch, saved with the sketch.
+    // The Hand-drawn / Clean switch, saved with the sketch: one small icon
+    // like the tools, showing the look now; a click changes to the other.
     function lookSwitch() {
-      const select = document.createElement("select");
-      select.className = "sketch-look";
-      select.title = "How the shapes look";
-      select.setAttribute("aria-label", "How the shapes look");
-      for (const { id, label } of SKETCH_LOOKS) {
-        const option = document.createElement("option");
-        option.value = id;
-        option.textContent = label;
-        option.selected = id === sketchLook(sketch);
-        select.append(option);
-      }
-      select.addEventListener("change", () => {
+      const now = sketchLook(sketch);
+      const other = SKETCH_LOOKS.find(({ id }) => id !== now);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "sketch-tool sketch-look";
+      const hint = `${SKETCH_LOOKS.find(({ id }) => id === now).label} look. Click for ${other.label.toLowerCase()}`;
+      button.title = hint;
+      button.setAttribute("aria-label", hint);
+      button.innerHTML = icon(now);
+      button.addEventListener("mousedown", (event) => event.preventDefault());
+      button.addEventListener("click", () => {
         const { look, ...rest } = sketch;
-        save(select.value === "clean" ? { ...rest, look: "clean" } : rest);
+        save(other.id === "clean" ? { ...rest, look: "clean" } : rest);
         redraw();
         area.focus();
       });
-      return select;
+      return button;
     }
 
     function redraw() {

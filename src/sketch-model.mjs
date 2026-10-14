@@ -369,13 +369,25 @@ function wobblyPath(points, closed, random) {
   return `<path d="${d}${closed ? " Z" : ""}"/>`;
 }
 
-// The points around an ellipse.
-function ellipsePoints({ x, y, w, h }) {
-  const around = 16;
-  return Array.from({ length: around }, (_, i) => {
+function handCirclePath({ x, y, w, h }, random) {
+  const around = 20;
+  const swell = (random() - 0.5) * 0.05;
+  const phaseA = random() * 2 * Math.PI;
+  const phaseB = random() * 2 * Math.PI;
+  const points = Array.from({ length: around }, (_, i) => {
     const angle = (i / around) * 2 * Math.PI;
-    return { x: x + w / 2 + (w / 2) * Math.cos(angle), y: y + h / 2 + (h / 2) * Math.sin(angle) };
+    const scale = 1 + swell + 0.018 * Math.sin(2 * angle + phaseA) + 0.012 * Math.sin(3 * angle + phaseB);
+    return { x: x + w / 2 + (w / 2) * scale * Math.cos(angle), y: y + h / 2 + (h / 2) * scale * Math.sin(angle) };
   });
+  const at = (i) => points[(i + around) % around];
+  let d = `M${tidy(points[0].x)} ${tidy(points[0].y)}`;
+  for (let i = 0; i < around; i += 1) {
+    const [p0, p1, p2, p3] = [at(i - 1), at(i), at(i + 1), at(i + 2)];
+    const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
+    const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
+    d += ` C${tidy(c1.x)} ${tidy(c1.y)} ${tidy(c2.x)} ${tidy(c2.y)} ${tidy(p2.x)} ${tidy(p2.y)}`;
+  }
+  return `<path d="${d} Z"/>`;
 }
 
 // One shape as a hand-drawn svg path. Text is the same in both looks.
@@ -386,7 +398,7 @@ function handShapeSvg(shape) {
     const shaft = wobblyPath([{ x: shape.x1, y: shape.y1 }, { x: shape.x2, y: shape.y2 }], false, random);
     return kind === "arrow" ? shaft + wobblyPath(arrowHeadPoints(shape), false, random) : shaft;
   }
-  if (kind === "circle") return wobblyPath(ellipsePoints(shape), true, random);
+  if (kind === "circle") return handCirclePath(shape, random);
   if (kind === "triangle") {
     return wobblyPath([{ x: x + w / 2, y }, { x: x + w, y: y + h }, { x, y: y + h }], true, random);
   }
