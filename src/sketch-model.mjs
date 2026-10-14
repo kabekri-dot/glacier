@@ -304,13 +304,100 @@ function escapeXml(text) {
 const tidy = (value) => Math.round(value * 10) / 10;
 
 // The two short strokes of an arrow's head at its second end.
-function arrowHead({ x1, y1, x2, y2 }) {
+function arrowHeadPoints({ x1, y1, x2, y2 }) {
   const angle = Math.atan2(y2 - y1, x2 - x1);
-  const side = (turn) => `${tidy(x2 - 10 * Math.cos(angle + turn))} ${tidy(y2 - 10 * Math.sin(angle + turn))}`;
-  return `M${side(0.45)} L${x2} ${y2} L${side(-0.45)}`;
+  const side = (turn) => ({ x: x2 - 10 * Math.cos(angle + turn), y: y2 - 10 * Math.sin(angle + turn) });
+  return [side(0.45), { x: x2, y: y2 }, side(-0.45)];
 }
 
-// One shape as an svg element, drawn clean (the hand-drawn look comes later).
+function arrowHead(arrow) {
+  const [a, tip, b] = arrowHeadPoints(arrow);
+  return `M${tidy(a.x)} ${tidy(a.y)} L${tip.x} ${tip.y} L${tidy(b.x)} ${tidy(b.y)}`;
+}
+
+// The two looks of a sketch (ADR 0007): hand-drawn is the default, clean is
+// exact lines. A sketch stores `look: "clean"` only when it is clean.
+export const SKETCH_LOOKS = [
+  { id: "hand", label: "Hand-drawn" },
+  { id: "clean", label: "Clean" },
+];
+
+export function sketchLook(sketch) {
+  return sketch?.look === "clean" ? "clean" : "hand";
+}
+
+// A small seeded random number generator (mulberry32), so a shape wobbles
+// the same way every time it is drawn.
+function randomFrom(seed) {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// The seed of a shape: its kind and size, not where it sits, so moving a
+// shape does not change its wobble.
+function seedOf(shape) {
+  const size = isLine(shape) ? [shape.x2 - shape.x1, shape.y2 - shape.y1] : [shape.w, shape.h];
+  const text = `${shape.kind}:${size.join(",")}`;
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i += 1) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619);
+  return hash;
+}
+
+// How far a hand-drawn stroke strays from the exact line, in pixels.
+const WOBBLE = 1.4;
+
+// A path through the points where each stretch bows a little to one side,
+// like a pen stroke, with the ends nudged. `random` gives numbers from 0 to 1.
+function wobblyPath(points, closed, random) {
+  const jitter = () => (random() - 0.5) * 2 * WOBBLE;
+  const nudged = points.map(({ x, y }) => ({ x: x + jitter(), y: y + jitter() }));
+  const stretches = closed ? nudged.map((point, i) => [point, nudged[(i + 1) % nudged.length]]) : nudged.slice(1).map((point, i) => [nudged[i], point]);
+  let d = `M${tidy(nudged[0].x)} ${tidy(nudged[0].y)}`;
+  for (const [from, to] of stretches) {
+    const length = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+    const bow = jitter() * 1.5;
+    const cx = (from.x + to.x) / 2 - ((to.y - from.y) / length) * bow;
+    const cy = (from.y + to.y) / 2 + ((to.x - from.x) / length) * bow;
+    d += ` Q${tidy(cx)} ${tidy(cy)} ${tidy(to.x)} ${tidy(to.y)}`;
+  }
+  return `<path d="${d}${closed ? " Z" : ""}"/>`;
+}
+
+// The points around an ellipse.
+function ellipsePoints({ x, y, w, h }) {
+  const around = 16;
+  return Array.from({ length: around }, (_, i) => {
+    const angle = (i / around) * 2 * Math.PI;
+    return { x: x + w / 2 + (w / 2) * Math.cos(angle), y: y + h / 2 + (h / 2) * Math.sin(angle) };
+  });
+}
+
+// One shape as a hand-drawn svg path. Text is the same in both looks.
+function handShapeSvg(shape) {
+  const random = randomFrom(seedOf(shape));
+  const { kind, x, y, w, h } = shape;
+  if (kind === "line") {
+    return wobblyPath([{ x: shape.x1, y: shape.y1 }, { x: shape.x2, y: shape.y2 }], false, random);
+  }
+  if (kind === "arrow") {
+    const head = arrowHeadPoints(shape);
+    const shaft = wobblyPath([{ x: shape.x1, y: shape.y1 }, { x: shape.x2, y: shape.y2 }], false, random);
+    return shaft + wobblyPath(head, false, random);
+  }
+  if (kind === "circle") return wobblyPath(ellipsePoints(shape), true, random);
+  if (kind === "triangle") {
+    return wobblyPath([{ x: x + w / 2, y }, { x: x + w, y: y + h }, { x, y: y + h }], true, random);
+  }
+  return wobblyPath([{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }], true, random);
+}
+
+// One shape as an svg element, drawn clean.
 // Text takes the group's color and, in Glacier, the note's handwriting font.
 function shapeSvg(shape) {
   const { kind, x, y, w, h } = shape;
@@ -335,7 +422,9 @@ function shapeSvg(shape) {
   return `<rect x="${x}" y="${y}" width="${w}" height="${h}"/>`;
 }
 
-// The shapes as svg elements, one per line, for the file and the screen.
-export function shapesSvg(shapes) {
-  return shapes.map((shape) => `${shapeSvg(shape)}\n`).join("");
+// The shapes as svg elements, one per line, for the file and the screen, in
+// the given look ("hand" wobbles; anything else is clean).
+export function shapesSvg(shapes, look = "clean") {
+  const draw = (shape) => (look === "hand" && shape.kind !== "text" ? handShapeSvg(shape) : shapeSvg(shape));
+  return shapes.map((shape) => `${draw(shape)}\n`).join("");
 }

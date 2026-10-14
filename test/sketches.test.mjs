@@ -64,9 +64,7 @@ test("the shapes come back from the svg file unchanged", () => {
   const svg = sketchToSvg(drawing);
   assert.match(svg, /^<svg [^>]*xmlns="http:\/\/www.w3.org\/2000\/svg"/);
   assert.match(svg, /<metadata>/);
-  assert.match(svg, /<rect /);
-  assert.match(svg, /<ellipse /);
-  assert.match(svg, /<polygon /);
+  assert.match(sketchToSvg({ ...drawing, look: "clean" }), /<rect [\s\S]*<ellipse [\s\S]*<polygon /);
   assert.deepEqual(sketchFromSvg(svg), drawing);
 });
 
@@ -264,4 +262,18 @@ test("a note's file is still only its Markdown", () => {
 test("a sketch's embed line is not a Link", () => {
   const notebook = notebookWithSketch();
   assert.deepEqual(notebook.outgoingLinks("Box model"), []);
+});
+
+test("a clean sketch stays clean through its svg file, and a hand-drawn one is the default", () => {
+  const clean = { ...drawing, look: "clean" };
+  const svg = sketchToSvg(clean);
+  assert.match(svg, /<rect /);
+  assert.deepEqual(sketchFromSvg(svg), clean);
+  const hand = sketchToSvg(drawing);
+  assert.doesNotMatch(hand, /<rect /);
+  assert.equal(sketchFromSvg(hand).look, undefined);
+});
+
+test("the svg file of a sketch is the same every time it is written", () => {
+  assert.equal(sketchToSvg(drawing), sketchToSvg({ ...drawing }));
 });

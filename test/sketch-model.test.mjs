@@ -9,6 +9,7 @@ import {
   resizedHeight,
   readShapes,
   shapesSvg,
+  sketchLook,
   addShape,
   moveShapeIn,
   moveLineEnd,
@@ -224,4 +225,48 @@ test("lines, arrows and text are drawn as svg, the text escaped", () => {
   assert.match(svg, /<line x1="0" y1="0" x2="10" y2="20"\/>/);
   assert.match(svg, /<path d="M0 0 L100 0 M[^"]+"\/>/);
   assert.match(svg, /<text [^>]*>a &lt; b &amp; c<\/text>/);
+});
+
+// The hand-drawn look (#103).
+
+const everyKind = [
+  { kind: "rectangle", x: 5, y: 5, w: 80, h: 40 },
+  { kind: "square", x: 5, y: 5, w: 40, h: 40 },
+  { kind: "circle", x: 5, y: 5, w: 40, h: 40 },
+  { kind: "triangle", x: 5, y: 5, w: 40, h: 40 },
+  { kind: "line", x1: 0, y1: 0, x2: 50, y2: 20 },
+  { kind: "arrow", x1: 0, y1: 0, x2: 50, y2: 20 },
+];
+
+test("the same shape gets the same wobbly path every time", () => {
+  for (const shape of everyKind) {
+    assert.equal(shapesSvg([shape], "hand"), shapesSvg([{ ...shape }], "hand"), shape.kind);
+  }
+});
+
+test("a hand-drawn shape is a wobbly path, not the exact element", () => {
+  for (const shape of everyKind) {
+    assert.match(shapesSvg([shape], "hand"), /^<path d="M/, shape.kind);
+    assert.notEqual(shapesSvg([shape], "hand"), shapesSvg([shape], "clean"), shape.kind);
+  }
+});
+
+test("moving a shape keeps its wobble", () => {
+  const rect = everyKind[0];
+  const wobble = (shape) => /d="M([\d.-]+) ([\d.-]+)/.exec(shapesSvg([shape], "hand")).slice(1).map(Number);
+  const [x, y] = wobble(rect);
+  const [movedX, movedY] = wobble({ ...rect, x: rect.x + 30, y: rect.y + 10 });
+  assert.equal(Math.round((movedX - x) * 10), 300);
+  assert.equal(Math.round((movedY - y) * 10), 100);
+});
+
+test("text is written the same in both looks", () => {
+  const text = { kind: "text", x: 0, y: 0, w: 40, h: 28, text: "Hi" };
+  assert.equal(shapesSvg([text], "hand"), shapesSvg([text], "clean"));
+});
+
+test("a sketch is hand-drawn unless it says clean", () => {
+  assert.equal(sketchLook({}), "hand");
+  assert.equal(sketchLook({ look: "clean" }), "clean");
+  assert.equal(sketchLook({ look: "other" }), "hand");
 });
