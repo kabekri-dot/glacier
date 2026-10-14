@@ -11,6 +11,14 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Sketch blocks: hand-drawn or clean look (#103)
+
+- [ ] Draw a rectangle, a circle, a triangle, a line and an arrow in a new sketch: the strokes are slightly wobbly, like a pen.
+- [ ] Click outside the sketch and pick it again, or reload Glacier: the wobble looks exactly the same, nothing jitters. Move a shape: its wobble stays the same.
+- [ ] In the picked sketch's toolbar, choose Clean in the list at the right: every shape turns into exact straight lines. Choose Hand-drawn: the wobble comes back.
+- [ ] Set one sketch to Clean, sync, and open the note in the other browser: it is still clean there. Opening the svg file on GitHub shows the same look.
+- [ ] Check both looks on the Glacier, School Notebook and Aurora Themes, in their light and dark papers: the strokes use each Theme's ink colour and stay easy to read.
+
 ### Sketch blocks: lines, arrows, text and resizing (#102)
 
 - [ ] Pick a sketch: the toolbar shows Line, Arrow and Text after the four shapes, each with its own small picture and hover text.

@@ -14,6 +14,7 @@
 // the Notebook core; this file only turns the mouse into calls to them and
 // draws the result.
 import {
+  SKETCH_LOOKS,
   SKETCH_TOOLS,
   addShape,
   bounds,
@@ -28,6 +29,7 @@ import {
   shapeAt,
   shapeFromDrag,
   shapesSvg,
+  sketchLook,
   textShape,
   textSize,
   withText,
@@ -173,7 +175,7 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
       block.classList.toggle("is-empty", sketch.shapes.length === 0 && !preview && !typing);
       svg.setAttribute("height", sketch.height);
       const shown = shapes.filter((_, i) => i !== typing?.index);
-      shapesEl.innerHTML = shapesSvg(preview ? [...shown, preview] : shown);
+      shapesEl.innerHTML = shapesSvg(preview ? [...shown, preview] : shown, sketchLook(sketch));
       const shape = picked === key && !typing ? shapes[pickedShape] : undefined;
       pickEl.innerHTML = shape ? pickSvg(shape) : "";
     }
@@ -197,7 +199,30 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
           });
           return button;
         }),
+        lookSwitch(),
       );
+    }
+
+    // The Hand-drawn / Clean switch, saved with the sketch.
+    function lookSwitch() {
+      const select = document.createElement("select");
+      select.className = "sketch-look";
+      select.title = "How the shapes look";
+      select.setAttribute("aria-label", "How the shapes look");
+      for (const { id, label } of SKETCH_LOOKS) {
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = label;
+        option.selected = id === sketchLook(sketch);
+        select.append(option);
+      }
+      select.addEventListener("change", () => {
+        const { look, ...rest } = sketch;
+        save(select.value === "clean" ? { ...rest, look: "clean" } : rest);
+        redraw();
+        area.focus();
+      });
+      return select;
     }
 
     function redraw() {

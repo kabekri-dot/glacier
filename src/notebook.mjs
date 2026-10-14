@@ -6,7 +6,7 @@
 import { fewAtATime } from "./few-at-a-time.mjs";
 import { findLinks } from "./editor-model.mjs";
 import { zipFiles, unzipFiles } from "./zip.mjs";
-import { readShapes, shapesSvg } from "./sketch-model.mjs";
+import { readShapes, shapesSvg, sketchLook } from "./sketch-model.mjs";
 
 // Query parameters that only record where a click came from, never which
 // lesson it is, so they're dropped before matching a Source (CONTEXT.md).
@@ -246,12 +246,13 @@ function unescapeXml(text) {
 // A sketch as its svg file's text.
 export function sketchToSvg(sketch) {
   const { width, height, shapes } = sketch;
-  const data = escapeXml(JSON.stringify({ glacier: "sketch", width, height, shapes }));
+  const look = sketchLook(sketch);
+  const data = escapeXml(JSON.stringify({ glacier: "sketch", width, height, shapes, ...(look === "clean" && { look }) }));
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">\n` +
     `<metadata>${data}</metadata>\n` +
     `<g fill="none" stroke="${SKETCH_INK}" color="${SKETCH_INK}" stroke-width="2" stroke-linejoin="round">\n` +
-    shapesSvg(shapes) +
+    shapesSvg(shapes, look) +
     "</g>\n</svg>\n"
   );
 }
@@ -265,7 +266,9 @@ export function sketchFromSvg(text) {
     const data = JSON.parse(unescapeXml(match[1]));
     if (data?.glacier !== "sketch" || !Array.isArray(data.shapes)) return undefined;
     const size = (value) => (Number.isFinite(value) && value > 0 ? value : SKETCH_SIZE);
-    return { width: size(data.width), height: size(data.height), shapes: readShapes(data.shapes) };
+    const sketch = { width: size(data.width), height: size(data.height), shapes: readShapes(data.shapes) };
+    if (data.look === "clean") sketch.look = "clean";
+    return sketch;
   } catch {
     return undefined;
   }
