@@ -382,13 +382,9 @@ function ellipsePoints({ x, y, w, h }) {
 function handShapeSvg(shape) {
   const random = randomFrom(seedOf(shape));
   const { kind, x, y, w, h } = shape;
-  if (kind === "line") {
-    return wobblyPath([{ x: shape.x1, y: shape.y1 }, { x: shape.x2, y: shape.y2 }], false, random);
-  }
-  if (kind === "arrow") {
-    const head = arrowHeadPoints(shape);
+  if (kind === "line" || kind === "arrow") {
     const shaft = wobblyPath([{ x: shape.x1, y: shape.y1 }, { x: shape.x2, y: shape.y2 }], false, random);
-    return shaft + wobblyPath(head, false, random);
+    return kind === "arrow" ? shaft + wobblyPath(arrowHeadPoints(shape), false, random) : shaft;
   }
   if (kind === "circle") return wobblyPath(ellipsePoints(shape), true, random);
   if (kind === "triangle") {
