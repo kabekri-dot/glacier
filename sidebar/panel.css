@@ -120,8 +120,11 @@ body {
   margin: 0;
 }
 
+/* The sky tint at the top of the paper, once: the body is only as high as
+   the window, so a repeating background started the tint again on every
+   window height of a long note. */
 body {
-  background: linear-gradient(var(--paper-top), var(--paper) 12rem) var(--paper);
+  background: linear-gradient(var(--paper-top), var(--paper)) top / 100% 12rem no-repeat var(--paper);
   color: var(--ink);
   font-family: var(--font-family);
   font-weight: var(--font-weight);
