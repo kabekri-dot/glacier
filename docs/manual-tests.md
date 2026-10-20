@@ -11,6 +11,18 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Sketch: the tool stays chosen, and several shapes at once (#114)
+
+- [ ] In a picked sketch, choose Rectangle and draw three boxes in a row without choosing it again. The tool stays chosen, and no new box is picked.
+- [ ] Press Esc, or choose the select tool: the tool goes back to selecting. Esc again lets go of the sketch.
+- [ ] With Text, click and type a label, then press Enter: the label is picked and the select tool is back.
+- [ ] With the select tool, hold Shift and click two boxes: both are picked. Shift click one again: it is let go.
+- [ ] Drag on empty paper: a dashed box shows, and every shape wholly inside it is picked when you let go.
+- [ ] Press Ctrl A in the sketch: every shape is picked. With several picked, no corners show.
+- [ ] Drag one of the picked shapes: they all move together. Press Delete: they all go. Press Ctrl Z: they all come back in one step.
+- [ ] Pick several shapes and click a colour or Fill: all of them change, and one Ctrl Z undoes it.
+- [ ] The Shortcuts panel lists Shift click, the drag box and Ctrl A in a sketch.
+
 ### Shortcuts panel shows an empty shortcut (#115)
 
 - [ ] In Chrome, clear Glacier's shortcut at chrome://extensions/shortcuts, then open the Shortcuts panel: the row for opening Glacier says "Not set" with a quiet link "Set it in Chrome".

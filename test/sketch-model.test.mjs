@@ -25,6 +25,12 @@ import {
   textShape,
   textSize,
   withText,
+  moveShapesIn,
+  shapesInBox,
+  allShapes,
+  togglePicked,
+  removeShapes,
+  styleShapesIn,
 } from "../src/sketch-model.mjs";
 
 // Drawing in a sketch block (#101): click and drag draws a shape, a drag
@@ -408,4 +414,70 @@ test("a save that changes nothing is no step to undo", () => {
   const history = sketchHistory();
   history.record(one, one);
   assert.equal(history.undo(one), null);
+});
+
+// Several shapes at once (#114).
+
+const trio = [
+  { kind: "rectangle", x: 10, y: 10, w: 20, h: 20 },
+  { kind: "circle", x: 50, y: 10, w: 20, h: 20 },
+  { kind: "line", x1: 100, y1: 100, x2: 140, y2: 120 },
+];
+
+test("a drag box picks the shapes wholly inside it, whichever way it is dragged", () => {
+  assert.deepEqual(shapesInBox(trio, { x: 80, y: 40 }, { x: 0, y: 0 }), [0, 1]);
+  assert.deepEqual(shapesInBox(trio, { x: 0, y: 0 }, { x: 60, y: 40 }), [0]);
+  assert.deepEqual(shapesInBox(trio, { x: 200, y: 200 }, { x: 300, y: 300 }), []);
+});
+
+test("Ctrl A picks all the shapes", () => {
+  assert.deepEqual(allShapes(trio), [0, 1, 2]);
+});
+
+test("Shift click adds a shape to the picked ones and takes a picked one out", () => {
+  assert.deepEqual(togglePicked([2], 0), [0, 2]);
+  assert.deepEqual(togglePicked([0, 2], 2), [0]);
+  assert.deepEqual(togglePicked([0], -1), [0]);
+});
+
+test("picked shapes move together and stop together at the edge", () => {
+  const area = { width: 200, height: 200 };
+  const moved = moveShapesIn(trio, [0, 1], { x: 5, y: 7 }, area);
+  assert.deepEqual([moved[0].x, moved[0].y, moved[1].x, moved[1].y], [15, 17, 55, 17]);
+  assert.deepEqual(moved[2], trio[2]);
+  const stopped = moveShapesIn(trio, [0, 1], { x: -100, y: 0 }, area);
+  assert.deepEqual([stopped[0].x, stopped[1].x], [0, 40]);
+});
+
+test("a line moved with the shape it is stuck to stays stuck", () => {
+  const shapes = [
+    { kind: "rectangle", x: 10, y: 10, w: 20, h: 20, id: 1 },
+    { kind: "line", x1: 30, y1: 20, x2: 90, y2: 20, stuck1: { id: 1, fx: 1, fy: 0.5 } },
+  ];
+  const area = { width: 200, height: 200 };
+  const both = moveShapesIn(shapes, [0, 1], { x: 10, y: 0 }, area);
+  assert.ok(both[1].stuck1);
+  assert.equal(both[1].x1, 40);
+  const lineOnly = moveShapesIn(shapes, [1], { x: 10, y: 0 }, area);
+  assert.equal(lineOnly[1].stuck1, undefined);
+});
+
+test("several shapes are removed at once", () => {
+  assert.deepEqual(removeShapes(trio, [0, 2]), [trio[1]]);
+});
+
+test("a colour and fill apply to every picked shape", () => {
+  const styled = styleShapesIn(trio, [0, 1], { color: "red", fill: true });
+  assert.equal(styled[0].color, "red");
+  assert.equal(styled[1].fill, true);
+  assert.equal(styled[2].color, undefined);
+});
+
+test("a change to a group is one undo step", () => {
+  const history = sketchHistory();
+  const before = { shapes: trio };
+  const after = { shapes: removeShapes(trio, [0, 1, 2]) };
+  history.record(before, after);
+  assert.deepEqual(history.undo(after), before);
+  assert.equal(history.undo(before), null);
 });
