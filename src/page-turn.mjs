@@ -46,7 +46,9 @@ function backOutline(width, height, c, pixel) {
 // Each frame is { sheet, back }, two outlines of points [x, y].
 export function turnFrames(width, height, { count = 8, pixel = 8 } = {}) {
   return Array.from({ length: count }, (_, k) => {
-    const c = (width + height) * (1 - k / (count - 1));
+    // Eased: the corner lifts slowly, sweeps across, and settles slowly.
+    const t = (1 - Math.cos((Math.PI * k) / (count - 1))) / 2;
+    const c = (width + height) * (1 - t);
     return { sheet: sheetOutline(width, height, c, pixel), back: backOutline(width, height, c, pixel) };
   });
 }

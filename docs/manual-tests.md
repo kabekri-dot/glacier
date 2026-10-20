@@ -63,7 +63,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 - [ ] Click › and ‹: the page turns. ‹ is faded on page 1. On the last page › reads "+ New page", and clicking it adds an empty page with the caret on it.
 - [ ] Click the bin on page 2 of 3: the bar asks "Delete page 2?" with Delete and Keep. Keep changes nothing; Delete takes the page and its text away and shows the page before. Ctrl Z brings it back. A note of one page shows no bin.
 - [ ] Ctrl PageDown and Ctrl PageUp turn the page too (Cmd on a Mac). Note whether the browser lets them through or switches tabs instead, in Chrome and in Firefox.
-- [ ] The turn: the old page folds up from the bottom right corner and over to the left in eight frames, its edge a pixel staircase with a hard pixel shadow, in under half a second. Turning back runs it the other way, the page before coming down over the old one.
+- [ ] The turn: the old page folds up from the bottom right corner and over to the left in fourteen frames, its edge a pixel staircase with a hard pixel shadow, over about a second: slow to lift, quick across, slow to settle. Turning back runs it the other way, the page before coming down over the old one.
 - [ ] Switch on reduce motion in the system settings (or the browser's): the page just changes, with no turn.
 - [ ] ↑ on the first line of page 2 goes to the end of page 1; ↓ on the last line of page 1 goes to the start of page 2.
 - [ ] Clicking on the paper under a page that isn't the last puts the caret at the end of that page.

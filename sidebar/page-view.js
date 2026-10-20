@@ -16,9 +16,10 @@
 
 import { turnFrames } from "../src/page-turn.mjs";
 
-// The turn: eight frames, 50 ms each, in pixels of 8 px.
-const FRAME_MS = 50;
-const TURN = { count: 8, pixel: 8 };
+// The turn: fourteen frames, 70 ms each (about a second, to enjoy it), in
+// pixels of 8 px.
+const FRAME_MS = 70;
+const TURN = { count: 14, pixel: 8 };
 
 // An outline of points as a clip-path; nothing shows for an empty one.
 function clip(points) {
