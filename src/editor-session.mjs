@@ -40,6 +40,7 @@ import {
   markdownSlice,
   linkAtRendered,
 } from "./editor-model.mjs";
+import { isPageBreak, removePageBreak, addPage } from "./pages.mjs";
 
 export function createEditorSession({
   onChange,
@@ -48,6 +49,9 @@ export function createEditorSession({
   extractNote = () => null,
   // Starts a new sketch in the note and returns its embed line (#101).
   newSketch = () => null,
+  // Whether the note is shown one page at a time (#108): then ↑ and ↓ step
+  // over the hidden page breaks.
+  pagesOn = () => false,
   pause = 800,
   setTimer = setTimeout,
   clearTimer = clearTimeout,
@@ -698,6 +702,16 @@ export function createEditorSession({
         moveTo(blockStart - 1, 0);
         return true;
       }
+      // Right after a page break, the break goes and the two pages join (#108),
+      // rather than the line joining onto the `%%page%%` text.
+      if (blockStart > 0 && focus.line === blockStart && focus.col === 0 && isPageBreak(lines, blockStart - 1)) {
+        recordStep();
+        lines = removePageBreak(lines, blockStart - 1);
+        focus = { line: blockStart - 1, col: 0 };
+        relayout();
+        notifyChange();
+        return true;
+      }
       const markLength = lineMarkLength(lines[blockStart]);
       if (blockStart === 0 && markLength === 0) return false;
       if (focus.line !== blockStart) return false;
@@ -735,6 +749,12 @@ export function createEditorSession({
       if (last >= lines.length - 1) return false;
       if (!(focus.line === last && focus.col === lines[last].length)) return false;
       recordStep();
+      if (isPageBreak(lines, last + 1)) {
+        lines = removePageBreak(lines, last + 1);
+        relayout();
+        notifyChange();
+        return true;
+      }
       const next = pressDelete(lines, last, focus.col);
       lines = next.lines;
       focus = { line: next.line, col: next.col };
@@ -750,11 +770,12 @@ export function createEditorSession({
     moveUp(value, selStart) {
       const firstBreak = value.indexOf("\n");
       const atTop = firstBreak === -1 || selStart <= firstBreak;
-      if (atTop && blockStart > 0) {
-        moveTo(blockStart - 1, lines[blockStart - 1].length);
-        return true;
-      }
-      return false;
+      if (!atTop) return false;
+      let above = blockStart - 1;
+      while (pagesOn() && above >= 0 && isPageBreak(lines, above)) above -= 1;
+      if (above < 0) return false;
+      moveTo(above, lines[above].length);
+      return true;
     },
 
     // ↓ from the bottom line of the block: move to the start of the line below.
@@ -764,9 +785,24 @@ export function createEditorSession({
       const lastBreak = value.lastIndexOf("\n");
       const lastLine = blockStart + blockCount - 1;
       if (selStart <= lastBreak) return false;
-      if (lastLine < lines.length - 1) moveTo(lastLine + 1, 0);
+      let below = lastLine + 1;
+      while (pagesOn() && below < lines.length && isPageBreak(lines, below)) below += 1;
+      if (below < lines.length) moveTo(below, 0);
       else clickPaper(0);
       return true;
+    },
+
+    // "+ New page" (#108): a page break and an empty line at the end of the
+    // note, with the caret on that line.
+    newPage() {
+      recordStep();
+      const next = addPage(lines);
+      lines = next.lines;
+      focus = { line: next.line, col: 0 };
+      padStart = null;
+      padEdited = false;
+      relayout();
+      notifyChange();
     },
 
     // Copying a selection (#7): the Markdown between two selection edges (see

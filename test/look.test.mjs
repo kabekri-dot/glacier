@@ -15,7 +15,13 @@ import {
 const px = (value) => Number.parseFloat(value);
 
 test("Glacier is the paper until another one is chosen", () => {
-  assert.deepEqual(readLook(undefined), { paper: "Glacier", font: "Theme default", textSize: 100 });
+  assert.deepEqual(readLook(undefined), { paper: "Glacier", font: "Theme default", textSize: 100, pages: false });
+});
+
+test("notes as pages is off until it is switched on, and then stays on", () => {
+  assert.equal(readLook({ paper: "Forest" }).pages, false);
+  assert.equal(readLook({ pages: true }).pages, true);
+  assert.equal(readLook({ pages: "yes" }).pages, false);
 });
 
 test("the five Classic papers can be chosen", () => {

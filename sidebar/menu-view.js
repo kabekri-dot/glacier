@@ -8,15 +8,16 @@
 //   noteEl            the paper, where the question before deleting a note shows
 //   draw(view)        draws what a Screen action returned
 //   render()          redraws the open note with the caret in it
-//   openNote(note, options), startNoteForPage(), moveNote() (the ⋯ "Move to
-//   collection…"), changed() (for Sync), notice(text, ms, action), downloads
+//   openNote(note, options), showSearchMatch(query) (a search inside notes
+//   opens on the page of its match, #108), startNoteForPage(), moveNote()
+//   (the ⋯ "Move to collection…"), changed() (for Sync), notice(text, ms, action), downloads
 //   (see downloads.js) and beforeOpen(), which closes whatever else is open.
 import { notebookMenu, rowActions, archivedNotice, deleteCollectionQuestion, noteOrigin } from "../src/menu-contents.mjs";
 import { isOpenedByPage } from "../src/page-open.mjs";
 import { NEW_NOTE_HINT } from "../src/new-note-choices.mjs";
 import { menuButton, iconButton, originIcon, askFormat } from "./settings-view.js";
 
-export function createMenuView({ notebook, screen, el, button: menuButtonEl, noteEl, draw, render, openNote, startNoteForPage, moveNote, changed, notice, downloads, beforeOpen }) {
+export function createMenuView({ notebook, screen, el, button: menuButtonEl, noteEl, draw, render, openNote, showSearchMatch, startNoteForPage, moveNote, changed, notice, downloads, beforeOpen }) {
   // The search box and the list under it, while the menu is open.
   let search = null;
   let body = null;
@@ -354,6 +355,8 @@ export function createMenuView({ notebook, screen, el, button: menuButtonEl, not
       return noteRow(button, title);
     }
     titleEl.textContent = title;
+    const query = search.value;
+    button.addEventListener("click", () => showSearchMatch(query));
     const snippetEl = document.createElement("span");
     snippetEl.className = "menu-snippet";
     button.append(titleEl, snippetPieces(snippetEl, snippet));

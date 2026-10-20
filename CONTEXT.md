@@ -24,6 +24,10 @@ _Avoid_: URL, origin, link (reserved for Links between notes)
 A drawing inside a note, made of shapes and free text, kept as a picture file next to the note and shown where its embed line sits.
 _Avoid_: Canvas, diagram, whiteboard, image
 
+**Page break**:
+A line `%%page%%` that splits a note into pages, each as long as its text, shown one at a time when "Notes as pages" is on (#108). The note stays one file. Not to be confused with a note's page, its Source.
+_Avoid_: Section, sheet, chapter
+
 **Notebook**:
 All of one person's Notes and Collections together.
 _Avoid_: Vault, workspace, library

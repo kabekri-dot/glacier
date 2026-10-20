@@ -16,10 +16,11 @@ export function readShortcutsPanel(saved) {
 export const HANDLED_KEYS = [
   ["Enter", "New line, or a new list item. Inside bold or italic, steps out of it"],
   ["Shift Enter", "A plain new line, with no new bullet"],
-  ["Backspace", "At the start of a line, removes its formatting or joins it to the line above. After a sketch, picks the sketch first, then removes it"],
+  ["Backspace", "At the start of a line, removes its formatting or joins it to the line above. After a page break, joins the two pages. After a sketch, picks the sketch first, then removes it"],
   ["Delete", "At the end of a line, pulls the next line up. In a sketch, removes the picked shape"],
   ["Shift", "While resizing a shape in a sketch, keeps its proportions"],
-  ["Up and down", "Move between lines, and on to the empty lines below the note"],
+  ["Up and down", "Move between lines, and on to the empty lines below the note. With notes as pages, on to the page before or after"],
+  ["Ctrl PageUp and Ctrl PageDown", "With notes as pages, turn to the page before or after"],
   ["Arrow keys", "In a sketch, move the picked shape a little. With Shift, a bit more"],
   ["Ctrl B", "Bold the selection. Press again to remove it"],
   ["Ctrl I", "Italic the selection. Press again to remove it"],
@@ -54,6 +55,7 @@ export const SHORTCUT_GROUPS = [
       [">", "Quote"],
       ["```", "Code block"],
       ["/sketch", "A drawing with boxes, circles, triangles, lines, arrows and text"],
+      ["%%page%%", "A page break, or /page. With notes as pages, a new page starts here"],
     ],
   },
   {

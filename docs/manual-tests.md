@@ -11,6 +11,26 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Notes as pages, turned with a pixel page flip (#108)
+
+- [ ] Type `/page` at the start of a line: the menu shows Page break with `%%page%%`. Pick it: a dotted line with "page 2" on it appears, and the caret is on the line under it.
+- [ ] With the setting off (the start), every page shows one after the other, each break a quiet dotted line with its page number. Click the dotted line: it shows `%%page%%` to edit.
+- [ ] Backspace at the start of the line under a break takes the break out and joins the two pages. Delete at the end of the line above a break does the same.
+- [ ] A `%%page%%` line inside a code block stays code and makes no new page.
+- [ ] Settings, Writing, Notes as pages: choose "On, one page at a time". The paper shows only the page with the caret, as long as its text, and at its bottom, above the panorama, a small bar ‹ 1 of 3 › like the pill.
+- [ ] Click › and ‹: the page turns. ‹ is faded on page 1. On the last page › reads "+ New page", and clicking it adds an empty page with the caret on it.
+- [ ] Ctrl PageDown and Ctrl PageUp turn the page too (Cmd on a Mac). Note whether the browser lets them through or switches tabs instead, in Chrome and in Firefox.
+- [ ] The turn: the old page curls up from the bottom right corner and over to the left in a few stepped, pixel-like frames with a hard shadow line, in under half a second. Turning back runs it the other way, the page before coming down over the old one.
+- [ ] Switch on reduce motion in the system settings (or the browser's): the page just changes, with no turn.
+- [ ] ↑ on the first line of page 2 goes to the end of page 1; ↓ on the last line of page 1 goes to the start of page 2.
+- [ ] Clicking on the paper under a page that isn't the last puts the caret at the end of that page.
+- [ ] In a note with a heading on page 3, open the ≡ contents and click that heading: page 3 shows, with the caret at the heading.
+- [ ] Ctrl K, search `//` and a word that is only on page 3 of a note, open the result: the note opens on page 3, with no turn.
+- [ ] Follow a Link to a note with pages: it opens on page 1.
+- [ ] Switch the setting off again: every page shows again, the bar is gone. The note is still one file, on GitHub or Drive and in Obsidian, where the `%%page%%` lines are hidden.
+- [ ] The Shortcuts panel lists `%%page%%` and Ctrl PageUp and Ctrl PageDown.
+- [ ] Do this in Chrome and Firefox, on Glacier, School Notebook and Aurora.
+
 ### Table of contents (#107)
 
 - [ ] In a note with no headings there is no ≡ tab on the left edge of the paper. Type `# First` on a line: the tab appears. Hover text: Contents.
@@ -537,8 +557,8 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 - [ ] Click far below and then somewhere else without typing: no empty lines are left behind.
 - [ ] Clicking on a word, also in a list line or a heading, puts the cursor exactly there.
 - [ ] Enter makes a new line and continues a list. Enter on an empty list line ends the list.
-- [ ] Backspace at the start of a line joins it with the line above.
-- [ ] ↑ and ↓ move between lines, also through code blocks.
+- [ ] Backspace at the start of a line joins it with the line above. Under a page break, it takes the break out.
+- [ ] ↑ and ↓ move between lines, also through code blocks. With notes as pages, on to the page before or after.
 - [ ] Pasting from a website gives plain text, and several lines become several lines.
 - [ ] The text sits on the ruled lines everywhere.
 
@@ -579,6 +599,7 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 - [ ] `/` at the start of a line opens the menu. Every command shows its Markdown.
 - [ ] Typing `/he` filters to the headings. ↑/↓ and Enter or Tab pick, Esc closes, and the mouse wheel scrolls.
 - [ ] `/` in the middle of a line or in a code block opens nothing.
+- [ ] `/page` puts in a page break: a dotted line with the page number, or with notes as pages, a new page.
 - [ ] The `+` on the left opens the same menu, on a new line when the line already has text.
 - [ ] `+` and then Esc, Enter, a paste or following a link leaves no stray `/` behind.
 - [ ] Empty lines show the hint "Type / for commands, or click + on the left".
