@@ -32,6 +32,7 @@ import { isShortcut } from "../src/keys.mjs";
 import { pagesOf, pageOfLine, pageBreaks, lineOfSearch } from "../src/pages.mjs";
 import { createPageView } from "./page-view.js";
 import { createContents } from "./contents-view.js";
+import { createTitleEdit } from "./title-edit.js";
 import { createFind } from "./find-view.js";
 import { readLook, lookStyle, wholeRows, applyLook } from "../src/look.mjs";
 import { readPanelPlace, createPanelPlacement } from "../src/panel-place.mjs";
@@ -357,7 +358,7 @@ async function start() {
         updateBacklinks();
         noteMeta.update();
         render();
-        if (view.editTitle) startTitleEdit();
+        if (view.editTitle) titleEdit.start();
         break;
       case "startPrompt":
         showStartPrompt();
@@ -453,7 +454,7 @@ async function start() {
   // Clicking it, or Ctrl+K, opens the ▾ menu (menuView, above). Esc closes it.
 
   function updatePill() {
-    stopTitleEdit();
+    titleEdit.stop();
     const note = screen.note();
     const freshPage = screen.freshPage();
     const title = pillTitle({ note, freshPage });
@@ -933,110 +934,15 @@ async function start() {
   // loads again.
   panels.start();
 
-  // Rename by clicking the title (#54): the title becomes a text field in
-  // the pill. Enter or clicking away saves, Esc puts the old title back. A
-  // refused title keeps the field open with a hint under the pill. The
-  // Notebook does the renaming and rewrites the Links (#11).
-  let titleEdit = null;
-
-  function stopTitleEdit() {
-    if (!titleEdit) return;
-    const { input } = titleEdit;
-    titleEdit = null;
-    input.remove();
-    pillTitleEl.hidden = false;
-    renameHintEl.hidden = true;
-    renameHintEl.replaceChildren();
-  }
-
-  function showRenameHint(input, result) {
-    renameHintEl.replaceChildren();
-    if (!result.suggestion) {
-      renameHintEl.textContent = "Type a name for this note.";
-    } else {
-      renameHintEl.append("That name is taken. Use ");
-      const use = document.createElement("button");
-      use.type = "button";
-      use.className = "rename-suggestion";
-      use.textContent = result.suggestion;
-      // Keep the focus in the field, or the click away would save first.
-      use.addEventListener("mousedown", (event) => event.preventDefault());
-      use.addEventListener("click", () => {
-        input.value = result.suggestion;
-        saveTitleEdit();
-      });
-      renameHintEl.append(use, "?");
-    }
-    renameHintEl.hidden = false;
-  }
-
-  async function saveTitleEdit() {
-    if (!titleEdit) return;
-    const { input } = titleEdit;
-    // On a fresh page a confirmed title makes the note (#61), and the caret
-    // drops onto the first line of the paper.
-    const freshPage = screen.freshPage();
-    let view = freshPage ? screen.confirmTitle(input.value) : screen.rename(input.value);
-    if (view.type === "titleRefused") return showRenameHint(input, view);
-    // A locked secret note opens first (its sketches carry its title), then
-    // the rename goes ahead.
-    // The field closes first, so the passcode card taking the focus doesn't
-    // save it a second time.
-    if (view.type === "renameLocked") {
-      const wanted = input.value;
-      stopTitleEdit();
-      if (!(await secrets.askPasscode("Type your Glacier passcode to rename it"))) return;
-      view = screen.rename(wanted);
-      if (view.type === "titleRefused") {
-        startTitleEdit();
-        titleEdit.input.value = wanted;
-        return showRenameHint(titleEdit.input, view);
-      }
-    }
-    draw(view);
-    if (freshPage) render();
-  }
-
-  function startTitleEdit() {
-    const note = screen.note();
-    if (titleEdit || !(note || screen.freshPage())) return;
-    menuView.close();
-    const input = document.createElement("input");
-    input.type = "text";
-    input.className = "pill-title-input";
-    input.value = note ? note.title : screen.freshPage().title;
-    input.placeholder = "Title";
-    input.setAttribute("aria-label", "Note title");
-    input.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        saveTitleEdit();
-      } else if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        stopTitleEdit();
-        if (screen.freshPage()) draw(screen.cancel());
-        else if (screen.note()) render();
-      }
-    });
-    // Clicking away from an empty title on a fresh page just leaves it unnamed.
-    input.addEventListener("blur", () => {
-      if (screen.freshPage() && !input.value.trim()) stopTitleEdit();
-      else saveTitleEdit();
-    });
-    titleEdit = { input };
-    pillTitleEl.hidden = true;
-    pillTitleEl.after(input);
-    input.focus();
-    input.select();
-  }
-
-  pillTitleEl.addEventListener("click", startTitleEdit);
-  pillTitleEl.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      startTitleEdit();
-    }
+  // Rename by clicking the title (#54): sidebar/title-edit.js.
+  const titleEdit = createTitleEdit({
+    titleEl: pillTitleEl,
+    hintEl: renameHintEl,
+    screen,
+    draw,
+    render: () => render(),
+    askPasscode: (heading) => secrets.askPasscode(heading),
+    beforeStart: () => menuView.close(),
   });
 
   // The ▾ and any bare part of the pill open the menu; the title renames and
@@ -2054,7 +1960,7 @@ async function start() {
   // Esc on the paper of a fresh page: back to the note from before, and
   // nothing is made. The title field, menus and cards handle their own Esc.
   document.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape" || event.defaultPrevented || !screen.freshPage() || titleEdit) return;
+    if (event.key !== "Escape" || event.defaultPrevented || !screen.freshPage() || titleEdit.isEditing()) return;
     event.preventDefault();
     draw(screen.cancel());
   });
