@@ -499,6 +499,35 @@ export function createMenuView({ notebook, screen, el, button: menuButtonEl, not
     if (body) drawMenuParts(body, notebookMenu(notebook, search.value, screen.note()));
   }
 
+  // The keyboard in the menu: Enter in the search opens the first note
+  // found, ↓ and ↑ walk the notes shown (a folded group's are skipped), and
+  // ↑ from the first goes back to the search. Enter on a note opens it.
+  function shownNotes() {
+    return [...body.querySelectorAll(".menu-item")].filter((button) => button.getClientRects().length > 0);
+  }
+
+  function searchKey(event) {
+    if (event.isComposing) return;
+    if (event.key === "Enter" && search.value.trim()) {
+      event.preventDefault();
+      shownNotes()[0]?.click();
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      shownNotes()[0]?.focus();
+    }
+  }
+
+  function listKey(event) {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    const notes = shownNotes();
+    const at = notes.indexOf(document.activeElement);
+    if (at === -1) return;
+    event.preventDefault();
+    const next = at + (event.key === "ArrowDown" ? 1 : -1);
+    if (next < 0) search.focus();
+    else notes[Math.min(next, notes.length - 1)].focus();
+  }
+
   function open() {
     if (isOpen()) {
       search.focus();
@@ -519,6 +548,8 @@ export function createMenuView({ notebook, screen, el, button: menuButtonEl, not
     body = document.createElement("div");
     body.className = "menu-body";
     search.addEventListener("input", refresh);
+    search.addEventListener("keydown", searchKey);
+    body.addEventListener("keydown", listKey);
     refresh();
 
     const buttons = document.createElement("div");

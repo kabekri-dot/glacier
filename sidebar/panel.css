@@ -2475,10 +2475,11 @@ html[data-dark] .welcome-scene {
 
 /* The table of contents (#107): a tab on the paper's left edge and a drawer
    in the note's own font, mirroring the Shortcuts panel on the right. */
+/* Level with the ? tab in the pill bar, so it covers no text. */
 .contents-tab {
   position: fixed;
   left: 0;
-  top: 4rem;
+  top: 0.55rem;
   z-index: 25;
   width: 1.5rem;
   height: 1.9rem;

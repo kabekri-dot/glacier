@@ -31,7 +31,7 @@ export const HANDLED_KEYS = [
   ["Ctrl A twice", "Select the line, then the whole note"],
   ["Ctrl C", "Copy the selection as Markdown"],
   ["Tab or Enter", "Pick a note from the [[ list"],
-  ["Ctrl K", "Search your notes"],
+  ["Ctrl K", "Search your notes. Enter opens the first one found, up and down walk the list"],
   ["//", "In the search, search inside notes"],
   ["Alt Shift G", "Open or close Glacier"],
   ["Alt Shift C", "Clip the selected text on a web page to the open note"],
