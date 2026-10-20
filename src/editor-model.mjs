@@ -293,10 +293,11 @@ export function pressBackspace(lines, line, col) {
 // Tick or untick the checkbox on a line: `- [ ] ` and `- [x] ` swap. Any other
 // line is returned unchanged.
 export function toggleCheckbox(lines, line) {
-  const match = /^(\s*-\s+\[)( |x|X)(\].*)$/.exec(lines[line] ?? "");
-  if (!match || !CHECKBOX.test(lines[line])) return lines;
+  const match = CHECKBOX.exec(lines[line] ?? "");
+  if (!match) return lines;
   const next = lines.slice();
-  next[line] = `${match[1]}${match[2] === " " ? "x" : " "}${match[3]}`;
+  const mark = match[3] === " " ? "x" : " ";
+  next[line] = `${match[1]}-${match[2]}[${mark}]${match[4]}${match[5]}`;
   return next;
 }
 
