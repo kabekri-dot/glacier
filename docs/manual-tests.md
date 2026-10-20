@@ -270,7 +270,7 @@ Nothing should look or work differently. Check each in Chrome and Firefox:
 
 ### Collections to download stay in Settings (hand fix)
 
-- [ ] In Settings, open Where your notes live and click Sync now: under Backup the Collections with their download icon sit in the list, not floating over the Settings heading. Click a note's Collection line: its list of Collections still opens under it and scrolls when long.
+- [ ] In Settings, open Where your notes live and click Sync now: under Export the Collections with their download icon sit in the list, not floating over the Settings heading. Click a note's Collection line: its list of Collections still opens under it and scrolls when long.
 
 ### A welcoming first page (#90)
 
@@ -435,7 +435,7 @@ Reload with ↻ first. You need a connected Notes repo for the last two checks.
 
 - [ ] The line above the text says "Add to a collection" on a note without one. Hover it: "Click to choose a collection". Click it: the list ends with "+ New collection".
 - [ ] Open the ▾ menu: the Notebook lists Collections, then "No collection" with the rest. Hover a Collection heading: three icons show, and Download names the Collection and its note count.
-- [ ] Settings, Where your notes live: the list under Backup holds Collections, and hovering a Download icon names the Collection. Nowhere in the sidebar, menus or settings does the word Course show.
+- [ ] Settings, Where your notes live: the list under Export holds Collections, and hovering a Download icon names the Collection. Nowhere in the sidebar, menus or settings does the word Course show.
 - [ ] Put a note in "Testing Test", then click "+ New collection" on another note and type "testing test": the note joins "Testing Test", and the menu shows one Collection.
 - [ ] If you had "Testing Test" and "Testing test" before this change: after the reload they show as one Collection, spelled like the one with more notes.
 - [ ] Sync, then open the Notes repo on GitHub: the notes sit in `collections/`, the old `courses/` folder is gone, and both spellings ended up in one folder. The history shows the move as one commit.
@@ -687,7 +687,7 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 
 ### Export and Restore from backup file
 
-- [ ] Open settings, then Where your notes live: "Export everything" and "Restore from backup file" sit under "Backup", and hovering shows what they do.
+- [ ] Open settings, then Where your notes live: "Export everything" and "Restore from backup file" sit under "Export", and hovering shows what they do.
 - [ ] "Export everything" downloads a zip named "Glacier notes" with the date.
 - [ ] Unzip it: notes with a Collection are in `collections/<Collection>/`, all others in `notes/`, each file named after its title with a short block of details at the top.
 - [ ] In Obsidian, "Open folder as vault" on the unzipped folder: the notes open and clicking a Link goes to the other note.
@@ -749,7 +749,7 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 
 ### Export: this note, a collection, or everything
 
-- [ ] Open the ⋯ This note menu after the title: "Download as a file" is there. Open settings (the round glacier button), then Where your notes live: under a small "Backup" heading are a Collection list, "Export a collection", "Export everything" and "Restore from backup file". Hovering each shows what it does.
+- [ ] Open the ⋯ This note menu after the title: "Download as a file" is there. Open settings (the round glacier button), then Where your notes live: under a small "Export" heading are a Collection list, "Export a collection", "Export everything" and "Restore from backup file". Hovering each shows what it does.
 - [ ] "Download as a file" saves one `.md` file named after the note's title, with its text. A note with a sketch comes as a zip with its svg files.
 - [ ] Pick a Collection and press "Export a collection": the zip has only that Collection's notes.
 - [ ] "Export everything" downloads a zip of every note, as before.
@@ -853,7 +853,7 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 - [ ] Click Unarchive: the label goes, and the note is back in its Collection (or No collection) in the list.
 - [ ] A link to an archived note in another note still opens it.
 - [ ] After a sync, the archived note's file is under the archive folder on GitHub (for example archive/collections/Collection name/Title.md), and it moves back out after Unarchive and a sync.
-- [ ] In Settings, Where your notes live, under Backup: "Export archive" downloads a zip with only the archived notes.
+- [ ] In Settings, Where your notes live, under Export: "Export archive" downloads a zip with only the archived notes.
 - [ ] "Export everything" includes archived notes, and "Restore from backup file" brings them back as archived.
 
 ### The bar on notes with two versions

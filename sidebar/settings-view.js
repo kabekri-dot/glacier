@@ -466,7 +466,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
 
   // Export and Restore (#13, #55), under Where your notes live. The Notebook does the
   // files; this only picks them.
-  // One Backup line: what it is on the left, its small line icon on the
+  // One Export line: what it is on the left, its small line icon on the
   // right, the whole line clickable, like a note row in the menu.
   function backupRow(label, kind, hint, onClick) {
     const row = element("button", "backup-row");
@@ -514,19 +514,19 @@ export function createSettingsView({ prefs, repo, onClose }) {
     const restore = backupRow(
       "Restore from a backup file",
       "unarchive",
-      "Bring back notes from a backup zip. Notes you already have are never overwritten",
+      "Bring back notes from an exported zip. Notes you already have are never overwritten",
       () => picker.click(),
     );
 
     const collections = courses.length > 0 ? [element("p", "backup-label", "Collections"), courseList] : [];
-    return [element("h2", "settings-subheading", "Backup"), exportAll, exportArchive, ...collections, restore, picker];
+    return [element("h2", "settings-subheading", "Export"), exportAll, exportArchive, ...collections, restore, picker];
   }
 
   // Where your notes live (#14, #94, #95, #97, ADR 0011): one radio per
   // place, each with its pixel icon. Google Drive shows its sign-in under it
   // (or "Not set up yet" beside it), a folder its Choose a folder button (or
   // "Only in Chrome and Edge"), GitHub the repo and token form. Switching
-  // asks first in one line, then combines. The sync status and Backup sit
+  // asks first in one line, then combines. The sync status and Export sit
   // below. The repo name and token stay in this browser's
   // extension storage, never in the Notebook (ADR 0003).
   async function drawNotesHome({ picked, repo: typedRepo, error, ask } = {}) {
