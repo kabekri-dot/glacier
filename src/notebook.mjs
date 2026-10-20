@@ -285,6 +285,11 @@ function sketchNumbers(note) {
   return Object.keys(note.sketches ?? {}).map(Number).sort((a, b) => a - b);
 }
 
+// A note as the print layout takes it: its text and its sketches.
+function printable(note) {
+  return { title: note.title, body: note.body ?? "", ...(note.sketches && { sketches: note.sketches }) };
+}
+
 function nextSketchNumber(note) {
   return (sketchNumbers(note).at(-1) ?? 0) + 1;
 }
@@ -1422,7 +1427,7 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
     // out (#109).
     notesToPrint(title) {
       const note = readable(title);
-      return note && !note.locked ? [{ title: note.title, body: note.body ?? "" }] : [];
+      return note && !note.locked ? [printable(note)] : [];
     },
 
     notesOfCourse(course, { archived = false } = {}) {
@@ -1430,7 +1435,7 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
         .map(reveal)
         .filter((note) => !note.locked)
         .sort((a, b) => a.title.localeCompare(b.title))
-        .map((note) => ({ title: note.title, body: note.body ?? "" }));
+        .map(printable);
     },
 
     // One note with its sketch files, zipped (#101).
