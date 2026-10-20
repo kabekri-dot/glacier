@@ -235,3 +235,28 @@ test("renaming an unlocked secret note keeps it secret and readable", async () =
   await notebook.unlock("open sesame");
   assert.equal(notebook.note("Journal").body, DIARY);
 });
+
+// Its sketches are named after the title inside the encrypted text, which
+// can't be rewritten while locked: the rename waits for the passcode.
+test("a locked secret note can't be renamed until it is opened", async () => {
+  const { notebook } = await notebookWithSecret();
+  notebook.lock();
+  const result = notebook.renameNote("Diary", "Journal");
+  assert.deepEqual(result, { ok: false, locked: true });
+  assert.ok(notebook.note("Diary"));
+  assert.equal(notebook.note("Journal"), undefined);
+});
+
+test("a secret note's sketch still shows after a rename", async () => {
+  const { notebook } = await notebookWithSecret();
+  const { n, line } = notebook.addSketch("Diary", { width: 300 });
+  notebook.saveBody("Diary", `${DIARY}\n${line}`);
+  notebook.saveSketch("Diary", n, { width: 300, height: 90, shapes: [{ kind: "square", x: 0, y: 0, w: 20, h: 20 }] });
+  await notebook.settled();
+  notebook.renameNote("Diary", "Journal");
+  await notebook.settled();
+  notebook.lock();
+  await notebook.unlock("open sesame");
+  const embed = notebook.note("Journal").body.split("\n")[1];
+  assert.equal(notebook.sketchForLine(embed)?.sketch.shapes.length, 1);
+});

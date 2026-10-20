@@ -1147,6 +1147,9 @@ export function createNotebook({ storage }) {
     // touched: `[[Old Title 2]]` stays. A title that is already taken is
     // refused with a free alternative to offer instead. The Links inside a
     // locked secret note can't be read, so they stay as they are (ADR 0012).
+    // A locked secret note itself is not renamed ({ ok: false, locked: true }):
+    // its sketch lines inside the encrypted text name the old title and can't
+    // be rewritten until it is opened.
     renameNote(oldTitle, newTitle) {
       const note = storage.getNote(oldTitle);
       const title = (newTitle ?? "").trim();
@@ -1155,6 +1158,9 @@ export function createNotebook({ storage }) {
       }
       if (title === oldTitle) {
         return { ok: true, note: reveal(note) };
+      }
+      if (readable(oldTitle).locked) {
+        return { ok: false, locked: true };
       }
       if (titleTaken(title)) {
         return { ok: false, suggestion: uniqueTitle(title, note.course) };

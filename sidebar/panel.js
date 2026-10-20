@@ -1134,14 +1134,29 @@ async function start() {
     renameHintEl.hidden = false;
   }
 
-  function saveTitleEdit() {
+  async function saveTitleEdit() {
     if (!titleEdit) return;
     const { input } = titleEdit;
     // On a fresh page a confirmed title makes the note (#61), and the caret
     // drops onto the first line of the paper.
     const freshPage = screen.freshPage();
-    const view = freshPage ? screen.confirmTitle(input.value) : screen.rename(input.value);
+    let view = freshPage ? screen.confirmTitle(input.value) : screen.rename(input.value);
     if (view.type === "titleRefused") return showRenameHint(input, view);
+    // A locked secret note opens first (its sketches carry its title), then
+    // the rename goes ahead.
+    // The field closes first, so the passcode card taking the focus doesn't
+    // save it a second time.
+    if (view.type === "renameLocked") {
+      const wanted = input.value;
+      stopTitleEdit();
+      if (!(await askPasscode("Type your Glacier passcode to rename it"))) return;
+      view = screen.rename(wanted);
+      if (view.type === "titleRefused") {
+        startTitleEdit();
+        titleEdit.input.value = wanted;
+        return showRenameHint(titleEdit.input, view);
+      }
+    }
     draw(view);
     if (freshPage) render();
   }

@@ -280,6 +280,7 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, we
     rename(title) {
       session.flush();
       const result = notebook.renameNote(note.title, title);
+      if (result.locked) return { type: "renameLocked" };
       if (!result.ok) return { type: "titleRefused", suggestion: result.suggestion };
       const keepPin = pinned;
       const view = { ...showNote(result.note, { byPage: openedByPage }), changed: true };
