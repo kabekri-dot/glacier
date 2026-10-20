@@ -914,7 +914,7 @@ test("a clip goes at the end of the open note as a quote with its source link", 
   const view = screen.clip({ text: "Flex is neat", title: "Flexbox", url: "https://a.example/x" });
   assert.equal(view.type, "note");
   assert.equal(view.reload, true);
-  assert.equal(notebook.note("First").body, "My notes\n\n> Flex is neat\n> — [Flexbox](https://a.example/x)");
+  assert.equal(notebook.note("First").body, "My notes\n\n> Flex is neat\n> From [Flexbox](https://a.example/x)");
 });
 
 test("a clip with no note open starts the note for that page", () => {
@@ -922,7 +922,7 @@ test("a clip with no note open starts the note for that page", () => {
   const view = screen.clip({ text: "Flex is neat", title: "Flexbox", url: "https://a.example/x" });
   assert.equal(screen.note().title, "Flexbox");
   assert.equal(view.note.source, "https://a.example/x");
-  assert.equal(notebook.note("Flexbox").body, "> Flex is neat\n> — [Flexbox](https://a.example/x)");
+  assert.equal(notebook.note("Flexbox").body, "> Flex is neat\n> From [Flexbox](https://a.example/x)");
 });
 
 test("an empty clip changes nothing", () => {
