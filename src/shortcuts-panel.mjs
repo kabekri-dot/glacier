@@ -27,7 +27,7 @@ export const HANDLED_KEYS = [
   ["Ctrl E", "Code the selection. Press again to remove it"],
   ["Ctrl Shift E", "Extract the selection to a new note, leaving a link"],
   ["Ctrl Shift O", "Open or close the contents of the note, its headings to jump to"],
-  ["Ctrl F", "Find in the open note. Enter for the next match, Esc to close"],
+  ["Ctrl F", "Find in the open note. Enter or down for the next match, Shift Enter or up for the one before, Esc to close"],
   ["Ctrl Z", "Undo, in the text or in a sketch"],
   ["Ctrl Shift Z or Ctrl Y", "Redo"],
   ["Ctrl A twice", "Select the line, then the whole note"],

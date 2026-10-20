@@ -2214,7 +2214,8 @@ async function start() {
   // on the web page the key stays the browser's own. The matches come from
   // src/find.mjs. They are marked with the CSS highlight API, which paints
   // ranges over the drawn text without touching it, so a redraw only needs the
-  // ranges made again. With notes as pages only the page on screen is searched.
+  // ranges made again. The whole note is searched; with notes as pages, going
+  // to a match on another page turns to it.
   const findView = createFindView({
     el: document.querySelector(".find-box"),
     onQuery: () => startFind(),
@@ -2224,23 +2225,29 @@ async function start() {
   let findMatchesNow = [];
   let findCurrent = -1;
 
-  function matchesInShownPage() {
-    const page = shownPageSpan();
-    const found = findMatches(editor.lines, findView.query());
-    return page ? found.filter((m) => m.line >= page.start && m.line < page.end) : found;
-  }
-
   // A new query: every match, starting on the first one at or after the caret.
   function startFind() {
-    findMatchesNow = matchesInShownPage();
+    findMatchesNow = findMatches(editor.lines, findView.query());
     const { line, col } = editor.state.focus;
     findCurrent = firstMatchFrom(findMatchesNow, line, col);
+    showCurrentPage();
     showFindMatches({ scroll: true });
   }
 
   function stepFind(step) {
     findCurrent = stepMatch(findMatchesNow.length, findCurrent, step);
+    showCurrentPage();
     showFindMatches({ scroll: true });
+  }
+
+  // With notes as pages, the current match's page is the one drawn: the
+  // caret goes to the match, and back into the find box to keep typing.
+  function showCurrentPage() {
+    const match = findMatchesNow[findCurrent];
+    const page = shownPageSpan();
+    if (!match || !page || (match.line >= page.start && match.line < page.end)) return;
+    moveTo(match.line, match.rawFrom);
+    findView.focus();
   }
 
   function openFind() {
@@ -2327,7 +2334,7 @@ async function start() {
   function showFindMatches({ scroll = false } = {}) {
     if (!findView.isOpen()) return;
     if (!scroll) {
-      findMatchesNow = matchesInShownPage();
+      findMatchesNow = findMatches(editor.lines, findView.query());
       findCurrent = Math.max(Math.min(findCurrent, findMatchesNow.length - 1), findMatchesNow.length > 0 ? 0 : -1);
     }
     findView.setStatus(findStatus(findView.query(), findMatchesNow.length, findCurrent));

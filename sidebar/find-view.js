@@ -4,6 +4,7 @@
 //
 //   createFindView({ el, onQuery, onStep, onClose })
 //   .open()            show the box and select its text
+//   .focus()           put the caret back in the field, keeping its text
 //   .close()           hide it
 //   .isOpen()
 //   .query()           what is typed in the field
@@ -60,6 +61,9 @@ export function createFindView({ el, onQuery, onStep, onClose }) {
     },
     close() {
       el.hidden = true;
+    },
+    focus() {
+      input.focus();
     },
     isOpen: () => !el.hidden,
     query: () => input.value,

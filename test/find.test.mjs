@@ -59,3 +59,9 @@ test("the status reads 2 of 5, or No match", () => {
   assert.equal(findStatus("zzz", 0, -1), "No match");
   assert.equal(findStatus("", 0, -1), "");
 });
+
+test("a page break is no text to find, but a %%page%% line in code is", () => {
+  const lines = ["one page", "%%page%%", "two", "```", "%%page%%", "```"];
+  const found = findMatches(lines, "page").map(({ line }) => line);
+  assert.deepEqual(found, [0, 4]);
+});

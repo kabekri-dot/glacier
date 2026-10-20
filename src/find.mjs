@@ -1,8 +1,9 @@
 // Find in the open note (#111): every match of a query in the note's lines,
-// ignoring capitals, on the text as you see it. Sketch lines are skipped, and
-// the lines of a code block are matched as they are written. Pure, so
+// ignoring capitals, on the text as you see it. Sketch lines and page breaks
+// are skipped, and the lines of a code block are matched as they are written. Pure, so
 // node --test can check it.
 import { blockRanges, isFence, isSketchLine, visibleText } from "./editor-model.mjs";
+import { pageBreaks } from "./pages.mjs";
 
 // Each match is { line, from, to, rawFrom, rawTo }: `from` and `to` count the
 // characters you see (what the drawn line holds), `rawFrom` and `rawTo` count
@@ -11,10 +12,11 @@ export function findMatches(lines, query) {
   const wanted = (query ?? "").toLowerCase();
   if (wanted === "") return [];
   const found = [];
+  const breaks = new Set(pageBreaks(lines));
   for (const range of blockRanges(lines)) {
     const code = isFence(lines[range.start]);
     for (let line = range.start; line < range.end; line++) {
-      if (isSketchLine(lines[line])) continue;
+      if (isSketchLine(lines[line]) || breaks.has(line)) continue;
       if (code && (line === range.start || (line === range.end - 1 && isFence(lines[line])))) continue;
       const { text, rawAt } = code
         ? { text: lines[line], rawAt: Array.from({ length: lines[line].length }, (_, i) => i) }
