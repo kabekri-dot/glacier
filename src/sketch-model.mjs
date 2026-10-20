@@ -349,45 +349,85 @@ function seedOf(shape) {
   return hash;
 }
 
-// How far a hand-drawn stroke strays from the exact line, in pixels.
-const WOBBLE = 1.4;
+// How far a hand-drawn stroke's ends stray from the exact line, in pixels.
+const WOBBLE = 0.8;
+// How far a stroke bows to one side, and how far a stroke runs past its corner.
+const BOW = 2.2;
+const OVERSHOOT_LEAST = 2;
+const OVERSHOOT_MOST = 5;
+// How far the second pass sits from the first.
+const SECOND_PASS = 1.6;
 
-// A path through the points where each stretch bows a little to one side,
-// like a pen stroke, with the ends nudged. `random` gives numbers from 0 to 1.
-function wobblyPath(points, closed, random) {
-  const jitter = () => (random() - 0.5) * 2 * WOBBLE;
-  const nudged = points.map(({ x, y }) => ({ x: x + jitter(), y: y + jitter() }));
-  const stretches = closed ? nudged.map((point, i) => [point, nudged[(i + 1) % nudged.length]]) : nudged.slice(1).map((point, i) => [nudged[i], point]);
-  let d = `M${tidy(nudged[0].x)} ${tidy(nudged[0].y)}`;
-  for (const [from, to] of stretches) {
-    const length = Math.hypot(to.x - from.x, to.y - from.y) || 1;
-    const bow = jitter() * 1.5;
-    const cx = (from.x + to.x) / 2 - ((to.y - from.y) / length) * bow;
-    const cy = (from.y + to.y) / 2 + ((to.x - from.x) / length) * bow;
-    d += ` Q${tidy(cx)} ${tidy(cy)} ${tidy(to.x)} ${tidy(to.y)}`;
-  }
-  return `<path d="${d}${closed ? " Z" : ""}"/>`;
+const between = (random, least, most) => least + random() * (most - least);
+
+// One pen stroke from a to b: it runs a little past both ends and bows
+// gently to one side. `random` gives numbers from 0 to 1.
+function strokePath(a, b, random) {
+  const length = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  const ux = (b.x - a.x) / length;
+  const uy = (b.y - a.y) / length;
+  const jitter = () => between(random, -WOBBLE, WOBBLE);
+  const before = between(random, OVERSHOOT_LEAST, OVERSHOOT_MOST);
+  const after = between(random, OVERSHOOT_LEAST, OVERSHOOT_MOST);
+  const from = { x: a.x - ux * before + jitter(), y: a.y - uy * before + jitter() };
+  const to = { x: b.x + ux * after + jitter(), y: b.y + uy * after + jitter() };
+  const bow = between(random, -BOW, BOW) * Math.min(1, length / 40);
+  const cx = (from.x + to.x) / 2 - uy * bow;
+  const cy = (from.y + to.y) / 2 + ux * bow;
+  return `M${tidy(from.x)} ${tidy(from.y)} Q${tidy(cx)} ${tidy(cy)} ${tidy(to.x)} ${tidy(to.y)}`;
 }
 
-function handCirclePath({ x, y, w, h }, random) {
-  const around = 20;
+// The strokes of a polyline, one per side, drawn twice: the second pass is
+// shifted a little and wobbles on its own, as if traced over once.
+function sketchedPath(points, closed, random) {
+  const sides = closed ? points.map((point, i) => [point, points[(i + 1) % points.length]]) : points.slice(1).map((point, i) => [points[i], point]);
+  const shift = { x: between(random, -SECOND_PASS, SECOND_PASS), y: between(random, -SECOND_PASS, SECOND_PASS) };
+  const moved = (point) => ({ x: point.x + shift.x, y: point.y + shift.y });
+  const first = sides.map(([a, b]) => strokePath(a, b, random));
+  const second = sides.map(([a, b]) => strokePath(moved(a), moved(b), random));
+  return `<path d="${[...first, ...second].join(" ")}"/>`;
+}
+
+// One smooth round stroke around the box, starting at `start` and sweeping
+// `sweep` radians, so a pass can stop short of or run past where it began.
+function circleStroke({ x, y, w, h }, random, start, sweep, offset) {
+  const steps = 20;
   const swell = (random() - 0.5) * 0.05;
   const phaseA = random() * 2 * Math.PI;
   const phaseB = random() * 2 * Math.PI;
-  const points = Array.from({ length: around }, (_, i) => {
-    const angle = (i / around) * 2 * Math.PI;
+  const points = Array.from({ length: steps + 1 }, (_, i) => {
+    const angle = start + (i / steps) * sweep;
     const scale = 1 + swell + 0.018 * Math.sin(2 * angle + phaseA) + 0.012 * Math.sin(3 * angle + phaseB);
-    return { x: x + w / 2 + (w / 2) * scale * Math.cos(angle), y: y + h / 2 + (h / 2) * scale * Math.sin(angle) };
+    return {
+      x: x + offset.x + w / 2 + (w / 2) * scale * Math.cos(angle),
+      y: y + offset.y + h / 2 + (h / 2) * scale * Math.sin(angle),
+    };
   });
-  const at = (i) => points[(i + around) % around];
+  const at = (i) => points[Math.min(Math.max(i, 0), steps)];
   let d = `M${tidy(points[0].x)} ${tidy(points[0].y)}`;
-  for (let i = 0; i < around; i += 1) {
+  for (let i = 0; i < steps; i += 1) {
     const [p0, p1, p2, p3] = [at(i - 1), at(i), at(i + 1), at(i + 2)];
     const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
     const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
     d += ` C${tidy(c1.x)} ${tidy(c1.y)} ${tidy(c2.x)} ${tidy(c2.y)} ${tidy(p2.x)} ${tidy(p2.y)}`;
   }
-  return `<path d="${d} Z"/>`;
+  return d;
+}
+
+// A circle drawn twice, each pass one smooth stroke; the two passes start
+// at different places and do not quite meet.
+function sketchedCircle(box, random) {
+  const start = random() * 2 * Math.PI;
+  const first = circleStroke(box, random, start, 2 * Math.PI + 0.12, { x: 0, y: 0 });
+  const shift = { x: between(random, -SECOND_PASS, SECOND_PASS), y: between(random, -SECOND_PASS, SECOND_PASS) };
+  const second = circleStroke(box, random, start + between(random, 0.5, 1.2), 2 * Math.PI - 0.15, shift);
+  return `<path d="${first} ${second}"/>`;
+}
+
+// The two quick strokes of an arrow's head, from the tip back along each side.
+function sketchedArrowHead(arrow, random) {
+  const [a, tip, b] = arrowHeadPoints(arrow);
+  return `<path d="${strokePath(a, tip, random)} ${strokePath(b, tip, random)}"/>`;
 }
 
 // One shape as a hand-drawn svg path. Text is the same in both looks.
@@ -395,14 +435,14 @@ function handShapeSvg(shape) {
   const random = randomFrom(seedOf(shape));
   const { kind, x, y, w, h } = shape;
   if (kind === "line" || kind === "arrow") {
-    const shaft = wobblyPath([{ x: shape.x1, y: shape.y1 }, { x: shape.x2, y: shape.y2 }], false, random);
-    return kind === "arrow" ? shaft + wobblyPath(arrowHeadPoints(shape), false, random) : shaft;
+    const shaft = sketchedPath([{ x: shape.x1, y: shape.y1 }, { x: shape.x2, y: shape.y2 }], false, random);
+    return kind === "arrow" ? shaft + sketchedArrowHead(shape, random) : shaft;
   }
-  if (kind === "circle") return handCirclePath(shape, random);
+  if (kind === "circle") return sketchedCircle(shape, random);
   if (kind === "triangle") {
-    return wobblyPath([{ x: x + w / 2, y }, { x: x + w, y: y + h }, { x, y: y + h }], true, random);
+    return sketchedPath([{ x: x + w / 2, y }, { x: x + w, y: y + h }, { x, y: y + h }], true, random);
   }
-  return wobblyPath([{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }], true, random);
+  return sketchedPath([{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }], true, random);
 }
 
 // One shape as an svg element, drawn clean.

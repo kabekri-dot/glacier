@@ -17,6 +17,14 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 - [ ] Pick Montserrat: the note, the pill and the Collection line switch to it at once, with ä, ö, ü and ß.
 - [ ] In a note that has only a drawing, click on the paper under the drawing and type: the text goes on the line under it.
 
+### Sketch blocks: a hand-drawn look that feels hand-drawn (#105)
+
+- [ ] Draw a box, a circle, a triangle and an arrow in a sketch on Glacier, School Notebook and Aurora: each looks like a quick pen sketch, every line drawn twice, sides running a little past the corners.
+- [ ] The circle is still one smooth round stroke, drawn twice, and the two passes do not quite meet.
+- [ ] The lines bow gently and do not zigzag. An arrow head is two quick strokes.
+- [ ] Reload Glacier or move a shape: it looks exactly the same as before.
+- [ ] Switch to Clean: the lines are exact and unchanged.
+
 ### Sketch blocks: hand-drawn or clean look (#103)
 
 - [ ] Draw a rectangle, a circle, a triangle, a line and an arrow in a new sketch: the strokes are slightly wobbly, like a pen.
