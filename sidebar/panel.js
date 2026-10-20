@@ -463,6 +463,8 @@ async function start() {
   // A card on the paper in place of the note, its field focused.
   function showCard(card) {
     noteEl.replaceChildren(card);
+    // A card is no page: the ‹ 1 of 3 › bar goes while it shows.
+    updatePageBar();
     if (!panels.settingsOpen()) card.querySelector("input").focus();
   }
 
