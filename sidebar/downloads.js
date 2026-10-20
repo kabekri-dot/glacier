@@ -7,9 +7,11 @@
 // Markdown gives the file or a zip; PDF and Print open the browser's print
 // window with the notes laid out on their own, where the user picks Save as
 // PDF. Every download first saves the line being edited, so it is in there.
+// A locked secret note asks for the passcode first (`unlockFirst(title)`
+// resolves to false on Cancel, #109); its Markdown file stays encrypted.
 import { printHtml } from "../src/print-layout.mjs";
 
-export function createDownloads({ notebook, screen, notice }) {
+export function createDownloads({ notebook, screen, notice, unlockFirst }) {
   function download(data, type, name) {
     const link = document.createElement("a");
     link.href = URL.createObjectURL(new Blob([data], { type }));
@@ -35,8 +37,9 @@ export function createDownloads({ notebook, screen, notice }) {
   }
 
   return {
-    downloadNote(title, format) {
+    async downloadNote(title, format) {
       screen.flush();
+      if (!(await unlockFirst(title))) return;
       if (format !== "md") return printWindow(notebook.notesToPrint(title));
       // A note with sketches comes as a zip, its svg files next to it (#101).
       if (notebook.hasSketches(title)) {

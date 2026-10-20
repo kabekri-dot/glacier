@@ -20,6 +20,8 @@
 //   { type: "titleRefused", suggestion? }  the title in the pill is refused.
 //   { type: "welcome" }      the welcome shows over whatever is on screen.
 //   { type: "welcomeGone" }  the welcome went; what was under it stays.
+//   { type: "locked" }       the open note is a locked secret note (#109), so
+//       nothing was written into it.
 //
 // The welcome (#85, #89, #91) shows on the first start until it is seen, and
 // again from "How Glacier works". Opening a note, typing or Start writing
@@ -153,6 +155,18 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, we
     return { type: "followPage", changed: true };
   }
 
+  // Make the open note secret or not (#109). Another note opened meanwhile
+  // stays as it is.
+  async function changeSecret(change) {
+    session.flush();
+    const title = note.title;
+    const changed = await change(title);
+    if (!changed) return null;
+    if (note?.title !== title) return { type: "backlinks", changed: true };
+    note = changed;
+    return { type: "note", note, reload: false, changed: true };
+  }
+
   return {
     note: () => note,
     freshPage: () => freshPage,
@@ -275,12 +289,13 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, we
 
     // Extract to a new note (#99): the text becomes a note named after its
     // first line (a free name when that is taken), on the same page and in the
-    // same Collection as the open note. It does not open. Returns its title.
+    // same Collection as the open note, and secret when it is (#109). It does
+    // not open. Returns its title.
     extract(text) {
       if (!note) return null;
       session.flush();
-      const { source, pageTitle, course } = note;
-      const made = notebook.createNote({ title: titleFromText(text), source, pageTitle, course });
+      const { source, pageTitle, course, secret } = note;
+      const made = notebook.createNote({ title: titleFromText(text), source, pageTitle, course, secret });
       notebook.saveBody(made.title, text);
       return made.title;
     },
@@ -288,10 +303,12 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, we
     // Clip text from a web page (#100): a quote with its source link goes at
     // the end of the open note. With no note open it starts the note for that
     // page, in the page's Collection if its other notes are in one. Nothing
-    // is clipped from an empty selection (null).
+    // is clipped from an empty selection (null), and nothing into a locked
+    // secret note (#109).
     clip({ text, title, url }) {
       if (!text || text.trim() === "" || !url) return null;
       const quote = clipQuote(text, title, url);
+      if (note && notebook.isLocked(note.title)) return { type: "locked" };
       if (note) {
         session.flush();
         notebook.saveBody(note.title, appendClip(notebook.note(note.title)?.body, quote));
@@ -302,6 +319,11 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, we
       notebook.saveBody(made.title, quote);
       return { ...showNote(notebook.note(made.title), { byPage: true }), changed: true };
     },
+
+    // Make the open note secret, or not secret again (#109). The passcode
+    // must be open; the text stays as typed.
+    makeSecret: () => changeSecret(notebook.makeSecret),
+    makeNotSecret: () => changeSecret(notebook.makeNotSecret),
 
     moveToCourse(course) {
       session.flush();

@@ -107,6 +107,8 @@ const repo = {
   exportAll: () => ask("exportAll"),
   restore: (bytes) => ask("restore", toBase64(bytes)),
   notice: (text, ms) => ask("notice", text, ms),
+  hasPasscode: async () => Boolean(await askValue("hasPasscode")),
+  changePasscode: async (passcode, next) => (await askValue("changePasscode", passcode, next)) ?? { ok: false },
 };
 
 async function start() {

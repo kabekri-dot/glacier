@@ -998,3 +998,47 @@ test("a sketch with a shape stays when the note is left", () => {
   assert.equal(notebook.sketch("First", n).shapes.length, 1);
   assert.equal(notebook.note("First").body, line);
 });
+
+// --- Secret notes (#109) -----------------------------------------------------
+
+async function withSecretNote() {
+  const context = withNotes();
+  const { notebook, screen } = context;
+  notebook.saveBody("First", "Hidden words");
+  await notebook.setPasscode("pass");
+  screen.open(notebook.note("First"));
+  await screen.makeSecret();
+  return context;
+}
+
+test("making the open note secret keeps it on screen, readable", async () => {
+  const { screen, notebook } = await withSecretNote();
+  assert.equal(screen.note().secret, true);
+  assert.equal(notebook.isSecret("First"), true);
+  assert.equal(notebook.note("First").body, "Hidden words");
+});
+
+test("making the open note not secret again", async () => {
+  const { screen, notebook } = await withSecretNote();
+  const view = await screen.makeNotSecret();
+  assert.equal(view.note.secret, undefined);
+  assert.equal(notebook.isSecret("First"), false);
+});
+
+test("a note extracted from a secret note is secret too", async () => {
+  const { screen, notebook } = await withSecretNote();
+  const title = screen.extract("A hidden piece");
+  assert.equal(notebook.isSecret(title), true);
+  assert.equal(notebook.note(title).body, "A hidden piece");
+});
+
+test("a clip doesn't go into a locked secret note", async () => {
+  const { screen, notebook } = await withSecretNote();
+  await notebook.settled();
+  notebook.lock();
+  screen.reopen();
+  const view = screen.clip({ text: "Flex is neat", title: "Flexbox", url: "https://a.example/x" });
+  assert.deepEqual(view, { type: "locked" });
+  await notebook.unlock("pass");
+  assert.equal(notebook.note("First").body, "Hidden words");
+});

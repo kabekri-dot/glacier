@@ -1337,6 +1337,39 @@ code {
   opacity: 1;
 }
 
+/* Secret notes (#109): a small pixel lock before the title in the pill and
+   the menus, and the passcode card on the paper. */
+.pill-lock,
+.secret-lock {
+  flex: none;
+  width: 0.8rem;
+  height: 0.8rem;
+  image-rendering: pixelated;
+}
+
+.pill-lock {
+  margin-right: -0.25rem;
+}
+
+.pill-lock[hidden] {
+  display: none;
+}
+
+.secret-lock {
+  vertical-align: -0.05em;
+  margin-right: 0.35rem;
+}
+
+.passcode-card .card-heading .secret-lock {
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.5rem;
+}
+
+.passcode-problem {
+  color: var(--accent);
+}
+
 .pill-archived {
   font-size: 0.7rem;
   color: var(--accent);

@@ -24,7 +24,7 @@ import { chosenNotesHome, notesHomeName } from "../src/notes-home.mjs";
 import { reminderDue, reminderOpened, reminderText } from "../src/cloud-reminder.mjs";
 import { createAutoSync, needsFolderOk } from "../src/auto-sync.mjs";
 import { createScreen } from "../src/screen.mjs";
-import { pageNoteCount, pillTitle, BACK_BUTTON_HINT, pinButton } from "../src/menu-contents.mjs";
+import { pageNoteCount, pillTitle, BACK_BUTTON_HINT, pinButton, secretMark } from "../src/menu-contents.mjs";
 import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
@@ -44,6 +44,7 @@ import { createSyncBoxView } from "./sync-box-view.js";
 import { createBackBox, createNewMenu, createNoteMenu } from "./pill-menus.js";
 import { createNoteMetaView } from "./note-meta-view.js";
 import { createSketchView } from "./sketch-view.js";
+import { passcodeCard, NO_RECOVERY } from "./secret-view.js";
 import { pageCard, panelsCard, startPrompt } from "./cards.js";
 import { WELCOME_GREETING, WELCOME_LINES, WELCOME_TIP, welcomeShown } from "../src/guidance.mjs";
 import { drawBesideFrames } from "./beside-frames.js";
@@ -70,6 +71,9 @@ const DRAFT_HINT = "Just start writing.";
 // How many ruled rows high a new sketch starts (#101).
 const NEW_SKETCH_ROWS = 5;
 
+// Secret notes lock again after this long without typing (#109).
+const LOCK_AFTER_MS = 10 * 60 * 1000;
+
 // The formatting shortcuts (#44): Ctrl (Cmd on a Mac) plus these keys. Ctrl+K
 // is kept free for search.
 const FORMAT_KEYS = { b: "bold", i: "italic", e: "code" };
@@ -79,6 +83,7 @@ const saveErrorEl = document.querySelector(".save-error");
 const pillEl = document.querySelector(".pill");
 const pillTitleEl = document.querySelector(".pill-title");
 const pillArchivedEl = document.querySelector(".pill-archived");
+const pillLockEl = document.querySelector(".pill-lock");
 const pillPinEl = document.querySelector(".pill-pin");
 const pillCountEl = document.querySelector(".pill-count");
 const pillMenuEl = document.querySelector(".pill-menu");
@@ -259,6 +264,7 @@ async function start() {
     onChange: (body) => {
       draw(screen.edit(body));
       autoSync.changed();
+      keepUnlocked();
     },
     titles: () => notebook.notes().map((note) => note.title),
     extractNote: (text) => screen.extract(text),
@@ -286,7 +292,12 @@ async function start() {
     return notebook.addSketch(note.title, { width, height: NEW_SKETCH_ROWS * lookDrawn.lineHeight })?.line ?? null;
   }
 
-  const downloads = createDownloads({ notebook, screen, notice: (text) => showNotice(text) });
+  const downloads = createDownloads({
+    notebook,
+    screen,
+    notice: (text) => showNotice(text),
+    unlockFirst: (title) => (notebook.isLocked(title) ? askPasscode("Type your Glacier passcode to print or download it") : Promise.resolve(true)),
+  });
 
   // The ▾ menu (#12), drawn by sidebar/menu-view.js, and the actions on notes,
   // Collections and Page groups that its hover icons and ⋯ share.
@@ -424,6 +435,135 @@ async function start() {
     backlinksButtonEl.setAttribute("aria-expanded", String(opening));
   });
 
+  // --- Secret notes (#109, ADR 0012) ----------------------------------------
+  //
+  // A locked secret note shows one passcode field on the paper instead of
+  // its text. The passcode opens every secret note until the sidebar closes
+  // or 10 minutes pass without typing; then they lock again. Which notes are
+  // secret and whether a passcode is right is the Notebook's.
+
+  let lockTimer = null;
+
+  function keepUnlocked() {
+    clearTimeout(lockTimer);
+    if (notebook.isUnlocked()) lockTimer = setTimeout(lockSecrets, LOCK_AFTER_MS);
+  }
+
+  function lockSecrets() {
+    screen.flush();
+    notebook.lock();
+    if (screen.note()?.secret) draw(screen.reopen());
+  }
+
+  function lockedOnScreen() {
+    const note = screen.note();
+    return Boolean(note && notebook.isLocked(note.title));
+  }
+
+  // A card on the paper in place of the note, its field focused.
+  function showCard(card) {
+    noteEl.replaceChildren(card);
+    if (!panels.settingsOpen()) card.querySelector("input").focus();
+  }
+
+  // The paper of a locked secret note: one field, and the note opens.
+  function showUnlockCard() {
+    const title = screen.note().title;
+    showCard(
+      passcodeCard({
+        heading: "This note is secret",
+        lines: ["Type your Glacier passcode to read it."],
+        submitLabel: "Open",
+        onSubmit: async (passcode) => {
+          if (!(await notebook.unlock(passcode)) || notebook.isLocked(title)) return "That passcode doesn't open this note.";
+          keepUnlocked();
+          if (screen.note()?.title === title) draw(screen.reopen());
+          return null;
+        },
+      }),
+    );
+  }
+
+  // Put back what the paper showed before a passcode card.
+  function restorePaper(wasLocked) {
+    if (wasLocked && screen.note()) draw(screen.reopen());
+    else if (screen.note() || screen.freshPage()) render();
+    else draw({ type: "followPage" });
+  }
+
+  // Ask for the passcode on the paper before something that needs the
+  // secret notes open. Resolves to true once they are, false on Cancel.
+  function askPasscode(heading) {
+    const wasLocked = lockedOnScreen();
+    screen.flush();
+    return new Promise((resolve) => {
+      const done = (opened) => {
+        restorePaper(wasLocked);
+        resolve(opened);
+      };
+      showCard(
+        passcodeCard({
+          heading,
+          submitLabel: "Open",
+          onSubmit: async (passcode) => {
+            if (!(await notebook.unlock(passcode))) return "That isn't your Glacier passcode.";
+            keepUnlocked();
+            done(true);
+            return null;
+          },
+          onCancel: () => done(false),
+        }),
+      );
+    });
+  }
+
+  // The first secret note: choose the passcode, typed twice, after the line
+  // that says it can't be recovered.
+  function choosePasscode() {
+    screen.flush();
+    return new Promise((resolve) => {
+      const done = (chosen) => {
+        restorePaper(false);
+        resolve(chosen);
+      };
+      showCard(
+        passcodeCard({
+          heading: "Choose your Glacier passcode",
+          lines: ["One passcode opens all your secret notes.", NO_RECOVERY],
+          twice: true,
+          submitLabel: "Make secret",
+          onSubmit: async (passcode) => {
+            await notebook.setPasscode(passcode);
+            done(true);
+            return null;
+          },
+          onCancel: () => done(false),
+        }),
+      );
+    });
+  }
+
+  async function makeSecret() {
+    if (!notebook.hasPasscode()) {
+      if (!(await choosePasscode())) return;
+    } else if (!notebook.isUnlocked() && !(await askPasscode("Type your Glacier passcode"))) {
+      return;
+    }
+    const view = await screen.makeSecret();
+    if (!view) return;
+    draw(view);
+    keepUnlocked();
+    showNotice("This note is secret now.");
+  }
+
+  async function makeNotSecret() {
+    if (lockedOnScreen() && !(await askPasscode("Type your Glacier passcode"))) return;
+    const view = await screen.makeNotSecret();
+    if (!view) return;
+    draw(view);
+    showNotice("This note is not secret any more.");
+  }
+
   // --- The pill and its menu (#12) -------------------------------------------
   //
   // The pill shows the open note's title, "1 of 3", ⋯ and the sync dot.
@@ -446,6 +586,9 @@ async function start() {
       pillTitleEl.removeAttribute("tabindex");
     }
     pillArchivedEl.hidden = !note?.archived;
+    const secret = note && secretMark(notebook, note.title);
+    pillLockEl.hidden = !secret;
+    pillLockEl.title = secret?.hint ?? "";
     const pin = pinButton(screen.pinned());
     pillPinEl.hidden = !note;
     pillPinEl.classList.toggle("is-pinned", pin.pinned);
@@ -511,6 +654,8 @@ async function start() {
     screen,
     onAction: (kind) => {
       if (kind === "extract") extractSelection();
+      else if (kind === "secret") makeSecret();
+      else if (kind === "notSecret") makeNotSecret();
       else if (kind === "pin" || kind === "unpin") setPinned(kind === "pin");
       else menuView.act("note", kind, { title: screen.note().title }, noteMenuButtonEl);
     },
@@ -696,6 +841,20 @@ async function start() {
     },
 
     notice: (text, ms) => showNotice(text, ms),
+
+    // Secret notes (#109): Change passcode in settings encrypts every secret
+    // note again, and opens them.
+    hasPasscode: async () => notebook.hasPasscode(),
+    async changePasscode(passcode, next) {
+      const wasLocked = lockedOnScreen();
+      screen.flush();
+      const result = await notebook.changePasscode(passcode, next);
+      if (!result.ok) return result;
+      keepUnlocked();
+      autoSync.changed();
+      if (wasLocked) draw(screen.reopen());
+      return result;
+    },
   };
 
   // --- Settings (#18) and the Shortcuts panel (#20) -------------------------
@@ -869,6 +1028,8 @@ async function start() {
     exportCourse: repoActions.exportCourse,
     exportAll: repoActions.exportAll,
     restore: (text) => repoActions.restore(Uint8Array.from(atob(text), (c) => c.charCodeAt(0))),
+    hasPasscode: repoActions.hasPasscode,
+    changePasscode: repoActions.changePasscode,
   };
 
   api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -895,6 +1056,10 @@ async function start() {
     await api.storage.local.remove("pendingClip");
     const view = screen.clip(pendingClip);
     if (!view) return;
+    if (view.type === "locked") {
+      showNotice("This note is secret and locked. Type your passcode, then clip again.", 6000);
+      return;
+    }
     draw(view);
     showNotice("Clipped.");
   }
@@ -1809,6 +1974,13 @@ async function start() {
   // The page breaks of the note being drawn, so each block can ask (#108).
   let pageBreakSet = new Set();
   function render() {
+    // A locked secret note shows the passcode card instead (#109).
+    if (lockedOnScreen()) {
+      showUnlockCard();
+      updateContents();
+      updatePageBar();
+      return;
+    }
     // Keep the session's focused-block span in step with the caret before we
     // read it back to place the caret (#31).
     editor.relayout();

@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createNotebook } from "../src/notebook.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
-import { notebookMenu, noteMenu, pinButton, pageNoteCount, deleteCollectionQuestion, archivedNotice, secondVersionBar, rowActions, noteOrigin, lastNotesBox, pillTitle } from "../src/menu-contents.mjs";
+import { notebookMenu, noteMenu, pinButton, pageNoteCount, deleteCollectionQuestion, archivedNotice, secondVersionBar, rowActions, noteOrigin, lastNotesBox, pillTitle, secretMark } from "../src/menu-contents.mjs";
 
 // What the ▾ Notebook and ⋯ This note menus list (#67), as plain data the
 // sidebar only has to draw.
@@ -208,6 +208,7 @@ test("an open note gets its name, Extract, Download as a file, Archive and Delet
       ["move", "Move to collection…"],
       ["extract", "Extract to a new note"],
       ["download", "Download as a file"],
+      ["secret", "Make secret"],
       ["archive", "Archive"],
       ["delete", "Delete"],
     ],
@@ -219,7 +220,7 @@ test("an archived note offers Unarchive instead of Archive", () => {
   const notebook = notebookWith();
   notebook.archiveNote("Flexbox");
   const menu = noteMenu(notebook.note("Flexbox"));
-  assert.deepEqual(menu.actions.map((action) => action.label), ["Pin this note", "Move to collection…", "Extract to a new note", "Download as a file", "Unarchive", "Delete"]);
+  assert.deepEqual(menu.actions.map((action) => action.label), ["Pin this note", "Move to collection…", "Extract to a new note", "Download as a file", "Make secret", "Unarchive", "Delete"]);
 });
 
 test("a second version shows a bar naming the original and the two buttons", () => {
@@ -405,4 +406,21 @@ test("a pinned note offers Unpin this note instead", () => {
 test("the pin in the pill says what one click does, pinned or not", () => {
   assert.deepEqual(pinButton(false), { pinned: false, label: "Pin this note", hint: "Pin this note: it stays when you change the page or tab" });
   assert.deepEqual(pinButton(true), { pinned: true, label: "Unpin this note", hint: "Pinned: it stays when you change the page. Click to follow your tabs again" });
+});
+
+// Secret notes (#109): ⋯ makes a note secret or not, and a lock shows before
+// a secret note's title.
+test("a secret note offers Make not secret instead of Make secret", () => {
+  const menu = noteMenu({ title: "Diary", secret: true });
+  const action = menu.actions.find((a) => a.kind === "notSecret");
+  assert.equal(action.label, "Make not secret");
+  assert.equal(menu.actions.some((a) => a.kind === "secret"), false);
+});
+
+test("a secret note's title has the lock before it, a plain one none", async () => {
+  const notebook = notebookWith();
+  await notebook.setPasscode("pass");
+  await notebook.makeSecret("Margins");
+  assert.deepEqual(secretMark(notebook, "Margins"), { hint: "Secret note" });
+  assert.equal(secretMark(notebook, "Flexbox"), null);
 });
