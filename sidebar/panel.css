@@ -429,6 +429,48 @@ html[data-art="aurora"] {
   font-size: 1.12em;
 }
 
+/* A numbered item: the number is drawn by CSS, so it adds no text to the line
+   and a click on it still maps to the start of the words (#110). */
+.md-number {
+  display: inline-block;
+  min-width: 1.5em;
+  color: var(--accent);
+}
+
+.md-number::before {
+  content: attr(data-number) ".";
+}
+
+/* A checkbox: a small hand-drawn box in the paper's ink, with a pencil tick
+   when done, and the words a little fainter (#110). */
+.md-check-box {
+  position: relative;
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  margin-right: 0.45em;
+  border: 1.5px solid currentColor;
+  border-radius: 38% 62% 45% 55% / 55% 40% 60% 45%;
+  vertical-align: -0.1em;
+  cursor: pointer;
+}
+
+.md-check-done .md-check-box::after {
+  content: "";
+  position: absolute;
+  left: 0.22em;
+  top: -0.1em;
+  width: 0.28em;
+  height: 0.6em;
+  border: solid currentColor;
+  border-width: 0 2px 2px 0;
+  transform: rotate(40deg);
+}
+
+.md-check-done {
+  opacity: 0.6;
+}
+
 .md-bullet-dot {
   display: inline-block;
   width: 1.2em;

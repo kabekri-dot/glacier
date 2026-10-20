@@ -39,6 +39,7 @@ import {
   renderedEdgeToRaw,
   markdownSlice,
   linkAtRendered,
+  toggleCheckbox,
 } from "./editor-model.mjs";
 import { isPageBreak, removePageBreak, addPage, removePage, pageOfLine } from "./pages.mjs";
 
@@ -421,6 +422,17 @@ export function createEditorSession({
     moveTo,
 
     clickPaper,
+
+    // A click on a checkbox's box: tick or untick it and save, leaving the
+    // caret where it was.
+    toggleCheckbox(line) {
+      const next = toggleCheckbox(lines, line);
+      if (next === lines) return;
+      recordStep();
+      lines = next;
+      relayout();
+      notifyChange();
+    },
 
     // A click the sidebar located in a drawn line, as the rendered-text offset
     // the click fell on (#33). The sidebar finds the position; the session

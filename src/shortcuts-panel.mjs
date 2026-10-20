@@ -52,6 +52,8 @@ export const SHORTCUT_GROUPS = [
       ["##", "Heading 2"],
       ["###", "Heading 3"],
       ["-", "Bullet list"],
+      ["1.", "Numbered list"],
+      ["- [ ]", "Checkbox list, click the box to tick it"],
       [">", "Quote"],
       ["```", "Code block"],
       ["/sketch", "A drawing with boxes, circles, triangles, lines, arrows and text"],

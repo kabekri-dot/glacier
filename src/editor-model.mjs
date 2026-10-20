@@ -73,6 +73,11 @@ export function blocksToText(blocks) {
 // (which may be empty for a fresh, still-empty bullet).
 const BULLET = /^(\s*)-(\s+)(.*)$/;
 
+// A checkbox item (`- [ ] ` or `- [x] `) and a numbered item (`1. `), both plain
+// Obsidian Markdown (#110). Checked first: a checkbox is also a bullet.
+const CHECKBOX = /^(\s*)-(\s+)\[( |x|X)\](\s+)(.*)$/;
+const NUMBERED = /^(\s*)(\d+)\.(\s+)(.*)$/;
+
 // A Link is `[[Title]]` somewhere in the text (CONTEXT.md). The title is the
 // run between the brackets with no bracket inside, so `[[A]] [[B]]` are two
 const SKETCH_EMBED = /^!\[\[.* \u2013 sketch \d+\.svg\]\]$/;
@@ -110,6 +115,8 @@ export const SLASH_COMMANDS = [
   { id: "h2", label: "Heading 2", markdown: "##", insert: "## ", caret: 3 },
   { id: "h3", label: "Heading 3", markdown: "###", insert: "### ", caret: 4 },
   { id: "bullet", label: "Bullet list", markdown: "-", insert: "- ", caret: 2 },
+  { id: "numbered", label: "Numbered list", markdown: "1.", insert: "1. ", caret: 3 },
+  { id: "checkbox", label: "Checkbox list", markdown: "- [ ]", insert: "- [ ] ", caret: 6 },
   { id: "link", label: "Link to a note", markdown: "[[ ]]", insert: "[[]]", caret: 2 },
   { id: "bold", label: "Bold", markdown: "**bold**", insert: "****", caret: 2 },
   { id: "italic", label: "Italic", markdown: "*italic*", insert: "**", caret: 1 },
@@ -195,6 +202,28 @@ export function pressEnter(lines, line, col) {
   const current = lines[line];
   const before = current.slice(0, col);
   const after = current.slice(col);
+  const check = CHECKBOX.exec(current);
+  const numbered = NUMBERED.exec(current);
+
+  if ((check && check[5] === "") || (numbered && numbered[4] === "")) {
+    // An empty checkbox or numbered item ends the list the same way.
+    const next = lines.slice();
+    next[line] = "";
+    return { lines: next, line, col: 0 };
+  }
+
+  if (check || numbered) {
+    // A new empty unticked box, or the next number; the new line carries what
+    // was after the caret.
+    const marker = check
+      ? `${check[1]}-${check[2]}[ ]${check[4]}`
+      : `${numbered[1]}${Number(numbered[2]) + 1}.${numbered[3]}`;
+    const next = lines.slice();
+    next[line] = before;
+    next.splice(line + 1, 0, marker + after);
+    return { lines: next, line: line + 1, col: marker.length };
+  }
+
   const bullet = BULLET.exec(current);
 
   if (bullet && bullet[3] === "") {
@@ -259,6 +288,31 @@ export function pressBackspace(lines, line, col) {
     return { lines: next, line: line - 1, col: prev.length };
   }
   return { lines, line, col };
+}
+
+// Tick or untick the checkbox on a line: `- [ ] ` and `- [x] ` swap. Any other
+// line is returned unchanged.
+export function toggleCheckbox(lines, line) {
+  const match = /^(\s*-\s+\[)( |x|X)(\].*)$/.exec(lines[line] ?? "");
+  if (!match || !CHECKBOX.test(lines[line])) return lines;
+  const next = lines.slice();
+  next[line] = `${match[1]}${match[2] === " " ? "x" : " "}${match[3]}`;
+  return next;
+}
+
+// The number each line is drawn with: items of a numbered list count 1, 2, 3
+// in order whatever numbers the file holds; a line that is not numbered (even
+// a blank one) ends the run. null for lines that are not numbered items.
+export function listNumbers(lines) {
+  let count = 0;
+  return lines.map((line) => {
+    if (!NUMBERED.test(line)) {
+      count = 0;
+      return null;
+    }
+    count += 1;
+    return count;
+  });
 }
 
 // Delete at the end of a line: join the next line onto it (the caret stays
@@ -454,6 +508,22 @@ function lineSegments(line) {
       ...inlineSegments(quote[2]),
     ];
   }
+  const check = CHECKBOX.exec(line);
+  if (check) {
+    const raw = line.slice(0, line.length - check[5].length);
+    return [
+      { raw, text: "", kind: "marker", marker: "checkbox", done: check[3] !== " " },
+      ...inlineSegments(check[5]),
+    ];
+  }
+  const numbered = NUMBERED.exec(line);
+  if (numbered) {
+    const raw = line.slice(0, line.length - numbered[4].length);
+    return [
+      { raw, text: "", kind: "marker", marker: "number" },
+      ...inlineSegments(numbered[4]),
+    ];
+  }
   const bullet = /^(\s*-\s+)(.*)$/.exec(line);
   if (bullet) {
     return [
@@ -588,7 +658,7 @@ function inlineHtml(segments, linkExists) {
 // everything else is escaped text. An empty line
 // keeps its height with a `<br>`. `linkExists` lets the caller mark Missing
 // Links (see inlineHtml).
-export function renderLineHtml(line, linkExists) {
+export function renderLineHtml(line, linkExists, number) {
   if (line === "") {
     return "<br>";
   }
@@ -599,6 +669,13 @@ export function renderLineHtml(line, linkExists) {
   }
   if (first && first.marker === "bullet") {
     return `<span class="md-bullet"><span class="md-bullet-dot">•</span>${inlineHtml(segments.slice(1), linkExists)}</span>`;
+  }
+  if (first && first.marker === "checkbox") {
+    const done = first.done ? " md-check-done" : "";
+    return `<span class="md-check${done}"><span class="md-check-box"></span>${inlineHtml(segments.slice(1), linkExists)}</span>`;
+  }
+  if (first && first.marker === "number") {
+    return `<span class="md-numbered"><span class="md-number" data-number="${number ?? 1}"></span>${inlineHtml(segments.slice(1), linkExists)}</span>`;
   }
   if (first && first.marker === "quote") {
     return `<span class="md-quote">${inlineHtml(segments.slice(1), linkExists)}</span>`;
@@ -633,7 +710,7 @@ export function focusedLineSpans(line) {
 function lineStart(line) {
   const heading = /^(#{1,3})\s+/.exec(line);
   if (heading) return { kind: "heading", mark: heading[0], level: heading[1].length };
-  const list = /^\s*(-|\d+\.)\s+/.exec(line);
+  const list = /^\s*(?:-\s+\[[ xX]\]|-|\d+\.)\s+/.exec(line);
   if (list) return { kind: "list", mark: list[0] };
   const quote = /^>\s+/.exec(line);
   if (quote) return { kind: "quote", mark: quote[0] };
