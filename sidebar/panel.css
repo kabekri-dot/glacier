@@ -643,6 +643,64 @@ code {
   opacity: 1;
 }
 
+/* Colours (#106): six round dots and the Fill switch. In a narrow sidebar
+   the dots hide behind one colour button that opens them. */
+.sketch-colours {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 0.3rem;
+}
+
+.sketch-dots {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.sketch-dot {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--dot);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 25%, transparent);
+  cursor: pointer;
+}
+
+.sketch-dot.is-chosen {
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--accent);
+}
+
+.sketch-colour-button {
+  display: none;
+}
+
+@media (max-width: 20rem) {
+  .sketch-colour-button {
+    display: grid;
+  }
+
+  .sketch-dots {
+    display: none;
+  }
+
+  .sketch-colours.is-open .sketch-dots {
+    position: absolute;
+    z-index: 6;
+    right: 0;
+    bottom: 100%;
+    margin-bottom: 4px;
+    padding: 4px;
+    border-radius: 6px;
+    background: var(--paper);
+    box-shadow: 0 1px 4px color-mix(in srgb, var(--ink) 20%, transparent);
+  }
+}
+
 .sketch-look {
   margin-left: 0.3rem;
 }

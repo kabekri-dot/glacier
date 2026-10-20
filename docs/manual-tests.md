@@ -17,6 +17,17 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 - [ ] Pick Montserrat: the note, the pill and the Collection line switch to it at once, with ä, ö, ü and ß.
 - [ ] In a note that has only a drawing, click on the paper under the drawing and type: the text goes on the line under it.
 
+### Sketch blocks: colours and fill (#106)
+
+- [ ] Pick a sketch: after the tools the toolbar shows six round dots (the paper's ink, blue, green, red, orange, purple) and a small half-filled square. The colours look muted, like pencil.
+- [ ] Choose blue and draw a box, a circle, an arrow and a text: all four are blue. Choose the first dot: new shapes use the paper's ink again.
+- [ ] Pick a shape and choose another dot: that shape changes colour and the others stay.
+- [ ] Click the half-filled square, then draw a box, a circle and a triangle: each has a light wash of its colour inside. A line, an arrow and a text get no wash. Click the square again with a shape picked: its wash goes.
+- [ ] Do this on Glacier, School Notebook and Aurora: on Aurora the colours are lighter and still easy to read.
+- [ ] Reload Glacier and sync: the colours and washes are still there, here and in the other browser.
+- [ ] Open the sketch's svg file on GitHub or Drive: the shapes show their colours and washes.
+- [ ] Make the sidebar narrow: the dots hide behind one colour button, and clicking it opens them.
+
 ### Sketch blocks: a hand-drawn look that feels hand-drawn (#105)
 
 - [ ] Draw a box, a circle, a triangle and an arrow in a sketch on Glacier, School Notebook and Aurora: each looks like a quick pen sketch, every line drawn twice, sides running a little past the corners.
