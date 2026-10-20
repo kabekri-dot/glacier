@@ -15,7 +15,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 - [ ] In a note with no headings there is no ≡ tab on the left edge of the paper. Type `# First` on a line: the tab appears. Hover text: Contents.
 - [ ] Click the tab: a drawer slides in from the left with the headings in order, indented by level (# ## ###), in the note's font. Code blocks with a # line inside add nothing.
-- [ ] In a long note, click a heading: the paper scrolls so the heading sits near the top and the caret is at its start. The drawer stays open.
+- [ ] In a long note, click a heading: the paper scrolls so the heading sits near the top and the caret is at its start. The drawer closes, so the heading is in view.
 - [ ] With the drawer open, type a new heading or change one: the list follows as you type. Delete the last heading: the tab and the drawer go away.
 - [ ] The drawer closes with a click on the paper, a click on the tab again, or Esc.
 - [ ] Ctrl Shift O (Cmd on a Mac) opens and closes the drawer. It is listed in the Shortcuts panel under Keys.

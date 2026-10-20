@@ -1853,8 +1853,10 @@ async function start() {
   }
 
   // The caret goes to the start of the heading and the paper scrolls so the
-  // heading sits near the top. The drawer stays open.
+  // heading sits near the top. The drawer closes, so it doesn't cover the
+  // heading in a narrow sidebar.
   function jumpToHeading(line) {
+    contentsView.close();
     moveTo(line, 0);
     const row = focusedEl?.closest(".line-row");
     if (!row) return;
