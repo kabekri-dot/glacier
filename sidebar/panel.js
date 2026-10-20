@@ -28,11 +28,10 @@ import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
 import { readTabSettings } from "../src/tab-settings.mjs";
 import { readShortcutsPanel } from "../src/shortcuts-panel.mjs";
-import { headingsOf } from "../src/contents.mjs";
 import { isShortcut } from "../src/keys.mjs";
 import { pagesOf, pageOfLine, pageBreaks, lineOfSearch } from "../src/pages.mjs";
 import { createPageView } from "./page-view.js";
-import { createContentsView } from "./contents-view.js";
+import { createContents } from "./contents-view.js";
 import { createFind } from "./find-view.js";
 import { readLook, lookStyle, wholeRows, applyLook } from "../src/look.mjs";
 import { readPanelPlace, createPanelPlacement } from "../src/panel-place.mjs";
@@ -554,7 +553,7 @@ async function start() {
     noteMenu.close();
     backBox.close();
     syncBoxView.close();
-    contentsView.close();
+    contents.close();
     findInNote.close();
     if (!keepShortcuts && shortcutsPanel.on && !shortcutsPanel.folded) prefs.saveShortcutsPanel({ folded: true });
   }
@@ -1500,7 +1499,7 @@ async function start() {
         drawFocused(el, editor.lines.slice(start, start + editor.state.blockCount));
         placeCaret(el, caret);
       }
-      updateContents();
+      contents.update();
       // Open, refilter or close the `/` command menu for the new caret (#32).
       // The session knows not to open inside a code block, where `/` is code.
       editor.refreshMenu();
@@ -1840,7 +1839,7 @@ async function start() {
   function render() {
     // A locked secret note shows the passcode card instead (#109).
     if (secrets.showIfLocked()) {
-      updateContents();
+      contents.update();
       updatePageBar();
       return;
     }
@@ -1912,7 +1911,7 @@ async function start() {
     // Draw the `/` menu against the fresh line (the + button opens it just
     // before a render), or remove it when the session has closed it (#32).
     drawMenu();
-    updateContents();
+    contents.update();
     updatePageBar();
     findInNote.refresh();
     if (turn) {
@@ -1989,22 +1988,17 @@ async function start() {
     turnPage(event.key === "PageUp" ? -1 : 1);
   });
 
-  // --- The table of contents (#107) ------------------------------------------
-  const contentsView = createContentsView({ onJump: jumpToHeading });
-  document.body.append(contentsView.tab, contentsView.drawer);
+  // --- The table of contents (#107): sidebar/contents-view.js ---------------
+  const contents = createContents({
+    noteEl,
+    editor,
+    canOpen: noteShown,
+    beforeOpen: () => closeOverlays(),
+    jumpToLine,
+  });
 
-  function updateContents() {
-    contentsView.update(headingsOf(editor.body()), noteShown());
-  }
-
-  // The caret goes to the start of the heading and the paper scrolls so the
-  // heading sits near the top. The drawer closes, so it doesn't cover the
-  // heading in a narrow sidebar.
-  function jumpToHeading(line) {
-    contentsView.close();
-    jumpToLine(line);
-  }
-
+  // The caret at the start of a line, the paper scrolled so it sits near the
+  // top: a heading from the contents, a search match.
   function jumpToLine(line) {
     moveTo(line, 0);
     const row = focusedEl?.closest(".line-row");
@@ -2012,29 +2006,6 @@ async function start() {
     row.style.scrollMarginTop = "4rem";
     row.scrollIntoView({ block: "start" });
   }
-
-  function toggleContents() {
-    const wasOpen = contentsView.isOpen();
-    closeOverlays();
-    if (!wasOpen) contentsView.toggle();
-  }
-
-  // A click on the paper or Esc closes the drawer; the tab and the shortcut
-  // toggle it.
-  document.addEventListener("mousedown", (event) => {
-    if (contentsView.isOpen() && noteEl.contains(event.target)) contentsView.close();
-  });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !event.defaultPrevented && contentsView.isOpen()) {
-      event.preventDefault();
-      contentsView.close();
-      return;
-    }
-    const isContents = isShortcut(event, "o", { shift: true });
-    if (!isContents || !noteShown()) return;
-    event.preventDefault();
-    toggleContents();
-  });
 
   // --- Find in the open note (#111): sidebar/find-view.js --------------------
   const findInNote = createFind({
@@ -2093,13 +2064,13 @@ async function start() {
     updatePill();
     noteMeta.update();
     noteEl.replaceChildren(startPrompt({ onNew: () => openingFlow.newNoteForPage() }));
-    updateContents();
+    contents.update();
     updatePageBar();
   }
 
   function showPermissionCard() {
     noteEl.replaceChildren(pageCard({ onAllow: () => openingFlow.allow(), onDecline: () => openingFlow.decline() }));
-    updateContents();
+    contents.update();
     updatePageBar();
   }
 

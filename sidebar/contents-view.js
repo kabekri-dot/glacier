@@ -3,10 +3,15 @@
 // src/contents.mjs; this only draws them and tells the panel which one was
 // clicked.
 //
-//   createContentsView({ onJump })  onJump(line) is called for a clicked heading
+//   createContentsView({ onJump })  the tab and drawer alone (createContents,
+//                                   below, is what the panel uses)
+//                                   onJump(line) is called for a clicked heading
 //   .tab, .drawer                   elements for the panel to place
 //   .update(headings, shown)        redraw; the tab hides when there is nothing to list
 //   .toggle(), .close(), .isOpen()
+
+import { headingsOf } from "../src/contents.mjs";
+import { isShortcut } from "../src/keys.mjs";
 
 function element(tag, className, text) {
   const el = document.createElement(tag);
@@ -61,5 +66,53 @@ export function createContentsView({ onJump }) {
     },
     close: () => setOpen(false),
     isOpen: () => !drawer.hidden,
+  };
+}
+
+// --- The table of contents in the sidebar -------------------------------------
+//
+// The tab and drawer above, filled from the open note's headings
+// (src/contents.mjs). A click on the paper or Esc closes the drawer; the tab
+// and Ctrl Shift O toggle it. A heading clicked closes it, so it doesn't
+// cover the heading in a narrow sidebar.
+//
+//   createContents({ noteEl, editor, canOpen, beforeOpen, jumpToLine })
+//     canOpen()        whether a note is on the paper
+//     beforeOpen()     close the other boxes and menus
+//     jumpToLine(line) put the caret at the start of a line, near the top
+//   .update()   after a redraw: the headings of the note as it is now
+//   .close()
+export function createContents({ noteEl, editor, canOpen, beforeOpen, jumpToLine }) {
+  const view = createContentsView({
+    onJump: (line) => {
+      view.close();
+      jumpToLine(line);
+    },
+  });
+  document.body.append(view.tab, view.drawer);
+
+  function toggle() {
+    const wasOpen = view.isOpen();
+    beforeOpen();
+    if (!wasOpen) view.toggle();
+  }
+
+  document.addEventListener("mousedown", (event) => {
+    if (view.isOpen() && noteEl.contains(event.target)) view.close();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !event.defaultPrevented && view.isOpen()) {
+      event.preventDefault();
+      view.close();
+      return;
+    }
+    if (!isShortcut(event, "o", { shift: true }) || !canOpen()) return;
+    event.preventDefault();
+    toggle();
+  });
+
+  return {
+    update: () => view.update(headingsOf(editor.body()), canOpen()),
+    close: () => view.close(),
   };
 }
