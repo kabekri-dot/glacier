@@ -282,3 +282,36 @@ test("a hand-drawn circle is one smooth round stroke that stays close to the cir
     assert.ok(distance > 44 && distance < 58, `point ${i / 2} is ${distance.toFixed(1)} from the middle`);
   }
 });
+
+// A pen sketch look (#105).
+
+const strokesOf = (shape) => (shapesSvg([shape], "hand").match(/M[\d.-]+ [\d.-]+/g) ?? []).map((m) => m.slice(1).split(" ").map(Number));
+
+test("every stroke is drawn twice", () => {
+  assert.equal(strokesOf(everyKind[4]).length, 2);
+  assert.equal(strokesOf(everyKind[0]).length, 8);
+  assert.equal(strokesOf(everyKind[3]).length, 6);
+  assert.equal(strokesOf(everyKind[2]).length, 2);
+  assert.equal(strokesOf(everyKind[5]).length, 4);
+});
+
+test("a box's sides run past its corners", () => {
+  const [top] = strokesOf(everyKind[0]);
+  assert.ok(top[0] < 5, `the top side starts at ${top[0]}, left of the corner at 5`);
+  const d = /d="([^"]+)"/.exec(shapesSvg([everyKind[4]], "hand"))[1];
+  const end = d.split(" Q")[1].split(" ").slice(2).map(Number);
+  assert.ok(end[0] > 50, "a line ends past its end");
+});
+
+test("the two passes of a circle do not quite meet", () => {
+  const circle = { kind: "circle", x: 0, y: 0, w: 100, h: 100 };
+  const d = /d="([^"]+)"/.exec(shapesSvg([circle], "hand"))[1];
+  const [first, second] = d.split(" M").map((part) => part.replace(/^M/, ""));
+  const start = first.split(" ").slice(0, 2).map(Number);
+  const end = second.trim().split(" ").slice(-2).map(Number);
+  assert.ok(Math.hypot(start[0] - end[0], start[1] - end[1]) > 0.5);
+});
+
+test("a clean shape is still exact", () => {
+  assert.equal(shapesSvg([everyKind[0]], "clean"), '<rect x="5" y="5" width="80" height="40"/>\n');
+});
