@@ -11,6 +11,13 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Print and PDF with sketches and page breaks (#113)
+
+- [ ] Open a note with two sketches and a page break, then choose Print. The preview shows both drawings, sized to the text, and no `![[` lines
+- [ ] In the same preview, the page break starts a new page and no `%%page%%` text is written
+- [ ] Choose Download as PDF and Save as PDF: the same drawings and page break appear, with Notes as pages on and off
+- [ ] Print a locked secret note: it is still left out
+
 ### Find in the open note (#111)
 
 - [ ] With the caret in a note, press Ctrl F (Cmd F on a Mac): a small find line shows under the pill with a text field, no count yet, and ↑ ↓ buttons. The field is ready to type in.
