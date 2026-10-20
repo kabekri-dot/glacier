@@ -15,12 +15,10 @@
 
 import { createNotebook, importSummary } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
-import { githubRemote } from "../src/github-remote.mjs";
-import { driveRemote } from "../src/drive-remote.mjs";
 import { createGoogleSignIn } from "./google-sign-in.js";
-import { folderRemote } from "../src/folder-remote.mjs";
+import { createNotesHomes } from "./notes-homes.js";
 import { createFolderAccess } from "./folder-access.js";
-import { chosenNotesHome, notesHomeName, syncErrorMessage } from "../src/notes-home.mjs";
+import { notesHomeName, syncErrorMessage } from "../src/notes-home.mjs";
 import { reminderDue, reminderOpened, reminderNotNow, reminderText } from "../src/cloud-reminder.mjs";
 import { createAutoSync, needsFolderOk } from "../src/auto-sync.mjs";
 import { createScreen } from "../src/screen.mjs";
@@ -219,6 +217,9 @@ async function start() {
     return;
   }
 
+  // Where the notes live and how each place connects (sidebar/notes-homes.js).
+  const notesHomes = createNotesHomes({ notebook, extensionStorage, googleSignIn, folderAccess });
+
   // What's on screen (the note, the fresh page of #61, the note before it,
   // the ← history and saving) is the Screen's (#65). Nothing is open until the
   // page's note is found or a note is made (the Opening flow, below);
@@ -248,13 +249,7 @@ async function start() {
   // status.
   const autoSync = createAutoSync({
     notebook,
-    connect: async () => {
-      const { home, repo, token } = await loadConnection();
-      if (home === "google-drive") return { remote: driveRemote({ getToken: googleSignIn.getToken }), repo: "", home };
-      if (home === "folder") return { remote: folderRemote({ getFolder: folderAccess.folder }), repo: "", home };
-      if (home !== "github" || !repo || !token) return null;
-      return { remote: githubRemote({ repo, token }), repo, home };
-    },
+    connect: () => notesHomes.connect(),
     beforeSync: () => screen.flush(),
     onStatus: drawSyncStatus,
     onPulled: (titles) => {
@@ -566,33 +561,8 @@ async function start() {
 
   // --- Where your notes live: the Notes Home (#14, #94) --------------------
   //
-  // The choice lives in Settings, under Where your notes live, and is kept in
-  // this browser's Notebook. GitHub's repo name and token are kept only in
-  // this browser's extension storage, never in the Notebook or the Notes Repo
-  // (ADR 0003).
-  async function loadConnection() {
-    const { notesRepo, githubToken } = await extensionStorage.get(["notesRepo", "githubToken"]);
-    const github = { repo: notesRepo ?? "", token: githubToken ?? "" };
-    return { home: chosenNotesHome(notebook.notesHome(), github), ...github };
-  }
-
-  // Disconnecting Google Drive signs out of Google, and leaving a folder
-  // forgets it here; the files stay where they are.
-  async function leaveOldHome(leaving, place) {
-    if (leaving === place) return;
-    if (leaving === "google-drive") {
-      await googleSignIn.signOut().catch((error) => console.warn("Glacier: could not sign out of Google", error));
-    }
-    if (leaving === "folder") {
-      await folderAccess.forget().catch((error) => console.warn("Glacier: could not forget the notes folder", error));
-    }
-  }
-
-  function remoteFor(place, repo, token) {
-    if (place === "google-drive") return driveRemote({ getToken: googleSignIn.getToken });
-    if (place === "folder") return folderRemote({ getFolder: folderAccess.pickedFolder });
-    return githubRemote({ repo, token });
-  }
+  // The choice lives in Settings, under Where your notes live; each place
+  // and how it connects is sidebar/notes-homes.js.
 
   // When Google's quiet renewal failed, the sync box's one button signs in
   // again and syncs.
@@ -653,7 +623,7 @@ async function start() {
     if (reminderChecking) return;
     reminderChecking = true;
     try {
-      const { home } = await loadConnection();
+      const { home } = await notesHomes.load();
       const { cloudReminder } = await extensionStorage.get("cloudReminder");
       const now = new Date();
       if (!reminderDue({ home, noteCount: notebook.notes().length, saved: cloudReminder, now })) return;
@@ -672,15 +642,11 @@ async function start() {
   }
 
   // What the Where your notes live section of Settings asks of the Notebook,
-  // wherever settings are drawn (see settings-view.js). Switching to GitHub
-  // goes through the GitHub remote; the repo and token are saved only once
-  // GitHub has accepted them. Switching to Google Drive signs in first, and
-  // leaving it signs out, leaving the files in Drive as they are (#95). A
-  // folder is picked before the switch and kept once it worked; leaving it
-  // forgets it here (#97). With
-  // settings closed meanwhile, a notice says how it went.
+  // wherever settings are drawn (see settings-view.js). The switch itself is
+  // sidebar/notes-homes.js'; with settings closed meanwhile, a notice says
+  // how it went.
   const repoActions = {
-    connection: loadConnection,
+    connection: () => notesHomes.load(),
     status: async () => autoSync.status(),
     syncNow: () => autoSync.syncNow(),
     courses: async () => notebook.courses(),
@@ -689,27 +655,21 @@ async function start() {
 
     async switchHome(place, repo, token, onProgress) {
       screen.flush();
-      const leaving = (await loadConnection()).home;
       if (place === "browser") {
-        await notebook.switchNotesHome("browser");
-        await leaveOldHome(leaving, place);
+        await notesHomes.switchTo("browser");
         await autoSync.syncNow();
         return { notes: 0 };
       }
       const name = place === "github" ? repo : notesHomeName(place);
       let result;
       try {
-        if (place === "google-drive") await googleSignIn.signIn();
-        result = await notebook.switchNotesHome(place, remoteFor(place, repo, token), onProgress);
+        result = await notesHomes.switchTo(place, { repo, token, onProgress });
       } catch (error) {
         console.error("Glacier: switching where the notes live failed", error);
         const message = syncErrorMessage(error, { home: place, repo });
         if (!panels.settingsOpen()) showNotice(message, 8000);
         return { error: message };
       }
-      if (place === "github") await extensionStorage.set({ notesRepo: repo, githubToken: token });
-      await leaveOldHome(leaving, place);
-      if (place === "folder") await folderAccess.keepPicked();
       autoSync.syncNow();
       if (!screen.note()) openingFlow.start();
       else updateBacklinks();
@@ -905,7 +865,7 @@ async function start() {
       settingsPicked = "folder";
       panels.openSettings("notes-home", { inside: true });
     },
-    notesHome: async () => (await loadConnection()).home,
+    notesHome: async () => (await notesHomes.load()).home,
     switchHome: (place, repo, token) =>
       repoActions.switchHome(place, repo, token, (progress) => {
         api.runtime.sendMessage({ glacier: "progress", channel: besideChannel, progress }).catch(() => {});
