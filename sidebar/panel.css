@@ -2873,3 +2873,23 @@ body:has(.find-box:not([hidden])) .page-bar {
 ::highlight(find-current) {
   background-color: color-mix(in srgb, var(--accent) 55%, transparent);
 }
+
+/* The quiet link beside a shortcut Chrome left empty (#115). */
+.shortcuts-fix {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  opacity: 0.75;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.shortcuts-fix:hover,
+.shortcuts-fix:focus-visible {
+  outline: none;
+  opacity: 1;
+  text-decoration-style: solid;
+}

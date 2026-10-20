@@ -75,3 +75,41 @@ export const SHORTCUT_GROUPS = [
   },
   { title: "Keys", entries: HANDLED_KEYS },
 ];
+
+export const CHROME_SHORTCUTS_URL = "chrome://extensions/shortcuts";
+
+// The two keys the browser lets you change, by the name in the manifest. The
+// text is what HANDLED_KEYS lists them as.
+const COMMAND_KEYS = { "open-glacier": "Alt Shift G", "clip-selection": "Alt Shift C" };
+
+// "Alt+Shift+G" as the panel writes keys: "Alt Shift G".
+const spoken = (shortcut) => shortcut.split("+").join(" ");
+
+// How to fix an empty shortcut. Chrome's page can be opened; Firefox's can't,
+// so it is told as text.
+function shortcutFix(browser) {
+  if (browser === "firefox") return { label: "Open about:addons, then Manage Extension Shortcuts, to set it" };
+  return { label: "Set it in Chrome", url: CHROME_SHORTCUTS_URL };
+}
+
+// The rows of the Keys group. `commands` is what commands.getAll() gave (or
+// nothing where the browser has no such call). A key the browser lets you
+// change shows what is really set, or "Not set" with the one way to fix it.
+export function shortcutRows(commands, handledKeys, browser) {
+  const list = Array.isArray(commands) ? commands : [];
+  return handledKeys.map(([suggested, does]) => {
+    const name = Object.keys(COMMAND_KEYS).find((n) => COMMAND_KEYS[n] === suggested);
+    const known = name && list.find((command) => command.name === name);
+    if (!known) return { suggested, keys: suggested, does, notSet: false };
+    if (!known.shortcut) return { suggested, keys: "Not set", does, notSet: true, fix: shortcutFix(browser) };
+    return { suggested, keys: spoken(known.shortcut), does, notSet: false };
+  });
+}
+
+// A line for the welcome page and "How Glacier works" when Glacier's own
+// shortcut is empty, or null when it is set or cannot be known.
+export function shortcutNotice(commands, browser) {
+  const open = Array.isArray(commands) && commands.find((command) => command.name === "open-glacier");
+  if (!open || open.shortcut) return null;
+  return { text: "Glacier has no shortcut for opening it yet.", fix: shortcutFix(browser) };
+}

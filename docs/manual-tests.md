@@ -11,6 +11,13 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Shortcuts panel shows an empty shortcut (#115)
+
+- [ ] In Chrome, clear Glacier's shortcut at chrome://extensions/shortcuts, then open the Shortcuts panel: the row for opening Glacier says "Not set" with a quiet link "Set it in Chrome".
+- [ ] Click that link: Chrome's shortcuts page opens in a tab. Set a shortcut, come back to the sidebar, and the row shows the key you set.
+- [ ] With the shortcut not set, the welcome page (open it with "How Glacier works") has a line saying Glacier has no shortcut yet, with the same link. With it set, the line is gone.
+- [ ] In Firefox, an empty shortcut shows "Not set" and says to open about:addons, then Manage Extension Shortcuts.
+
 ### Print and PDF with sketches and page breaks (#113)
 
 - [ ] Open a note with two sketches and a page break, then choose Print. The preview shows both drawings, sized to the text, and no `![[` lines

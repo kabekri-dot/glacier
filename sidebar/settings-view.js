@@ -18,7 +18,7 @@ import { syncStatusText, syncResultText, syncBox, JUST_SYNCED } from "../src/aut
 import { notesRepoName } from "../src/notebook.mjs";
 import { notesHomeChoices, notesHomeName, switchQuestion, googleReady, folderReady } from "../src/notes-home.mjs";
 import { GOOGLE_CONFIG } from "../src/google-config.mjs";
-import { SHORTCUT_GROUPS } from "../src/shortcuts-panel.mjs";
+import { HANDLED_KEYS, SHORTCUT_GROUPS, shortcutRows } from "../src/shortcuts-panel.mjs";
 import { PAPERS, paperGroups, FONT_OVERRIDES, TEXT_SIZE, fontPreview } from "../src/look.mjs";
 import { NO_RECOVERY } from "./secret-view.js";
 
@@ -805,9 +805,19 @@ export function createSettingsView({ prefs, repo, onClose }) {
   };
 }
 
+// The quiet link of an empty shortcut: a button that opens the browser's page,
+// or plain text where the page cannot be opened.
+export function fixLink(fix, open) {
+  if (!fix.url) return element("span", "shortcuts-fix-text", fix.label);
+  const link = element("button", "shortcuts-fix", fix.label);
+  link.type = "button";
+  link.addEventListener("click", () => open(fix.url));
+  return link;
+}
+
 // The cheat sheet drawer and its small tab, or nothing when switched off.
 // "How Glacier works" at its top shows the welcome page again (#91).
-export function createShortcutsView({ onFold, onUnfold, onWelcome }) {
+export function createShortcutsView({ onFold, onUnfold, onWelcome, openShortcutsPage }) {
   const sheet = element("aside", "shortcuts");
   sheet.setAttribute("aria-label", "Shortcuts");
   const header = element("header", "shortcuts-header");
@@ -831,15 +841,26 @@ export function createShortcutsView({ onFold, onUnfold, onWelcome }) {
       continue;
     }
     const list = element("dl", "shortcuts-list");
-    for (const [keys, does] of entries) {
+    body.append(element("h2", "settings-subheading", title), list);
+    if (title === "Keys") keysList = list;
+    else drawRows(list, entries.map(([keys, does]) => ({ keys, does })));
+  }
+  // The Keys group shows what the browser really has set (#115).
+  function drawRows(list, rows) {
+    list.replaceChildren();
+    for (const { keys, does, notSet, fix } of rows) {
       const term = document.createElement("dt");
       term.append(element("code", "", keys));
       const row = element("div", "shortcuts-row");
-      row.append(term, element("dd", "", does));
+      const meaning = element("dd", "", does);
+      if (fix) meaning.append(" ", fixLink(fix, openShortcutsPage));
+      row.append(term, meaning);
+      if (notSet) row.classList.add("shortcuts-not-set");
       list.append(row);
     }
-    body.append(element("h2", "settings-subheading", title), list);
   }
+  let keysList;
+  drawRows(keysList, shortcutRows(undefined, HANDLED_KEYS));
   sheet.append(header, body);
 
   const tab = element("button", "shortcuts-tab", "?");
@@ -853,6 +874,11 @@ export function createShortcutsView({ onFold, onUnfold, onWelcome }) {
   return {
     sheet,
     tab,
+
+    // `commands` is what commands.getAll() gave, `browser` is "chrome" or "firefox".
+    showCommands(commands, browser) {
+      drawRows(keysList, shortcutRows(commands, HANDLED_KEYS, browser));
+    },
 
     // `state` is the saved { on, folded }. The tab shows whenever the panel
     // is on; the sheet slides in from the right edge when it is open.

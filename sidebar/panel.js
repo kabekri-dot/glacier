@@ -37,7 +37,7 @@ import { createFind } from "./find-view.js";
 import { readLook, lookStyle, wholeRows, applyLook } from "../src/look.mjs";
 import { readPanelPlace, createPanelPlacement } from "../src/panel-place.mjs";
 import { createBrowserPanels } from "../src/browser-panels.mjs";
-import { createSettingsView, createShortcutsView } from "./settings-view.js";
+import { createSettingsView, createShortcutsView, fixLink } from "./settings-view.js";
 import { createMenuView } from "./menu-view.js";
 import { createDownloads } from "./downloads.js";
 import { createSyncBoxView } from "./sync-box-view.js";
@@ -46,6 +46,7 @@ import { createNoteMetaView } from "./note-meta-view.js";
 import { createSketchView } from "./sketch-view.js";
 import { createSecrets } from "./secret-view.js";
 import { pageCard, panelsCard, startPrompt } from "./cards.js";
+import { shortcutNotice } from "../src/shortcuts-panel.mjs";
 import { WELCOME_GREETING, WELCOME_LINES, WELCOME_TIP, welcomeShown } from "../src/guidance.mjs";
 import { drawBesideFrames } from "./beside-frames.js";
 import {
@@ -746,6 +747,7 @@ async function start() {
 
   const settingsView = createSettingsView({ prefs, repo: repoActions, onClose: () => closeSettings() });
   const shortcutsView = createShortcutsView({
+    openShortcutsPage: (url) => api.tabs.create({ url }).catch(() => {}),
     onFold: () => prefs.saveShortcutsPanel({ folded: true }),
     onUnfold: () => {
       closeOverlays({ keepShortcuts: true });
@@ -763,6 +765,26 @@ async function start() {
   newButtonEl.after(shortcutsView.tab);
   glacierButtonEl.before(shortcutsView.sheet, settingsView.el);
   shortcutsView.draw(shortcutsPanel);
+
+  // What Chrome or Firefox really has set for Glacier's two shortcuts (#115).
+  // Empty means the browser left it unset; only the user can set it.
+  const browserName = api.runtime.getBrowserInfo ? "firefox" : "chrome";
+  let shortcutCommands;
+  async function readShortcuts() {
+    if (!api.commands?.getAll) return;
+    try {
+      shortcutCommands = await api.commands.getAll();
+    } catch (error) {
+      console.warn("Glacier: could not read the shortcuts", error);
+      return;
+    }
+    shortcutsView.showCommands(shortcutCommands, browserName);
+    if (typeof drawWelcome === "function") drawWelcome({ keepScroll: true });
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") readShortcuts();
+  });
+  readShortcuts();
 
   // --- Panels beside the sidebar (#21, ADR 0008) -----------------------------
   //
@@ -1986,8 +2008,9 @@ async function start() {
   // synced) and puts the caret on the paper, back in the open note when it
   // was shown again from the Shortcuts panel (#91). Esc does the same.
   const welcomeEl = document.querySelector(".welcome");
-  function drawWelcome({ again = false } = {}) {
+  function drawWelcome({ again = false, keepScroll = false } = {}) {
     if (!screen.welcome()) return;
+    if (keepScroll && welcomeEl.hidden) return;
     const scene = document.createElement("div");
     scene.className = "welcome-scene";
     const greeting = Object.assign(document.createElement("h1"), { className: "welcome-greeting", textContent: WELCOME_GREETING });
@@ -2010,7 +2033,10 @@ async function start() {
     const startRow = Object.assign(document.createElement("p"), { className: "welcome-start-row" });
     startRow.appendChild(start);
     const tip = Object.assign(document.createElement("p"), { className: "welcome-tip", textContent: WELCOME_TIP });
-    welcomeEl.replaceChildren(scene, greeting, ...lines, startRow, tip);
+    const notice = shortcutNotice(shortcutCommands, browserName);
+    const shortcutLine = notice && Object.assign(document.createElement("p"), { className: "welcome-tip welcome-shortcut", textContent: `${notice.text} ` });
+    shortcutLine?.append(fixLink(notice.fix, (url) => api.tabs.create({ url }).catch(() => {})));
+    welcomeEl.replaceChildren(scene, greeting, ...lines, startRow, tip, ...(shortcutLine ? [shortcutLine] : []));
     welcomeEl.hidden = false;
     if (again) welcomeEl.scrollIntoView({ block: "start" });
   }
