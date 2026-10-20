@@ -20,7 +20,7 @@ export const SKETCH_TOOLS = [
   { id: "arrow", label: "Arrow" },
   { id: "text", label: "Text. Click to place it, double click to change it" },
   { id: "select", label: "Select and move. Drag a corner to resize, with Shift to keep the proportions" },
-  { id: "delete", label: "Delete the picked shape" },
+  { id: "delete", label: "Delete the picked shapes" },
 ];
 
 // The six ink colours of the toolbar: the paper's own ink, then five muted,
@@ -205,18 +205,63 @@ export function addShape(shapes, shape) {
   return moveLineEnd(next, index, 2, { x: shape.x2, y: shape.y2 });
 }
 
-// The shapes with the one at `index` moved; arrows stuck to it follow. A
-// moved line lets go of what it was stuck to.
-export function moveShapeIn(shapes, index, by, area) {
+// The shapes at `indices` moved together by `by`, kept inside the drawing
+// area as one group; arrows stuck to them follow. A moved line lets go of
+// what it was stuck to, unless that shape moves with it.
+export function moveShapesIn(shapes, indices, by, area) {
+  const moving = new Set(indices);
+  const boxes = indices.map((i) => bounds(shapes[i]));
+  const left = Math.min(...boxes.map((box) => box.x));
+  const top = Math.min(...boxes.map((box) => box.y));
+  const right = Math.max(...boxes.map((box) => box.x + box.w));
+  const bottom = Math.max(...boxes.map((box) => box.y + box.h));
+  const clamp = (value, least, most) => Math.min(Math.max(value, least), Math.max(most, least));
+  const dx = clamp(by.x, -left, area.width - right);
+  const dy = clamp(by.y, -top, area.height - bottom);
+  const movingIds = new Set(indices.map((i) => shapes[i].id).filter((id) => id !== undefined));
   return follow(
     shapes.map((shape, i) => {
-      if (i !== index) return shape;
-      const moved = moveShape(shape, by, area);
-      delete moved.stuck1;
-      delete moved.stuck2;
+      if (!moving.has(i)) return shape;
+      const moved = moveShape(shape, { x: dx, y: dy }, { width: Infinity, height: Infinity });
+      for (const end of ["stuck1", "stuck2"]) {
+        if (moved[end] && !movingIds.has(moved[end].id)) delete moved[end];
+      }
       return moved;
     }),
   );
+}
+
+// The shapes with the one at `index` moved; arrows stuck to it follow.
+export function moveShapeIn(shapes, index, by, area) {
+  return moveShapesIn(shapes, [index], by, area);
+}
+
+// The indexes of the shapes that lie wholly inside the box spanned by two
+// corner points, for a drag box on empty paper.
+export function shapesInBox(shapes, from, to) {
+  const left = Math.min(from.x, to.x);
+  const top = Math.min(from.y, to.y);
+  const right = Math.max(from.x, to.x);
+  const bottom = Math.max(from.y, to.y);
+  const inside = [];
+  shapes.forEach((shape, i) => {
+    const box = bounds(shape);
+    if (box.x >= left && box.y >= top && box.x + box.w <= right && box.y + box.h <= bottom) inside.push(i);
+  });
+  return inside;
+}
+
+// The indexes of all the shapes of a sketch (Ctrl A).
+export function allShapes(shapes) {
+  return shapes.map((_, i) => i);
+}
+
+// The picked indexes with `index` added, or taken out when it was picked
+// (Shift click). A click on empty paper (-1) changes nothing.
+export function togglePicked(picked, index) {
+  if (index === -1) return picked;
+  if (picked.includes(index)) return picked.filter((i) => i !== index);
+  return [...picked, index].sort((a, b) => a - b);
 }
 
 // The shape with one corner dragged to the point while the opposite corner
@@ -244,9 +289,14 @@ export function resizeShapeIn(shapes, index, corner, point, keepProportions) {
   return follow(shapes.map((shape, i) => (i === index ? resizeShape(shape, corner, point, keepProportions) : shape)));
 }
 
-// The shapes without the one at `index`; arrows stuck to it come loose.
+// The shapes without those at `indices`; arrows stuck to them come loose.
+export function removeShapes(shapes, indices) {
+  return follow(shapes.filter((_, i) => !indices.includes(i)));
+}
+
+// The shapes without the one at `index`.
 export function removeShape(shapes, index) {
-  return follow(shapes.filter((_, i) => i !== index));
+  return removeShapes(shapes, [index]);
 }
 
 // A new text placed where the click was, `width` wide (the sidebar measures
@@ -510,9 +560,14 @@ export function withStyle(shape, change) {
   return next;
 }
 
+// The shapes at `indices` given a new colour and/or fill.
+export function styleShapesIn(shapes, indices, change) {
+  return shapes.map((shape, i) => (indices.includes(i) ? withStyle(shape, change) : shape));
+}
+
 // The shapes with the one at `index` given a new colour and/or fill.
 export function styleShapeIn(shapes, index, change) {
-  return shapes.map((shape, i) => (i === index ? withStyle(shape, change) : shape));
+  return styleShapesIn(shapes, [index], change);
 }
 
 // A light wash of the shape's colour under its outline, about 15 % strong.

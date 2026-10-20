@@ -15,30 +15,36 @@
 // the Notebook core; this file only turns the mouse into calls to them and
 // draws the result. Ctrl Z and Ctrl Y undo and redo in the picked sketch;
 // the arrow keys nudge the picked shape; Esc lets go of the shape, then of
-// the sketch.
+// the sketch. A drawing tool stays in hand after a shape is drawn (Esc or the
+// select tool goes back); with the select tool, Shift click adds or removes a
+// shape, a drag on empty paper picks what is inside its dashed box and Ctrl A
+// picks all, and the picked shapes move, colour and delete together.
 import {
   SKETCH_COLORS,
   SKETCH_LOOKS,
   SKETCH_TOOLS,
   addShape,
+  allShapes,
   bounds,
   handleAt,
   handlePoints,
   isLine,
   moveLineEnd,
-  moveShapeIn,
-  removeShape,
+  moveShapesIn,
+  removeShapes,
   resizeShapeIn,
   resizedHeight,
   shapeAt,
   shapeFromDrag,
   shapeStyle,
+  shapesInBox,
   shapesSvg,
   sketchHistory,
   sketchLook,
-  styleShapeIn,
+  styleShapesIn,
   textShape,
   textSize,
+  togglePicked,
   withStyle,
   withText,
 } from "../src/sketch-model.mjs";
@@ -84,20 +90,23 @@ function textWidth(text, size, fontFamily) {
 }
 
 // The dashed frame around a picked box and a small square on each handle.
-function pickSvg(shape) {
-  const marks = handlePoints(shape)
-    .map(({ x, y }) => `<rect class="sketch-handle" x="${x - 3}" y="${y - 3}" width="6" height="6"/>`)
-    .join("");
-  if (isLine(shape)) return marks;
+// With several shapes picked, each gets its frame and no handles.
+function pickSvg(shape, withHandles = true) {
+  const marks = withHandles
+    ? handlePoints(shape)
+        .map(({ x, y }) => `<rect class="sketch-handle" x="${x - 3}" y="${y - 3}" width="6" height="6"/>`)
+        .join("")
+    : "";
+  if (isLine(shape)) return marks || `<rect x="${Math.min(shape.x1, shape.x2) - 3}" y="${Math.min(shape.y1, shape.y2) - 3}" width="${Math.abs(shape.x2 - shape.x1) + 6}" height="${Math.abs(shape.y2 - shape.y1) + 6}"/>`;
   return `<rect x="${shape.x - 3}" y="${shape.y - 3}" width="${shape.w + 6}" height="${shape.h + 6}"/>${marks}`;
 }
 
 export function createSketchView({ notebook, rowHeight, onSaved }) {
-  // The picked sketch ("title/n"), the tool in hand and the picked shape.
+  // The picked sketch ("title/n"), the tool in hand and the picked shapes.
   // Kept here so they survive the note being drawn again.
   let picked = null;
   let tool = "select";
-  let pickedShape = -1;
+  let pickedShapes = [];
   // The colour and fill for the next shape drawn; with a shape picked, the
   // toolbar shows that shape's instead.
   let nextStyle = { color: "ink", fill: false };
@@ -116,7 +125,7 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
     const el = pickedEl;
     picked = null;
     pickedEl = null;
-    pickedShape = -1;
+    pickedShapes = [];
     el.classList.remove("is-picked");
     el.redraw();
   }
@@ -206,31 +215,36 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
       const other = back ? history.undo(saved) : history.redo(saved);
       if (!other) return false;
       sketch = other;
-      pickedShape = -1;
+      pickedShapes = [];
       keep();
       redraw();
       return true;
     }
 
-    // An arrow key moves the picked shape a pixel, ten with Shift.
+    // An arrow key moves the picked shapes a pixel, ten with Shift.
     function nudge(arrow, far) {
       const by = far ? 10 : 1;
       const [x, y] = { ArrowLeft: [-by, 0], ArrowRight: [by, 0], ArrowUp: [0, -by], ArrowDown: [0, by] }[arrow];
       const box = { width: area.clientWidth, height: sketch.height };
-      save({ ...sketch, shapes: moveShapeIn(sketch.shapes, pickedShape, { x, y }, box) });
+      save({ ...sketch, shapes: moveShapesIn(sketch.shapes, pickedShapes, { x, y }, box) });
       drawShapes();
     }
 
     // The shapes as they are, plus the picked one's frame and handles. A
     // text being changed is left out while its box is open.
-    function drawShapes(shapes = sketch.shapes, preview = null) {
+    function drawShapes(shapes = sketch.shapes, preview = null, marquee = null) {
       area.style.height = `${sketch.height}px`;
       block.classList.toggle("is-empty", sketch.shapes.length === 0 && !preview && !typing);
       svg.setAttribute("height", sketch.height);
       const shown = shapes.filter((_, i) => i !== typing?.index);
       shapesEl.innerHTML = shapesSvg(preview ? [...shown, preview] : shown, sketchLook(sketch), document.documentElement.hasAttribute("data-dark"));
-      const shape = picked === key && !typing ? shapes[pickedShape] : undefined;
-      pickEl.innerHTML = shape ? pickSvg(shape) : "";
+      const frames = picked === key && !typing ? pickedShapes.filter((i) => shapes[i]).map((i) => pickSvg(shapes[i], pickedShapes.length === 1)) : [];
+      if (marquee) {
+        const x = Math.min(marquee.from.x, marquee.to.x);
+        const y = Math.min(marquee.from.y, marquee.to.y);
+        frames.push(`<rect x="${x}" y="${y}" width="${Math.abs(marquee.to.x - marquee.from.x)}" height="${Math.abs(marquee.to.y - marquee.from.y)}"/>`);
+      }
+      pickEl.innerHTML = frames.join("");
     }
 
     function drawToolbar() {
@@ -242,7 +256,7 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
           button.title = label;
           button.setAttribute("aria-label", label);
           button.innerHTML = icon(id);
-          if (id === "delete") button.disabled = pickedShape === -1;
+          if (id === "delete") button.disabled = pickedShapes.length === 0;
           // The focus stays on the area, so Delete still works after.
           button.addEventListener("mousedown", (event) => event.preventDefault());
           button.addEventListener("click", () => {
@@ -250,8 +264,8 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
             else tool = id;
             // A drawing tool lets go of the picked shape, so a colour chosen
             // next is for the new shape, not the last one drawn.
-            if (id !== "delete" && id !== "select" && pickedShape !== -1) {
-              pickedShape = -1;
+            if (id !== "delete" && id !== "select" && pickedShapes.length > 0) {
+              pickedShapes = [];
               redraw();
               return;
             }
@@ -266,7 +280,7 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
 
     // The colour and fill now: the picked shape's, or the next shape's.
     function styleNow() {
-      const shape = picked === key ? sketch.shapes[pickedShape] : undefined;
+      const shape = picked === key ? sketch.shapes[pickedShapes[0]] : undefined;
       return shape ? shapeStyle(shape) : nextStyle;
     }
 
@@ -274,8 +288,8 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
     // shape picked, changes that shape.
     function chooseStyle(change) {
       nextStyle = { ...styleNow(), ...change };
-      if (picked === key && sketch.shapes[pickedShape]) {
-        save({ ...sketch, shapes: styleShapeIn(sketch.shapes, pickedShape, change) });
+      if (picked === key && pickedShapes.length > 0) {
+        save({ ...sketch, shapes: styleShapesIn(sketch.shapes, pickedShapes, change) });
       }
       redraw();
       area.focus();
@@ -352,18 +366,24 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
       unpick();
       picked = key;
       pickedEl = block;
-      pickedShape = -1;
+      pickedShapes = [];
       tool = "select";
       block.classList.add("is-picked");
       if (notify) hooks.onPick?.();
     }
 
     function removePicked() {
-      if (pickedShape === -1) return;
-      const shapes = removeShape(sketch.shapes, pickedShape);
-      pickedShape = -1;
+      if (pickedShapes.length === 0) return;
+      const shapes = removeShapes(sketch.shapes, pickedShapes);
+      pickedShapes = [];
       save({ ...sketch, shapes });
       redraw();
+    }
+
+    // The index of the picked shape when exactly one is picked, else -1.
+    // Only then do its handles show and resize.
+    function onlyPicked() {
+      return pickedShapes.length === 1 ? pickedShapes[0] : -1;
     }
 
     // Where the pointer is, in the area's own pixels.
@@ -425,12 +445,12 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
         if (index !== -1) {
           const width = textWidth(text, textSize(sketch.shapes[index]), fontFamily);
           if (text !== sketch.shapes[index].text) save({ ...sketch, shapes: withText(sketch.shapes, index, text, width) });
-          if (!text.trim()) pickedShape = -1;
+          if (!text.trim()) pickedShapes = [];
         } else if (text.trim()) {
           const shape = withStyle(textShape(point, text, 0), nextStyle);
           shape.w = textWidth(text, textSize(shape), fontFamily);
           save({ ...sketch, shapes: addShape(sketch.shapes, shape) });
-          pickedShape = sketch.shapes.length - 1;
+          pickedShapes = [sketch.shapes.length - 1];
           tool = "select";
         }
       }
@@ -462,13 +482,13 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
       if (event.target === textInput) return;
       const index = shapeAt(sketch.shapes, pointIn(event));
       if (sketch.shapes[index]?.kind !== "text") return;
-      pickedShape = index;
+      pickedShapes = [index];
       openText(pointIn(event), index);
     });
 
     // Over a picked shape's handle, the cursor shows what a drag does.
     area.addEventListener("pointermove", (event) => {
-      const shape = picked === key && tool === "select" ? sketch.shapes[pickedShape] : undefined;
+      const shape = picked === key && tool === "select" ? sketch.shapes[onlyPicked()] : undefined;
       const grabbed = shape && event.buttons === 0 ? handleAt(shape, pointIn(event)) : null;
       if (grabbed !== null) area.style.cursor = HANDLE_CURSORS[grabbed];
       else area.style.cursor = tool === "text" ? "text" : "";
@@ -497,7 +517,8 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
       if (tool === "text") return;
 
       const box = () => ({ width: area.clientWidth, height: sketch.height });
-      const current = tool === "select" ? sketch.shapes[pickedShape] : undefined;
+      const only = onlyPicked();
+      const current = tool === "select" ? sketch.shapes[only] : undefined;
       const grabbed = current ? handleAt(current, from) : null;
       if (grabbed !== null) {
         // A corner resizes a box, an end moves a line's end.
@@ -508,8 +529,8 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
             const to = pointIn(moved);
             shapes =
               typeof grabbed === "number"
-                ? moveLineEnd(sketch.shapes, pickedShape, grabbed, to)
-                : resizeShapeIn(sketch.shapes, pickedShape, grabbed, to, moved.shiftKey);
+                ? moveLineEnd(sketch.shapes, only, grabbed, to)
+                : resizeShapeIn(sketch.shapes, only, grabbed, to, moved.shiftKey);
             drawShapes(shapes);
           },
           () => {
@@ -521,15 +542,41 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
       }
 
       if (tool === "select") {
-        pickedShape = shapeAt(sketch.shapes, from);
+        const index = shapeAt(sketch.shapes, from);
+        if (event.shiftKey && index !== -1) {
+          // Shift click adds a shape to the picked ones or takes it out.
+          pickedShapes = togglePicked(pickedShapes, index);
+          redraw();
+          return;
+        }
+        if (index === -1) {
+          // Empty paper: a drag draws a dashed box and picks what is inside.
+          const before = event.shiftKey ? pickedShapes : [];
+          pickedShapes = before;
+          redraw();
+          let inside = before;
+          startDrag(
+            event,
+            (moved) => {
+              const to = pointIn(moved);
+              inside = [...new Set([...before, ...shapesInBox(sketch.shapes, from, to)])].sort((a, b) => a - b);
+              drawShapes(sketch.shapes, null, { from, to });
+            },
+            () => {
+              pickedShapes = inside;
+              redraw();
+            },
+          );
+          return;
+        }
+        if (!pickedShapes.includes(index)) pickedShapes = [index];
         redraw();
-        if (pickedShape === -1) return;
         let shapes = sketch.shapes;
         startDrag(
           event,
           (moved) => {
             const to = pointIn(moved);
-            shapes = moveShapeIn(sketch.shapes, pickedShape, { x: to.x - from.x, y: to.y - from.y }, box());
+            shapes = moveShapesIn(sketch.shapes, pickedShapes, { x: to.x - from.x, y: to.y - from.y }, box());
             drawShapes(shapes);
           },
           () => {
@@ -550,8 +597,6 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
         () => {
           if (shape) {
             save({ ...sketch, shapes: addShape(sketch.shapes, withStyle(shape, nextStyle)) });
-            pickedShape = sketch.shapes.length - 1;
-            tool = "select";
           }
           redraw();
         },
@@ -566,7 +611,14 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
         step(letter === "z" && !event.shiftKey);
         return;
       }
-      const shapePicked = picked === key && sketch.shapes[pickedShape];
+      if (ctrl && letter === "a") {
+        event.preventDefault();
+        tool = "select";
+        pickedShapes = allShapes(sketch.shapes);
+        redraw();
+        return;
+      }
+      const shapePicked = picked === key && pickedShapes.length > 0;
       if (shapePicked && event.key.startsWith("Arrow")) {
         event.preventDefault();
         nudge(event.key, event.shiftKey);
@@ -574,7 +626,7 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
       }
       if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();
-        if (pickedShape !== -1) removePicked();
+        if (pickedShapes.length > 0) removePicked();
         else if (picked === key) hooks.onRemove?.();
         else {
           pick({ notify: false });
@@ -589,8 +641,11 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
       } else if (event.key === "Escape") {
         event.preventDefault();
         if (shapePicked) {
-          pickedShape = -1;
+          pickedShapes = [];
           redraw();
+        } else if (tool !== "select") {
+          tool = "select";
+          drawToolbar();
         } else hooks.onLeave?.();
       }
     });
