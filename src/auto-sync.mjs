@@ -8,14 +8,15 @@
 // The Notebook core does the syncing itself; this only decides when. Timers
 // are injected for tests. No browser APIs here.
 
-import { syncErrorMessage } from "./notebook.mjs";
+import { FOLDER_NEEDS_OK, notesHomeName, syncErrorMessage } from "./notes-home.mjs";
 
 const NOTHING_MOVED = { sent: 0, received: 0 };
 
 export function createAutoSync({
   notebook,
-  // Resolves to `{ remote, repo, place }`, or null while the notes live only
-  // in this browser. `place` names the Notes Home for the dot and its box.
+  // Resolves to `{ remote, repo, home }`, or null while the notes live only
+  // in this browser. `home` is the Notes Home's id (src/notes-home.mjs), which
+  // the dot and its box name and word their errors by.
   connect,
   beforeSync = () => {},
   onStatus = () => {},
@@ -32,10 +33,10 @@ export function createAutoSync({
   let running = null;
   let again = false;
   let warnedOffline = false;
-  let place;
+  let home;
 
   function setStatus(next) {
-    status = { lastSynced: notebook.lastSynced(), ...(next.state !== "off" && place && { place }), ...next };
+    status = { lastSynced: notebook.lastSynced(), ...(next.state !== "off" && home && { home }), ...next };
     if (status.state !== "syncing") settled = status;
     onStatus(status);
   }
@@ -67,7 +68,7 @@ export function createAutoSync({
       return NOTHING_MOVED;
     }
     beforeSync();
-    place = connection.place;
+    home = connection.home ?? "github";
     setStatus({ state: "syncing" });
     try {
       const result = await notebook.sync(connection.remote);
@@ -95,7 +96,7 @@ export function createAutoSync({
         console.error("Glacier: sync failed", error);
         // A version that changed under this push is picked up by the next
         // sync's pull, so trying again soon is enough.
-        setStatus({ state: "error", message: syncErrorMessage(error, connection.repo, connection.place) });
+        setStatus({ state: "error", message: syncErrorMessage(error, { home, repo: connection.repo }) });
         plan(retryDelay);
       }
     }
@@ -184,18 +185,15 @@ export function syncBox(status, now = new Date()) {
   return box;
 }
 
-// The words the notes folder goes by in a status (src/notes-home.mjs).
-const NOTES_FOLDER = "your notes folder";
-
 // Chrome forgot that Glacier may write to the notes folder, as it does after
 // a restart (#97). The notes keep saving in this browser meanwhile.
 export function needsFolderOk(status) {
-  return status.state === "error" && status.reason === "unauthorized" && status.place === NOTES_FOLDER;
+  return status.state === "error" && status.reason === "unauthorized" && status.home === "folder";
 }
 
 function errorDetail(status, last) {
   if (needsGoogleSignIn(status)) return "Google asks you to sign in again. Your changes are kept in this browser until you do.";
-  if (needsFolderOk(status)) return "Chrome needs your OK to write to your notes folder again.";
+  if (needsFolderOk(status)) return FOLDER_NEEDS_OK;
   if (status.reason === "unauthorized") {
     return "GitHub no longer accepts your token. It may have expired. Make a new one and paste it under Where your notes live.";
   }
@@ -203,7 +201,7 @@ function errorDetail(status, last) {
 }
 
 function needsGoogleSignIn(status) {
-  return status.state === "error" && status.reason === "unauthorized" && status.place === "Google Drive";
+  return status.state === "error" && status.reason === "unauthorized" && status.home === "google-drive";
 }
 
 // What the Sync now button shows for a few seconds once a sync is done.
@@ -221,7 +219,7 @@ export function conflictMessage(count) {
 
 // The Notes Home's name, for a status from before there was a choice.
 function placeOf(status) {
-  return status.place ?? "GitHub";
+  return notesHomeName(status.home ?? "github");
 }
 
 // What hovering the sync dot says, for every state (#70).

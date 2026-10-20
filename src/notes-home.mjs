@@ -41,6 +41,39 @@ export function notesHomeChoices({ googleReady: google, folderReady: folder }) {
   });
 }
 
+// What went wrong talking to a Notes Home, in one sentence for the screen,
+// in that home's own words. A remote marks its errors with a `reason`;
+// anything else is unexpected. `repo` names the GitHub repo.
+export const FOLDER_NEEDS_OK = "Chrome needs your OK to write to your notes folder again.";
+
+const SYNC_ERRORS = {
+  github: {
+    unauthorized: () => "GitHub didn't accept this token. Check that you pasted all of it, or make a new one.",
+    "not-found": (repo) => `Couldn't find ${repo} on GitHub. Check the name, and that the token is made for this repo.`,
+    forbidden: (repo) => `This token can't open ${repo}. Give it Contents access, read and write, on this repo.`,
+    offline: () => "Couldn't reach GitHub. Check your connection and try again.",
+    other: () => "Something went wrong talking to GitHub. Please try again in a moment.",
+  },
+  // Only signing in can go wrong with Google Drive (#95).
+  "google-drive": {
+    unauthorized: () => "Google Drive didn't let Glacier in. Sign in with Google again under Where your notes live.",
+    forbidden: () => "Google Drive didn't let Glacier in. Sign in with Google again under Where your notes live.",
+    offline: () => "Couldn't reach Google Drive. Check your connection and try again.",
+    other: () => "Something went wrong talking to Google Drive. Please try again in a moment.",
+  },
+  // A folder on this computer (#97).
+  folder: {
+    unauthorized: () => FOLDER_NEEDS_OK,
+    "not-found": () => "Couldn't find your notes folder. Choose it again under Where your notes live.",
+    other: () => "Something went wrong writing to your notes folder. Please try again in a moment.",
+  },
+};
+
+export function syncErrorMessage(error, { home = "github", repo = "" } = {}) {
+  const words = SYNC_ERRORS[home] ?? SYNC_ERRORS.github;
+  return (words[error?.reason] ?? words.other)(repo);
+}
+
 // The place as a sentence names it: "GitHub", "your notes folder".
 export function notesHomeName(id) {
   const home = NOTES_HOMES.find((each) => each.id === id);

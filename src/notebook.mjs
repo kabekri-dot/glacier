@@ -390,50 +390,6 @@ export function notesRepoName(input) {
   return /^[\w.-]+\/[\w.-]+$/.test(name) ? name : undefined;
 }
 
-// What went wrong talking to the Notes Repo, in one sentence for the screen.
-// A remote marks its errors with a `reason`; anything else is unexpected.
-export function syncErrorMessage(error, repo, place = "GitHub") {
-  if (place === "Google Drive") return driveErrorMessage(error);
-  if (place === "your notes folder") return folderErrorMessage(error);
-  switch (error?.reason) {
-    case "unauthorized":
-      return "GitHub didn't accept this token. Check that you pasted all of it, or make a new one.";
-    case "not-found":
-      return `Couldn't find ${repo} on GitHub. Check the name, and that the token is made for this repo.`;
-    case "forbidden":
-      return `This token can't open ${repo}. Give it Contents access, read and write, on this repo.`;
-    case "offline":
-      return "Couldn't reach GitHub. Check your connection and try again.";
-    default:
-      return "Something went wrong talking to GitHub. Please try again in a moment.";
-  }
-}
-
-// The same for Google Drive (#95), where only signing in can go wrong.
-function driveErrorMessage(error) {
-  switch (error?.reason) {
-    case "unauthorized":
-    case "forbidden":
-      return "Google Drive didn't let Glacier in. Sign in with Google again under Where your notes live.";
-    case "offline":
-      return "Couldn't reach Google Drive. Check your connection and try again.";
-    default:
-      return "Something went wrong talking to Google Drive. Please try again in a moment.";
-  }
-}
-
-// The same for a folder on this computer (#97).
-function folderErrorMessage(error) {
-  switch (error?.reason) {
-    case "unauthorized":
-      return "Chrome needs your OK to write to your notes folder again.";
-    case "not-found":
-      return "Couldn't find your notes folder. Choose it again under Where your notes live.";
-    default:
-      return "Something went wrong writing to your notes folder. Please try again in a moment.";
-  }
-}
-
 // Only Markdown files in the note folders are notes (`concepts/` from before
 // ADR 0010 and `courses/` from before #73 too); a README, an `.obsidian`
 // folder or pictures in the Notes Repo are left alone.

@@ -13,14 +13,14 @@
 // draws editor.state and editor.menu. The pill that switches notes arrives in a
 // later slice (#12).
 
-import { createNotebook, importSummary, syncErrorMessage } from "../src/notebook.mjs";
+import { createNotebook, importSummary } from "../src/notebook.mjs";
 import { openIndexedDbStorage } from "../src/indexeddb-storage.mjs";
 import { githubRemote } from "../src/github-remote.mjs";
 import { driveRemote } from "../src/drive-remote.mjs";
 import { createGoogleSignIn } from "./google-sign-in.js";
 import { folderRemote } from "../src/folder-remote.mjs";
 import { createFolderAccess } from "./folder-access.js";
-import { chosenNotesHome, notesHomeName } from "../src/notes-home.mjs";
+import { chosenNotesHome, notesHomeName, syncErrorMessage } from "../src/notes-home.mjs";
 import { reminderDue, reminderOpened, reminderNotNow, reminderText } from "../src/cloud-reminder.mjs";
 import { createAutoSync, needsFolderOk } from "../src/auto-sync.mjs";
 import { createScreen } from "../src/screen.mjs";
@@ -251,10 +251,10 @@ async function start() {
     notebook,
     connect: async () => {
       const { home, repo, token } = await loadConnection();
-      if (home === "google-drive") return { remote: driveRemote({ getToken: googleSignIn.getToken }), repo: "", place: notesHomeName(home) };
-      if (home === "folder") return { remote: folderRemote({ getFolder: folderAccess.folder }), repo: "", place: notesHomeName(home) };
+      if (home === "google-drive") return { remote: driveRemote({ getToken: googleSignIn.getToken }), repo: "", home };
+      if (home === "folder") return { remote: folderRemote({ getFolder: folderAccess.folder }), repo: "", home };
       if (home !== "github" || !repo || !token) return null;
-      return { remote: githubRemote({ repo, token }), repo, place: notesHomeName(home) };
+      return { remote: githubRemote({ repo, token }), repo, home };
     },
     beforeSync: () => screen.flush(),
     onStatus: drawSyncStatus,
@@ -821,7 +821,7 @@ async function start() {
         result = await notebook.switchNotesHome(place, remoteFor(place, repo, token), onProgress);
       } catch (error) {
         console.error("Glacier: switching where the notes live failed", error);
-        const message = syncErrorMessage(error, repo, notesHomeName(place));
+        const message = syncErrorMessage(error, { home: place, repo });
         if (!panels.settingsOpen()) showNotice(message, 8000);
         return { error: message };
       }

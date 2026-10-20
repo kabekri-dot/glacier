@@ -2,10 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 
-import { createNotebook, noteToFile, syncErrorMessage } from "../src/notebook.mjs";
+import { createNotebook, noteToFile } from "../src/notebook.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { memoryRemote } from "../src/memory-remote.mjs";
-import { NOTES_HOMES, notesHomeName, switchQuestion, chosenNotesHome, notesHomeChoices, googleReady, folderReady } from "../src/notes-home.mjs";
+import { NOTES_HOMES, notesHomeName, switchQuestion, chosenNotesHome, notesHomeChoices, googleReady, folderReady, syncErrorMessage } from "../src/notes-home.mjs";
 import { createAutoSync, syncBox, syncDotText, syncStatusText, needsFolderOk } from "../src/auto-sync.mjs";
 import { GOOGLE_CONFIG } from "../src/google-config.mjs";
 
@@ -116,9 +116,9 @@ test("switching asks first in one plain line naming the place", () => {
 });
 
 test("the sync dot and box name the place", () => {
-  assert.equal(syncDotText({ state: "synced", place: "GitHub" }), "All saved to GitHub");
-  assert.equal(syncDotText({ state: "syncing", place: "Google Drive" }), "Saving to Google Drive");
-  assert.match(syncStatusText({ state: "synced", place: "Google Drive" }).detail, /Google Drive/);
+  assert.equal(syncDotText({ state: "synced", home: "github" }), "All saved to GitHub");
+  assert.equal(syncDotText({ state: "syncing", home: "google-drive" }), "Saving to Google Drive");
+  assert.match(syncStatusText({ state: "synced", home: "google-drive" }).detail, /Google Drive/);
   assert.equal(syncBox({ state: "off" }).status, "Only in this browser");
 });
 
@@ -131,9 +131,9 @@ test("a browser that connected GitHub before there was a choice keeps GitHub", (
 test("auto-sync names the place it syncs with", async () => {
   const notebook = createNotebook({ storage: memoryStorage() });
   const remote = memoryRemote({});
-  const autoSync = createAutoSync({ notebook, connect: async () => ({ remote, repo: "me/notes", place: "GitHub" }) });
+  const autoSync = createAutoSync({ notebook, connect: async () => ({ remote, repo: "me/notes", home: "github" }) });
   const status = await autoSync.syncNow();
-  assert.equal(status.place, "GitHub");
+  assert.equal(syncDotText(status), "All saved to GitHub");
 });
 
 test("a push that fails once the notes are combined keeps the new place, and the next sync sends them", async () => {
@@ -171,20 +171,20 @@ test("Chrome finds the same Google client in the manifest as in google-config.mj
 });
 
 test("Google Drive's problems are explained in its own words", () => {
-  const messageFor = (reason) => syncErrorMessage(Object.assign(new Error(), { reason }), "", "Google Drive");
+  const messageFor = (reason) => syncErrorMessage(Object.assign(new Error(), { reason }), { home: "google-drive" });
   assert.match(messageFor("offline"), /Couldn't reach Google Drive/);
   assert.match(messageFor("forbidden"), /Sign in with Google/);
   assert.doesNotMatch(messageFor("unknown"), /GitHub/);
 });
 
 test("when Google asks to sign in again, the sync box says so with one button", () => {
-  const status = { state: "error", reason: "unauthorized", place: "Google Drive" };
+  const status = { state: "error", reason: "unauthorized", home: "google-drive" };
   assert.match(syncStatusText(status).detail, /sign in again/i);
   assert.doesNotMatch(syncStatusText(status).detail, /token/);
   const box = syncBox(status);
   assert.equal(box.action, "Sign in with Google");
   assert.equal(box.signIn, true);
-  assert.equal(syncBox({ state: "error", reason: "unauthorized", place: "GitHub" }).signIn, undefined);
+  assert.equal(syncBox({ state: "error", reason: "unauthorized", home: "github" }).signIn, undefined);
 });
 
 // A folder on this computer (#97).
@@ -202,11 +202,11 @@ test("a folder can be chosen only where the browser has a folder picker", () => 
 
 test("the folder is called your notes folder in sentences", () => {
   assert.equal(switchQuestion("folder"), "Your notes will be combined with the ones in your notes folder. Nothing is deleted.");
-  assert.equal(syncDotText({ state: "synced", place: notesHomeName("folder") }), "All saved to your notes folder");
+  assert.equal(syncDotText({ state: "synced", home: "folder" }), "All saved to your notes folder");
 });
 
 test("when Chrome forgot the folder, the sync box asks for its OK with one Reconnect button", () => {
-  const status = { state: "error", reason: "unauthorized", place: "your notes folder" };
+  const status = { state: "error", reason: "unauthorized", home: "folder" };
   assert.equal(syncStatusText(status).detail, "Chrome needs your OK to write to your notes folder again.");
   const box = syncBox(status);
   assert.equal(box.status, "Chrome needs your OK to write to your notes folder again.");
@@ -214,5 +214,5 @@ test("when Chrome forgot the folder, the sync box asks for its OK with one Recon
   assert.equal(box.reconnect, true);
   assert.equal(box.signIn, undefined);
   assert.equal(needsFolderOk(status), true);
-  assert.equal(needsFolderOk({ ...status, place: "GitHub" }), false);
+  assert.equal(needsFolderOk({ ...status, home: "github" }), false);
 });

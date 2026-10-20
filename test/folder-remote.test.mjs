@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { createNotebook, noteToFile, syncErrorMessage } from "../src/notebook.mjs";
+import { createNotebook, noteToFile } from "../src/notebook.mjs";
+import { syncErrorMessage } from "../src/notes-home.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { memoryFolder } from "../src/memory-folder.mjs";
 import { folderRemote } from "../src/folder-remote.mjs";
@@ -173,7 +174,7 @@ test("a sync with nothing new reads no file again", async () => {
 });
 
 test("the folder's problems are explained in its own words", () => {
-  const messageFor = (reason) => syncErrorMessage(Object.assign(new Error(), { reason }), "", "your notes folder");
+  const messageFor = (reason) => syncErrorMessage(Object.assign(new Error(), { reason }), { home: "folder" });
   assert.match(messageFor("unauthorized"), /Chrome needs your OK/);
   assert.match(messageFor("not-found"), /Couldn't find your notes folder/);
   assert.doesNotMatch(messageFor("unknown"), /GitHub/);

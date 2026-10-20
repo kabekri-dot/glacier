@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { createNotebook, noteToFile, notesRepoName, syncErrorMessage } from "../src/notebook.mjs";
+import { createNotebook, noteToFile, notesRepoName } from "../src/notebook.mjs";
+import { syncErrorMessage } from "../src/notes-home.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { memoryRemote } from "../src/memory-remote.mjs";
 
@@ -113,12 +114,12 @@ test("a wrong token stops the first sync before anything changes", async () => {
 });
 
 test("a wrong token, a wrong repo, no access or no connection each get a clear message", () => {
-  const messageFor = (reason) => syncErrorMessage(Object.assign(new Error(), { reason }), "me/notes");
+  const messageFor = (reason) => syncErrorMessage(Object.assign(new Error(), { reason }), { repo: "me/notes" });
   assert.match(messageFor("unauthorized"), /token/);
   assert.match(messageFor("not-found"), /me\/notes/);
   assert.match(messageFor("forbidden"), /Contents/);
   assert.match(messageFor("offline"), /reach GitHub/);
-  assert.match(syncErrorMessage(new Error("boom"), "me/notes"), /try again/i);
+  assert.match(syncErrorMessage(new Error("boom"), { repo: "me/notes" }), /try again/i);
 });
 
 test("a Notes Repo name is owner/name, typed or pasted as its GitHub address", () => {
