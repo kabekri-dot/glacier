@@ -152,3 +152,8 @@ test("deleting a page can be undone", () => {
   editor.undo();
   assert.equal(editor.body(), "one\n%%page%%\ntwo");
 });
+
+test("deleting the first page leaves no page break at the top", () => {
+  const result = removePage(lines("%%page%%\none\n%%page%%\ntwo"), 0);
+  assert.deepEqual(result.lines, ["two"]);
+});

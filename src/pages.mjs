@@ -47,14 +47,14 @@ export function removePageBreak(lines, index) {
 }
 
 // Delete page `index` (counting from 0) with everything on it, and the
-// break before it (the one after it, for the first page). Returns the lines
-// and the line the caret goes to (the start of the page before, or of the
-// new first page), or null for a note of one page.
+// break before it (for the first page, the one after it and any above it).
+// Returns the lines and the line the caret goes to (the start of the page
+// before, or of the new first page), or null for a note of one page.
 export function removePage(lines, index) {
   const pages = pagesOf(lines);
   const page = pages[index];
   if (pages.length < 2 || !page) return null;
-  const from = index === 0 ? page.start : page.start - 1;
+  const from = index === 0 ? 0 : page.start - 1;
   const to = index === 0 ? page.end + 1 : page.end;
   const next = [...lines.slice(0, from), ...lines.slice(to)];
   return { lines: next, line: index === 0 ? 0 : pages[index - 1].start };
