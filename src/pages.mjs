@@ -3,15 +3,13 @@
 // the note stays one file: pages are only how it is shown and split. A
 // `%%page%%` inside a fenced code block is code, not a break. Pure, so
 // node --test can check it.
-import { blockRanges, isFence } from "./editor-model.mjs";
+import { linesOutsideCode } from "./editor-model.mjs";
 
 export const PAGE_BREAK = "%%page%%";
 
 // The line numbers of the page breaks, in order.
 export function pageBreaks(lines) {
-  return blockRanges(lines)
-    .filter((range) => !isFence(lines[range.start]) && lines[range.start].trim() === PAGE_BREAK)
-    .map((range) => range.start);
+  return linesOutsideCode(lines).filter((line) => lines[line].trim() === PAGE_BREAK);
 }
 
 // Is line `index` a page break (and not a line of code)?

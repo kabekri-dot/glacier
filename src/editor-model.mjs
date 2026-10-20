@@ -31,6 +31,15 @@ export function isFence(line) {
   return /^```/.test(line);
 }
 
+// The numbers of the lines outside fenced code blocks, in order: the lines
+// where a heading, a page break or other Markdown can be (a `#` in code is
+// code).
+export function linesOutsideCode(lines) {
+  return blockRanges(lines)
+    .filter((range) => !isFence(lines[range.start]))
+    .map((range) => range.start);
+}
+
 // The line span of each block, as {start, end} with end exclusive. Most blocks
 // are a single line; a fenced code block spans from its opening fence to the
 // closing fence (included) or the end of the note if it is never closed.

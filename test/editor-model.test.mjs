@@ -8,6 +8,7 @@ import {
   splitIntoBlocks,
   blocksToText,
   blockRanges,
+  linesOutsideCode,
   pressEnter,
   pressBackspace,
   insertText,
@@ -813,4 +814,9 @@ test("the slash menu offers Numbered list and Checkbox list", () => {
 test("clicking a numbered or checkbox marker puts the caret at the text start", () => {
   assert.equal(renderedToRaw("3. hi", 0), 3);
   assert.equal(renderedToRaw("- [ ] hi", 1), 7);
+});
+
+test("the lines outside code blocks are every line but a fenced block's", () => {
+  const lines = ["# One", "```", "# not a heading", "```", "two", "```", "never closed"];
+  assert.deepEqual(linesOutsideCode(lines), [0, 4]);
 });
