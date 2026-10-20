@@ -895,22 +895,25 @@ code {
   border-color: var(--accent);
 }
 
+/* A quiet word, like the notice actions: no filled box (the user dislikes
+   big framed buttons). */
 .card-button {
   align-self: flex-start;
-  padding: 0.45rem 0.9rem;
+  padding: 0.2rem 0;
   border: 0;
-  border-radius: 6px;
-  background: var(--accent);
-  color: var(--paper);
+  background: transparent;
+  color: var(--accent);
   font: inherit;
   font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
   cursor: pointer;
 }
 
 .card-button:hover,
 .card-button:focus {
   outline: none;
-  filter: brightness(1.08);
+  text-decoration-thickness: 2px;
 }
 
 /* The explanation card shown before the browser's permission prompt (ADR
