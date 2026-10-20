@@ -6,6 +6,7 @@
 //   .open()            show the box and select its text
 //   .close()           hide it
 //   .isOpen()
+//   .query()           what is typed in the field
 //   .setStatus(text)   "2 of 5" or "No match"
 
 export function createFindView({ el, onQuery, onStep, onClose }) {

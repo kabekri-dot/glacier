@@ -17,7 +17,7 @@ export function findMatches(lines, query) {
       if (isSketchLine(lines[line])) continue;
       if (code && (line === range.start || (line === range.end - 1 && isFence(lines[line])))) continue;
       const { text, rawAt } = code
-        ? { text: lines[line], rawAt: [...lines[line]].map((_, i) => i) }
+        ? { text: lines[line], rawAt: Array.from({ length: lines[line].length }, (_, i) => i) }
         : visibleText(lines[line]);
       const lower = text.toLowerCase();
       if (lower.length !== text.length) continue;
