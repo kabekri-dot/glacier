@@ -57,3 +57,52 @@ test("the cheat sheet teaches quotes, italics, bold italic and web links", () =>
     assert.ok(keys.includes(wanted), `missing ${wanted}`);
   }
 });
+
+import { shortcutRows, shortcutNotice, CHROME_SHORTCUTS_URL } from "../src/shortcuts-panel.mjs";
+
+const rowFor = (rows, suggested) => rows.find((row) => row.suggested === suggested);
+
+test("a shortcut that is set shows as it is set, not as suggested", () => {
+  const commands = [{ name: "open-glacier", shortcut: "Ctrl+Shift+Y" }, { name: "clip-selection", shortcut: "Alt+Shift+C" }];
+  const rows = shortcutRows(commands, HANDLED_KEYS, "chrome");
+  const row = rowFor(rows, "Alt Shift G");
+  assert.equal(row.keys, "Ctrl Shift Y");
+  assert.equal(row.notSet, false);
+  assert.equal(row.fix, undefined);
+});
+
+test("an empty shortcut shows Not set with a link that opens Chrome's shortcuts page", () => {
+  const commands = [{ name: "open-glacier", shortcut: "" }, { name: "clip-selection", shortcut: "Alt+Shift+C" }];
+  const row = rowFor(shortcutRows(commands, HANDLED_KEYS, "chrome"), "Alt Shift G");
+  assert.equal(row.keys, "Not set");
+  assert.equal(row.notSet, true);
+  assert.deepEqual(row.fix, { label: "Set it in Chrome", url: CHROME_SHORTCUTS_URL });
+});
+
+test("in Firefox an empty shortcut says where to set it, as text", () => {
+  const row = rowFor(shortcutRows([{ name: "open-glacier", shortcut: "" }], HANDLED_KEYS, "firefox"), "Alt Shift G");
+  assert.equal(row.notSet, true);
+  assert.equal(row.fix.url, undefined);
+  assert.match(row.fix.label, /about:addons/);
+  assert.match(row.fix.label, /Manage Extension Shortcuts/);
+});
+
+test("without the browser's list of shortcuts, the rows stay as listed", () => {
+  const rows = shortcutRows(undefined, HANDLED_KEYS, "chrome");
+  assert.equal(rows.length, HANDLED_KEYS.length);
+  assert.equal(rowFor(rows, "Alt Shift G").keys, "Alt Shift G");
+  assert.equal(rowFor(rows, "Alt Shift G").notSet, false);
+});
+
+test("other keys are passed through unchanged", () => {
+  const row = rowFor(shortcutRows([], HANDLED_KEYS, "chrome"), "Ctrl B");
+  assert.deepEqual([row.keys, row.notSet], ["Ctrl B", false]);
+});
+
+test("the welcome mentions the shortcut only when it is not set", () => {
+  assert.equal(shortcutNotice([{ name: "open-glacier", shortcut: "Alt+Shift+G" }], "chrome"), null);
+  assert.equal(shortcutNotice(undefined, "chrome"), null);
+  const notice = shortcutNotice([{ name: "open-glacier", shortcut: "" }], "chrome");
+  assert.match(notice.text, /no shortcut/i);
+  assert.equal(notice.fix.url, CHROME_SHORTCUTS_URL);
+});
