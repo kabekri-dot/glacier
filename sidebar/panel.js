@@ -34,6 +34,8 @@ import { headingsOf } from "../src/contents.mjs";
 import { pagesOf, pageOfLine, pageBreaks, lineOfSearch } from "../src/pages.mjs";
 import { createPageView } from "./page-view.js";
 import { createContentsView } from "./contents-view.js";
+import { findMatches, firstMatchFrom, stepMatch, findStatus } from "../src/find.mjs";
+import { createFindView } from "./find-view.js";
 import { readLook, lookStyle, wholeRows, applyLook } from "../src/look.mjs";
 import { readPanelPlace, createPanelPlacement } from "../src/panel-place.mjs";
 import { createBrowserPanels } from "../src/browser-panels.mjs";
@@ -338,6 +340,7 @@ async function start() {
         if (view.reload) {
           // The note's lines in the editor, with the caret at the top.
           sketchView.unpick();
+          closeFind();
           editor.load(view.note.body ?? "");
           pageView.forget();
           render();
@@ -353,6 +356,7 @@ async function start() {
         noteMeta.update();
         break;
       case "freshPage":
+        closeFind();
         editor.load("");
         pageView.forget();
         menuView.close();
@@ -674,6 +678,7 @@ async function start() {
     backBox.close();
     syncBoxView.close();
     contentsView.close();
+    closeFind();
     if (!keepShortcuts && shortcutsPanel.on && !shortcutsPanel.folded) prefs.saveShortcutsPanel({ folded: true });
   }
 
@@ -2062,6 +2067,7 @@ async function start() {
     drawMenu();
     updateContents();
     updatePageBar();
+    showFindMatches();
     if (turn) {
       if (focus.line === page.start) window.scrollTo(0, 0);
       turn.play(noteEl);
@@ -2185,6 +2191,151 @@ async function start() {
     if (!isContents || !noteShown()) return;
     event.preventDefault();
     toggleContents();
+  });
+
+  // --- Find in the open note (#111) --------------------------------------------
+  //
+  // Ctrl F while the focus is in Glacier opens the find box (sidebar/find-view.js);
+  // on the web page the key stays the browser's own. The matches come from
+  // src/find.mjs. They are marked with the CSS highlight API, which paints
+  // ranges over the drawn text without touching it, so a redraw only needs the
+  // ranges made again. With notes as pages only the page on screen is searched.
+  const findView = createFindView({
+    el: document.querySelector(".find-box"),
+    onQuery: () => startFind(),
+    onStep: (step) => stepFind(step),
+    onClose: () => endFind(),
+  });
+  let findMatchesNow = [];
+  let findCurrent = -1;
+
+  function matchesInShownPage() {
+    const page = shownPageSpan();
+    const found = findMatches(editor.lines, findView.query());
+    return page ? found.filter((m) => m.line >= page.start && m.line < page.end) : found;
+  }
+
+  // A new query: every match, starting on the first one at or after the caret.
+  function startFind() {
+    findMatchesNow = matchesInShownPage();
+    const { line, col } = editor.state.focus;
+    findCurrent = firstMatchFrom(findMatchesNow, line, col);
+    showFindMatches({ scroll: true });
+  }
+
+  function stepFind(step) {
+    findCurrent = stepMatch(findMatchesNow.length, findCurrent, step);
+    showFindMatches({ scroll: true });
+  }
+
+  function openFind() {
+    if (!noteShown()) return;
+    if (!findView.isOpen()) {
+      closeOverlays();
+      findView.open();
+      startFind();
+      return;
+    }
+    findView.open();
+  }
+
+  // Hide the box and the marks and leave the caret where it is.
+  function closeFind() {
+    if (!findView.isOpen()) return;
+    findView.close();
+    findMatchesNow = [];
+    findCurrent = -1;
+    clearFindMarks();
+  }
+
+  // Esc: the caret goes to the current match, or stays where it was.
+  function endFind() {
+    const match = findMatchesNow[findCurrent];
+    closeFind();
+    if (match) moveTo(match.line, match.rawFrom);
+    else render();
+  }
+
+  function clearFindMarks() {
+    if (typeof CSS === "undefined" || !CSS.highlights) return;
+    CSS.highlights.delete("find-match");
+    CSS.highlights.delete("find-current");
+  }
+
+  // The drawn text of a block as a walk over its text nodes, leaving out the
+  // bullet's dot, which is drawn but is no text of the line.
+  function domRange(root, from, to) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: (node) =>
+        node.parentElement?.closest(".md-bullet-dot") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+    });
+    const range = document.createRange();
+    let seen = 0;
+    let started = false;
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const end = seen + node.nodeValue.length;
+      if (!started && from < end) {
+        range.setStart(node, from - seen);
+        started = true;
+      }
+      if (started && to <= end) {
+        range.setEnd(node, to - seen);
+        return range;
+      }
+      seen = end;
+    }
+    return null;
+  }
+
+  // The range on screen for one match, or null when its line is not drawn.
+  function rangeForMatch(match) {
+    const block = blockRanges(editor.lines).find((r) => match.line >= r.start && match.line < r.end);
+    if (!block) return null;
+    const lengthBefore = (first) =>
+      editor.lines.slice(first, match.line).reduce((sum, text) => sum + text.length + 1, 0);
+    const { line: caretLine } = editor.state.focus;
+    // The line with the caret shows its Markdown, so its offsets are raw ones.
+    if (focusedEl && caretLine >= block.start && caretLine < block.end) {
+      return domRange(focusedEl, lengthBefore(block.start) + match.rawFrom, lengthBefore(block.start) + match.rawTo);
+    }
+    const el = noteEl.querySelector(`[data-start="${block.start}"]`);
+    if (!el) return null;
+    if (el.dataset.code !== undefined) {
+      const code = el.querySelector(".md-code span");
+      return code ? domRange(code, lengthBefore(block.start + 1) + match.from, lengthBefore(block.start + 1) + match.to) : null;
+    }
+    return domRange(el, match.from, match.to);
+  }
+
+  // Draw the status and the marks, after typing in the box, stepping, or any
+  // redraw of the paper while the box is open.
+  function showFindMatches({ scroll = false } = {}) {
+    if (!findView.isOpen()) return;
+    if (!scroll) {
+      findMatchesNow = matchesInShownPage();
+      findCurrent = Math.max(Math.min(findCurrent, findMatchesNow.length - 1), findMatchesNow.length > 0 ? 0 : -1);
+    }
+    findView.setStatus(findStatus(findView.query(), findMatchesNow.length, findCurrent));
+    if (typeof CSS === "undefined" || !CSS.highlights || typeof Highlight === "undefined") return;
+    const others = [];
+    let current = null;
+    findMatchesNow.forEach((match, index) => {
+      const range = rangeForMatch(match);
+      if (!range) return;
+      if (index === findCurrent) current = range;
+      else others.push(range);
+    });
+    CSS.highlights.set("find-match", new Highlight(...others));
+    CSS.highlights.set("find-current", current ? new Highlight(current) : new Highlight());
+    if (scroll && current) current.startContainer.parentElement?.scrollIntoView({ block: "center" });
+  }
+
+  document.addEventListener("keydown", (event) => {
+    const isFind =
+      (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "f";
+    if (!isFind || !noteShown()) return;
+    event.preventDefault();
+    openFind();
   });
 
   // --- Opening the page's note, and the way out of an empty panel (#3) -------
