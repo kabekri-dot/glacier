@@ -21,7 +21,7 @@ import { createGoogleSignIn } from "./google-sign-in.js";
 import { folderRemote } from "../src/folder-remote.mjs";
 import { createFolderAccess } from "./folder-access.js";
 import { chosenNotesHome, notesHomeName } from "../src/notes-home.mjs";
-import { reminderDue, reminderOpened, reminderText } from "../src/cloud-reminder.mjs";
+import { reminderDue, reminderOpened, reminderNotNow, reminderText } from "../src/cloud-reminder.mjs";
 import { createAutoSync, needsFolderOk } from "../src/auto-sync.mjs";
 import { createScreen } from "../src/screen.mjs";
 import { pageNoteCount, pillTitle, BACK_BUTTON_HINT, pinButton, secretMark } from "../src/menu-contents.mjs";
@@ -757,6 +757,10 @@ async function start() {
       menuView.scrollToTop();
     },
     beforeOpen: () => closeOverlays(),
+    onNotNow: async () => {
+      const { cloudReminder } = await extensionStorage.get("cloudReminder");
+      await extensionStorage.set({ cloudReminder: reminderNotNow(cloudReminder) });
+    },
   });
 
   // The pixel cloud reminder (#98): after the 3rd note, while the notes live

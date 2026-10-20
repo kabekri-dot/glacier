@@ -16,7 +16,8 @@ import { syncDotText, syncStatusText, syncBox, syncResultText, needsFolderOk, JU
 import { KEEP_THEM_SAFE, NOT_NOW } from "../src/cloud-reminder.mjs";
 import { justSyncedLine, menuButton } from "./settings-view.js";
 
-export function createSyncBoxView({ dotEl, boxEl, autoSync, signInAgain, reconnectFolder, openSettings, showConflicts, beforeOpen }) {
+// `onNotNow()` hears of Not now on the reminder, which brings it back once.
+export function createSyncBoxView({ dotEl, boxEl, autoSync, signInAgain, reconnectFolder, openSettings, showConflicts, beforeOpen, onNotNow }) {
   let boxTimer = null;
   let resultShown = null;
   let justSynced = false;
@@ -71,7 +72,10 @@ export function createSyncBoxView({ dotEl, boxEl, autoSync, signInAgain, reconne
       close();
       openSettings("notes-home");
     });
-    const notNow = menuButton(NOT_NOW, "Ask me again later", close);
+    const notNow = menuButton(NOT_NOW, "Ask me again later", () => {
+      close();
+      onNotNow();
+    });
     const message = Object.assign(document.createElement("div"), { className: "sync-box-reminder" });
     message.append(cloud, text);
     const buttons = Object.assign(document.createElement("div"), { className: "sync-box-choices" });

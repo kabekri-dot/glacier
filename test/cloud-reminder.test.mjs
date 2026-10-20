@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { reminderDue, reminderOpened, reminderText } from "../src/cloud-reminder.mjs";
+import { reminderDue, reminderOpened, reminderNotNow, reminderText } from "../src/cloud-reminder.mjs";
 
 const day = 24 * 60 * 60 * 1000;
 const t0 = new Date("2026-10-13T10:00:00Z");
@@ -14,15 +14,20 @@ test("the reminder never shows before the 3rd note", () => {
   assert.equal(due(3), true);
 });
 
-test("after it opened once it waits two weeks", () => {
-  const saved = reminderOpened(undefined, t0);
+test("after Not now it waits two weeks", () => {
+  const saved = reminderNotNow(reminderOpened(undefined, t0));
   assert.equal(due(5, saved, later(1)), false);
   assert.equal(due(5, saved, later(13)), false);
   assert.equal(due(5, saved, later(14)), true);
 });
 
+test("without Not now it doesn't come back", () => {
+  const saved = reminderOpened(undefined, t0);
+  assert.equal(due(5, saved, later(400)), false);
+});
+
 test("it never shows a third time", () => {
-  const saved = reminderOpened(reminderOpened(undefined, t0), later(14));
+  const saved = reminderNotNow(reminderOpened(reminderNotNow(reminderOpened(undefined, t0)), later(14)));
   assert.equal(due(9, saved, later(400)), false);
 });
 
