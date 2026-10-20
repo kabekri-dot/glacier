@@ -266,8 +266,8 @@ export function createSettingsView({ prefs, repo, onClose }) {
     return label;
   }
 
-  // The Font Override, the text size and notes as pages. Each font is one line, written in
-  // that font, like the papers; "Theme default" names the paper's own font
+  // The Font Override, the text size and notes as pages. Each font is one
+  // line, written in that font, like the papers; "Theme default" names the paper's own font
   // and shows in it. A new paper redraws this.
   function drawWriting() {
     const look = prefs.look();

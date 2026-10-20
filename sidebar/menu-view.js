@@ -9,8 +9,8 @@
 //   draw(view)        draws what a Screen action returned
 //   render()          redraws the open note with the caret in it
 //   openNote(note, options), showSearchMatch(query) (a search inside notes
-//   opens on the page of its match, #108), startNoteForPage(), moveNote() (the ⋯ "Move to
-//   collection…"), changed() (for Sync), notice(text, ms, action), downloads
+//   opens on the page of its match, #108), startNoteForPage(), moveNote()
+//   (the ⋯ "Move to collection…"), changed() (for Sync), notice(text, ms, action), downloads
 //   (see downloads.js) and beforeOpen(), which closes whatever else is open.
 import { notebookMenu, rowActions, archivedNotice, deleteCollectionQuestion, noteOrigin } from "../src/menu-contents.mjs";
 import { isOpenedByPage } from "../src/page-open.mjs";
