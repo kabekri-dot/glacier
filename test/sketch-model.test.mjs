@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   SKETCH_TOOLS,
+  sketchHistory,
   shapeFromDrag,
   shapeAt,
   moveShape,
@@ -369,4 +370,42 @@ test("fill without a colour washes with the ink", () => {
 
 test("a new shape is drawn with the picked colour and fill", () => {
   assert.deepEqual(shapeStyle(withStyle(plainBox, { color: "purple", fill: true })), { color: "purple", fill: true });
+});
+
+// Undo and redo in a sketch: each saved change can be taken back, and put
+// back again, one step at a time.
+const one = { width: 300, height: 90, shapes: [{ kind: "square", x: 0, y: 0, w: 20, h: 20 }] };
+const two = { ...one, shapes: [...one.shapes, { kind: "circle", x: 40, y: 0, w: 20, h: 20 }] };
+const three = { ...two, height: 120 };
+
+test("undo in a sketch takes back the last change, one step at a time", () => {
+  const history = sketchHistory();
+  history.record(one, two);
+  history.record(two, three);
+  assert.deepEqual(history.undo(three), two);
+  assert.deepEqual(history.undo(two), one);
+  assert.equal(history.undo(one), null);
+});
+
+test("redo in a sketch puts an undone change back", () => {
+  const history = sketchHistory();
+  history.record(one, two);
+  history.undo(two);
+  assert.deepEqual(history.redo(one), two);
+  assert.equal(history.redo(two), null);
+});
+
+test("a new change in a sketch after undo forgets what could be redone", () => {
+  const history = sketchHistory();
+  history.record(one, two);
+  history.undo(two);
+  history.record(one, three);
+  assert.equal(history.redo(three), null);
+  assert.deepEqual(history.undo(three), one);
+});
+
+test("a save that changes nothing is no step to undo", () => {
+  const history = sketchHistory();
+  history.record(one, one);
+  assert.equal(history.undo(one), null);
 });

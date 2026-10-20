@@ -496,7 +496,8 @@ code {
 
 /* A sketch block (#101): the drawing area between the lines, as wide as the
    text. Its height is whole ruled rows, so the text below stays on the lines.
-   The toolbar floats above it while it is picked and takes no room. */
+   While it is picked, the toolbar sits under it, exactly one ruled row high,
+   so it covers no text and the lines below stay on the rules. */
 .sketch-block {
   position: relative;
   white-space: normal;
@@ -606,16 +607,11 @@ code {
 }
 
 .sketch-toolbar {
-  position: absolute;
-  z-index: 5;
-  right: 0;
-  bottom: 100%;
   display: none;
+  align-items: center;
   gap: 2px;
-  padding: 2px;
-  border-radius: 6px;
-  background: var(--paper);
-  box-shadow: 0 1px 4px color-mix(in srgb, var(--ink) 20%, transparent);
+  height: var(--line-height);
+  white-space: nowrap;
 }
 
 .sketch-block.is-picked .sketch-toolbar {
@@ -650,13 +646,13 @@ code {
   display: flex;
   align-items: center;
   gap: 2px;
-  margin-left: 0.3rem;
+  margin-left: 0.6rem;
 }
 
 .sketch-dots {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 5px;
 }
 
 .sketch-dot {
@@ -679,7 +675,7 @@ code {
   display: none;
 }
 
-@media (max-width: 20rem) {
+@media (max-width: 27rem) {
   .sketch-colour-button {
     display: grid;
   }
@@ -689,6 +685,7 @@ code {
   }
 
   .sketch-colours.is-open .sketch-dots {
+    display: flex;
     position: absolute;
     z-index: 6;
     right: 0;
@@ -702,7 +699,7 @@ code {
 }
 
 .sketch-look {
-  margin-left: 0.3rem;
+  margin-left: auto;
 }
 
 .sketch-tool:disabled {

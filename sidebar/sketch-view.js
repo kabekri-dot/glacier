@@ -1,7 +1,8 @@
 // A sketch block on the paper (#101, #102, ADR 0007): the drawing area
 // between the lines of a note, as wide as the text and a few ruled rows
-// high. While it is picked, a small toolbar floats above it: the four
-// shapes, line, arrow, text, select and delete. A drag draws the chosen
+// high. While it is picked, a toolbar one ruled row high sits under it, so
+// it covers no text: the four shapes, line, arrow, text, select and delete,
+// the colours and the look. A drag draws the chosen
 // shape, then the new shape is picked so a drag moves it, its corners
 // resize it (Shift keeps its proportions) and a line's ends can be dragged
 // onto a shape to stick there. The text tool places a text where you click;
@@ -12,7 +13,9 @@
 //
 // The drawing rules live in src/sketch-model.mjs and the sketch itself in
 // the Notebook core; this file only turns the mouse into calls to them and
-// draws the result.
+// draws the result. Ctrl Z and Ctrl Y undo and redo in the picked sketch;
+// the arrow keys nudge the picked shape; Esc lets go of the shape, then of
+// the sketch.
 import {
   SKETCH_COLORS,
   SKETCH_LOOKS,
@@ -31,6 +34,7 @@ import {
   shapeFromDrag,
   shapeStyle,
   shapesSvg,
+  sketchHistory,
   sketchLook,
   styleShapeIn,
   textShape,
@@ -100,6 +104,9 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
   // The picked sketch's block on the page, to let go of it when the paper
   // is clicked elsewhere.
   let pickedEl = null;
+  // Each sketch's undo and redo steps, by "title/n", for as long as the
+  // sidebar is open: the block is drawn anew with the note, its history isn't.
+  const histories = new Map();
 
   function unpick() {
     if (!pickedEl) {
@@ -140,6 +147,10 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
     const { title, n } = found;
     const key = `${title}/${n}`;
     let sketch = found.sketch;
+    // The sketch as last saved, the "before" of the next undo step.
+    let saved = sketch;
+    if (!histories.has(key)) histories.set(key, sketchHistory());
+    const history = histories.get(key);
 
     const block = document.createElement("div");
     block.className = "block sketch-block";
@@ -170,7 +181,7 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
     textInput.setAttribute("aria-label", "Text in the sketch");
     textInput.hidden = true;
     area.append(svg, hint, textInput, handle);
-    block.append(toolbar, area);
+    block.append(area, toolbar);
 
     // The text being typed: where it goes, and which shape it changes (-1
     // for a new one). Null while no text is open.
@@ -179,8 +190,35 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
     function save(next) {
       const right = Math.max(0, ...next.shapes.map((shape) => bounds(shape).x + bounds(shape).w));
       sketch = { ...next, width: Math.round(Math.max(area.clientWidth, right)) };
+      history.record(saved, sketch);
+      keep();
+    }
+
+    function keep() {
+      saved = sketch;
       notebook.saveSketch(title, n, sketch);
       onSaved();
+    }
+
+    // Ctrl Z / Ctrl Y: go one step back or forward. Returns false when there
+    // is no step.
+    function step(back) {
+      const other = back ? history.undo(saved) : history.redo(saved);
+      if (!other) return false;
+      sketch = other;
+      pickedShape = -1;
+      keep();
+      redraw();
+      return true;
+    }
+
+    // An arrow key moves the picked shape a pixel, ten with Shift.
+    function nudge(arrow, far) {
+      const by = far ? 10 : 1;
+      const [x, y] = { ArrowLeft: [-by, 0], ArrowRight: [by, 0], ArrowUp: [0, -by], ArrowDown: [0, by] }[arrow];
+      const box = { width: area.clientWidth, height: sketch.height };
+      save({ ...sketch, shapes: moveShapeIn(sketch.shapes, pickedShape, { x, y }, box) });
+      drawShapes();
     }
 
     // The shapes as they are, plus the picked one's frame and handles. A
@@ -521,6 +559,19 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
     });
 
     area.addEventListener("keydown", (event) => {
+      const ctrl = (event.ctrlKey || event.metaKey) && !event.altKey;
+      const letter = event.key.toLowerCase();
+      if (ctrl && (letter === "z" || letter === "y")) {
+        event.preventDefault();
+        step(letter === "z" && !event.shiftKey);
+        return;
+      }
+      const shapePicked = picked === key && sketch.shapes[pickedShape];
+      if (shapePicked && event.key.startsWith("Arrow")) {
+        event.preventDefault();
+        nudge(event.key, event.shiftKey);
+        return;
+      }
       if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();
         if (pickedShape !== -1) removePicked();
@@ -537,7 +588,10 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
         hooks.onEnter?.();
       } else if (event.key === "Escape") {
         event.preventDefault();
-        hooks.onLeave?.();
+        if (shapePicked) {
+          pickedShape = -1;
+          redraw();
+        } else hooks.onLeave?.();
       }
     });
 

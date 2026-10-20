@@ -537,3 +537,30 @@ export function shapesSvg(shapes, look = "clean", dark = false) {
     })
     .join("");
 }
+
+// Undo and redo for one sketch: the sketch as it was before each saved
+// change, and the changes undone since. A new change forgets the redo steps.
+export function sketchHistory() {
+  const undoSteps = [];
+  const redoSteps = [];
+  return {
+    // A save turned `before` into `after`.
+    record(before, after) {
+      if (JSON.stringify(before) === JSON.stringify(after)) return;
+      undoSteps.push(before);
+      redoSteps.length = 0;
+    },
+    // The sketch one step back from `now`, or null when there is none.
+    undo(now) {
+      if (undoSteps.length === 0) return null;
+      redoSteps.push(now);
+      return undoSteps.pop();
+    },
+    // The sketch one undone step forward from `now`, or null.
+    redo(now) {
+      if (redoSteps.length === 0) return null;
+      undoSteps.push(now);
+      return redoSteps.pop();
+    },
+  };
+}
