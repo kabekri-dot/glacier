@@ -84,6 +84,18 @@ test("lines, arrows and text come back from the svg file unchanged", () => {
   assert.deepEqual(sketchFromSvg(svg), diagram);
 });
 
+test("colour and fill come back from the svg file, which shows them", () => {
+  const coloured = {
+    width: 200,
+    height: 120,
+    shapes: [{ kind: "circle", x: 5, y: 5, w: 40, h: 40, color: "red", fill: true }, { kind: "rectangle", x: 60, y: 5, w: 40, h: 40 }],
+  };
+  const svg = sketchToSvg(coloured);
+  assert.match(svg, /<g stroke="#b5493f" color="#b5493f">/);
+  assert.match(svg, /fill-opacity="0.15"/);
+  assert.deepEqual(sketchFromSvg(svg), coloured);
+});
+
 test("an svg that Glacier didn't draw is not read as a sketch", () => {
   assert.equal(sketchFromSvg('<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>'), undefined);
 });

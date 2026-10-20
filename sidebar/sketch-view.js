@@ -14,6 +14,7 @@
 // the Notebook core; this file only turns the mouse into calls to them and
 // draws the result.
 import {
+  SKETCH_COLORS,
   SKETCH_LOOKS,
   SKETCH_TOOLS,
   addShape,
@@ -28,10 +29,13 @@ import {
   resizedHeight,
   shapeAt,
   shapeFromDrag,
+  shapeStyle,
   shapesSvg,
   sketchLook,
+  styleShapeIn,
   textShape,
   textSize,
+  withStyle,
   withText,
 } from "../src/sketch-model.mjs";
 
@@ -53,6 +57,7 @@ const TOOL_ICONS = {
 // The look switch's two pictures: a wavy pen line for hand-drawn, a
 // straight one with ruler ticks for clean.
 const LOOK_ICONS = {
+  fill: '<rect x="2.5" y="2.5" width="11" height="11"/><path d="M8 2.5 H13.5 V13.5 H8 Z" fill="currentColor" stroke="none"/>',
   hand: '<path d="M2 10c2-3 3-3 4 0s2 3 4 0 3-3 4 0"/>',
   clean: '<path d="M2 11h12M4 11v-2M8 11v-3M12 11v-2"/>',
 };
@@ -89,6 +94,9 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
   let picked = null;
   let tool = "select";
   let pickedShape = -1;
+  // The colour and fill for the next shape drawn; with a shape picked, the
+  // toolbar shows that shape's instead.
+  let nextStyle = { color: "ink", fill: false };
   // The picked sketch's block on the page, to let go of it when the paper
   // is clicked elsewhere.
   let pickedEl = null;
@@ -182,7 +190,7 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
       block.classList.toggle("is-empty", sketch.shapes.length === 0 && !preview && !typing);
       svg.setAttribute("height", sketch.height);
       const shown = shapes.filter((_, i) => i !== typing?.index);
-      shapesEl.innerHTML = shapesSvg(preview ? [...shown, preview] : shown, sketchLook(sketch));
+      shapesEl.innerHTML = shapesSvg(preview ? [...shown, preview] : shown, sketchLook(sketch), document.documentElement.hasAttribute("data-dark"));
       const shape = picked === key && !typing ? shapes[pickedShape] : undefined;
       pickEl.innerHTML = shape ? pickSvg(shape) : "";
     }
@@ -206,8 +214,64 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
           });
           return button;
         }),
+        colourControls(),
         lookSwitch(),
       );
+    }
+
+    // The colour and fill now: the picked shape's, or the next shape's.
+    function styleNow() {
+      const shape = picked === key ? sketch.shapes[pickedShape] : undefined;
+      return shape ? shapeStyle(shape) : nextStyle;
+    }
+
+    // Choose a colour or fill: it is used for the next shape and, with a
+    // shape picked, changes that shape.
+    function chooseStyle(change) {
+      nextStyle = { ...styleNow(), ...change };
+      if (picked === key && sketch.shapes[pickedShape]) {
+        save({ ...sketch, shapes: styleShapeIn(sketch.shapes, pickedShape, change) });
+      }
+      redraw();
+      area.focus();
+    }
+
+    function toolbarButton(className, label) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = className;
+      button.title = label;
+      button.setAttribute("aria-label", label);
+      button.addEventListener("mousedown", (event) => event.preventDefault());
+      return button;
+    }
+
+    // The six ink dots and the Fill switch. In a narrow sidebar the dots
+    // hide behind one colour button (the stylesheet decides).
+    function colourControls() {
+      const now = styleNow();
+      const dark = document.documentElement.hasAttribute("data-dark");
+      const group = document.createElement("span");
+      group.className = "sketch-colours";
+      const dots = document.createElement("span");
+      dots.className = "sketch-dots";
+      const shade = (colour) => (colour.id === "ink" ? "var(--ink)" : colour[dark ? "dark" : "light"]);
+      for (const colour of SKETCH_COLORS) {
+        const dot = toolbarButton(colour.id === now.color ? "sketch-dot is-chosen" : "sketch-dot", colour.label);
+        dot.style.setProperty("--dot", shade(colour));
+        dot.addEventListener("click", () => chooseStyle({ color: colour.id }));
+        dots.append(dot);
+      }
+      const opener = toolbarButton("sketch-tool sketch-colour-button", "Colour");
+      opener.style.setProperty("--dot", shade(SKETCH_COLORS.find(({ id }) => id === now.color)));
+      opener.innerHTML = '<span class="sketch-dot is-chosen"></span>';
+      opener.addEventListener("click", () => group.classList.toggle("is-open"));
+      const fill = toolbarButton(now.fill ? "sketch-tool sketch-fill is-chosen" : "sketch-tool sketch-fill", "Fill. Give boxes, circles and triangles a light wash of their colour");
+      fill.setAttribute("aria-pressed", String(now.fill));
+      fill.innerHTML = icon("fill");
+      fill.addEventListener("click", () => chooseStyle({ fill: !now.fill }));
+      group.append(opener, dots, fill);
+      return group;
     }
 
     // The Hand-drawn / Clean switch, saved with the sketch: one small icon
@@ -318,7 +382,7 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
           if (text !== sketch.shapes[index].text) save({ ...sketch, shapes: withText(sketch.shapes, index, text, width) });
           if (!text.trim()) pickedShape = -1;
         } else if (text.trim()) {
-          const shape = textShape(point, text, 0);
+          const shape = withStyle(textShape(point, text, 0), nextStyle);
           shape.w = textWidth(text, textSize(shape), fontFamily);
           save({ ...sketch, shapes: addShape(sketch.shapes, shape) });
           pickedShape = sketch.shapes.length - 1;
@@ -440,7 +504,7 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
         },
         () => {
           if (shape) {
-            save({ ...sketch, shapes: addShape(sketch.shapes, shape) });
+            save({ ...sketch, shapes: addShape(sketch.shapes, withStyle(shape, nextStyle)) });
             pickedShape = sketch.shapes.length - 1;
             tool = "select";
           }

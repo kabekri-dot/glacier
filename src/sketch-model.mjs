@@ -23,6 +23,18 @@ export const SKETCH_TOOLS = [
   { id: "delete", label: "Delete the picked shape" },
 ];
 
+// The six ink colours of the toolbar: the paper's own ink, then five muted,
+// pencil-like shades, each in a shade for light papers and a lighter one
+// for dark papers (Aurora, Chalkboard).
+export const SKETCH_COLORS = [
+  { id: "ink", label: "Ink" },
+  { id: "blue", label: "Blue", light: "#3f6fa8", dark: "#8fb4e3" },
+  { id: "green", label: "Green", light: "#4f8a5b", dark: "#8fcf9c" },
+  { id: "red", label: "Red", light: "#b5493f", dark: "#e8928a" },
+  { id: "orange", label: "Orange", light: "#c27a2c", dark: "#e8b073" },
+  { id: "purple", label: "Purple", light: "#7a5aa6", dark: "#c0a6e6" },
+];
+
 const BOX_KINDS = new Set(["rectangle", "square", "circle", "triangle"]);
 const LINE_KINDS = new Set(["line", "arrow"]);
 // A drag shorter than this is a click, which draws nothing.
@@ -274,8 +286,20 @@ function readStuck(stuck) {
   return stuck && numbers(stuck, ["id", "fx", "fy"]) ? { id: stuck.id, fx: stuck.fx, fy: stuck.fy } : undefined;
 }
 
+// The colour and fill a shape from a file keeps: a known colour name and
+// a plain true.
+function readStyle(from, to) {
+  if (SKETCH_COLORS.some(({ id }) => id === from.color && id !== "ink")) to.color = from.color;
+  if (from.fill === true) to.fill = true;
+  return to;
+}
+
 function readShape(shape) {
-  if (!shape) return null;
+  const read = shape ? readPlainShape(shape) : null;
+  return read && readStyle(shape, read);
+}
+
+function readPlainShape(shape) {
   const { kind } = shape;
   if (LINE_KINDS.has(kind) && numbers(shape, ["x1", "y1", "x2", "y2"])) {
     const { x1, y1, x2, y2 } = shape;
@@ -472,9 +496,44 @@ function shapeSvg(shape) {
   return `<rect x="${x}" y="${y}" width="${w}" height="${h}"/>`;
 }
 
+// A shape's colour and fill as the sketch toolbar shows them.
+export function shapeStyle(shape) {
+  return { color: shape.color ?? "ink", fill: shape.fill === true };
+}
+
+// The shape with the given colour and/or fill; the paper's ink and no fill
+// are stored as nothing.
+export function withStyle(shape, change) {
+  const next = { ...shape, ...change };
+  if (next.color === "ink") delete next.color;
+  if (!next.fill || !BOX_KINDS.has(next.kind)) delete next.fill;
+  return next;
+}
+
+// The shapes with the one at `index` given a new colour and/or fill.
+export function styleShapeIn(shapes, index, change) {
+  return shapes.map((shape, i) => (i === index ? withStyle(shape, change) : shape));
+}
+
+// A light wash of the shape's colour under its outline, about 15 % strong.
+function washSvg(shape, color) {
+  return `<g fill="${color}" fill-opacity="0.15" stroke="none">${shapeSvg(shape)}</g>`;
+}
+
 // The shapes as svg elements, one per line, for the file and the screen, in
-// the given look ("hand" wobbles; anything else is clean).
-export function shapesSvg(shapes, look = "clean") {
+// the given look ("hand" wobbles; anything else is clean). A colour shape is
+// wrapped in a group with its colour, in the lighter shade when `dark` (a
+// dark paper on screen); the file always gets the shade for a light page.
+export function shapesSvg(shapes, look = "clean", dark = false) {
   const draw = (shape) => (look === "hand" && shape.kind !== "text" ? handShapeSvg(shape) : shapeSvg(shape));
-  return shapes.map((shape) => `${draw(shape)}\n`).join("");
+  return shapes
+    .map((shape) => {
+      const { color, fill } = shapeStyle(shape);
+      if (color === "ink" && !fill) return `${draw(shape)}\n`;
+      const hex = color === "ink" ? "currentColor" : SKETCH_COLORS.find(({ id }) => id === color)[dark ? "dark" : "light"];
+      const wash = fill && BOX_KINDS.has(shape.kind) ? washSvg(shape, hex) : "";
+      const attributes = color === "ink" ? "" : ` stroke="${hex}" color="${hex}"`;
+      return `<g${attributes}>${wash}${draw(shape)}</g>\n`;
+    })
+    .join("");
 }

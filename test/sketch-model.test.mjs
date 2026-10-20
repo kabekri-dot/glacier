@@ -10,6 +10,10 @@ import {
   readShapes,
   shapesSvg,
   sketchLook,
+  SKETCH_COLORS,
+  withStyle,
+  styleShapeIn,
+  shapeStyle,
   addShape,
   moveShapeIn,
   moveLineEnd,
@@ -314,4 +318,55 @@ test("the two passes of a circle do not quite meet", () => {
 
 test("a clean shape is still exact", () => {
   assert.equal(shapesSvg([everyKind[0]], "clean"), '<rect x="5" y="5" width="80" height="40"/>\n');
+});
+
+// Colours and fill (#106).
+
+const plainBox = { kind: "rectangle", x: 5, y: 5, w: 80, h: 40 };
+
+test("there are six calm ink colours, the paper's own ink first", () => {
+  assert.deepEqual(SKETCH_COLORS.map(({ id }) => id), ["ink", "blue", "green", "red", "orange", "purple"]);
+  assert.equal(SKETCH_COLORS[0].light, undefined);
+});
+
+test("a shape without a colour uses the ink and has no fill", () => {
+  assert.deepEqual(shapeStyle(plainBox), { color: "ink", fill: false });
+  assert.doesNotMatch(shapesSvg([plainBox], "clean"), /stroke=|fill=/);
+});
+
+test("a colour and fill are kept when shapes are read from a file", () => {
+  const [read] = readShapes([{ ...plainBox, color: "blue", fill: true }]);
+  assert.deepEqual(shapeStyle(read), { color: "blue", fill: true });
+  const [plain] = readShapes([{ ...plainBox, color: "<script>", fill: "yes" }]);
+  assert.deepEqual(plain, plainBox);
+});
+
+test("changing the picked shape's colour leaves the others alone", () => {
+  const shapes = [plainBox, { ...plainBox, x: 50 }];
+  const next = styleShapeIn(shapes, 1, { color: "red" });
+  assert.deepEqual(shapeStyle(next[1]), { color: "red", fill: false });
+  assert.equal(next[0], shapes[0]);
+  assert.equal("color" in styleShapeIn(next, 1, { color: "ink" })[1], false);
+});
+
+test("a coloured shape is drawn in its colour, lighter on a dark paper", () => {
+  const blue = SKETCH_COLORS.find(({ id }) => id === "blue");
+  const shape = withStyle(plainBox, { color: "blue" });
+  assert.match(shapesSvg([shape], "clean"), new RegExp(`stroke="${blue.light}"`));
+  assert.match(shapesSvg([shape], "clean", true), new RegExp(`stroke="${blue.dark}"`));
+});
+
+test("fill adds a light wash of the colour to boxes, circles and triangles only", () => {
+  const filled = (kind) => shapesSvg([withStyle({ ...plainBox, kind }, { color: "green", fill: true })], "hand");
+  for (const kind of ["rectangle", "square", "circle", "triangle"]) assert.match(filled(kind), /fill-opacity="0.15"/, kind);
+  const line = shapesSvg([withStyle({ kind: "line", x1: 0, y1: 0, x2: 9, y2: 9 }, { fill: true })], "clean");
+  assert.doesNotMatch(line, /fill-opacity/);
+});
+
+test("fill without a colour washes with the ink", () => {
+  assert.match(shapesSvg([withStyle(plainBox, { fill: true })], "clean"), /fill="currentColor" fill-opacity="0.15"/);
+});
+
+test("a new shape is drawn with the picked colour and fill", () => {
+  assert.deepEqual(shapeStyle(withStyle(plainBox, { color: "purple", fill: true })), { color: "purple", fill: true });
 });
