@@ -30,6 +30,8 @@ import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
 import { readTabSettings } from "../src/tab-settings.mjs";
 import { readShortcutsPanel } from "../src/shortcuts-panel.mjs";
+import { headingsOf } from "../src/contents.mjs";
+import { createContentsView } from "./contents-view.js";
 import { readLook, lookStyle, wholeRows, applyLook } from "../src/look.mjs";
 import { readPanelPlace, createPanelPlacement } from "../src/panel-place.mjs";
 import { createBrowserPanels } from "../src/browser-panels.mjs";
@@ -517,6 +519,7 @@ async function start() {
     noteMenu.close();
     backBox.close();
     syncBoxView.close();
+    contentsView.close();
     if (!keepShortcuts && shortcutsPanel.on && !shortcutsPanel.folded) prefs.saveShortcutsPanel({ folded: true });
   }
 
@@ -1442,6 +1445,7 @@ async function start() {
         drawFocused(el, editor.lines.slice(start, start + editor.state.blockCount));
         placeCaret(el, caret);
       }
+      updateContents();
       // Open, refilter or close the `/` command menu for the new caret (#32).
       // The session knows not to open inside a code block, where `/` is code.
       editor.refreshMenu();
@@ -1837,7 +1841,51 @@ async function start() {
     // Draw the `/` menu against the fresh line (the + button opens it just
     // before a render), or remove it when the session has closed it (#32).
     drawMenu();
+    updateContents();
   }
+
+  // --- The table of contents (#107) ------------------------------------------
+  const contentsView = createContentsView({ onJump: jumpToHeading });
+  document.body.append(contentsView.tab, contentsView.drawer);
+
+  function updateContents() {
+    contentsView.update(headingsOf(editor.body()), noteShown());
+  }
+
+  // The caret goes to the start of the heading and the paper scrolls so the
+  // heading sits near the top. The drawer stays open.
+  function jumpToHeading(line) {
+    moveTo(line, 0);
+    const row = focusedEl?.closest(".line-row");
+    if (!row) return;
+    row.style.scrollMarginTop = "4rem";
+    row.scrollIntoView({ block: "start" });
+  }
+
+  function toggleContents() {
+    const wasOpen = contentsView.isOpen();
+    closeOverlays();
+    if (!wasOpen) contentsView.toggle();
+  }
+
+  // A click on the paper or Esc closes the drawer; the tab and the shortcut
+  // toggle it.
+  document.addEventListener("mousedown", (event) => {
+    if (contentsView.isOpen() && noteEl.contains(event.target)) contentsView.close();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !event.defaultPrevented && contentsView.isOpen()) {
+      event.preventDefault();
+      contentsView.close();
+      return;
+    }
+    const isContents =
+      (event.ctrlKey || event.metaKey) && !event.altKey && event.shiftKey &&
+      event.key.toLowerCase() === "o";
+    if (!isContents || !noteShown()) return;
+    event.preventDefault();
+    toggleContents();
+  });
 
   // --- Opening the page's note, and the way out of an empty panel (#3) -------
   //
@@ -1883,10 +1931,12 @@ async function start() {
     updatePill();
     noteMeta.update();
     noteEl.replaceChildren(startPrompt({ onNew: () => openingFlow.newNoteForPage() }));
+    updateContents();
   }
 
   function showPermissionCard() {
     noteEl.replaceChildren(pageCard({ onAllow: () => openingFlow.allow(), onDecline: () => openingFlow.decline() }));
+    updateContents();
   }
 
   // The welcome (#85, #90): a pixel-art scene, the greeting, three lines with
