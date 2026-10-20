@@ -12,10 +12,11 @@
 //   opens on the page of its match, #108), startNoteForPage(), moveNote()
 //   (the ⋯ "Move to collection…"), changed() (for Sync), notice(text, ms, action), downloads
 //   (see downloads.js) and beforeOpen(), which closes whatever else is open.
-import { notebookMenu, rowActions, archivedNotice, deleteCollectionQuestion, noteOrigin } from "../src/menu-contents.mjs";
+import { notebookMenu, rowActions, archivedNotice, deleteCollectionQuestion, noteOrigin, secretMark } from "../src/menu-contents.mjs";
 import { isOpenedByPage } from "../src/page-open.mjs";
 import { NEW_NOTE_HINT } from "../src/new-note-choices.mjs";
 import { menuButton, iconButton, originIcon, askFormat } from "./settings-view.js";
+import { lockIcon } from "./secret-view.js";
 
 export function createMenuView({ notebook, screen, el, button: menuButtonEl, noteEl, draw, render, openNote, showSearchMatch, startNoteForPage, moveNote, changed, notice, downloads, beforeOpen }) {
   // The search box and the list under it, while the menu is open.
@@ -293,6 +294,13 @@ export function createMenuView({ notebook, screen, el, button: menuButtonEl, not
     return button;
   }
 
+  // The globe or pencil before a note's title, then a pixel lock when it
+  // is secret (#109).
+  function titleIcons(title) {
+    const mark = secretMark(notebook, title);
+    return [originIcon(noteOrigin(notebook, title)), ...(mark ? [lockIcon(mark)] : [])];
+  }
+
   function menuHeading(text, hint) {
     const heading = document.createElement("h2");
     heading.className = "menu-heading";
@@ -314,7 +322,7 @@ export function createMenuView({ notebook, screen, el, button: menuButtonEl, not
     for (const title of titles) {
       const button = noteButton(title);
       button.textContent = title;
-      button.prepend(originIcon(noteOrigin(notebook, title)));
+      button.prepend(...titleIcons(title));
       if (title === current) {
         button.classList.add("is-current");
         button.setAttribute("aria-current", "true");
@@ -349,7 +357,7 @@ export function createMenuView({ notebook, screen, el, button: menuButtonEl, not
     const button = noteButton(title, "menu-item menu-result");
     const titleEl = document.createElement("span");
     titleEl.className = "menu-result-title";
-    button.append(originIcon(noteOrigin(notebook, title)));
+    button.append(...titleIcons(title));
     if (titleMark) {
       button.append(marked(titleEl, titleMark));
       return noteRow(button, title);
@@ -452,7 +460,7 @@ export function createMenuView({ notebook, screen, el, button: menuButtonEl, not
     for (const { title, label } of notes) {
       const button = noteButton(title);
       button.textContent = label;
-      button.prepend(originIcon(noteOrigin(notebook, title)));
+      button.prepend(...titleIcons(title));
       row.append(noteRow(button, title));
     }
     return row;

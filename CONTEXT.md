@@ -82,6 +82,10 @@ _Avoid_: Backup, snapshot, Import
 Where a note goes when it's put away but kept. An archived note is still a Note, and Links to it still work, but it leaves the lists, search and recent notes, and its page no longer opens it. In the Notes Repo it sits under `archive/`. Unarchive puts it back.
 _Avoid_: Trash, bin, hidden note
 
+**Secret note**:
+A note whose text is encrypted with the Glacier passcode, in the browser and in the Notes Home, so only someone who knows the passcode can read it. Its title stays visible. It is locked until the passcode is typed, and again after 10 minutes without typing or when the sidebar closes. A forgotten passcode can't be recovered (ADR 0012).
+_Avoid_: Private note, hidden note, password, vault
+
 **Delete**:
 Removing a note for good, from the Notebook and from the Notes Repo. Links to it become Missing Links.
 _Avoid_: Remove, trash

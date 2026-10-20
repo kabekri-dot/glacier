@@ -11,6 +11,25 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Secret notes with a passcode (#109)
+
+- [ ] Open a note with some text, ⋯, Make secret. A card asks you to choose your Glacier passcode, typed twice, with the line "If you forget this passcode, your secret notes can't be opened again. Nobody can recover it."
+- [ ] Type two different passcodes: it says they are not the same. Type the same one twice and press Enter: the note stays on screen as it was, "This note is secret now." shows, and a small pixel lock sits before the title in the pill.
+- [ ] Ctrl K: the note has the lock before its title in the menu, in search results and in the ← box.
+- [ ] Make a second note secret: it doesn't ask for the passcode again.
+- [ ] Close the sidebar and open it again, then open a secret note: the paper shows "This note is secret" with one passcode field and Open, and no text.
+- [ ] Type a wrong passcode: "That passcode doesn't open this note." Type the right one: the note opens with its text.
+- [ ] Leave the sidebar open without typing for 10 minutes: the open secret note locks again and shows the passcode field.
+- [ ] While it is locked: Ctrl K and `//` with a word from inside it finds nothing; its title still finds it. The backlinks button doesn't show, and a note it links to doesn't list it as a backlink.
+- [ ] While it is locked: ⋯, Download as a file, Print. It asks for the passcode first; Cancel puts the paper back. After the passcode the print window shows the text, and Markdown saves the file still encrypted.
+- [ ] Clip text from a page while a locked secret note is open: nothing goes in, and a line says to type the passcode, then clip again.
+- [ ] Select text in an open secret note and Extract it: the new note has the lock too.
+- [ ] Sync, then look at the note's file in Google Drive, the folder or GitHub: `secret: true` in the frontmatter and one ```` ```glacier-secret ```` block with no readable text. Same in a Download everything zip.
+- [ ] In the other browser, after it syncs, the note is locked; your passcode opens it.
+- [ ] Settings, Secret notes: type a wrong current passcode, it says so. Type the right one and a new one twice: "Done. Your secret notes now open with the new passcode." Close the sidebar and open it: the old passcode doesn't open the note, the new one does.
+- [ ] ⋯, Make not secret: the lock goes away, and after a sync the file shows the text again.
+- [ ] Do this in Chrome and Firefox, with settings inside and beside the sidebar.
+
 ### Notes as pages, turned with a pixel page flip (#108)
 
 - [ ] Type `/page` at the start of a line: the menu shows Page break with `%%page%%`. Pick it: a dotted line with "page 2" on it appears, and the caret is on the line under it.

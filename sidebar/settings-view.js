@@ -12,13 +12,15 @@
 //   courses(), switchHome(place, repo, token, onProgress) -> { notes } or { error },
 //   pickFolder() -> "picked", "closed" or "inside" (settings moved inside the
 //   sidebar to pick it there), called straight from the click,
-//   exportCourse(course, format), exportAll(), restore(bytes) and notice(text, ms)
+//   exportCourse(course, format), exportAll(), restore(bytes) and notice(text, ms),
+//   hasPasscode() and changePasscode(passcode, next) -> { ok, locked } (#109)
 import { syncStatusText, syncResultText, syncBox, JUST_SYNCED } from "../src/auto-sync.mjs";
 import { notesRepoName } from "../src/notebook.mjs";
 import { notesHomeChoices, notesHomeName, switchQuestion, googleReady, folderReady } from "../src/notes-home.mjs";
 import { GOOGLE_CONFIG } from "../src/google-config.mjs";
 import { SHORTCUT_GROUPS } from "../src/shortcuts-panel.mjs";
 import { PAPERS, paperGroups, FONT_OVERRIDES, TEXT_SIZE, fontPreview } from "../src/look.mjs";
+import { NO_RECOVERY } from "./secret-view.js";
 
 // A labelled control row, for the settings.
 export function field(labelText, control) {
@@ -188,6 +190,7 @@ const SECTIONS = [
   ["shortcuts", "Shortcuts panel", false],
   ["panels", "Panels", false],
   ["notes-home", "Where your notes live", false],
+  ["secret", "Secret notes", false],
 ];
 
 // The quiet line a panel shows at its top when it opens inside the sidebar
@@ -378,6 +381,60 @@ export function createSettingsView({ prefs, repo, onClose }) {
         (value) => prefs.saveShortcutsPanel({ on: value === "on" }),
       ),
     );
+  }
+
+  // Secret notes (#109, ADR 0012): Change passcode encrypts every secret note
+  // again. The current passcode is needed, as there is no recovery.
+  async function drawSecret() {
+    if (!(await repo.hasPasscode())) {
+      bodies.secret.replaceChildren(
+        element("p", "settings-text", "No secret notes yet. To make one, open a note and choose Make secret in its ⋯ menu."),
+      );
+      return;
+    }
+    const form = element("form", "settings-form");
+    const passcode = (label) => {
+      const input = document.createElement("input");
+      input.type = "password";
+      input.className = "form-input";
+      input.autocomplete = "off";
+      return field(label, input);
+    };
+    const current = passcode("Current passcode");
+    const next = passcode("New passcode");
+    const again = passcode("New passcode again");
+    const [currentInput, nextInput, againInput] = [current, next, again].map((row) => row.querySelector("input"));
+    const said = element("p", "settings-text");
+    said.setAttribute("role", "status");
+    said.hidden = true;
+    const submit = element("button", "card-button", "Change passcode");
+    submit.type = "submit";
+    const say = (text) => {
+      said.textContent = text;
+      said.hidden = false;
+    };
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!currentInput.value || !nextInput.value) return say("Type your current passcode and a new one.");
+      if (nextInput.value !== againInput.value) return say("The two new passcodes are not the same. Type them again.");
+      submit.disabled = true;
+      const result = await repo.changePasscode(currentInput.value, nextInput.value);
+      submit.disabled = false;
+      for (const input of [currentInput, nextInput, againInput]) input.value = "";
+      if (!result?.ok) return say("That isn't your current passcode.");
+      const kept = result.locked === 1 ? " One secret note didn't open with it and keeps its old passcode." : result.locked > 1 ? ` ${result.locked} secret notes didn't open with it and keep their old passcode.` : "";
+      say(`Done. Your secret notes now open with the new passcode.${kept}`);
+    });
+    form.append(
+      element("p", "settings-text", "One Glacier passcode opens all your secret notes. Changing it encrypts every secret note again."),
+      element("p", "settings-hint", NO_RECOVERY),
+      current,
+      next,
+      again,
+      submit,
+      said,
+    );
+    bodies.secret.replaceChildren(form);
   }
 
   // Where settings open (ADR 0008). Choosing beside
@@ -724,6 +781,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
       drawTabs();
       drawShortcutsSetting();
       drawPanels();
+      drawSecret();
       el.hidden = false;
       closeButton.focus();
       // A switch still running keeps its progress on screen.

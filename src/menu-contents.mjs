@@ -234,6 +234,9 @@ export function noteMenu(note, { pinned = false } = {}) {
       { kind: "move", label: "Move to collection…", hint: "Put this note in a collection" },
       { kind: "extract", label: "Extract to a new note", hint: "Select some text in the note first. It becomes a new note and a link takes its place" },
       { kind: "download", label: "Download as a file", hint: "Save this note as Markdown or PDF, or print it" },
+      note.secret
+        ? { kind: "notSecret", label: "Make not secret", hint: "Keep this note as plain text again, readable without your passcode" }
+        : { kind: "secret", label: "Make secret", hint: "Lock this note with your Glacier passcode. Its text is encrypted everywhere it is kept" },
       note.archived
         ? { kind: "unarchive", label: "Unarchive", hint: "Put this note back in your lists" }
         : { kind: "archive", label: "Archive", hint: "Hide this note from your lists. You can bring it back any time" },
@@ -286,6 +289,11 @@ export function noteOrigin(notebook, title) {
   return notebook.note(title)?.source
     ? { kind: "website", hint: "From a website" }
     : { kind: "own", hint: "Your own note" };
+}
+
+// The small pixel lock before a secret note's title (#109), or null.
+export function secretMark(notebook, title) {
+  return notebook.isSecret(title) ? { hint: "Secret note" } : null;
 }
 
 export const BACK_BUTTON_HINT = "Back to the note before. Right-click or hold for your last notes";

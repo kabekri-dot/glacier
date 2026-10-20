@@ -4,10 +4,11 @@
 // src/new-note-choices.mjs; this draws them. Each opens under its button,
 // and Esc or a second click on the button closes it. `beforeOpen()` closes
 // whatever else is open, so only one shows at a time (#83).
-import { lastNotesBox, noteMenu } from "../src/menu-contents.mjs";
+import { lastNotesBox, noteMenu, secretMark } from "../src/menu-contents.mjs";
 import { newNoteChoices } from "../src/new-note-choices.mjs";
 import { isOpenedByPage } from "../src/page-open.mjs";
 import { menuButton, originIcon } from "./settings-view.js";
+import { lockIcon } from "./secret-view.js";
 
 // Show `box` under `button`, or take it away, keeping aria-expanded in step.
 function shown(box, button, open) {
@@ -46,7 +47,8 @@ export function createBackBox({ button, box, screen, notebook, openNote, onBack,
       const item = document.createElement("button");
       item.type = "button";
       item.className = "menu-item";
-      item.append(originIcon(origin), title);
+      const mark = secretMark(notebook, title);
+      item.append(originIcon(origin), ...(mark ? [lockIcon(mark)] : []), title);
       item.addEventListener("click", () => {
         close();
         const found = notebook.note(title);
