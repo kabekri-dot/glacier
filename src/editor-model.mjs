@@ -535,6 +535,23 @@ function lineSegments(line) {
   return inlineSegments(line);
 }
 
+// The text of a line as you see it, without the Markdown marks (`#`, `**`,
+// `[[`, a list's `- `), with where each shown character sits in the raw line.
+// Find reads it (#111), so a match may sit inside bold, a heading or a link.
+export function visibleText(line) {
+  let text = "";
+  const rawAt = [];
+  let rawPos = 0;
+  for (const seg of lineSegments(line)) {
+    if (seg.kind !== "marker") {
+      for (let i = 0; i < seg.text.length; i++) rawAt.push(rawPos + i);
+      text += seg.text;
+    }
+    rawPos += seg.raw.length;
+  }
+  return { text, rawAt };
+}
+
 // Map a caret offset in the rendered text of a line back to the offset in the
 // raw Markdown. A caret at a boundary lands after any preceding markers (e.g.
 // just inside the bold text rather than before its `**`), and a caret past the

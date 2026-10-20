@@ -11,6 +11,18 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Find in the open note (#111)
+
+- [ ] With the caret in a note, press Ctrl F (Cmd F on a Mac): a small find line shows under the pill with a text field, no count yet, and ↑ ↓ buttons. The field is ready to type in.
+- [ ] Type a word that appears several times, in capitals or not: every match gets a soft mark, the current one a little stronger, and the line says "1 of 4". A word inside bold, a heading or a link is found too.
+- [ ] Type a word that is not in the note: the line says "No match".
+- [ ] Press Enter or ↓: the next match becomes the current one and the paper scrolls to it. Shift Enter or ↑ goes back. After the last match it goes round to the first.
+- [ ] Words inside a sketch are not found.
+- [ ] Press Ctrl F again with the box open: the text in the field is selected.
+- [ ] Press Esc: the box and the marks go, and the caret is at the current match. Do it again with a word that has no match: the caret stays where it was.
+- [ ] Open the find box, then open the ▾ menu, or open another note: the box closes.
+- [ ] On a web page (not in Glacier), Ctrl F still opens the browser's own find.
+
 ### Numbered lists and checkboxes (#110)
 
 - [ ] Type `1. first`, Enter: a new line starts with `2. `. Type `second`, Enter, Enter on the empty item: the list ends. Click away: the items show as 1. and 2.
