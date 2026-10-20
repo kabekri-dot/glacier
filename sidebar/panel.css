@@ -2821,6 +2821,14 @@ html[data-pages] .note-meta {
   display: none;
 }
 
+/* While the find box is open it takes the header line's place: the
+   Collection line and the ‹ 1 of 3 › bar step aside instead of peeking out
+   from under it. */
+body:has(.find-box:not([hidden])) .note-meta,
+body:has(.find-box:not([hidden])) .page-bar {
+  visibility: hidden;
+}
+
 .find-input {
   width: 8rem;
   min-width: 0;
