@@ -56,6 +56,7 @@ import {
   isFence,
   isSketchLine,
   lineMarkLength,
+  listNumbers,
   renderLineHtml,
 } from "../src/editor-model.mjs";
 
@@ -1469,8 +1470,14 @@ async function start() {
       sketch.dataset.start = range.start;
       return sketch;
     }
-    el.innerHTML = renderLineHtml(line, linkExists);
+    el.innerHTML = renderLineHtml(line, linkExists, itemNumbers[range.start] ?? undefined);
     onPlainClick(el, (event) => {
+      // A click on a checkbox's box ticks it and saves; the caret stays put.
+      if (event.target.closest?.(".md-check-box")) {
+        editor.toggleCheckbox(range.start);
+        render();
+        return;
+      }
       // The sidebar finds which drawn character the click landed on; the Editor
       // session decides what it means from the one shared line description (#33).
       const rendered = renderedOffsetAt(el, event.clientX, event.clientY);
@@ -1975,6 +1982,8 @@ async function start() {
   let redrawing = false;
   // The page breaks of the note being drawn, so each block can ask (#108).
   let pageBreakSet = new Set();
+  // The number each numbered item is drawn with (#110).
+  let itemNumbers = [];
   function render() {
     // A locked secret note shows the passcode card instead (#109).
     if (lockedOnScreen()) {
@@ -1989,6 +1998,7 @@ async function start() {
     // With notes as pages only the caret's page is drawn, and a page break
     // never holds the caret (#108). A new page turns the old one over.
     pageBreakSet = new Set(pageBreaks(editor.lines));
+    itemNumbers = listNumbers(editor.lines);
     if (look.pages && pageBreakSet.has(editor.state.focus.line)) {
       const page = pagesOf(editor.lines)[pageOfLine(editor.lines, editor.state.focus.line)];
       editor.moveTo(page.start, 0);

@@ -366,11 +366,11 @@ test("pasting a whole code block adds no extra closing fence", () => {
 // every decision — opening, filtering, the highlight, picking, dismissing, the
 // + placement, the code-block rule and the IME rule — is tested here.
 
-// Typing `/` opens the menu; `/he` filters to the three headings.
+// Typing `/` opens the menu; `/head` filters to the three headings.
 test("typing a slash query opens the menu filtered to matching commands", () => {
   const editor = createEditorSession();
   editor.load("");
-  editor.edit("/he", 3);
+  editor.edit("/head", 5);
   editor.refreshMenu();
   assert.ok(editor.menu);
   assert.deepEqual(
@@ -380,15 +380,15 @@ test("typing a slash query opens the menu filtered to matching commands", () => 
   assert.equal(editor.menu.selected, 0);
 });
 
-test("/he + ↓ + Enter inserts the second heading's Markdown", () => {
+test("/head + ↓ + Enter inserts the second heading's Markdown", () => {
   const changes = [];
   const editor = createEditorSession({ onChange: (b) => changes.push(b) });
   editor.load("");
-  editor.edit("/he", 3);
+  editor.edit("/head", 5);
   editor.refreshMenu();
-  assert.equal(editor.menuKey("ArrowDown", { value: "/he", caret: 3 }), "nav");
+  assert.equal(editor.menuKey("ArrowDown", { value: "/head", caret: 5 }), "nav");
   assert.equal(editor.menu.selected, 1);
-  assert.equal(editor.menuKey("Enter", { value: "/he", caret: 3 }), "pick");
+  assert.equal(editor.menuKey("Enter", { value: "/head", caret: 5 }), "pick");
   assert.deepEqual(editor.state.lines, ["## "]);
   assert.deepEqual(editor.state.focus, { line: 0, col: 3 });
   assert.equal(editor.menu, null);
@@ -403,7 +403,7 @@ test("a new query resets the highlight to the top", () => {
   editor.menuKey("ArrowDown", { value: "/h", caret: 2 });
   assert.equal(editor.menu.selected, 1);
   // Typing another character is a new query: the highlight starts at the top.
-  editor.edit("/he", 3);
+  editor.edit("/head", 5);
   editor.refreshMenu();
   assert.equal(editor.menu.selected, 0);
 });
@@ -419,14 +419,14 @@ test("the menu never opens inside a code block", () => {
 test("while an input method is composing, Enter does not pick a command", () => {
   const editor = createEditorSession();
   editor.load("");
-  editor.edit("/he", 3);
+  editor.edit("/head", 5);
   editor.refreshMenu();
   assert.equal(
-    editor.menuKey("Enter", { value: "/he", caret: 3, isComposing: true }),
+    editor.menuKey("Enter", { value: "/head", caret: 5, isComposing: true }),
     "none",
   );
   assert.ok(editor.menu);
-  assert.deepEqual(editor.state.lines, ["/he"]);
+  assert.deepEqual(editor.state.lines, ["/head"]);
 });
 
 // Dismissing the menu (Esc, clicking elsewhere, scrolling out) takes an
@@ -522,7 +522,7 @@ test("followMenu never opens a fresh menu when none is open", () => {
   editor.load("/he");
   editor.moveTo(0, 3);
   // No refreshMenu first, so no menu is open; a caret move must not open one.
-  editor.followMenu("/he", 3);
+  editor.followMenu("/head", 5);
   assert.equal(editor.menu, null);
 });
 
@@ -1316,4 +1316,28 @@ test("Enter on a sketch line adds an empty line after it", () => {
   editor.enter("", 0, 0);
   assert.deepEqual(editor.state.lines, ["above", EMBED, "", "below"]);
   assert.deepEqual(editor.state.focus, { line: 2, col: 0 });
+});
+
+test("ticking a checkbox saves the note and one undo unticks it", () => {
+  const changes = [];
+  const editor = createEditorSession({ onChange: (b) => changes.push(b) });
+  editor.load("- [ ] milk\nplain");
+  editor.moveTo(1, 2);
+  editor.toggleCheckbox(0);
+  assert.equal(editor.body(), "- [x] milk\nplain");
+  assert.equal(changes.at(-1), "- [x] milk\nplain");
+  assert.deepEqual(editor.state.focus, { line: 1, col: 2 });
+  editor.toggleCheckbox(0);
+  assert.equal(editor.body(), "- [ ] milk\nplain");
+  editor.undo();
+  assert.equal(editor.body(), "- [x] milk\nplain");
+});
+
+test("ticking a line that is no checkbox changes nothing", () => {
+  const changes = [];
+  const editor = createEditorSession({ onChange: (b) => changes.push(b) });
+  editor.load("- milk");
+  editor.toggleCheckbox(0);
+  assert.equal(editor.body(), "- milk");
+  assert.deepEqual(changes, []);
 });

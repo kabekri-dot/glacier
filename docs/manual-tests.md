@@ -11,6 +11,17 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Numbered lists and checkboxes (#110)
+
+- [ ] Type `1. first`, Enter: a new line starts with `2. `. Type `second`, Enter, Enter on the empty item: the list ends. Click away: the items show as 1. and 2.
+- [ ] Type `5. a`, Enter, `b`, then click away: the list shows 1. and 2. while the note file keeps what you typed.
+- [ ] At the start of a numbered item, press Backspace: the number goes and the words stay.
+- [ ] Type `- [ ] milk`, Enter: a new `- [ ] ` starts. Enter on the empty one ends the list.
+- [ ] Click away from a checkbox line: a small hand-drawn empty box shows, with no system checkbox look. Click the box: it shows a tick and the words turn a little fainter. Click again: it is empty again. The caret does not jump there, and the change is saved.
+- [ ] Type `/` on an empty line: the menu has "Numbered list" and "Checkbox list". Pick each one.
+- [ ] Select some list lines and copy: the Markdown (`1. ` and `- [x] `) is what you paste. Export keeps it too.
+- [ ] In the Shortcuts panel, under Start of a line, "1." and "- [ ]" are listed.
+
 ### Secret notes with a passcode (#109)
 
 - [ ] Open a note with some text, ⋯, Make secret. A card asks you to choose your Glacier passcode, typed twice, with the line "If you forget this passcode, your secret notes can't be opened again. Nobody can recover it."

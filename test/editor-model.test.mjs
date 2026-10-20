@@ -21,6 +21,8 @@ import {
   applySlashCommand,
   focusedLineSpans,
   toggleFormat,
+  toggleCheckbox,
+  listNumbers,
 } from "../src/editor-model.mjs";
 
 // The editor model is the second test seam: pure functions on one note's
@@ -337,8 +339,8 @@ test("linkAtRendered reports the Link under a drawn position, else null", () => 
 // command drops the Markdown in with the caret in the right place.
 
 test('typing "/he" opens the menu filtered to the three headings', () => {
-  const query = slashQuery("/he", 3);
-  assert.equal(query, "he");
+  const query = slashQuery("/head", 5);
+  assert.equal(query, "head");
   assert.deepEqual(
     filterCommands(query).map((c) => c.label),
     ["Heading 1", "Heading 2", "Heading 3"],
@@ -742,4 +744,73 @@ test("Ctrl+E on text that is already inline code removes it", () => {
 test("a selection that includes code skips the code and formats the rest", () => {
   const result = format(["run `npm` now"], at(0, 0), at(0, 13), "bold");
   assert.deepEqual(result.lines, ["**run** `npm` **now**"]);
+});
+
+// Numbered lists and checkboxes (#110)
+
+test("Enter on a numbered item continues the list with the next number", () => {
+  const result = pressEnter(["1. one"], 0, 6);
+  assert.deepEqual(result.lines, ["1. one", "2. "]);
+  assert.deepEqual({ line: result.line, col: result.col }, { line: 1, col: 3 });
+  assert.deepEqual(pressEnter(["7. seven"], 0, 8).lines, ["7. seven", "8. "]);
+});
+
+test("Enter on an empty numbered item ends the list", () => {
+  const result = pressEnter(["1. one", "2. "], 1, 3);
+  assert.deepEqual(result.lines, ["1. one", ""]);
+  assert.equal(result.col, 0);
+});
+
+test("Backspace at the start of a numbered item removes its marker", () => {
+  const result = pressBackspace(["12. words"], 0, 4);
+  assert.deepEqual(result.lines, ["words"]);
+  assert.equal(result.col, 0);
+});
+
+test("Enter on a checkbox item starts a new empty unticked one", () => {
+  assert.deepEqual(pressEnter(["- [x] done"], 0, 10).lines, ["- [x] done", "- [ ] "]);
+  assert.deepEqual(pressEnter(["- [ ] todo"], 0, 10).col, 6);
+});
+
+test("Enter on an empty checkbox item ends the list", () => {
+  assert.deepEqual(pressEnter(["- [ ] a", "- [ ] "], 1, 6).lines, ["- [ ] a", ""]);
+});
+
+test("Backspace at the start of a checkbox item removes the whole marker", () => {
+  const result = pressBackspace(["- [x] words"], 0, 6);
+  assert.deepEqual(result.lines, ["words"]);
+});
+
+test("ticking turns - [ ] into - [x] and back", () => {
+  assert.deepEqual(toggleCheckbox(["- [ ] a", "b"], 0), ["- [x] a", "b"]);
+  assert.deepEqual(toggleCheckbox(["  - [x] a"], 0), ["  - [ ] a"]);
+  assert.deepEqual(toggleCheckbox(["- [X] a"], 0), ["- [ ] a"]);
+  assert.deepEqual(toggleCheckbox(["- a"], 0), ["- a"]);
+});
+
+test("numbered items are numbered by their order, whatever the file holds", () => {
+  const lines = ["1. a", "1. b", "text", "5. c", "   ", "9. d", "- [ ] x", "3. e"];
+  assert.deepEqual(listNumbers(lines), [1, 2, null, 1, null, 1, null, 1]);
+});
+
+test("a numbered line is drawn with its number, a checkbox with a box", () => {
+  assert.match(renderLineHtml("4. hi", undefined, 2), /class="md-number" data-number="2"/);
+  assert.match(renderLineHtml("- [ ] hi"), /md-check-box/);
+  assert.doesNotMatch(renderLineHtml("- [ ] hi"), /md-check-done/);
+  assert.match(renderLineHtml("- [x] hi"), /md-check-done/);
+  assert.match(renderLineHtml("- [x] hi"), />hi</);
+});
+
+test("the slash menu offers Numbered list and Checkbox list", () => {
+  const numbered = SLASH_COMMANDS.find((c) => c.label === "Numbered list");
+  assert.equal(applySlashCommand([""], 0, 0, numbered).lines[0], "1. ");
+  const check = SLASH_COMMANDS.find((c) => c.label === "Checkbox list");
+  const result = applySlashCommand(["/"], 0, 1, check);
+  assert.deepEqual(result.lines, ["- [ ] "]);
+  assert.equal(result.col, 6);
+});
+
+test("clicking a numbered or checkbox marker puts the caret at the text start", () => {
+  assert.equal(renderedToRaw("3. hi", 0), 3);
+  assert.equal(renderedToRaw("- [ ] hi", 1), 7);
 });
