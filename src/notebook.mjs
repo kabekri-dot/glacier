@@ -458,7 +458,9 @@ function lastEdited(note) {
   return note.edited ?? note.created ?? "";
 }
 
-export function createNotebook({ storage }) {
+// `onSaveError(error)` hears of a secret note's text that couldn't be
+// encrypted into storage, so the sidebar can say the save failed (#25).
+export function createNotebook({ storage, onSaveError = () => {} }) {
   if (!storage) {
     throw new Error("createNotebook needs a storage plug-in");
   }
@@ -539,7 +541,7 @@ export function createNotebook({ storage }) {
         const stored = storage.getNote(title);
         if (stored?.secret) storage.putNote({ ...stored, body });
       })
-      .catch(() => {});
+      .catch((error) => onSaveError(error));
   }
 
   // The passcode records found in secret notes, the latest edited first.

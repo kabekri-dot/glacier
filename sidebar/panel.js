@@ -212,7 +212,7 @@ async function start() {
     const storage = await openIndexedDbStorage({
       onPersistError: reportSaveError,
     });
-    notebook = createNotebook({ storage });
+    notebook = createNotebook({ storage, onSaveError: reportSaveError });
   } catch (error) {
     // Without storage there is nowhere to save, so the page stays read-only
     // rather than inviting text that can't be kept.

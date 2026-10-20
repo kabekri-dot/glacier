@@ -260,3 +260,25 @@ test("a secret note's sketch still shows after a rename", async () => {
   const embed = notebook.note("Journal").body.split("\n")[1];
   assert.equal(notebook.sketchForLine(embed)?.sketch.shapes.length, 1);
 });
+
+// A failed save is told, never swallowed (#25): the text is still on screen
+// to copy out.
+test("a secret note whose encrypted save fails is reported", async () => {
+  const storage = memoryStorage();
+  const errors = [];
+  const notebook = createNotebook({ storage, onSaveError: (error) => errors.push(error) });
+  notebook.createNote({ title: "Diary" });
+  await notebook.setPasscode("open sesame");
+  await notebook.makeSecret("Diary");
+  await notebook.settled();
+  const putNote = storage.putNote;
+  // The plain save happens at once; the encrypted one comes after.
+  notebook.saveBody("Diary", DIARY);
+  storage.putNote = () => {
+    throw new Error("disk full");
+  };
+  await notebook.settled();
+  storage.putNote = putNote;
+  assert.equal(errors.length, 1);
+  assert.equal(errors[0].message, "disk full");
+});
