@@ -47,3 +47,13 @@ Every piece of text the app shows (sidebar, forms, menus, cards, hover text, the
 - **No AI look**: no emoji, no sparkles, no exclamation-heavy or salesy wording. Plain, short, friendly sentences.
 - Markdown syntax Glacier teaches (`- ` for a bullet in the `/` menu and the cheat sheet) is syntax, not punctuation, and stays.
 - Code comments are not visible text.
+
+## Feel: a product someone cared about (added 2026-10-21)
+
+Glacier must not feel like a generic AI-built app. Pretty screens are the floor; what people notice is how it behaves in every state. Every ticket, robot or human, checks these three before it is done:
+
+1. **Every action answers three questions.** What just happened? (a quiet confirmation, the dot, a notice: never silence after a click). Can I take it back? (Ctrl Z, or an Undo in the notice, for anything that deletes or moves: notes, pages, sketches, shapes, text). What do I do next? (the next step is visible: the caret lands where you write, the empty state says how to start).
+2. **One pattern for one situation, everywhere.** The same kind of moment looks and reads the same in every part of Glacier: one way to confirm a delete (the quiet question with the action word and Keep), one notice style, one way to show an error with its one fixing button, the same words from the glossary. Before adding a new box, menu or message, look for the one Glacier already has for that situation and reuse it. Small inconsistencies cost users more than they say.
+3. **The bad moments are designed, not left over.** Offline, sync failing, a wrong passcode, a full or blocked storage, a folder Chrome forgot, an empty list, no match, a note that is gone: each says plainly what happened, that nothing is lost (when true), and offers the one action that fixes it. Where it fits, make the moment kind, even a little delightful, in Glacier's pixel art style (like Chrome's offline dinosaur), never alarming.
+
+Hand checks for a change include breaking it on purpose: go offline mid-sync, cancel half way, empty the list, use a wrong value.
