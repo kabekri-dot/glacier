@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { splitIntoLines, SLASH_COMMANDS, applySlashCommand } from "../src/editor-model.mjs";
-import { isPageBreak, pagesOf, pageOfLine, removePageBreak, addPage, lineOfSearch } from "../src/pages.mjs";
+import { isPageBreak, pagesOf, pageOfLine, removePageBreak, addPage, removePage, lineOfSearch } from "../src/pages.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
 
 const lines = (body) => splitIntoLines(body);
@@ -124,4 +124,31 @@ test("a title search, or a word not found, opens at the top", () => {
   const all = lines("Intro\n%%page%%\nbox");
   assert.equal(lineOfSearch(all, "box"), 0);
   assert.equal(lineOfSearch(all, "//grid"), 0);
+});
+
+test("deleting a page takes out its lines and the break before it", () => {
+  const result = removePage(lines("one\n%%page%%\ntwo\nmore\n%%page%%\nthree"), 1);
+  assert.deepEqual(result.lines, ["one", "%%page%%", "three"]);
+  assert.equal(result.line, 0);
+});
+
+test("deleting the first page takes out the break after it", () => {
+  const result = removePage(lines("one\n%%page%%\ntwo"), 0);
+  assert.deepEqual(result.lines, ["two"]);
+  assert.equal(result.line, 0);
+});
+
+test("the only page of a note can't be deleted", () => {
+  assert.equal(removePage(lines("one\ntwo"), 0), null);
+});
+
+test("deleting a page can be undone", () => {
+  const editor = createEditorSession();
+  editor.load("one\n%%page%%\ntwo");
+  editor.moveTo(2, 0);
+  editor.deletePage();
+  assert.equal(editor.body(), "one");
+  assert.deepEqual(editor.state.focus, { line: 0, col: 0 });
+  editor.undo();
+  assert.equal(editor.body(), "one\n%%page%%\ntwo");
 });

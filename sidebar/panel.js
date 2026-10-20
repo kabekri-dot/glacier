@@ -1896,6 +1896,11 @@ async function start() {
       editor.newPage();
       render();
     },
+    onDelete: () => {
+      editor.dismissMenu();
+      pageView.forget();
+      if (editor.deletePage()) render();
+    },
   });
   noteEl.after(pageView.bar);
 

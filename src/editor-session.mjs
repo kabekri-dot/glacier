@@ -40,7 +40,7 @@ import {
   markdownSlice,
   linkAtRendered,
 } from "./editor-model.mjs";
-import { isPageBreak, removePageBreak, addPage } from "./pages.mjs";
+import { isPageBreak, removePageBreak, addPage, removePage, pageOfLine } from "./pages.mjs";
 
 export function createEditorSession({
   onChange,
@@ -803,6 +803,21 @@ export function createEditorSession({
       padEdited = false;
       relayout();
       notifyChange();
+    },
+
+    // Delete the caret's page with everything on it (#108); Ctrl Z brings it
+    // back. Returns false for a note of one page.
+    deletePage() {
+      const result = removePage(lines, pageOfLine(lines, focus.line));
+      if (!result) return false;
+      recordStep();
+      lines = result.lines.length ? result.lines : [""];
+      focus = { line: result.line, col: 0 };
+      padStart = null;
+      padEdited = false;
+      relayout();
+      notifyChange();
+      return true;
     },
 
     // Copying a selection (#7): the Markdown between two selection edges (see

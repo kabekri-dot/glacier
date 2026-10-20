@@ -2585,29 +2585,56 @@ html[data-dark] .welcome-scene {
   border-top: 2px dotted var(--rule);
 }
 
-/* One page at a time: the ‹ 1 of 3 › bar, in the pill's style, sits at the
-   bottom of the paper above the panorama, in room the note leaves for it. */
-html[data-pages] .note {
-  padding-bottom: calc(var(--note-bottom) + 2.75rem);
+/* One page at a time: the ‹ 1 of 3 › bar sits on the right of the note's
+   header line, at the top of the paper, quiet like the line itself. The
+   header line makes room for it. */
+html[data-pages] .note-meta {
+  right: 11rem;
 }
 
 .page-bar {
-  position: relative;
+  position: absolute;
+  top: var(--note-top);
+  right: 1rem;
   z-index: 3;
   display: flex;
   align-items: center;
-  gap: 0.2rem;
-  width: max-content;
-  max-width: calc(100% - 1.5rem);
-  margin: calc(-1 * (var(--note-bottom) + 2.4rem)) auto 0;
-  padding: 0.2rem 0.4rem;
-  border: 1px solid var(--rule);
-  border-radius: 999px;
-  background: var(--paper);
-  color: var(--ink);
-  font-size: 0.9rem;
-  line-height: 1.4rem;
-  box-shadow: 0 2px 8px var(--shadow);
+  gap: 0.1rem;
+  height: var(--line-height);
+  color: color-mix(in srgb, var(--ink) 75%, transparent);
+  font-size: 0.8em;
+  white-space: nowrap;
+}
+
+.page-bar-question {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.page-bar-question[hidden],
+.page-bar > [hidden] {
+  display: none;
+}
+
+.page-bar-ask {
+  padding-right: 0.2rem;
+}
+
+.page-bar-delete {
+  display: grid;
+  place-items: center;
+  margin-left: 0.2rem;
+  padding: 0 0.3rem;
+  opacity: 0.6;
+}
+
+.page-bar-delete:hover {
+  opacity: 1;
+}
+
+.page-bar-turn.page-bar-yes {
+  color: var(--accent);
 }
 
 .page-bar[hidden] {
@@ -2646,10 +2673,10 @@ html[data-pages] .note {
   color: var(--accent);
 }
 
-/* The pixel page turn: a still copy of the old page curls up from the
-   bottom right corner and over to the left in eight stepped frames, its
-   back throwing a hard pixel shadow. Turning back runs it the other way.
-   It sits under the pill and the note's header line. */
+/* The pixel page turn: a still copy of the old page folds up from the
+   bottom right corner and over to the left in eight frames drawn in big
+   pixels (sidebar/page-view.js sets each frame's outline), its back throwing
+   a hard pixel shadow. It sits under the pill and the note's header line. */
 .page-turn {
   position: fixed;
   inset: 0;
@@ -2672,52 +2699,16 @@ html[data-pages] .note {
   right: 0;
 }
 
-.page-turn-sheet {
-  animation: page-turn-sheet 0.4s steps(4, jump-end) forwards;
-}
-
 .page-turn-curl {
   position: absolute;
   inset: 0;
-  filter: drop-shadow(3px 3px 0 var(--shadow));
+  filter: drop-shadow(4px 4px 0 var(--shadow));
 }
 
 .page-turn-back {
   position: absolute;
   inset: 0;
   background: color-mix(in srgb, var(--paper) 85%, var(--ink));
-  animation: page-turn-back 0.4s steps(4, jump-end) forwards;
-}
-
-.page-turn.is-back .page-turn-sheet,
-.page-turn.is-back .page-turn-back {
-  animation-direction: reverse;
-}
-
-/* The fold runs from the bottom right corner to the top left: what is left
-   of the page, and its folded back (the corner mirrored over the fold). */
-@keyframes page-turn-sheet {
-  0% {
-    clip-path: polygon(0 0, 100% 0, 100% 100%, 100% 100%, 0 100%);
-  }
-  50% {
-    clip-path: polygon(0 0, 100% 0, 100% 0, 0 100%, 0 100%);
-  }
-  100% {
-    clip-path: polygon(0 0, 0 0, 0 0, 0 0, 0 0);
-  }
-}
-
-@keyframes page-turn-back {
-  0% {
-    clip-path: polygon(100% 100%, 100% 100%, 100% 100%);
-  }
-  50% {
-    clip-path: polygon(100% 0, 0 100%, 0 0);
-  }
-  100% {
-    clip-path: polygon(0 0, 0 0, -100% -100%);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
