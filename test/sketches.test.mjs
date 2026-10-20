@@ -277,3 +277,21 @@ test("a clean sketch stays clean through its svg file, and a hand-drawn one is t
 test("the svg file of a sketch is the same every time it is written", () => {
   assert.equal(sketchToSvg(drawing), sketchToSvg({ ...drawing }));
 });
+
+// Google Drive gives a picture file a new version after it is written,
+// though its text stays the same: that is no change from elsewhere, so a
+// sketch drawn on meanwhile is not kept twice.
+test("a sketch file with a new version but the same text is no change from elsewhere", async () => {
+  const remote = memoryRemote({});
+  const notebook = notebookWithSketch();
+  await notebook.sync(remote);
+  const path = sketchPath("notes", "Box model");
+  const { text, version } = await remote.readFile(path);
+  await remote.writeFile(path, text, version);
+  const drawnOn = { ...drawing, shapes: [...drawing.shapes, { kind: "circle", x: 10, y: 60, w: 30, h: 30 }] };
+  notebook.saveSketch("Box model", 1, drawnOn);
+  const result = await notebook.sync(remote);
+  assert.equal(result.conflicts, 0);
+  assert.equal(notebook.sketch("Box model", 2), undefined);
+  assert.deepEqual(sketchFromSvg(remote.files()[path]), drawnOn);
+});

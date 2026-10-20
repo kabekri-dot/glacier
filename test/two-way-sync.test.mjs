@@ -122,6 +122,22 @@ test("a note changed in both browsers keeps both texts: the incoming one as a Co
   assert.equal(result.conflicts, 1);
 });
 
+// A folder synced by OneDrive, or Drive, can give a file a new version
+// though its text stays the same: that is no change from elsewhere.
+test("a note file with a new version but the same text is no change from elsewhere", async () => {
+  const remote = memoryRemote(fileOf(margins));
+  const notebook = browserWith();
+  await notebook.firstSync(remote);
+  const { path } = noteToFile(margins);
+  const { text, version } = await remote.readFile(path);
+  await remote.writeFile(path, text, version);
+  notebook.saveBody("Margins", "Space outside the border, and more.");
+  const result = await notebook.sync(remote);
+  assert.equal(result.conflicts, 0);
+  assert.equal(notebook.notes().length, 1);
+  assert.ok(remote.files()[path].includes("and more."));
+});
+
 test("offline, edits stay in this browser and are pushed by a later sync", async () => {
   const remote = memoryRemote({});
   const notebook = browserWith(margins);

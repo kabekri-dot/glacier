@@ -616,7 +616,11 @@ export function createNotebook({ storage }) {
     // A note moved to another folder (another Collection) comes in under a
     // new path: what its old file said tells whether it changed here since.
     const movedFrom = !known && Object.keys(synced).find((other) => !synced[other].sketch && synced[other].title === incoming.title);
-    if (!local) {
+    if (local && known?.text === text) {
+      // Same text as last synced, only a new version (a folder synced by
+      // OneDrive, or Drive, can do that): nothing changed there.
+      synced[path] = { ...known, version };
+    } else if (!local) {
       const note = { ...incoming, title: uniqueTitle(incoming.title) };
       storage.putNote(note);
       result.pulled.push(note.title);
@@ -666,11 +670,15 @@ export function createNotebook({ storage }) {
   // yet, or has unchanged since `known` (the file's text when last synced),
   // is taken as it is. One that changed here as well is never overwritten
   // (ADR 0004): the incoming drawing becomes a new sketch below the note's
-  // text. Returns "same", "taken" or "both".
+  // text. One whose file still says what it said when last synced is kept as
+  // it is here. Returns "same", "taken" or "both".
   function adoptSketch(note, n, incoming, known) {
     const local = note.sketches?.[n];
     const localText = local && sketchToSvg(local);
-    if (localText === sketchToSvg(incoming)) return "same";
+    const incomingText = sketchToSvg(incoming);
+    // Same text as last synced, only a new version (Drive does that to a
+    // picture file): nothing changed there, what is here gets pushed.
+    if (localText === incomingText || (local && incomingText === known)) return "same";
     if (!local || (known !== undefined && localText === known)) {
       storage.putNote({ ...note, sketches: { ...note.sketches, [n]: incoming } });
       return "taken";
