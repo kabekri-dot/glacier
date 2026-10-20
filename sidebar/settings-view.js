@@ -829,6 +829,7 @@ export function createShortcutsView({ onFold, onUnfold, onWelcome, openShortcuts
   header.append(element("h1", "shortcuts-title", "Shortcuts"), fold);
 
   const body = element("div", "shortcuts-body");
+  let keysList;
   for (const { title, entries, opensWelcome, hint } of SHORTCUT_GROUPS) {
     if (opensWelcome) {
       const link = element("button", "shortcuts-welcome", title);
@@ -859,7 +860,6 @@ export function createShortcutsView({ onFold, onUnfold, onWelcome, openShortcuts
       list.append(row);
     }
   }
-  let keysList;
   drawRows(keysList, shortcutRows(undefined, HANDLED_KEYS));
   sheet.append(header, body);
 

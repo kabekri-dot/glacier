@@ -746,8 +746,9 @@ async function start() {
   };
 
   const settingsView = createSettingsView({ prefs, repo: repoActions, onClose: () => closeSettings() });
+  const openShortcutsPage = (url) => api.tabs.create({ url }).catch(() => {});
   const shortcutsView = createShortcutsView({
-    openShortcutsPage: (url) => api.tabs.create({ url }).catch(() => {}),
+    openShortcutsPage,
     onFold: () => prefs.saveShortcutsPanel({ folded: true }),
     onUnfold: () => {
       closeOverlays({ keepShortcuts: true });
@@ -2035,7 +2036,7 @@ async function start() {
     const tip = Object.assign(document.createElement("p"), { className: "welcome-tip", textContent: WELCOME_TIP });
     const notice = shortcutNotice(shortcutCommands, browserName);
     const shortcutLine = notice && Object.assign(document.createElement("p"), { className: "welcome-tip welcome-shortcut", textContent: `${notice.text} ` });
-    shortcutLine?.append(fixLink(notice.fix, (url) => api.tabs.create({ url }).catch(() => {})));
+    shortcutLine?.append(fixLink(notice.fix, openShortcutsPage));
     welcomeEl.replaceChildren(scene, greeting, ...lines, startRow, tip, ...(shortcutLine ? [shortcutLine] : []));
     welcomeEl.hidden = false;
     if (again) welcomeEl.scrollIntoView({ block: "start" });
