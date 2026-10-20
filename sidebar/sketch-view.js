@@ -210,6 +210,13 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
           button.addEventListener("click", () => {
             if (id === "delete") removePicked();
             else tool = id;
+            // A drawing tool lets go of the picked shape, so a colour chosen
+            // next is for the new shape, not the last one drawn.
+            if (id !== "delete" && id !== "select" && pickedShape !== -1) {
+              pickedShape = -1;
+              redraw();
+              return;
+            }
             drawToolbar();
           });
           return button;
