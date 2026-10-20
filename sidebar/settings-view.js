@@ -266,7 +266,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
     return label;
   }
 
-  // The Font Override and the text size. Each font is one line, written in
+  // The Font Override, the text size and notes as pages. Each font is one line, written in
   // that font, like the papers; "Theme default" names the paper's own font
   // and shows in it. A new paper redraws this.
   function drawWriting() {
@@ -310,7 +310,17 @@ export function createSettingsView({ prefs, repo, onClose }) {
     // Not a <label> like field(): the font choices are labels themselves.
     const fontField = element("div", "form-field");
     fontField.append(element("span", "form-label", "Font"), font);
-    bodies.writing.replaceChildren(fontField, field("Text size", sizeRow));
+    // Notes as pages (#108): one page at a time, or every page in a row.
+    const pages = choice(
+      "Notes as pages",
+      [
+        ["off", "Off, all pages one after the other"],
+        ["on", "On, one page at a time"],
+      ],
+      look.pages ? "on" : "off",
+      (value) => prefs.saveLook({ pages: value === "on" }),
+    );
+    bodies.writing.replaceChildren(fontField, field("Text size", sizeRow), pages);
   }
 
   function choice(labelText, options, value, onChange) {

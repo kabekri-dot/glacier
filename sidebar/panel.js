@@ -31,6 +31,8 @@ import { createEditorSession } from "../src/editor-session.mjs";
 import { readTabSettings } from "../src/tab-settings.mjs";
 import { readShortcutsPanel } from "../src/shortcuts-panel.mjs";
 import { headingsOf } from "../src/contents.mjs";
+import { pagesOf, pageOfLine, pageBreaks, lineOfSearch } from "../src/pages.mjs";
+import { createPageView } from "./page-view.js";
 import { createContentsView } from "./contents-view.js";
 import { readLook, lookStyle, wholeRows, applyLook } from "../src/look.mjs";
 import { readPanelPlace, createPanelPlacement } from "../src/panel-place.mjs";
@@ -261,6 +263,7 @@ async function start() {
     titles: () => notebook.notes().map((note) => note.title),
     extractNote: (text) => screen.extract(text),
     newSketch,
+    pagesOn: () => look.pages,
   });
 
   // Sketch blocks (#101): the drawing area for an embed line, drawn by
@@ -296,6 +299,7 @@ async function start() {
     draw,
     render,
     openNote,
+    showSearchMatch,
     startNoteForPage,
     moveNote: () => noteMeta.pickCollection(),
     changed: () => autoSync.changed(),
@@ -323,6 +327,7 @@ async function start() {
           // The note's lines in the editor, with the caret at the top.
           sketchView.unpick();
           editor.load(view.note.body ?? "");
+          pageView.forget();
           render();
           menuView.close();
         } else {
@@ -337,6 +342,7 @@ async function start() {
         break;
       case "freshPage":
         editor.load("");
+        pageView.forget();
         menuView.close();
         updatePill();
         updateBacklinks();
@@ -705,8 +711,10 @@ async function start() {
     look: () => look,
     // Live while dragging the text size; kept when let go.
     saveLook(change, { keep = true } = {}) {
+      const pagesBefore = look.pages;
       look = readLook({ ...look, ...change });
       drawLook();
+      if (look.pages !== pagesBefore) redrawPages();
       if (!keep) return;
       extensionStorage.set({ look }).catch((error) => {
         console.warn("Glacier: could not keep the chosen look", error);
@@ -896,8 +904,10 @@ async function start() {
     if (area !== "local") return;
     if (changes.pendingClip?.newValue) takePendingClip();
     if (changes.look) {
+      const pagesBefore = look.pages;
       look = readLook(changes.look.newValue);
       drawLook();
+      if (look.pages !== pagesBefore) redrawPages();
     }
     if (changes.tabSettings) {
       tabSettings = readTabSettings(changes.tabSettings.newValue);
@@ -1098,6 +1108,13 @@ async function start() {
     const below = event.clientY - noteEl.lastElementChild.getBoundingClientRect().bottom;
     if (below < 0) return;
     event.preventDefault();
+    // Below a page that isn't the last, the caret goes to the page's end:
+    // new lines are only added after the note's last line.
+    const shown = shownPageSpan();
+    if (shown && shown.end < editor.lines.length) {
+      moveTo(shown.end - 1, editor.lines[shown.end - 1].length);
+      return;
+    }
     const rowHeight = parseFloat(getComputedStyle(noteEl).lineHeight);
     editor.dismissMenu();
     editor.clickPaper(Math.floor(below / rowHeight));
@@ -1259,6 +1276,13 @@ async function start() {
     }
 
     const line = blockLines[0];
+    // With all pages shown, a page break is a quiet dotted line (#108).
+    if (pageBreakSet.has(range.start)) {
+      el.classList.add("page-break");
+      el.textContent = `page ${pageOfLine(editor.lines, range.start) + 1}`;
+      onPlainClick(el, () => moveTo(range.start, line.length));
+      return el;
+    }
     // A sketch's embed line shows the drawing instead (#101). Its raw line
     // only shows when the caret is moved onto it with the keys.
     const sketch = sketchView.draw(line, {
@@ -1782,16 +1806,27 @@ async function start() {
   // Taking the old focused line out of the page fires its blur, which would
   // dismiss a menu the + has just opened (the real click is lost, #88).
   let redrawing = false;
+  // The page breaks of the note being drawn, so each block can ask (#108).
+  let pageBreakSet = new Set();
   function render() {
+    // Keep the session's focused-block span in step with the caret before we
+    // read it back to place the caret (#31).
+    editor.relayout();
+    // With notes as pages only the caret's page is drawn, and a page break
+    // never holds the caret (#108). A new page turns the old one over.
+    pageBreakSet = new Set(pageBreaks(editor.lines));
+    if (look.pages && pageBreakSet.has(editor.state.focus.line)) {
+      const page = pagesOf(editor.lines)[pageOfLine(editor.lines, editor.state.focus.line)];
+      editor.moveTo(page.start, 0);
+    }
+    const page = shownPageSpan();
+    const turn = page ? pageView.turnFor(pageOfLine(editor.lines, page.start), pagesOf(editor.lines).length, noteEl) : null;
     redrawing = true;
     noteEl.replaceChildren();
     redrawing = false;
     focusedEl = null;
-    // Keep the session's focused-block span in step with the caret before we
-    // read it back to place the caret (#31).
-    editor.relayout();
     const { lines, focus } = editor.state;
-    const ranges = blockRanges(lines);
+    const ranges = blockRanges(lines).filter((range) => !page || (range.start >= page.start && range.start < page.end));
     let focused = null;
     sketchView.unpickExcept(isSketchLine(lines[focus.line]) ? lines[focus.line] : null);
     // A new note's title follows its first line until the caret leaves it (#80).
@@ -1842,7 +1877,77 @@ async function start() {
     // before a render), or remove it when the session has closed it (#32).
     drawMenu();
     updateContents();
+    updatePageBar();
+    if (turn) {
+      if (focus.line === page.start) window.scrollTo(0, 0);
+      turn.play(noteEl);
+    }
   }
+
+  // --- Notes as pages (#108) --------------------------------------------------
+  //
+  // Which lines are pages is src/pages.mjs; the session steps ↑ and ↓ over
+  // the breaks. This draws the caret's page, the ‹ 1 of 3 › bar and the
+  // pixel page turn (sidebar/page-view.js).
+  const pageView = createPageView({
+    onTurn: (step) => turnPage(step),
+    onNewPage: () => {
+      editor.dismissMenu();
+      editor.newPage();
+      render();
+    },
+  });
+  noteEl.after(pageView.bar);
+
+  // The line span of the page on screen, or null when all pages show.
+  function shownPageSpan() {
+    if (!look.pages) return null;
+    return pagesOf(editor.lines)[pageOfLine(editor.lines, editor.state.focus.line)];
+  }
+
+  // A note's lines are on the paper (a picked sketch holds the caret
+  // without a .line-row), not a card or the start prompt.
+  const pagesDrawn = () => look.pages && noteEl.querySelector(".line-row, [data-start]") !== null;
+
+  function updatePageBar() {
+    const shown = pagesDrawn() && !screen.freshPage();
+    document.documentElement.toggleAttribute("data-pages", Boolean(shown));
+    pageView.update(shown ? { index: pageOfLine(editor.lines, editor.state.focus.line), count: pagesOf(editor.lines).length } : null);
+  }
+
+  // ‹ and › and Ctrl PageUp / PageDown: the caret goes to the top of the
+  // page before or after, which draws that page.
+  function turnPage(step) {
+    if (!pagesDrawn()) return;
+    const pages = pagesOf(editor.lines);
+    const target = pages[pageOfLine(editor.lines, editor.state.focus.line) + step];
+    if (target) moveTo(target.start, 0);
+  }
+
+  // The setting switched: the caret's page, or every page, without a turn.
+  function redrawPages() {
+    if (!noteEl.querySelector(".line-row, [data-start]")) return;
+    pageView.forget();
+    render();
+  }
+
+  // A search inside notes opens on the page of the first match, without a
+  // turn (it is a new note opening, not a page turned).
+  function showSearchMatch(query) {
+    const line = lineOfSearch(editor.lines, query);
+    if (line === 0 || !noteShown()) return;
+    pageView.forget();
+    jumpToLine(line);
+  }
+
+  document.addEventListener("keydown", (event) => {
+    const isTurn =
+      (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey &&
+      (event.key === "PageUp" || event.key === "PageDown");
+    if (!isTurn || !pagesDrawn() || event.target.closest?.("input, textarea")) return;
+    event.preventDefault();
+    turnPage(event.key === "PageUp" ? -1 : 1);
+  });
 
   // --- The table of contents (#107) ------------------------------------------
   const contentsView = createContentsView({ onJump: jumpToHeading });
@@ -1857,6 +1962,10 @@ async function start() {
   // heading in a narrow sidebar.
   function jumpToHeading(line) {
     contentsView.close();
+    jumpToLine(line);
+  }
+
+  function jumpToLine(line) {
     moveTo(line, 0);
     const row = focusedEl?.closest(".line-row");
     if (!row) return;
@@ -1934,11 +2043,13 @@ async function start() {
     noteMeta.update();
     noteEl.replaceChildren(startPrompt({ onNew: () => openingFlow.newNoteForPage() }));
     updateContents();
+    updatePageBar();
   }
 
   function showPermissionCard() {
     noteEl.replaceChildren(pageCard({ onAllow: () => openingFlow.allow(), onDecline: () => openingFlow.decline() }));
     updateContents();
+    updatePageBar();
   }
 
   // The welcome (#85, #90): a pixel-art scene, the greeting, three lines with

@@ -59,6 +59,8 @@ Decided in a grilling on 2026-10-13. For the user and a few people they know; no
 4. **Clipping**: highlighted text on a web page, by right-click "Clip to Glacier" or a shortcut, lands at the end of the open note as a quote with its source link (or starts the page's note)
 5. **Sketch blocks**: insert with + or `/sketch`, then drag circles, triangles, rectangles, squares, arrows, lines and free text into a drawing area inside a note. Hand-drawn by default, switchable to clean per sketch; no freehand pen. Saved as `.svg` next to the note ([ADR 0007](adr/0007-sketch-blocks-as-svg-files.md))
 
+Also asked for on the way: a table of contents (#107), and **notes as pages** (#108): `%%page%%` lines (or `/page`) split a note into pages, each as long as its text; with "Notes as pages" on in settings one page shows at a time, turned with ‹ › or Ctrl PageUp / PageDown and a pixel-art page flip. The note stays one file.
+
 Also: the open polish and the user's brother's feedback, as they come (bugs first).
 
 ## Later (maybe never)

@@ -200,7 +200,9 @@ export function readLook(saved) {
   const textSize = Number.isFinite(size)
     ? Math.min(TEXT_SIZE.max, Math.max(TEXT_SIZE.min, Math.round(size)))
     : TEXT_SIZE.standard;
-  return { paper, font, textSize };
+  // "Notes as pages" (#108): one page at a time, off until chosen.
+  const pages = saved?.pages === true;
+  return { paper, font, textSize, pages };
 }
 
 // Everything the panel needs to draw a look. The row height is whole pixels
