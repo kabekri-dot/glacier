@@ -46,7 +46,7 @@ import { createSyncBoxView } from "./sync-box-view.js";
 import { createBackBox, createNewMenu, createNoteMenu } from "./pill-menus.js";
 import { createNoteMetaView } from "./note-meta-view.js";
 import { createSketchView } from "./sketch-view.js";
-import { passcodeCard, NO_RECOVERY } from "./secret-view.js";
+import { createSecrets } from "./secret-view.js";
 import { pageCard, panelsCard, startPrompt } from "./cards.js";
 import { WELCOME_GREETING, WELCOME_LINES, WELCOME_TIP, welcomeShown } from "../src/guidance.mjs";
 import { drawBesideFrames } from "./beside-frames.js";
@@ -75,7 +75,6 @@ const DRAFT_HINT = "Just start writing.";
 const NEW_SKETCH_ROWS = 5;
 
 // Secret notes lock again after this long without typing (#109).
-const LOCK_AFTER_MS = 10 * 60 * 1000;
 
 // The formatting shortcuts (#44): Ctrl (Cmd on a Mac) plus these keys. Ctrl+K
 // is kept free for search.
@@ -267,7 +266,7 @@ async function start() {
     onChange: (body) => {
       draw(screen.edit(body));
       autoSync.changed();
-      keepUnlocked();
+      secrets.keepUnlocked();
     },
     titles: () => notebook.notes().map((note) => note.title),
     extractNote: (text) => screen.extract(text),
@@ -299,7 +298,7 @@ async function start() {
     notebook,
     screen,
     notice: (text) => showNotice(text),
-    unlockFirst: (title) => (notebook.isLocked(title) ? askPasscode("Type your Glacier passcode to print or download it") : Promise.resolve(true)),
+    unlockFirst: (title) => (notebook.isLocked(title) ? secrets.askPasscode("Type your Glacier passcode to print or download it") : Promise.resolve(true)),
   });
 
   // The ▾ menu (#12), drawn by sidebar/menu-view.js, and the actions on notes,
@@ -440,136 +439,19 @@ async function start() {
     backlinksButtonEl.setAttribute("aria-expanded", String(opening));
   });
 
-  // --- Secret notes (#109, ADR 0012) ----------------------------------------
-  //
-  // A locked secret note shows one passcode field on the paper instead of
-  // its text. The passcode opens every secret note until the sidebar closes
-  // or 10 minutes pass without typing; then they lock again. Which notes are
-  // secret and whether a passcode is right is the Notebook's.
-
-  let lockTimer = null;
-
-  function keepUnlocked() {
-    clearTimeout(lockTimer);
-    if (notebook.isUnlocked()) lockTimer = setTimeout(lockSecrets, LOCK_AFTER_MS);
-  }
-
-  function lockSecrets() {
-    screen.flush();
-    notebook.lock();
-    if (screen.note()?.secret) draw(screen.reopen());
-  }
-
-  function lockedOnScreen() {
-    const note = screen.note();
-    return Boolean(note && notebook.isLocked(note.title));
-  }
-
-  // A card on the paper in place of the note, its field focused.
-  function showCard(card) {
-    noteEl.replaceChildren(card);
+  // --- Secret notes (#109, ADR 0012): sidebar/secret-view.js --------------
+  const secrets = createSecrets({
+    notebook,
+    screen,
+    noteEl,
+    draw,
+    render,
+    showNotice,
+    settingsOpen: () => panels.settingsOpen(),
     // A card is no page: the ‹ 1 of 3 › bar goes while it shows.
-    updatePageBar();
-    if (!panels.settingsOpen()) card.querySelector("input").focus();
-  }
-
-  // The paper of a locked secret note: one field, and the note opens.
-  function showUnlockCard() {
-    const title = screen.note().title;
-    showCard(
-      passcodeCard({
-        heading: "This note is secret",
-        lines: ["Type your Glacier passcode to read it."],
-        submitLabel: "Open",
-        onSubmit: async (passcode) => {
-          if (!(await notebook.unlock(passcode)) || notebook.isLocked(title)) return "That passcode doesn't open this note.";
-          keepUnlocked();
-          if (screen.note()?.title === title) draw(screen.reopen());
-          return null;
-        },
-      }),
-    );
-  }
-
-  // Put back what the paper showed before a passcode card.
-  function restorePaper(wasLocked) {
-    if (wasLocked && screen.note()) draw(screen.reopen());
-    else if (screen.note() || screen.freshPage()) render();
-    else draw({ type: "followPage" });
-  }
-
-  // Ask for the passcode on the paper before something that needs the
-  // secret notes open. Resolves to true once they are, false on Cancel.
-  function askPasscode(heading) {
-    const wasLocked = lockedOnScreen();
-    screen.flush();
-    return new Promise((resolve) => {
-      const done = (opened) => {
-        restorePaper(wasLocked);
-        resolve(opened);
-      };
-      showCard(
-        passcodeCard({
-          heading,
-          submitLabel: "Open",
-          onSubmit: async (passcode) => {
-            if (!(await notebook.unlock(passcode))) return "That isn't your Glacier passcode.";
-            keepUnlocked();
-            done(true);
-            return null;
-          },
-          onCancel: () => done(false),
-        }),
-      );
-    });
-  }
-
-  // The first secret note: choose the passcode, typed twice, after the line
-  // that says it can't be recovered.
-  function choosePasscode() {
-    screen.flush();
-    return new Promise((resolve) => {
-      const done = (chosen) => {
-        restorePaper(false);
-        resolve(chosen);
-      };
-      showCard(
-        passcodeCard({
-          heading: "Choose your Glacier passcode",
-          lines: ["One passcode opens all your secret notes.", NO_RECOVERY],
-          twice: true,
-          submitLabel: "Make secret",
-          onSubmit: async (passcode) => {
-            await notebook.setPasscode(passcode);
-            done(true);
-            return null;
-          },
-          onCancel: () => done(false),
-        }),
-      );
-    });
-  }
-
-  async function makeSecret() {
-    if (!notebook.hasPasscode()) {
-      if (!(await choosePasscode())) return;
-    } else if (!notebook.isUnlocked() && !(await askPasscode("Type your Glacier passcode"))) {
-      return;
-    }
-    const view = await screen.makeSecret();
-    if (!view) return;
-    draw(view);
-    keepUnlocked();
-    showNotice("This note is secret now.");
-  }
-
-  async function makeNotSecret() {
-    if (lockedOnScreen() && !(await askPasscode("Type your Glacier passcode"))) return;
-    const view = await screen.makeNotSecret();
-    if (!view) return;
-    draw(view);
-    showNotice("This note is not secret any more.");
-  }
+    onCard: () => updatePageBar(),
+    onChanged: () => autoSync.changed(),
+  });
 
   // --- The pill and its menu (#12) -------------------------------------------
   //
@@ -661,8 +543,8 @@ async function start() {
     screen,
     onAction: (kind) => {
       if (kind === "extract") extractSelection();
-      else if (kind === "secret") makeSecret();
-      else if (kind === "notSecret") makeNotSecret();
+      else if (kind === "secret") secrets.makeSecret();
+      else if (kind === "notSecret") secrets.makeNotSecret();
       else if (kind === "pin" || kind === "unpin") setPinned(kind === "pin");
       else menuView.act("note", kind, { title: screen.note().title }, noteMenuButtonEl);
     },
@@ -857,16 +739,7 @@ async function start() {
     // Secret notes (#109): Change passcode in settings encrypts every secret
     // note again, and opens them.
     hasPasscode: async () => notebook.hasPasscode(),
-    async changePasscode(passcode, next) {
-      const wasLocked = lockedOnScreen();
-      screen.flush();
-      const result = await notebook.changePasscode(passcode, next);
-      if (!result.ok) return result;
-      keepUnlocked();
-      autoSync.changed();
-      if (wasLocked) draw(screen.reopen());
-      return result;
-    },
+    changePasscode: (passcode, next) => secrets.changePasscode(passcode, next),
   };
 
   // --- Settings (#18) and the Shortcuts panel (#20) -------------------------
@@ -1153,7 +1026,7 @@ async function start() {
     if (view.type === "renameLocked") {
       const wanted = input.value;
       stopTitleEdit();
-      if (!(await askPasscode("Type your Glacier passcode to rename it"))) return;
+      if (!(await secrets.askPasscode("Type your Glacier passcode to rename it"))) return;
       view = screen.rename(wanted);
       if (view.type === "titleRefused") {
         startTitleEdit();
@@ -2006,8 +1879,7 @@ async function start() {
   let itemNumbers = [];
   function render() {
     // A locked secret note shows the passcode card instead (#109).
-    if (lockedOnScreen()) {
-      showUnlockCard();
+    if (secrets.showIfLocked()) {
       updateContents();
       updatePageBar();
       return;
