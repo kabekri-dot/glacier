@@ -31,6 +31,7 @@ import { createEditorSession } from "../src/editor-session.mjs";
 import { readTabSettings } from "../src/tab-settings.mjs";
 import { readShortcutsPanel } from "../src/shortcuts-panel.mjs";
 import { headingsOf } from "../src/contents.mjs";
+import { isShortcut } from "../src/keys.mjs";
 import { pagesOf, pageOfLine, pageBreaks, lineOfSearch } from "../src/pages.mjs";
 import { createPageView } from "./page-view.js";
 import { createContentsView } from "./contents-view.js";
@@ -1220,7 +1221,7 @@ async function start() {
   document.addEventListener(
     "keydown",
     (event) => {
-      if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "k") {
+      if (isShortcut(event, "k")) {
         event.preventDefault();
         event.stopPropagation();
         menuView.open();
@@ -1888,9 +1889,7 @@ async function start() {
   // Ctrl+A anywhere else in the panel (after the whole note is selected, the
   // focus is on the page) keeps selecting the note, never the whole panel.
   document.addEventListener("keydown", (event) => {
-    const isSelectAll =
-      (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey &&
-      event.key.toLowerCase() === "a";
+    const isSelectAll = isShortcut(event, "a");
     if (!isSelectAll || event.defaultPrevented || !noteShown()) return;
     if (event.target.closest?.("input, textarea, [contenteditable='true']")) return;
     event.preventDefault();
@@ -1945,9 +1944,7 @@ async function start() {
   }
 
   document.addEventListener("keydown", (event) => {
-    const isExtract =
-      (event.ctrlKey || event.metaKey) && !event.altKey && event.shiftKey &&
-      event.key.toLowerCase() === "e";
+    const isExtract = isShortcut(event, "e", { shift: true });
     if (!isExtract || !noteShown()) return;
     event.preventDefault();
     if (!event.isComposing) extractSelection();
@@ -2155,9 +2152,7 @@ async function start() {
   }
 
   document.addEventListener("keydown", (event) => {
-    const isTurn =
-      (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey &&
-      (event.key === "PageUp" || event.key === "PageDown");
+    const isTurn = isShortcut(event, "PageUp") || isShortcut(event, "PageDown");
     if (!isTurn || !pagesDrawn() || event.target.closest?.("input, textarea")) return;
     event.preventDefault();
     turnPage(event.key === "PageUp" ? -1 : 1);
@@ -2204,9 +2199,7 @@ async function start() {
       contentsView.close();
       return;
     }
-    const isContents =
-      (event.ctrlKey || event.metaKey) && !event.altKey && event.shiftKey &&
-      event.key.toLowerCase() === "o";
+    const isContents = isShortcut(event, "o", { shift: true });
     if (!isContents || !noteShown()) return;
     event.preventDefault();
     toggleContents();
@@ -2357,8 +2350,7 @@ async function start() {
   }
 
   document.addEventListener("keydown", (event) => {
-    const isFind =
-      (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "f";
+    const isFind = isShortcut(event, "f");
     if (!isFind || !noteShown()) return;
     event.preventDefault();
     openFind();
