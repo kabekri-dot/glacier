@@ -11,6 +11,16 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Table of contents (#107)
+
+- [ ] In a note with no headings there is no ≡ tab on the left edge of the paper. Type `# First` on a line: the tab appears. Hover text: Contents.
+- [ ] Click the tab: a drawer slides in from the left with the headings in order, indented by level (# ## ###), in the note's font. Code blocks with a # line inside add nothing.
+- [ ] In a long note, click a heading: the paper scrolls so the heading sits near the top and the caret is at its start. The drawer stays open.
+- [ ] With the drawer open, type a new heading or change one: the list follows as you type. Delete the last heading: the tab and the drawer go away.
+- [ ] The drawer closes with a click on the paper, a click on the tab again, or Esc.
+- [ ] Ctrl Shift O (Cmd on a Mac) opens and closes the drawer. It is listed in the Shortcuts panel under Keys.
+- [ ] Do this in Chrome and Firefox, on a light and a dark paper.
+
 ### Montserrat, each font in its own lettering (asked for 2026-10-14)
 
 - [ ] Settings, Writing: every font is one line written in that font (Caveat looks like Caveat, and so on); Theme default shows the paper's font. The last one is Montserrat, a clean sans-serif.
