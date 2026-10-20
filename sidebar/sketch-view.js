@@ -89,7 +89,14 @@ function textWidth(text, size, fontFamily) {
   return Math.ceil(measurer.measureText(text).width) + 2;
 }
 
-// The dashed frame around a picked box and a small square on each handle.
+// A dashed frame between two corners, `pad` pixels wider on every side.
+function frameSvg(x1, y1, x2, y2, pad = 0) {
+  const x = Math.min(x1, x2) - pad;
+  const y = Math.min(y1, y2) - pad;
+  return `<rect x="${x}" y="${y}" width="${Math.abs(x2 - x1) + 2 * pad}" height="${Math.abs(y2 - y1) + 2 * pad}"/>`;
+}
+
+// The dashed frame around a picked shape and a small square on each handle.
 // With several shapes picked, each gets its frame and no handles.
 function pickSvg(shape, withHandles = true) {
   const marks = withHandles
@@ -97,8 +104,9 @@ function pickSvg(shape, withHandles = true) {
         .map(({ x, y }) => `<rect class="sketch-handle" x="${x - 3}" y="${y - 3}" width="6" height="6"/>`)
         .join("")
     : "";
-  if (isLine(shape)) return marks || `<rect x="${Math.min(shape.x1, shape.x2) - 3}" y="${Math.min(shape.y1, shape.y2) - 3}" width="${Math.abs(shape.x2 - shape.x1) + 6}" height="${Math.abs(shape.y2 - shape.y1) + 6}"/>`;
-  return `<rect x="${shape.x - 3}" y="${shape.y - 3}" width="${shape.w + 6}" height="${shape.h + 6}"/>${marks}`;
+  // A line with handles is drawn by them alone.
+  if (isLine(shape)) return marks || frameSvg(shape.x1, shape.y1, shape.x2, shape.y2, 3);
+  return frameSvg(shape.x, shape.y, shape.x + shape.w, shape.y + shape.h, 3) + marks;
 }
 
 export function createSketchView({ notebook, rowHeight, onSaved }) {
@@ -239,11 +247,7 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
       const shown = shapes.filter((_, i) => i !== typing?.index);
       shapesEl.innerHTML = shapesSvg(preview ? [...shown, preview] : shown, sketchLook(sketch), document.documentElement.hasAttribute("data-dark"));
       const frames = picked === key && !typing ? pickedShapes.filter((i) => shapes[i]).map((i) => pickSvg(shapes[i], pickedShapes.length === 1)) : [];
-      if (marquee) {
-        const x = Math.min(marquee.from.x, marquee.to.x);
-        const y = Math.min(marquee.from.y, marquee.to.y);
-        frames.push(`<rect x="${x}" y="${y}" width="${Math.abs(marquee.to.x - marquee.from.x)}" height="${Math.abs(marquee.to.y - marquee.from.y)}"/>`);
-      }
+      if (marquee) frames.push(frameSvg(marquee.from.x, marquee.from.y, marquee.to.x, marquee.to.y));
       pickEl.innerHTML = frames.join("");
     }
 
