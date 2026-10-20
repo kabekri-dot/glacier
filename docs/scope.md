@@ -63,6 +63,8 @@ Also: the open polish and the user's brother's feedback, as they come (bugs firs
 
 ## Later (maybe never)
 
+Each of these gets a grilling with the user before it becomes a ticket.
+
 - More layouts, added one at a time after using Zen for a few weeks. The prototype has all nine, grouped: Drawer (focus on writing); Course path, Breadcrumb, Home (always know where you are); Split, Index tabs, Icon rail (notebook in view); Bottom tabs, Note tabs (familiar app style)
 
 - More Themes (Dot Journal, Legal Pad)
@@ -73,3 +75,5 @@ Also: the open polish and the user's brother's feedback, as they come (bugs firs
 - Tags
 - Flashcards / spaced repetition
 - Graph view
+- Pictures in notes (pasting a screenshot; synced as files next to the note, like sketches)
+- Tables
