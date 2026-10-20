@@ -250,11 +250,28 @@ test("↓ from the bottom of a block moves to the start of the line below", () =
   assert.deepEqual(editor.state.focus, { line: 1, col: 0 });
 });
 
-test("↓ from the last line of the note does nothing", () => {
+test("↓ from the last line of the note goes on to the empty paper below", () => {
   const editor = createEditorSession();
   editor.load("only");
   editor.moveTo(0, 2);
-  assert.equal(editor.moveDown("only", 2), false);
+  assert.equal(editor.moveDown("only", 2), true);
+  assert.deepEqual(editor.state.lines, ["only", ""]);
+  assert.deepEqual(editor.state.focus, { line: 1, col: 0 });
+  assert.equal(editor.moveDown("", 0), true);
+  assert.deepEqual(editor.state.focus, { line: 2, col: 0 });
+});
+
+test("↓ onto the paper and back up without typing saves no empty lines", () => {
+  const changes = [];
+  const editor = createEditorSession({ onChange: (body) => changes.push(body) });
+  editor.load("only");
+  editor.moveTo(0, 2);
+  editor.moveDown("only", 2);
+  editor.moveDown("", 0);
+  editor.moveUp("", 0);
+  editor.moveUp("", 0);
+  assert.deepEqual(editor.state.lines, ["only"]);
+  assert.deepEqual(changes, []);
 });
 
 // Paste: a multi-line paste lands in the textarea as one value and reflows into

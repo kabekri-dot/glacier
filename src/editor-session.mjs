@@ -160,6 +160,16 @@ export function createEditorSession({
     }
   }
 
+  // A click on the bare paper, `rowsBelow` ruled rows under the last line
+  // (0 = the first row below it): add empty lines down to that row and put
+  // the caret there, so the text lands where the click did (#35).
+  function clickPaper(rowsBelow) {
+    if (padStart === null) padStart = lines.length;
+    for (let i = 0; i <= rowsBelow; i += 1) lines.push("");
+    focus = { line: lines.length - 1, col: 0 };
+    relayout();
+  }
+
   // Report a text change as the body the sidebar should save.
   function notifyChange() {
     if (onChange) onChange(editorTextToBody(linesToText(lines)));
@@ -406,15 +416,7 @@ export function createEditorSession({
 
     moveTo,
 
-    // A click on the bare paper, `rowsBelow` ruled rows under the last line
-    // (0 = the first row below it): add empty lines down to that row and put
-    // the caret there, so the text lands where the click did (#35).
-    clickPaper(rowsBelow) {
-      if (padStart === null) padStart = lines.length;
-      for (let i = 0; i <= rowsBelow; i += 1) lines.push("");
-      focus = { line: lines.length - 1, col: 0 };
-      relayout();
-    },
+    clickPaper,
 
     // A click the sidebar located in a drawn line, as the rendered-text offset
     // the click fell on (#33). The sidebar finds the position; the session
@@ -756,14 +758,15 @@ export function createEditorSession({
     },
 
     // ↓ from the bottom line of the block: move to the start of the line below.
+    // From the note's last line it goes on to the empty paper below, like a
+    // click there: the added line is dropped again if nothing is typed on it.
     moveDown(value, selStart) {
       const lastBreak = value.lastIndexOf("\n");
       const lastLine = blockStart + blockCount - 1;
-      if (selStart > lastBreak && lastLine < lines.length - 1) {
-        moveTo(lastLine + 1, 0);
-        return true;
-      }
-      return false;
+      if (selStart <= lastBreak) return false;
+      if (lastLine < lines.length - 1) moveTo(lastLine + 1, 0);
+      else clickPaper(0);
+      return true;
     },
 
     // Copying a selection (#7): the Markdown between two selection edges (see
