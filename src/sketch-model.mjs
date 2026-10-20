@@ -360,6 +360,8 @@ const SECOND_PASS = 1.6;
 
 const between = (random, least, most) => least + random() * (most - least);
 
+const secondPassShift = (random) => ({ x: between(random, -SECOND_PASS, SECOND_PASS), y: between(random, -SECOND_PASS, SECOND_PASS) });
+
 // One pen stroke from a to b: it runs a little past both ends and bows
 // gently to one side. `random` gives numbers from 0 to 1.
 function strokePath(a, b, random) {
@@ -381,7 +383,7 @@ function strokePath(a, b, random) {
 // shifted a little and wobbles on its own, as if traced over once.
 function sketchedPath(points, closed, random) {
   const sides = closed ? points.map((point, i) => [point, points[(i + 1) % points.length]]) : points.slice(1).map((point, i) => [points[i], point]);
-  const shift = { x: between(random, -SECOND_PASS, SECOND_PASS), y: between(random, -SECOND_PASS, SECOND_PASS) };
+  const shift = secondPassShift(random);
   const moved = (point) => ({ x: point.x + shift.x, y: point.y + shift.y });
   const first = sides.map(([a, b]) => strokePath(a, b, random));
   const second = sides.map(([a, b]) => strokePath(moved(a), moved(b), random));
@@ -419,7 +421,7 @@ function circleStroke({ x, y, w, h }, random, start, sweep, offset) {
 function sketchedCircle(box, random) {
   const start = random() * 2 * Math.PI;
   const first = circleStroke(box, random, start, 2 * Math.PI + 0.12, { x: 0, y: 0 });
-  const shift = { x: between(random, -SECOND_PASS, SECOND_PASS), y: between(random, -SECOND_PASS, SECOND_PASS) };
+  const shift = secondPassShift(random);
   const second = circleStroke(box, random, start + between(random, 0.5, 1.2), 2 * Math.PI - 0.15, shift);
   return `<path d="${first} ${second}"/>`;
 }
