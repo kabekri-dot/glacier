@@ -1,0 +1,535 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Clickable prototype of the new Settings (grilled with the user on 2026-10-21).
+     The chosen versions are G+D+F (inside the sidebar) and H+D+F (beside the
+     sidebar); the others are kept for comparison. Decisions: docs/scope.md, "Next" item 2. -->
+<title>Glacier Settings</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap">
+<style>
+/* Layout: a version picker beside one life-size Glacier sidebar showing Settings.
+   Single light look on purpose: it shows Glacier's Glacier paper as it is in the extension. */
+:root {
+  color-scheme: light;
+  --desk: #dfe8f3;
+  --paper: #eef4fb;
+  --top: #dcebfb;
+  --rule: #c7dcf2;
+  --ink: #1b2a4a;
+  --soft: #5b6b88;
+  --faint: #9aabc4;
+  --accent: #3f78c4;
+  --card: #fbfdff;
+  --ui: "Montserrat", "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { background: var(--desk); color: var(--ink); font-family: var(--ui); padding-inline: 16px; padding-block: 24px; }
+.wrap { display: flex; gap: 32px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+.side { flex: 1 1 280px; max-width: 380px; min-width: 0; display: grid; gap: 14px; }
+h1 { font-size: 1.35rem; margin: 0; }
+.side p { margin: 0; line-height: 1.5; color: var(--soft); font-size: 0.92rem; }
+.picker { display: grid; gap: 6px; }
+.picker-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--soft); margin-top: 6px; }
+.chip { display: flex; gap: 10px; align-items: baseline; text-align: left; width: 100%; border: 1px solid var(--rule); background: var(--card); color: var(--ink); border-radius: 10px; padding: 8px 12px; font: inherit; font-size: 0.88rem; cursor: pointer; }
+.chip b { min-width: 2.6em; color: var(--accent); }
+.chip[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.about { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 12px 14px; display: grid; gap: 6px; }
+.about h2 { font-size: 1rem; margin: 0; }
+.about .tag { font-size: 0.75rem; color: var(--accent); font-weight: 700; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* The sidebar with Settings open */
+.frame { position: relative; width: 380px; max-width: 100%; height: 700px; border-radius: 14px; overflow: hidden; background: var(--paper); box-shadow: 0 10px 30px rgba(27, 42, 74, 0.18); border: 1px solid var(--rule); display: flex; flex-direction: column; }
+.head { display: flex; align-items: center; gap: 8px; padding: 14px 16px 10px; background: linear-gradient(var(--top), var(--paper)); }
+.head h2 { margin: 0; font-size: 1.05rem; flex: 1; }
+.x { border: 0; background: none; font-size: 1.2rem; color: var(--soft); cursor: pointer; padding: 2px 8px; border-radius: 8px; }
+.x:hover { background: var(--card); color: var(--ink); }
+.body { flex: 1; overflow: auto; padding: 4px 16px 20px; display: grid; gap: 14px; align-content: start; }
+.tabs { display: flex; gap: 4px; padding: 0 12px 8px; }
+.tab { flex: 1; border: 1px solid var(--rule); background: var(--card); color: var(--soft); font: inherit; font-size: 0.85rem; font-weight: 600; padding: 7px 4px; border-radius: 999px; cursor: pointer; display: inline-flex; justify-content: center; gap: 6px; align-items: center; }
+.tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tab .px { width: 12px; height: 12px; }
+.group { display: grid; gap: 8px; }
+.group h3 { margin: 0; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--soft); display: flex; align-items: center; gap: 6px; }
+.group h3 .px { width: 12px; height: 12px; color: var(--accent); }
+.group .why { margin: -4px 0 0; font-size: 0.78rem; color: var(--soft); line-height: 1.4; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 0.88rem; min-height: 32px; }
+.row label { flex: 1; min-width: 0; }
+.row small { display: block; color: var(--soft); font-size: 0.75rem; }
+.toggle { appearance: none; width: 36px; height: 20px; border-radius: 999px; background: var(--rule); position: relative; cursor: pointer; flex: none; transition: background 120ms; }
+.toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 120ms; }
+.toggle:checked { background: var(--accent); }
+.toggle:checked::after { transform: translateX(16px); }
+.swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.swatch { border: 2px solid transparent; border-radius: 10px; padding: 0; background: none; cursor: pointer; font: inherit; font-size: 0.72rem; color: var(--ink); display: grid; gap: 3px; }
+.swatch span:first-child { height: 34px; border-radius: 8px; border: 1px solid var(--rule); background-image: repeating-linear-gradient(transparent 0 7px, rgba(27, 42, 74, 0.12) 7px 8px); }
+.swatch[aria-pressed="true"] { border-color: var(--accent); }
+select, .field { font: inherit; font-size: 0.85rem; padding: 6px 8px; border: 1px solid var(--rule); border-radius: 8px; background: var(--card); color: var(--ink); }
+.size { display: flex; align-items: center; gap: 8px; }
+.size button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--rule); background: var(--card); cursor: pointer; font: inherit; }
+.choice { display: grid; gap: 6px; }
+.opt { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--rule); background: var(--card); border-radius: 10px; padding: 8px 10px; cursor: pointer; font-size: 0.85rem; }
+.opt input { margin-top: 3px; accent-color: var(--accent); }
+.opt small { display: block; color: var(--soft); font-size: 0.75rem; line-height: 1.35; }
+.opt.on { border-color: var(--accent); }
+.btn { border: 1px solid var(--rule); background: var(--card); color: var(--ink); font: inherit; font-size: 0.85rem; padding: 8px 10px; border-radius: 8px; cursor: pointer; text-align: left; display: flex; gap: 8px; align-items: center; }
+.btn:hover { border-color: var(--accent); }
+.btn .px { width: 14px; height: 14px; color: var(--accent); flex: none; }
+.btn small { display: block; color: var(--soft); font-size: 0.74rem; }
+.sep { height: 1px; background: var(--rule); }
+.version { font-size: 0.75rem; color: var(--faint); }
+
+/* C: list that opens a screen */
+.nav { display: grid; gap: 6px; }
+.nav-row { display: flex; gap: 12px; align-items: center; border: 1px solid var(--rule); background: var(--card); border-radius: 12px; padding: 10px 12px; cursor: pointer; font: inherit; color: var(--ink); text-align: left; }
+.nav-row:hover { border-color: var(--accent); }
+.nav-row .px { width: 20px; height: 20px; color: var(--accent); flex: none; }
+.nav-row b { display: block; font-size: 0.9rem; }
+.nav-row small { display: block; color: var(--soft); font-size: 0.75rem; margin-top: 2px; }
+.nav-row .go { margin-left: auto; color: var(--faint); }
+.back { border: 0; background: none; color: var(--accent); font: inherit; font-size: 0.85rem; cursor: pointer; padding: 0; text-align: left; }
+
+/* D: search and the quick settings */
+.search { width: 100%; font: inherit; font-size: 0.88rem; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 10px; background: var(--card); color: var(--ink); }
+.quick { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 10px 12px; display: grid; gap: 10px; }
+details.more { border-top: 1px solid var(--rule); padding-top: 8px; }
+details.more summary { cursor: pointer; font-size: 0.85rem; color: var(--soft); padding: 4px 0; }
+details.more[open] summary { margin-bottom: 8px; }
+.hit { font-size: 0.8rem; color: var(--soft); }
+
+/* E: tiles */
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tile { display: grid; justify-items: center; gap: 6px; border: 1px solid var(--rule); background: var(--card); border-radius: 12px; padding: 12px 4px 10px; cursor: pointer; font: inherit; font-size: 0.75rem; color: var(--ink); }
+.tile .px { width: 26px; height: 26px; color: var(--accent); }
+.tile[aria-expanded="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.tile-open { grid-column: 1 / -1; background: var(--card); border: 1px solid var(--accent); border-radius: 12px; padding: 12px; display: grid; gap: 12px; }
+
+/* F: settings beside the paper preview */
+.preview { border: 1px solid var(--rule); border-radius: 12px; height: 120px; padding: 10px 12px; font-size: 0.95rem; line-height: 24px; background-image: repeating-linear-gradient(transparent 0 23px, var(--rule) 23px 24px); background-color: var(--pv-paper, var(--paper)); color: var(--pv-ink, var(--ink)); overflow: hidden; }
+.preview strong { display: block; }
+
+/* G: icon rail */
+.railwrap { display: flex; gap: 10px; align-items: flex-start; }
+.rail { display: grid; gap: 4px; flex: none; width: 64px; }
+.rail-btn { display: grid; justify-items: center; gap: 3px; border: 1px solid transparent; background: none; border-radius: 10px; padding: 7px 2px; cursor: pointer; font: inherit; font-size: 0.62rem; color: var(--soft); }
+.rail-btn .px { width: 18px; height: 18px; color: var(--accent); }
+.rail-btn[aria-current="true"] { background: var(--card); border-color: var(--accent); color: var(--ink); }
+.rail-body { flex: 1; min-width: 0; display: grid; gap: 14px; }
+.rail-title { margin: 4px 0 0; font-size: 0.95rem; }
+/* H: one open at a time */
+.acc { border: 1px solid var(--rule); background: var(--card); border-radius: 12px; }
+.acc.open { border-color: var(--accent); }
+.acc-head { display: flex; gap: 12px; align-items: center; width: 100%; border: 0; background: none; padding: 10px 12px; cursor: pointer; font: inherit; color: var(--ink); text-align: left; }
+.acc-head .px { width: 18px; height: 18px; color: var(--accent); flex: none; }
+.acc-head b { display: block; font-size: 0.9rem; }
+.acc-head small { display: block; color: var(--soft); font-size: 0.75rem; margin-top: 2px; }
+.acc-head .go { margin-left: auto; color: var(--faint); }
+.acc-body { padding: 0 12px 12px; display: grid; gap: 14px; }
+/* Settings closed: the paper and the round glacier button with a gear */
+.closed { position: absolute; inset: 0; z-index: 20; background: var(--paper); background-image: repeating-linear-gradient(transparent 0 31px, var(--rule) 31px 32px); }
+.closed-paper { padding: 64px 22px 0 30px; line-height: 32px; font-size: 1rem; }
+.glacier-btn { position: absolute; right: 14px; bottom: 14px; width: 56px; height: 56px; padding: 0; border-radius: 50%; border: 2px solid var(--card); overflow: visible; cursor: pointer; background: none; box-shadow: 0 3px 10px rgba(27, 42, 74, 0.25); }
+.glacier-btn .mountain { width: 100%; height: 100%; border-radius: 50%; display: block; }
+.gear-badge { position: absolute; right: -4px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: var(--card); border: 1px solid var(--rule); display: grid; place-items: center; color: var(--ink); }
+.gear-badge .px { width: 14px; height: 14px; }
+.glacier-btn:hover .gear-badge { border-color: var(--accent); }
+/* The preview stays in view while the settings scroll under it. */
+.sticky { position: sticky; top: -4px; z-index: 2; background: var(--paper); padding-bottom: 6px; }
+/* J: on the paper */
+.paperview { position: relative; display: grid; gap: 12px; }
+.look-btn { position: absolute; top: 8px; right: 8px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--rule); background: var(--card); font: inherit; font-weight: 700; color: var(--accent); cursor: pointer; box-shadow: 0 2px 6px rgba(27, 42, 74, 0.12); }
+.look-pop { background: var(--card); border: 1px solid var(--accent); border-radius: 12px; padding: 12px; display: grid; gap: 12px; }
+
+.px { shape-rendering: crispEdges; }
+.notice { position: absolute; left: 12px; bottom: 14px; right: 12px; background: var(--ink); color: var(--paper); border-radius: 10px; padding: 9px 12px; font-size: 0.8rem; }
+@media (prefers-reduced-motion: reduce) { .toggle, .toggle::after { transition: none; } }
+</style>
+
+<div class="wrap">
+  <div class="side">
+    <h1>Glacier settings</h1>
+    <p>Each version holds the same settings. Pick one, then try it on the right: the switches, the paper and the buttons work a little; nothing is saved.</p>
+    <div class="picker" id="picker" role="group" aria-label="Versions of Settings"></div>
+    <div class="about" id="about" aria-live="polite"></div>
+    <button class="chip" type="button" data-show-closed><span>Close Settings to see the round button with its gear</span></button>
+    <div class="about">
+      <span class="tag">For the two new mixes</span>
+      <div class="picker" role="group" aria-label="Where Settings opens">
+        <button class="chip" type="button" data-place="inside" aria-pressed="true"><span>Settings covers the paper (inside the sidebar)</span></button>
+        <button class="chip" type="button" data-place="beside" aria-pressed="false"><span>Settings opens beside the sidebar</span></button>
+      </div>
+    </div>
+  </div>
+  <div class="frame" id="frame">
+    <div class="closed" id="closed" hidden>
+      <div class="closed-paper"><b># Flexbox basics</b><br>justify-content moves items along the row.<br>align-items moves them across it.</div>
+      <button class="glacier-btn" id="openSettings" type="button" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 16 16" class="mountain" aria-hidden="true" shape-rendering="crispEdges">
+          <rect width="16" height="16" fill="#bcd8f5"/><rect y="11" width="16" height="5" fill="#3f78c4"/>
+          <rect x="7" y="4" width="2" height="1" fill="#fff"/><rect x="6" y="5" width="4" height="1" fill="#fff"/><rect x="5" y="6" width="6" height="1" fill="#fff"/>
+          <rect x="4" y="7" width="8" height="1" fill="#e8f2fc"/><rect x="3" y="8" width="10" height="1" fill="#d5e6f8"/><rect x="2" y="9" width="12" height="2" fill="#cfe1f6"/>
+          <rect x="3" y="13" width="3" height="1" fill="#fff"/><rect x="10" y="12" width="2" height="1" fill="#fff"/>
+        </svg>
+        <span class="gear-badge"></span>
+      </button>
+    </div>
+    <div class="head"><h2 id="headTitle">Settings</h2><button class="x" id="closeSettings" type="button" aria-label="Close settings">×</button></div>
+    <div id="tabs"></div>
+    <div class="body" id="body"></div>
+    <div id="noticeBox"></div>
+  </div>
+</div>
+
+<script>
+const ICONS = {
+  paper: ["#####...", "#...##..", "#....##.", "#.....##", "#......#", "#.####.#", "#......#", "########"],
+  pen: ["......##", ".....###", "....###.", "...###..", "..###...", ".###....", "##......", "#......."],
+  tabs: ["........", "###.###.", "#.#.#.#.", "########", "#......#", "#......#", "#......#", "########"],
+  folder: ["........", "###.....", "#..#####", "#......#", "#......#", "#......#", "########", "........"],
+  lock: ["..####..", ".#....#.", ".#....#.", "########", "#......#", "#..##..#", "#......#", "########"],
+  down: ["...##...", "...##...", "...##...", ".######.", "..####..", "...##...", "#......#", "########"],
+  keys: ["........", "########", "#.#.#.##", "##.#.#.#", "#.####.#", "########", "........", "........"],
+  help: ["..####..", ".#....#.", "......#.", ".....#..", "....#...", "....#...", "........", "....#..."],
+  panel: ["########", "#....#.#", "#....#.#", "#....#.#", "#....#.#", "#....#.#", "#....#.#", "########"],
+  gear: ["...##...", ".#.##.#.", "..####..", "###..###", "###..###", "..####..", ".#.##.#.", "...##..."],
+  eye: ["........", "..####..", ".#....#.", "#..##..#", "#..##..#", ".#....#.", "..####..", "........"],
+  cloud: ["........", "...##...", "..#..#..", ".#....##", "#.......#", "#......#", ".######.", "........"],
+};
+function icon(name) {
+  let rects = "";
+  ICONS[name].forEach((row, y) => [...row].forEach((c, x) => { if (c === "#" && x < 8) rects += `<rect x="${x}" y="${y}" width="1" height="1"/>`; }));
+  return `<svg class="px" viewBox="0 0 8 8" fill="currentColor" aria-hidden="true">${rects}</svg>`;
+}
+
+const PAPERS = [
+  ["Glacier", "#eef4fb", "#1b2a4a"], ["Forest", "#eff4ea", "#1f3b2a"], ["Ocean", "#edf6f8", "#173c47"],
+  ["Desert", "#f8f1e4", "#4a3320"], ["Volcano", "#f6ece9", "#3e1f1a"], ["Aurora", "#eeedf8", "#2a2550"],
+];
+const HOMES = [
+  ["browser", "Only in this browser", "Nothing leaves this browser."],
+  ["folder", "In a folder on this computer", "One file per note. Obsidian can open the same folder."],
+  ["drive", "In Google Drive", "In a Glacier folder in your Drive. Glacier only sees its own files."],
+  ["github", "On GitHub", "In a private repo of yours, so Chrome and Firefox share your notes."],
+];
+const state = {
+  variant: "gdf", tab: "look", screen: null, open: null, query: "",
+  paper: "Glacier", font: "Theme default", size: 100, pages: true, endPage: true,
+  follow: "tab", nonWeb: "keep", home: "folder", nextTo: true, place: "inside",
+};
+const $ = (id) => document.getElementById(id);
+
+// The settings, each a small piece that every version reuses.
+const PIECES = {
+  paper: () => `<div class="group"><h3>${icon("paper")}Paper</h3>
+    <div class="swatches">${PAPERS.map(([n, bg]) => `<button class="swatch" type="button" data-paper="${n}" aria-pressed="${state.paper === n}"><span style="background-color:${bg}"></span><span>${n}</span></button>`).join("")}</div></div>`,
+  font: () => `<div class="group"><h3>${icon("pen")}Font and size</h3>
+    <div class="row"><label for="font">Font</label><select id="font" data-set="font">${[["Theme default", "The paper's own font"], ["Shantell Sans", "Shantell Sans"], ["Patrick Hand", "Patrick Hand"], ["Caveat", "Caveat"], ["Kalam", "Kalam"], ["Architects Daughter", "Architects Daughter"]].map(([v, l]) => `<option value="${v}" ${v === state.font ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+    <div class="row"><span>Text size</span><span class="size"><button type="button" data-size="-10" aria-label="Smaller text">A−</button><span>${state.size} %</span><button type="button" data-size="10" aria-label="Bigger text">A+</button></span></div></div>`,
+  writing: () => `<div class="group">
+    <div class="row"><label for="pages">Split long notes into pages<small>Turn them like a notebook</small></label><input class="toggle" type="checkbox" id="pages" data-set="pages" ${state.pages ? "checked" : ""}></div>
+    <div class="row"><label for="endPage">Show the New page button<small>At the end of a note that has one page</small></label><input class="toggle" type="checkbox" id="endPage" data-set="endPage" ${state.endPage ? "checked" : ""}></div></div>`,
+  tabs: () => `<div class="group">
+    <div class="row"><span>When you go to another website, Glacier</span></div>
+    <div class="choice">${opt("follow", "tab", "opens the note for that website")}${opt("follow", "mine", "keeps your note open")}</div>
+    <div class="row"><span>On a new tab, Glacier</span></div>
+    <div class="choice">${opt("nonWeb", "keep", "keeps your note open")}${opt("nonWeb", "empty", "starts a new note")}</div></div>`,
+  home: () => `<div class="group">
+    <div class="choice">${HOMES.map(([v, l, s]) => opt("home", v, l, s)).join("")}</div>
+    <div class="row"><span class="version">Last synced just now</span><button class="btn" type="button" data-say="Synced.">Sync now</button></div></div>`,
+  backup: () => `<div class="group">
+    <button class="btn" type="button" data-say="Would download every note as a zip.">${icon("down")}<span>Download all notes<small>Archived ones too, as a zip of Markdown files</small></span></button>
+    <button class="btn" type="button" data-say="Would ask for a zip file.">${icon("folder")}<span>Restore notes from a download<small>Notes you already have are never overwritten</small></span></button></div>`,
+  secret: () => `<div class="group">
+    <p class="why">Secret notes are locked with your passcode. Nobody can open them without it, not even you if you forget it.</p>
+    <button class="btn" type="button" data-say="Would ask for the current and the new passcode.">${icon("lock")}<span>Change passcode</span></button></div>`,
+  panels: () => `<div class="group"><h3>${icon("panel")}Where Settings opens</h3>
+    <div class="row"><label for="nextTo">Next to the sidebar<small>When the page has room. Otherwise it opens inside.</small></label><input class="toggle" type="checkbox" id="nextTo" data-set="nextTo" ${state.nextTo ? "checked" : ""}></div></div>`,
+  glacier: () => `<div class="group"><h3>${icon("help")}Help</h3>
+    <button class="btn" type="button" data-say="Would open the Keyboard shortcuts.">${icon("keys")}<span>Keyboard shortcuts</span></button>
+    <button class="btn" type="button" data-say="Would open the help page.">${icon("help")}<span>Common questions</span></button>
+    <span class="version">Glacier 2.4.0</span></div>`,
+};
+function opt(key, value, label, sub = "") {
+  const on = state[key] === value;
+  return `<label class="opt ${on ? "on" : ""}"><input type="radio" name="${key}" data-set="${key}" value="${value}" ${on ? "checked" : ""}><span>${label}${sub ? `<small>${sub}</small>` : ""}</span></label>`;
+}
+const many = (...names) => names.map((n) => PIECES[n]()).join("");
+
+const SUMMARY = {
+  look: () => `${state.paper} paper, ${state.font === "Theme default" ? "its own font" : state.font}, text ${state.size} %`,
+  writing: () => (state.pages ? "Long notes split into pages" : "Notes in one long page"),
+  tabs: () => (state.follow === "tab" ? "Opens the note for each website" : "Keeps your note open"),
+  home: () => HOMES.find(([v]) => v === state.home)[1],
+  backup: () => "Download all notes or restore them",
+  secret: () => "Change your passcode",
+  glacier: () => "Keyboard shortcuts and common questions",
+};
+// [id, name, icon, settings, short name for the icon rail]
+const SCREENS = [
+  ["look", "How your notes look", "paper", () => many("paper", "font"), "Look"],
+  ["writing", "Pages", "pen", () => many("writing"), "Pages"],
+  ["tabs", "When you change tabs", "tabs", () => many("tabs"), "Tabs"],
+  ["home", "Where your notes are saved", "folder", () => many("home"), "Saving"],
+  ["backup", "Back up and restore", "down", () => many("backup"), "Backup"],
+  ["secret", "Secret notes", "lock", () => many("secret"), "Secret"],
+  ["glacier", "Help and shortcuts", "help", () => many("panels", "glacier"), "Help"],
+];
+
+const VARIANTS = [
+  { id: "tabs", key: "A", name: "Three tabs", tag: "Proposed", desc: "Look, Notes and Glacier as tabs on top. Each tab is short; nothing folds." },
+  { id: "page", key: "B", name: "One page, clear names", tag: "", desc: "Everything on one scrolling page, no folding, with headings that say what's inside." },
+  { id: "drill", key: "C", name: "List that opens screens", tag: "New", desc: "Like the settings on a phone: one short list, each row shows its current value, a click opens its screen." },
+  { id: "quick", key: "D", name: "Search and quick settings", tag: "New", desc: "A search field on top, the settings people change most right below, everything else under More settings." },
+  { id: "tiles", key: "E", name: "Tiles", tag: "New", desc: "Seven big pixel-art tiles. A click opens that tile's settings right under it." },
+  { id: "preview", key: "F", name: "Live preview + tabs", tag: "New", desc: "The three tabs, with a small piece of paper on top that shows your look as you change it." },
+  { id: "rail", key: "G", name: "Icon rail", tag: "New", desc: "A narrow column of pixel-art icons on the left, the chosen part's settings on the right. Like the settings of a desktop app." },
+  { id: "accordion", key: "H", name: "One open at a time", tag: "New", desc: "One page of sections; each closed section shows its current value, and opening one closes the others." },
+  { id: "inplace", key: "J", name: "Where they apply", tag: "New", desc: "The look is changed on the paper itself (the swatch button), where your notes live from the sync word. Settings keeps only the rest." },
+  { id: "fh", key: "F+H", name: "Preview + one open at a time", tag: "Asked for", desc: "The paper preview stays on top while you scroll. Below, the sections show their current value; opening one closes the others. Look is open at first." },
+  { id: "cf", key: "C+F", name: "List with values + preview", tag: "Combination", desc: "The phone-style list, each row with its value. Look opens its own screen with the preview on top." },
+  { id: "hj", key: "H+J", name: "Aa on the paper + one open at a time", tag: "Combination", desc: "The look is changed on the paper with Aa, right where you see it. Settings is the one-open-at-a-time list for everything else." },
+  { id: "gf", key: "G+F", name: "Icon rail + preview", tag: "Combination", desc: "The icon column on the left; on Look, the preview sits above the choices." },
+  { id: "hd", key: "H+D", name: "Search + one open at a time", tag: "Combination", desc: "A search field on top of the sections. Typing opens every section that matches, the rest stay closed." },
+  { id: "gdf", key: "G+D+F", name: "Search, icon rail, preview when needed", tag: "New mix", desc: "Search on top, the icon column on the left. The preview shows on Look only when Settings covers the paper." },
+  { id: "hdf", key: "H+D+F", name: "Search, one open at a time, preview when needed", tag: "New mix", desc: "Search on top, sections with their values below, one open at a time. The preview shows only when Settings covers the paper." },
+];
+
+function drawPicker() {
+  $("picker").innerHTML = `<div class="picker-label">Your two</div>` + VARIANTS.map((v) =>
+    (v.key === "C" ? `<div class="picker-label">Three more</div>` : "") +
+    (v.key === "F" ? `<div class="picker-label">Five more</div>` : "") +
+    (v.key === "F+H" ? `<div class="picker-label">Combinations</div>` : "") +
+    (v.key === "G+D+F" ? `<div class="picker-label">From your answer</div>` : "") +
+    `<button class="chip" type="button" data-variant="${v.id}" aria-pressed="${v.id === state.variant}"><b>${v.key}</b><span>${v.name}${v.tag ? ` <small style="color:var(--accent)">· ${v.tag}</small>` : ""}</span></button>`).join("");
+  const v = VARIANTS.find((x) => x.id === state.variant);
+  $("about").innerHTML = `<span class="tag">Showing ${v.key}</span><h2>${v.name}</h2><p>${v.desc}</p>`;
+}
+
+// A small piece of paper in the chosen look.
+function previewHtml() {
+  const [, bg, ink] = PAPERS.find(([n]) => n === state.paper);
+  const font = state.font === "Theme default" ? "inherit" : `"${state.font}", cursive`;
+  return `<div class="preview" style="--pv-paper:${bg};--pv-ink:${ink};font-family:${font};font-size:${(0.95 * state.size) / 100}rem"><strong># Flexbox basics</strong>justify-content moves items along the row.<br>align-items moves them across it.</div>`;
+}
+// The preview only helps when Settings covers the paper (inside the sidebar).
+function previewIfCovered() {
+  return state.place === "inside" ? previewHtml() : `<p class="why">Your paper is right beside Settings, so changes show there.</p>`;
+}
+
+// Sections that show their current value; one is open at a time, or every
+// section in `openIds` (search results).
+function accordion(screens, openIds = null) {
+  return screens.filter(([id]) => !openIds || openIds.includes(id)).map(([id, label, ic, fn]) => {
+    const open = openIds ? true : state.open === id;
+    return `<div class="acc ${open ? "open" : ""}"><button class="acc-head" type="button" data-tile="${id}" aria-expanded="${open}">${icon(ic)}<span><b>${label}</b>${open ? "" : `<small>${SUMMARY[id]()}</small>`}</span><span class="go">${open ? "▾" : "▸"}</span></button>${open ? `<div class="acc-body">${fn()}</div>` : ""}</div>`;
+  }).join("");
+}
+
+function drawBody() {
+  const body = $("body");
+  const tabs = $("tabs");
+  tabs.innerHTML = "";
+  $("headTitle").textContent = "Settings";
+  switch (state.variant) {
+    case "tabs": {
+      const TABS = [["look", "Look", "paper"], ["notes", "Notes", "folder"], ["glacier", "Glacier", "help"]];
+      tabs.innerHTML = `<div class="tabs" role="tablist">${TABS.map(([id, label, ic]) => `<button class="tab" role="tab" type="button" data-tab="${id}" aria-selected="${state.tab === id}">${icon(ic)}${label}</button>`).join("")}</div>`;
+      body.innerHTML = { look: () => many("paper", "font", "writing"), notes: () => many("home", "tabs", "backup", "secret"), glacier: () => many("panels", "glacier") }[state.tab]();
+      break;
+    }
+    case "page":
+      body.innerHTML = many("paper", "font", "writing", "tabs", "home", "backup", "secret", "panels", "glacier");
+      break;
+    case "drill": {
+      const screen = SCREENS.find(([id]) => id === state.screen);
+      if (screen) {
+        $("headTitle").textContent = screen[1];
+        body.innerHTML = `<button class="back" type="button" data-screen="">← All settings</button>${screen[3]()}`;
+      } else {
+        body.innerHTML = `<div class="nav">${SCREENS.map(([id, label, ic]) => `<button class="nav-row" type="button" data-screen="${id}">${icon(ic)}<span><b>${label}</b><small>${SUMMARY[id]()}</small></span><span class="go">›</span></button>`).join("")}</div>`;
+      }
+      break;
+    }
+    case "quick": {
+      const q = state.query.trim().toLowerCase();
+      const search = `<input class="search" id="find" placeholder="Search settings" aria-label="Search settings" value="${state.query.replace(/"/g, "&quot;")}">`;
+      if (q) {
+        const hits = SCREENS.filter(([, label, , fn]) => (label + fn()).toLowerCase().replace(/<[^>]+>/g, " ").includes(q));
+        body.innerHTML = search + (hits.length ? hits.map(([, , , fn]) => fn()).join(`<div class="sep"></div>`) : `<p class="hit">No setting matches "${q.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)}".</p>`);
+      } else {
+        body.innerHTML = search + `<div class="quick">${many("paper", "font")}</div>
+          <details class="more"><summary>More settings: pages, tabs, where your notes live, backup, secret notes, panels</summary><div class="body" style="padding:0">${many("writing", "tabs", "home", "backup", "secret", "panels", "glacier")}</div></details>`;
+      }
+      break;
+    }
+    case "tiles": {
+      const tiles = SCREENS.map(([id, label, ic, fn]) => {
+        const open = state.open === id;
+        return { html: `<button class="tile" type="button" data-tile="${id}" aria-expanded="${open}">${icon(ic)}${label}</button>`, open, fn };
+      });
+      // An open tile's settings appear under its row of three.
+      let html = "";
+      for (let i = 0; i < tiles.length; i += 3) {
+        const row = tiles.slice(i, i + 3);
+        html += row.map((t) => t.html).join("");
+        const opened = row.find((t) => t.open);
+        if (opened) html += `<div class="tile-open">${opened.fn()}</div>`;
+      }
+      body.innerHTML = `<div class="tiles">${html}</div>`;
+      break;
+    }
+    case "preview": {
+      const TABS = [["look", "Look", "paper"], ["notes", "Notes", "folder"], ["glacier", "Glacier", "help"]];
+      tabs.innerHTML = `<div class="tabs" role="tablist">${TABS.map(([id, label, ic]) => `<button class="tab" role="tab" type="button" data-tab="${id}" aria-selected="${state.tab === id}">${icon(ic)}${label}</button>`).join("")}</div>`;
+      body.innerHTML = { look: () => previewHtml() + many("paper", "font", "writing"), notes: () => many("home", "tabs", "backup", "secret"), glacier: () => many("panels", "glacier") }[state.tab]();
+      break;
+    }
+    case "rail": {
+      const at = state.screen ?? "look";
+      const screen = SCREENS.find(([id]) => id === at);
+      body.innerHTML = `<div class="railwrap"><nav class="rail" aria-label="Parts of Settings">${SCREENS.map(([id, label, ic, , short]) =>
+        `<button class="rail-btn" type="button" data-screen="${id}" aria-current="${id === at}" title="${label}">${icon(ic)}<span>${short}</span></button>`).join("")}</nav>
+        <div class="rail-body"><h3 class="rail-title">${screen[1]}</h3>${screen[3]()}</div></div>`;
+      break;
+    }
+    case "accordion":
+      body.innerHTML = accordion(SCREENS);
+      break;
+    case "fh":
+      if (state.open === undefined) state.open = "look";
+      body.innerHTML = `<div class="sticky">${previewHtml()}</div>` + accordion(SCREENS);
+      break;
+    case "cf": {
+      const screen = SCREENS.find(([id]) => id === state.screen);
+      if (screen) {
+        $("headTitle").textContent = screen[1];
+        body.innerHTML = `<button class="back" type="button" data-screen="">← All settings</button>${screen[0] === "look" ? `<div class="sticky">${previewHtml()}</div>` : ""}${screen[3]()}`;
+      } else {
+        body.innerHTML = previewHtml() + `<div class="nav">${SCREENS.map(([id, label, ic]) => `<button class="nav-row" type="button" data-screen="${id}">${icon(ic)}<span><b>${label}</b><small>${SUMMARY[id]()}</small></span><span class="go">›</span></button>`).join("")}</div>`;
+      }
+      break;
+    }
+    case "hj":
+      if (state.screen === "rest") {
+        body.innerHTML = `<button class="back" type="button" data-screen="">← Back to the note</button>` + accordion(SCREENS.filter(([id]) => id !== "look"));
+      } else {
+        $("headTitle").textContent = "Flexbox notes";
+        body.innerHTML = `<div class="paperview">${previewHtml()}
+          <button class="look-btn" type="button" data-tile="look" aria-expanded="${state.open === "look"}" title="Paper and font">Aa</button>
+          ${state.open === "look" ? `<div class="look-pop">${many("paper", "font")}</div>` : ""}
+          <button class="btn" type="button" data-screen="rest">${icon("help")}<span>Settings<small>Everything else, one part open at a time</small></span></button></div>`;
+      }
+      break;
+    case "gf": {
+      const at = state.screen ?? "look";
+      const screen = SCREENS.find(([id]) => id === at);
+      body.innerHTML = `<div class="railwrap"><nav class="rail" aria-label="Parts of Settings">${SCREENS.map(([id, label, ic, , short]) =>
+        `<button class="rail-btn" type="button" data-screen="${id}" aria-current="${id === at}" title="${label}">${icon(ic)}<span>${short}</span></button>`).join("")}</nav>
+        <div class="rail-body"><h3 class="rail-title">${screen[1]}</h3>${at === "look" ? previewHtml() : ""}${screen[3]()}</div></div>`;
+      break;
+    }
+    case "gdf": {
+      const q = state.query.trim().toLowerCase();
+      const search = `<input class="search" id="find" placeholder="Search settings" aria-label="Search settings" value="${state.query.replace(/"/g, "&quot;")}">`;
+      if (q) {
+        const hits = SCREENS.filter(([, label, , fn]) => label.toLowerCase().includes(q) || fn().replace(/<[^>]+>/g, " ").toLowerCase().includes(q));
+        body.innerHTML = search + (hits.length ? hits.map(([, label, , fn]) => `<h3 class="rail-title">${label}</h3>${fn()}`).join(`<div class="sep"></div>`) : `<p class="hit">No setting matches.</p>`);
+        break;
+      }
+      const at = state.screen ?? "look";
+      const screen = SCREENS.find(([id]) => id === at);
+      body.innerHTML = search + `<div class="railwrap"><nav class="rail" aria-label="Parts of Settings">${SCREENS.map(([id, label, ic, , short]) =>
+        `<button class="rail-btn" type="button" data-screen="${id}" aria-current="${id === at}" title="${label}">${icon(ic)}<span>${short}</span></button>`).join("")}</nav>
+        <div class="rail-body"><h3 class="rail-title">${screen[1]}</h3>${at === "look" ? previewIfCovered() : ""}${screen[3]()}</div></div>`;
+      break;
+    }
+    case "hdf": {
+      const q = state.query.trim().toLowerCase();
+      const search = `<input class="search" id="find" placeholder="Search settings" aria-label="Search settings" value="${state.query.replace(/"/g, "&quot;")}">`;
+      const text = (fn) => fn().replace(/<[^>]+>/g, " ").toLowerCase();
+      const matching = q ? SCREENS.filter(([, label, , fn]) => label.toLowerCase().includes(q) || text(fn).includes(q)).map(([id]) => id) : null;
+      const pv = state.place === "inside" ? `<div class="sticky">${previewHtml()}</div>` : "";
+      body.innerHTML = search + pv + (matching && !matching.length ? `<p class="hit">No setting matches.</p>` : accordion(SCREENS, matching));
+      break;
+    }
+    case "hd": {
+      const q = state.query.trim().toLowerCase();
+      const search = `<input class="search" id="find" placeholder="Search settings" aria-label="Search settings" value="${state.query.replace(/"/g, "&quot;")}">`;
+      const text = (fn) => fn().replace(/<[^>]+>/g, " ").toLowerCase();
+      const matching = q ? SCREENS.filter(([, label, , fn]) => label.toLowerCase().includes(q) || text(fn).includes(q)).map(([id]) => id) : null;
+      body.innerHTML = search + (matching && !matching.length ? `<p class="hit">No setting matches.</p>` : accordion(SCREENS, matching));
+      break;
+    }
+    case "inplace":
+      if (state.screen === "rest") {
+        body.innerHTML = `<button class="back" type="button" data-screen="">← Back to the note</button>
+          <p class="why">The look is changed on the paper, and where your notes live from the sync word. Everything else is here.</p>` + many("writing", "tabs", "backup", "secret", "panels", "glacier");
+      } else {
+        $("headTitle").textContent = "Flexbox notes";
+        body.innerHTML = `<div class="paperview">${previewHtml()}
+          <button class="look-btn" type="button" data-tile="look" aria-expanded="${state.open === "look"}" title="Paper and font">Aa</button>
+          ${state.open === "look" ? `<div class="look-pop">${many("paper", "font")}</div>` : ""}
+          <div class="row"><button class="btn" type="button" data-say="Would open: where your notes live, last synced, Sync now.">${icon("folder")}<span>Click the sync word<small>Where your notes live opens there</small></span></button></div>
+          <button class="btn" type="button" data-screen="rest">${icon("help")}<span>Settings<small>Pages, tabs, backup, secret notes, panels, help</small></span></button></div>`;
+      }
+      break;
+    default: break;
+  }
+  const find = $("find");
+  if (find) {
+    find.focus();
+    find.setSelectionRange(find.value.length, find.value.length);
+    find.addEventListener("input", () => { state.query = find.value; drawBody(); });
+  }
+}
+
+$("picker").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-variant]");
+  if (!b) return;
+  Object.assign(state, { variant: b.dataset.variant, screen: null, open: b.dataset.variant === "fh" ? "look" : null, query: "" });
+  drawPicker();
+  drawBody();
+});
+$("frame").addEventListener("click", (e) => {
+  const t = e.target.closest("[data-tab],[data-screen],[data-tile],[data-paper],[data-size],[data-say]");
+  if (!t) return;
+  if (t.dataset.tab) state.tab = t.dataset.tab;
+  else if ("screen" in t.dataset) state.screen = t.dataset.screen || null;
+  else if (t.dataset.tile) state.open = state.open === t.dataset.tile ? null : t.dataset.tile;
+  else if (t.dataset.paper) { state.paper = t.dataset.paper; notice(`Paper: ${state.paper}.`); }
+  else if (t.dataset.size) { state.size = Math.min(150, Math.max(80, state.size + Number(t.dataset.size))); }
+  else if (t.dataset.say) { notice(t.dataset.say); return; }
+  drawBody();
+});
+document.querySelectorAll("[data-place]").forEach((b) => b.addEventListener("click", () => {
+  state.place = b.dataset.place;
+  document.querySelectorAll("[data-place]").forEach((c) => c.setAttribute("aria-pressed", String(c === b)));
+  drawBody();
+}));
+$("frame").addEventListener("change", (e) => {
+  const el = e.target.closest("[data-set]");
+  if (!el) return;
+  const raw = el.type === "checkbox" ? el.checked : el.value;
+  state[el.dataset.set] = raw === "true" ? true : raw === "false" ? false : el.dataset.set === "size" ? Number(raw) : raw;
+  drawBody();
+});
+let timer;
+function notice(text) {
+  clearTimeout(timer);
+  $("noticeBox").innerHTML = `<div class="notice" role="status">${text}</div>`;
+  timer = setTimeout(() => { $("noticeBox").innerHTML = ""; }, 3000);
+}
+// The closed state: the paper with the round glacier button and its gear.
+document.querySelector(".gear-badge").innerHTML = icon("gear");
+function showClosed(closed) {
+  $("closed").hidden = !closed;
+  if (!closed) drawBody();
+}
+$("openSettings").addEventListener("click", () => showClosed(false));
+$("closeSettings").addEventListener("click", () => showClosed(true));
+document.querySelectorAll("[data-show-closed]").forEach((b) => b.addEventListener("click", () => showClosed(true)));
+
+drawPicker();
+drawBody();
+showClosed(true);
+</script>

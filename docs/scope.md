@@ -136,6 +136,26 @@ this order.
    - "Extract to a new note" leaves the menu: it appears when text is
      selected. Whether selecting text shows more options is still open.
 2. **Settings, more organized.** Keep the style; less at once.
+   Decided so far (prototype: https://claude.ai/artifact/AUTtKjhT4mTC6CUedH8cKv):
+   - Search on top in both layouts; typing shows every matching setting.
+   - Inside the sidebar (Settings covers the paper): an icon rail on the
+     left (Look, Pages, Tabs, Saving, Backup, Secret, Help), the chosen
+     part on the right. On Look, a small paper preview shows the chosen
+     paper, font and size.
+   - Beside the sidebar (the real paper stays visible): the sections one
+     under the other, each closed one showing its current value in a line,
+     one open at a time. No preview there.
+   - Plain names: How your notes look, Pages, When you change tabs, Where
+     your notes are saved, Back up and restore, Secret notes, Help and
+     shortcuts. Inside: "Split long notes into pages", "Show the New page
+     button", "When you go to another website, Glacier opens the note for
+     that website / keeps your note open", "On a new tab, Glacier keeps
+     your note open / starts a new note", "Next to the sidebar" (one
+     switch), "The paper's own font", "Download all notes", "Restore notes
+     from a download".
+   - The round glacier button stays and gets a small pixel-art gear badge
+     on its top right edge, so it reads as Settings. Hover says "Settings";
+     no spinning (pixel art stays still).
 3. **Two more layouts** next to Zen (picked from the list under Later).
 4. **Hidden games.** A secret command (for example `/takebreak`) starts a
    small pixel game in the note, with highscores. Each Theme has its own game
