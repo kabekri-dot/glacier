@@ -22,14 +22,13 @@ import { notesHomeName, syncErrorMessage } from "../src/notes-home.mjs";
 import { reminderDue, reminderOpened, reminderNotNow, reminderText } from "../src/cloud-reminder.mjs";
 import { createAutoSync, needsFolderOk } from "../src/auto-sync.mjs";
 import { createScreen } from "../src/screen.mjs";
-import { pageNoteCount, pillTitle, BACK_BUTTON_HINT, pinButton, secretMark } from "../src/menu-contents.mjs";
+import { pillTitle, backButtonHint, secretMark, HELP_URL } from "../src/menu-contents.mjs";
 import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
 import { readTabSettings } from "../src/tab-settings.mjs";
 import { readShortcutsPanel } from "../src/shortcuts-panel.mjs";
 import { isShortcut } from "../src/keys.mjs";
-import { createContents } from "./contents-view.js";
 import { createTitleEdit } from "./title-edit.js";
 import { createFind } from "./find-view.js";
 import { createPaper } from "./paper-view.js";
@@ -40,7 +39,7 @@ import { createSettingsView, createShortcutsView, fixLink } from "./settings-vie
 import { createMenuView } from "./menu-view.js";
 import { createDownloads } from "./downloads.js";
 import { createSyncBoxView } from "./sync-box-view.js";
-import { createBackBox, createNewMenu, createNoteMenu } from "./pill-menus.js";
+import { createHeadingsMenu, createNewMenu, createNoteMenu } from "./pill-menus.js";
 import { createNoteMetaView } from "./note-meta-view.js";
 import { createSketchView } from "./sketch-view.js";
 import { createSecrets } from "./secret-view.js";
@@ -63,14 +62,13 @@ const NEW_SKETCH_ROWS = 5;
 
 const noteEl = document.querySelector(".note");
 const saveErrorEl = document.querySelector(".save-error");
-const pillEl = document.querySelector(".pill");
+const pillBarEl = document.querySelector(".pill-bar");
 const pillTitleEl = document.querySelector(".pill-title");
+const pillPenEl = document.querySelector(".pill-pen");
 const pillArchivedEl = document.querySelector(".pill-archived");
 const pillLockEl = document.querySelector(".pill-lock");
-const pillPinEl = document.querySelector(".pill-pin");
-const pillCountEl = document.querySelector(".pill-count");
-const pillMenuEl = document.querySelector(".pill-menu");
-const syncDotEl = document.querySelector(".sync-dot");
+const notesButtonEl = document.querySelector(".pill-notes");
+const syncWordEl = document.querySelector(".sync-word");
 const renameHintEl = document.querySelector(".rename-hint");
 const backlinksButtonEl = document.querySelector(".backlinks-button");
 const backlinksListEl = document.querySelector(".backlinks-list");
@@ -283,14 +281,12 @@ async function start() {
     showIfLocked: () => secrets.showIfLocked(),
     openLink,
     hint: lineHint,
-    onEdited: () => contents.update(),
     onTyped: () => {
       if (!screen.welcome()) clearWelcome();
     },
     showNotice,
     fitRows,
     afterDraw: (locked) => {
-      contents.update();
       if (!locked) findInNote.refresh();
     },
   });
@@ -319,7 +315,7 @@ async function start() {
     notebook,
     screen,
     el: menuPanelEl,
-    button: pillMenuEl,
+    button: notesButtonEl,
     noteEl,
     draw,
     render: () => paper.render(),
@@ -464,13 +460,15 @@ async function start() {
     onChanged: () => autoSync.changed(),
   });
 
-  // --- The pill and its menu (#12) -------------------------------------------
+  // --- The top bar (#12, #121) ----------------------------------------------
   //
-  // The pill shows the open note's title, "1 of 3", ⋯ and the sync dot.
-  // Clicking it, or Ctrl+K, opens the ▾ menu (menuView, above). Esc closes it.
+  // ← and ☰ Notes on the left, the open note's title with its pen and the
+  // sync word in the middle, + and ⋯ on the right. ☰ Notes, or Ctrl+K, opens
+  // the notes list (menuView, above). Esc closes it.
 
   function updatePill() {
     titleEdit.stop();
+    headingsMenu.close();
     const note = screen.note();
     const freshPage = screen.freshPage();
     const title = pillTitle({ note, freshPage });
@@ -485,37 +483,60 @@ async function start() {
       pillTitleEl.removeAttribute("role");
       pillTitleEl.removeAttribute("tabindex");
     }
+    pillPenEl.hidden = !note;
     pillArchivedEl.hidden = !note?.archived;
     const secret = note && secretMark(notebook, note.title);
     pillLockEl.hidden = !secret;
     pillLockEl.title = secret?.hint ?? "";
-    const pin = pinButton(screen.pinned());
-    pillPinEl.hidden = !note;
-    pillPinEl.classList.toggle("is-pinned", pin.pinned);
-    pillPinEl.setAttribute("aria-pressed", String(pin.pinned));
-    pillPinEl.setAttribute("aria-label", pin.label);
-    pillPinEl.title = pin.hint;
-    // "1 of 3": the page has more notes (#68). Like the rest of the pill, a
-    // click opens the ▾ menu, which starts with Notes for this page.
-    const count = pageNoteCount(notebook, note);
-    pillCountEl.hidden = count === null;
-    pillCountEl.textContent = count ?? "";
     noteMenu.update();
     const previous = screen.previous();
     backEl.hidden = previous === null || !tabSettings.showPreviousButton;
-    if (previous === null) backBox.close();
+    if (previous !== null) {
+      backEl.title = backButtonHint(previous);
+      backEl.setAttribute("aria-label", backButtonHint(previous));
+    }
   }
 
-  // ←, + and ⋯ open their small menus (sidebar/pill-menus.js).
-  backEl.title = BACK_BUTTON_HINT;
-  const backBox = createBackBox({
-    button: backEl,
-    box: document.querySelector(".back-box"),
-    screen,
-    notebook,
-    openNote,
-    onBack: () => draw(screen.back()),
+  // ← goes back to the note before, in one click.
+  backEl.addEventListener("click", () => {
+    closeOverlays();
+    draw(screen.back());
+  });
+
+  // ☰ Notes opens and closes the notes list.
+  notesButtonEl.addEventListener("click", () => {
+    if (menuView.isOpen()) menuView.dismiss();
+    else menuView.open();
+  });
+
+  // A click on the title shows the note's headings; on a fresh page it names
+  // the note. The pen, and Rename in ⋯, edit the title in place.
+  const headingsMenu = createHeadingsMenu({
+    button: pillTitleEl,
+    box: document.querySelector(".title-menu"),
+    body: () => editor.body(),
+    locked: () => Boolean(screen.note() && notebook.isLocked(screen.note().title)),
+    jumpToLine: (line) => paper.jumpToLine(line),
     beforeOpen: () => closeOverlays(),
+  });
+
+  function clickTitle() {
+    if (screen.freshPage()) titleEdit.start();
+    else if (screen.note()) headingsMenu.toggle();
+  }
+  pillTitleEl.addEventListener("click", clickTitle);
+  pillTitleEl.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    clickTitle();
+  });
+  pillPenEl.addEventListener("click", () => titleEdit.start());
+
+  // Ctrl Shift O opens or closes the headings too.
+  document.addEventListener("keydown", (event) => {
+    if (!isShortcut(event, "o", { shift: true }) || !screen.note()) return;
+    event.preventDefault();
+    headingsMenu.toggle();
   });
 
   // A pinned note stays when the page changes; unpinning catches up with the
@@ -526,11 +547,6 @@ async function start() {
     updatePill();
     if (!pin) openingFlow.pageChanged();
   }
-  // The pin sits in the pill, where a click opens the ▾ menu; not this one.
-  pillPinEl.addEventListener("click", (event) => {
-    event.stopPropagation();
-    setPinned(!screen.pinned());
-  });
 
   function startNoteForPage() {
     draw(screen.startNoteForPage());
@@ -539,7 +555,7 @@ async function start() {
   const newMenu = createNewMenu({
     button: newButtonEl,
     box: document.querySelector(".new-menu"),
-    onWebsite: () => openingFlow.onWebsite(),
+    website: () => openingFlow.website(),
     onPick: (kind) => {
       if (kind === "page") startNoteForPage();
       else draw(screen.startFreshPage({ editTitle: true }));
@@ -547,30 +563,40 @@ async function start() {
     beforeOpen: () => closeOverlays(),
   });
 
+  // The Shortcuts panel, from Keyboard shortcuts in ⋯.
+  function openShortcuts() {
+    closeOverlays({ keepShortcuts: true });
+    prefs.saveShortcutsPanel({ on: true, folded: false });
+  }
+
   const noteMenuButtonEl = document.querySelector(".pill-note-menu");
   const noteMenu = createNoteMenu({
     button: noteMenuButtonEl,
     box: document.querySelector(".note-menu"),
     screen,
-    onAction: (kind) => {
-      if (kind === "extract") paper.extract();
+    notesHome: async () => (await notesHomes.load()).home,
+    onAction: (kind, anchor) => {
+      if (kind === "rename") titleEdit.start();
+      else if (kind === "shortcuts") openShortcuts();
+      else if (kind === "help") api.tabs.create({ url: HELP_URL }).catch(() => {});
+      else if (kind === "extract") paper.extract();
       else if (kind === "secret") secrets.makeSecret();
       else if (kind === "notSecret") secrets.makeNotSecret();
       else if (kind === "pin" || kind === "unpin") setPinned(kind === "pin");
-      else menuView.act("note", kind, { title: screen.note().title }, noteMenuButtonEl);
+      else menuView.act("note", kind, { title: screen.note().title }, anchor);
     },
+    onDelete: () => menuView.deleteOpenNote(),
     beforeOpen: () => closeOverlays(),
   });
 
-  // Only one of the ▾ menu, the ⋯ menu, the + menu, the ← box, the sync box
-  // and the Shortcuts panel is open at a time (#83).
+  // Only one of the notes list, the headings, the ⋯ menu, the + menu, the
+  // sync box and the Shortcuts panel is open at a time (#83).
   function closeOverlays({ keepShortcuts = false } = {}) {
     menuView.close();
     newMenu.close();
     noteMenu.close();
-    backBox.close();
+    headingsMenu.close();
     syncBoxView.close();
-    contents.close();
     findInNote.close();
     if (!keepShortcuts && shortcutsPanel.on && !shortcutsPanel.folded) prefs.saveShortcutsPanel({ folded: true });
   }
@@ -611,9 +637,9 @@ async function start() {
   document.addEventListener("click", askForFolderQuietly, true);
   document.addEventListener("keydown", askForFolderQuietly, true);
 
-  // The sync dot and its box (#75), drawn by sidebar/sync-box-view.js.
+  // The sync word and its box (#75, #121), drawn by sidebar/sync-box-view.js.
   const syncBoxView = createSyncBoxView({
-    dotEl: syncDotEl,
+    wordEl: syncWordEl,
     boxEl: document.querySelector(".sync-box"),
     autoSync,
     signInAgain,
@@ -765,10 +791,6 @@ async function start() {
   const shortcutsView = createShortcutsView({
     openShortcutsPage,
     onFold: () => prefs.saveShortcutsPanel({ folded: true }),
-    onUnfold: () => {
-      closeOverlays({ keepShortcuts: true });
-      prefs.saveShortcutsPanel({ folded: false });
-    },
     onWelcome: () => {
       closeOverlays();
       closeSettings({ redraw: false });
@@ -776,9 +798,8 @@ async function start() {
       drawWelcome({ again: true });
     },
   });
-  // The tab sits in the pill bar next to +, the drawer on the sidebar's right
-  // edge (#76).
-  newButtonEl.after(shortcutsView.tab);
+  // The drawer sits on the sidebar's right edge (#76); Keyboard shortcuts in
+  // ⋯ opens it (#121).
   glacierButtonEl.before(shortcutsView.sheet, settingsView.el);
   shortcutsView.draw(shortcutsPanel);
 
@@ -863,8 +884,7 @@ async function start() {
   noteEl.addEventListener("mousedown", () => {
     if (shortcutsPanel.on && !shortcutsPanel.folded) prefs.saveShortcutsPanel({ folded: true });
   }, true);
-  pillEl.addEventListener("click", () => closeSettings({ redraw: false }), true);
-  newButtonEl.addEventListener("click", () => closeSettings({ redraw: false }), true);
+  pillBarEl.addEventListener("click", () => closeSettings({ redraw: false }), true);
 
   glacierButtonEl.addEventListener("click", () => {
     if (panels.isOpen()) closeSettings();
@@ -972,7 +992,7 @@ async function start() {
   // loads again.
   panels.start();
 
-  // Rename by clicking the title (#54): sidebar/title-edit.js.
+  // Rename in place (#54, #121): sidebar/title-edit.js.
   const titleEdit = createTitleEdit({
     titleEl: pillTitleEl,
     hintEl: renameHintEl,
@@ -980,15 +1000,10 @@ async function start() {
     draw,
     render: () => paper.render(),
     askPasscode: (heading) => secrets.askPasscode(heading),
-    beforeStart: () => menuView.close(),
-  });
-
-  // The ▾ and any bare part of the pill open the menu; the title renames and
-  // the sync dot does nothing.
-  pillEl.addEventListener("click", (event) => {
-    if (event.target.closest(".pill-title, .pill-title-input, .sync-dot, .pill-note-menu")) return;
-    if (menuView.isOpen()) menuView.dismiss();
-    else menuView.open();
+    beforeStart: () => {
+      menuView.close();
+      headingsMenu.close();
+    },
   });
 
   // Capture phase, so Ctrl+K reaches us before the page or the browser's own
@@ -1054,15 +1069,6 @@ async function start() {
     copiedTimer = setTimeout(() => (copiedEl.hidden = true), ms);
   }
 
-  // --- The table of contents (#107): sidebar/contents-view.js ---------------
-  const contents = createContents({
-    noteEl,
-    editor,
-    canOpen: paper.noteShown,
-    beforeOpen: () => closeOverlays(),
-    jumpToLine: (line) => paper.jumpToLine(line),
-  });
-
   // --- Find in the open note (#111): sidebar/find-view.js --------------------
   const findInNote = createFind({
     el: document.querySelector(".find-box"),
@@ -1120,13 +1126,11 @@ async function start() {
     updatePill();
     noteMeta.update();
     noteEl.replaceChildren(startPrompt({ onNew: () => openingFlow.newNoteForPage() }));
-    contents.update();
     paper.updatePageBar();
   }
 
   function showPermissionCard() {
     noteEl.replaceChildren(pageCard({ onAllow: () => openingFlow.allow(), onDecline: () => openingFlow.decline() }));
-    contents.update();
     paper.updatePageBar();
   }
 

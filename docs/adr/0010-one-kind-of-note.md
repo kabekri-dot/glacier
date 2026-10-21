@@ -4,7 +4,7 @@ Glacier had two kinds of note: a Lesson Note, tied to one lesson's page and a Co
 
 So there is now one kind of note, the **Note** (CONTEXT.md). Two details are optional: its **page** (the Source) and its **Course**.
 
-- **Several notes per page.** Any number of notes can have the same page. Opening the page opens the one edited most recently; the pill says "1 of 3" when there are more, and the ▾ menu starts with **Notes for this page**, newest first, with "+ New note for this page" under them.
+- **Several notes per page.** Any number of notes can have the same page. Opening the page opens the one edited most recently; the pill says "1 of 3" when there are more, and the ▾ menu starts with **Notes for this page**, newest first, with "+ New note for this page" under them. (Since #121 the "1 of 3" is gone from the top bar; the notes list behind ☰ Notes still starts with them.)
 - **+ in the pill** always offers **New note** (blank: no page, no Course) and, on a website, **New note for this page**, which took the last used Course like before (no longer since #92, see below). The Course line above the text works for every note.
 - **Following a Missing Link** makes a note without a page or Course, as a Concept Note was.
 - **"Most recently edited"** is an `edited` time in the frontmatter, set whenever the text changes. It travels with the file, so the same note opens for a page in every browser. A note without it counts from `created`.

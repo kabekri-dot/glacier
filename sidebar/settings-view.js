@@ -804,7 +804,7 @@ export function fixLink(fix, open) {
 
 // The cheat sheet drawer and its small tab, or nothing when switched off.
 // "How Glacier works" at its top shows the welcome page again (#91).
-export function createShortcutsView({ onFold, onUnfold, onWelcome, openShortcutsPage }) {
+export function createShortcutsView({ onFold, onWelcome, openShortcutsPage }) {
   const sheet = element("aside", "shortcuts");
   sheet.setAttribute("aria-label", "Shortcuts");
   const header = element("header", "shortcuts-header");
@@ -850,29 +850,20 @@ export function createShortcutsView({ onFold, onUnfold, onWelcome, openShortcuts
   drawRows(keysList, shortcutRows(undefined, HANDLED_KEYS));
   sheet.append(header, body);
 
-  const tab = element("button", "shortcuts-tab", "?");
-  tab.type = "button";
-  tab.setAttribute("aria-label", "Open the shortcuts");
-  tab.title = "Open the shortcuts";
-  tab.addEventListener("click", () => (sheet.hidden ? onUnfold() : onFold()));
   sheet.hidden = true;
-  tab.hidden = true;
 
   return {
     sheet,
-    tab,
 
     // `commands` is what commands.getAll() gave, `browser` is "chrome" or "firefox".
     showCommands(commands, browser) {
       drawRows(keysList, shortcutRows(commands, HANDLED_KEYS, browser));
     },
 
-    // `state` is the saved { on, folded }. The tab shows whenever the panel
-    // is on; the sheet slides in from the right edge when it is open.
+    // `state` is the saved { on, folded }. The sheet slides in from the
+    // right edge while it is on and open.
     draw(state) {
       sheet.hidden = !state.on || state.folded;
-      tab.hidden = !state.on;
-      tab.setAttribute("aria-expanded", String(state.on && !state.folded));
     },
   };
 }

@@ -35,15 +35,6 @@ export function notebookMenu(notebook, query, openNote = null) {
   return query.trim() ? searchResults(notebook, query) : browse(notebook, openNote);
 }
 
-// "1 of 3" in the pill (#68): where the open note stands among the notes for
-// its page, newest first. Only when the page has more than one note.
-export function pageNoteCount(notebook, note) {
-  if (!note?.source) return null;
-  const titles = notebook.notesForPage(note.source).map((other) => other.title);
-  const at = titles.indexOf(note.title);
-  return titles.length > 1 && at !== -1 ? `${at + 1} of ${titles.length}` : null;
-}
-
 // Every note for the open note's page, newest first, and a way to add one.
 function notesForThisPage(notebook, openNote) {
   if (!openNote?.source) return [];
@@ -222,28 +213,45 @@ export function secondVersionBar(notebook, note) {
   };
 }
 
-// The ⋯ "This note" menu (#63): the open note's name and its actions. No note
-// open means no menu. A pinned note stays when you change the page.
+// The ⋯ menu (#63, #121) for the open note: a row of three big pixel icons
+// with words (`big`), Delete on its own (`delete`, which asks right there),
+// then Keyboard shortcuts and Help (`help`). `later` holds the actions that
+// move to Note details and the notes list, at the bottom until then. Each
+// action has its `kind`, `label`, `hint`, pixel `icon` (art/icon-<icon>.svg)
+// and, when it has one, its shortcut `keys`. No note open means no menu.
+export const HELP_URL = "https://github.com/kabekri-dot/glacier/blob/main/docs/help.md";
+
 export function noteMenu(note, { pinned = false } = {}) {
   if (!note) return null;
   return {
-    heading: note.title,
-    actions: [
-      pinned
-        ? { kind: "unpin", label: "Unpin this note", hint: "The sidebar follows your tabs again" }
-        : { kind: "pin", label: "Pin this note", hint: "Keep this note open when you change the page or tab" },
-      { kind: "move", label: "Move to collection…", hint: "Put this note in a collection" },
-      { kind: "extract", label: "Extract to a new note", hint: "Select some text in the note first. It becomes a new note and a link takes its place" },
-      { kind: "download", label: "Download as a file", hint: "Save this note as Markdown or PDF, or print it" },
-      note.secret
-        ? { kind: "notSecret", label: "Make not secret", hint: "Keep this note as plain text again, readable without your passcode" }
-        : { kind: "secret", label: "Make secret", hint: "Lock this note with your Glacier passcode. Its text is encrypted everywhere it is kept" },
+    big: [
+      { kind: "rename", label: "Rename", icon: "pencil", hint: "Change the title of this note" },
+      { kind: "download", label: "Download", icon: "download", hint: "Save this note as Markdown or PDF, or print it" },
       note.archived
-        ? { kind: "unarchive", label: "Unarchive", hint: "Put this note back in your lists" }
-        : { kind: "archive", label: "Archive", hint: "Hide this note from your lists. You can bring it back any time" },
-      { kind: "delete", label: "Delete", hint: "Remove this note for good" },
+        ? { kind: "unarchive", label: "Unarchive", icon: "archive", hint: "Put this note back in your lists" }
+        : { kind: "archive", label: "Archive", icon: "archive", hint: "Hide this note from your lists. You can bring it back any time" },
+    ],
+    delete: { kind: "delete", label: "Delete", icon: "trash", hint: "Remove this note for good" },
+    help: [
+      { kind: "shortcuts", label: "Keyboard shortcuts", icon: "keyboard", hint: "Every key and Markdown mark Glacier knows" },
+      { kind: "help", label: "Help", icon: "help", hint: "Answers to the most common questions, in a new tab" },
+    ],
+    later: [
+      pinned
+        ? { kind: "unpin", label: "Unpin this note", icon: "pin", hint: "The sidebar follows your tabs again" }
+        : { kind: "pin", label: "Pin this note", icon: "pin", hint: "Keep this note open when you change the page or tab" },
+      { kind: "move", label: "Move to collection…", icon: "folder", hint: "Put this note in a collection" },
+      { kind: "extract", label: "Extract to a new note", icon: "page", keys: "Ctrl Shift E", hint: "Select some text in the note first. It becomes a new note and a link takes its place" },
+      note.secret
+        ? { kind: "notSecret", label: "Make not secret", icon: "lock", hint: "Keep this note as plain text again, readable without your passcode" }
+        : { kind: "secret", label: "Make secret", icon: "lock", hint: "Lock this note with your Glacier passcode. Its text is encrypted everywhere it is kept" },
     ],
   };
+}
+
+// Hovering ← (#121).
+export function backButtonHint(title) {
+  return `Back to ${title}`;
 }
 
 // The hover icons on a note row (#71): Download, Archive (Unarchive in the
@@ -290,10 +298,10 @@ export function deletedCollectionNotice(course, count) {
 }
 
 // The questions before deleting name where else the notes go from, by the
-// Notes Home's id (#117).
+// Notes Home's id (#117). A note's is asked right where Delete was clicked (#121).
 export function deleteNoteQuestion(title, home) {
   const place = alsoDeletedFrom(home);
-  const question = `Delete “${title}”?`;
+  const question = `Delete “${title}” for good?`;
   return place ? `${question} It is also removed from ${place}.` : question;
 }
 
@@ -317,24 +325,11 @@ export function secretMark(notebook, title) {
   return notebook.isSecret(title) ? { hint: "Secret note" } : null;
 }
 
-export const BACK_BUTTON_HINT = "Back to the note before. Right-click or hold for your last notes";
-// The pin in the pill, there while a note is open: one click pins the note
-// so it stays when the page changes, another lets it follow the tabs again.
-export function pinButton(pinned) {
-  return pinned
-    ? { pinned, label: "Unpin this note", hint: "Pinned: it stays when you change the page. Click to follow your tabs again" }
-    : { pinned, label: "Pin this note", hint: "Pin this note: it stays when you change the page or tab" };
-}
-
-// The box under ← (#81): the last notes you were on, newest first.
-export function lastNotesBox(screen, notebook) {
-  return screen.lastNotes().map((title) => ({ title, origin: noteOrigin(notebook, title) }));
-}
-
-// The title in the pill (#83). With no note open it is a quiet "Glacier" that
-// cannot be renamed; a fresh page offers to name its note.
+// The title in the top bar (#83, #121). A click on an open note's title shows
+// its headings, and the pen beside it renames. With no note open it is a
+// quiet "Glacier" that does nothing; a fresh page offers to name its note.
 export function pillTitle({ note, freshPage }) {
-  if (note) return { text: note.title, hint: `${note.title}\nClick to rename`, renamable: true, draft: false };
+  if (note) return { text: note.title, hint: `${note.title}\nClick to see its headings`, renamable: true, draft: false };
   if (freshPage) return { text: freshPage.title || "Title", hint: "Click to name this note", renamable: true, draft: true };
   return { text: "Glacier", hint: "", renamable: false, draft: false };
 }

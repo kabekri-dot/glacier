@@ -1,23 +1,25 @@
-// The sync dot in the pill and the small box under it (#70, #75). The dot
-// shows the state by its colour; hovering it says what the state means. A
-// click opens the box: the status in words, when it last synced, Sync now
+// The sync word in the top bar and the small box under it (#70, #75, #121).
+// While all is well nothing shows (a tiny pixel cloud while the notes live
+// only in this browser); when sync needs the user a short word does, in the
+// state's colour, and hovering it says what it means. A click
+// opens the box: the status in words, when it last synced, Sync now
 // and a line for notes with several versions. What it says comes from
 // syncBox and syncResultText (src/auto-sync.mjs); this draws it, keeps "last
 // synced" fresh while open and shows the Sync now result in the button for a
 // few seconds. Esc or a click anywhere else closes it.
 //
-// The sidebar (panel.js) plugs in the dot and the box, auto-sync and these:
+// The sidebar (panel.js) plugs in the word and the box, auto-sync and these:
 //   openSettings(section), showConflicts() (opens the ▾ menu at the top),
 //   signInAgain() (signs in with Google and syncs, #95), reconnectFolder()
 //   (asks Chrome again for the notes folder and syncs, #97) and
 //   beforeOpen(), which closes whatever else is open.
 // The pixel cloud reminder (#98) opens the box with showReminder(text, keep).
-import { syncDotText, syncStatusText, syncBox, syncResultText, needsFolderOk, JUST_SYNCED } from "../src/auto-sync.mjs";
+import { syncDotText, syncBox, syncResultText, syncWord, showsCloud, JUST_SYNCED } from "../src/auto-sync.mjs";
 import { KEEP_THEM_SAFE, NOT_NOW } from "../src/cloud-reminder.mjs";
 import { justSyncedLine, menuButton } from "./settings-view.js";
 
 // `onNotNow()` hears of Not now on the reminder, which brings it back once.
-export function createSyncBoxView({ dotEl, boxEl, autoSync, signInAgain, reconnectFolder, openSettings, showConflicts, beforeOpen, onNotNow }) {
+export function createSyncBoxView({ wordEl, boxEl, autoSync, signInAgain, reconnectFolder, openSettings, showConflicts, beforeOpen, onNotNow }) {
   let boxTimer = null;
   let resultShown = null;
   let justSynced = false;
@@ -34,7 +36,7 @@ export function createSyncBoxView({ dotEl, boxEl, autoSync, signInAgain, reconne
     reminder = null;
     boxEl.hidden = true;
     boxEl.replaceChildren();
-    dotEl.setAttribute("aria-expanded", "false");
+    wordEl.setAttribute("aria-expanded", "false");
     clearInterval(boxTimer);
     boxTimer = null;
   }
@@ -142,17 +144,17 @@ export function createSyncBoxView({ dotEl, boxEl, autoSync, signInAgain, reconne
     reminder = withReminder;
     drawBox();
     boxEl.hidden = false;
-    dotEl.setAttribute("aria-expanded", "true");
+    wordEl.setAttribute("aria-expanded", "true");
     boxTimer = setInterval(drawBox, 15000);
   }
 
-  dotEl.addEventListener("click", () => {
+  wordEl.addEventListener("click", () => {
     if (isOpen()) close();
     else open();
   });
   document.addEventListener("click", (event) => {
     // A button the box redrew is no longer in the page; that click was inside the box.
-    if (isOpen() && event.target.isConnected && !event.target.closest(".sync-box, .sync-dot")) close();
+    if (isOpen() && event.target.isConnected && !event.target.closest(".sync-box, .sync-word")) close();
   });
   document.addEventListener(
     "keydown",
@@ -175,18 +177,17 @@ export function createSyncBoxView({ dotEl, boxEl, autoSync, signInAgain, reconne
       return true;
     },
 
-    // Draw the dot for a sync status, and the box again while it is open.
+    // Draw the word for a sync status, and the box again while it is open.
     drawStatus(status) {
       if (isOpen()) drawBox();
-      const { label } = syncStatusText(status);
-      dotEl.dataset.state = status.state;
-      // A small pixel folder while Chrome needs its OK for the folder (#97), a
-      // tiny pixel cloud while no place is chosen (#98).
-      if (needsFolderOk(status)) dotEl.dataset.needs = "folder";
-      else if (status.state === "off") dotEl.dataset.needs = "cloud";
-      else delete dotEl.dataset.needs;
-      dotEl.title = syncDotText(status);
-      dotEl.setAttribute("aria-label", label);
+      const word = syncWord(status);
+      const cloud = showsCloud(status);
+      wordEl.hidden = word === null && !cloud;
+      wordEl.textContent = word ?? "";
+      wordEl.classList.toggle("is-cloud", cloud);
+      wordEl.setAttribute("aria-label", cloud ? "Only in this browser" : word ?? "");
+      wordEl.dataset.state = status.state;
+      wordEl.title = syncDotText(status);
     },
   };
 }

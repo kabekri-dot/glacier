@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createNotebook } from "../src/notebook.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
-import { notebookMenu, deletedNotice, deleteNoteQuestion, deletedCollectionNotice, noteMenu, pinButton, pageNoteCount, deleteCollectionQuestion, archivedNotice, secondVersionBar, rowActions, noteOrigin, lastNotesBox, pillTitle, secretMark } from "../src/menu-contents.mjs";
+import { notebookMenu, deletedNotice, deleteNoteQuestion, deletedCollectionNotice, noteMenu, deleteCollectionQuestion, archivedNotice, secondVersionBar, rowActions, noteOrigin, pillTitle, secretMark, backButtonHint, HELP_URL } from "../src/menu-contents.mjs";
 
 // What the ▾ Notebook and ⋯ This note menus list (#67), as plain data the
 // sidebar only has to draw.
@@ -79,7 +79,7 @@ test("the Notebook lists Collections with their notes, then the notes without a 
 });
 
 // Several notes per page (#68): the ▾ menu starts with the notes for the open
-// note's page, and the pill counts them.
+// note's page.
 function threeNotesForOnePage() {
   const notebook = notebookWith();
   const page = "https://odin.example/flex";
@@ -109,20 +109,6 @@ test("a note without a page gets no Notes for this page section", () => {
 test("a search hides the Notes for this page section", () => {
   const notebook = threeNotesForOnePage();
   assert.deepEqual(notebookMenu(notebook, "zebra", notebook.note("Flexbox")), [{ kind: "empty", text: "No notes match" }]);
-});
-
-test("the pill counts the open note among the notes for its page, newest first", () => {
-  const notebook = threeNotesForOnePage();
-  assert.equal(pageNoteCount(notebook, notebook.note("Flex questions")), "1 of 3");
-  assert.equal(pageNoteCount(notebook, notebook.note("Flex tricks")), "2 of 3");
-  assert.equal(pageNoteCount(notebook, notebook.note("Flexbox")), "3 of 3");
-});
-
-test("the pill shows no count for a page with one note, a note without a page or no note", () => {
-  const notebook = notebookWith();
-  assert.equal(pageNoteCount(notebook, notebook.note("Flexbox")), null);
-  assert.equal(pageNoteCount(notebook, notebook.note("Margins")), null);
-  assert.equal(pageNoteCount(notebook, null), null);
 });
 
 test("an empty Notebook says there are no notes yet", () => {
@@ -197,32 +183,6 @@ test("no note open means no This note menu", () => {
   assert.equal(noteMenu(null), null);
 });
 
-test("an open note gets its name, Extract, Download as a file, Archive and Delete", () => {
-  const notebook = notebookWith();
-  const menu = noteMenu(notebook.note("Flexbox"));
-  assert.equal(menu.heading, "Flexbox");
-  assert.deepEqual(
-    menu.actions.map((action) => [action.kind, action.label]),
-    [
-      ["pin", "Pin this note"],
-      ["move", "Move to collection…"],
-      ["extract", "Extract to a new note"],
-      ["download", "Download as a file"],
-      ["secret", "Make secret"],
-      ["archive", "Archive"],
-      ["delete", "Delete"],
-    ],
-  );
-  assert.equal(menu.actions.every((action) => action.hint), true);
-});
-
-test("an archived note offers Unarchive instead of Archive", () => {
-  const notebook = notebookWith();
-  notebook.archiveNote("Flexbox");
-  const menu = noteMenu(notebook.note("Flexbox"));
-  assert.deepEqual(menu.actions.map((action) => action.label), ["Pin this note", "Move to collection…", "Extract to a new note", "Download as a file", "Make secret", "Unarchive", "Delete"]);
-});
-
 test("a second version shows a bar naming the original and the two buttons", () => {
   const notebook = notebookWith();
   notebook.createNote({ title: "Margins (conflict 2026-10-02)" });
@@ -286,9 +246,9 @@ test("the delete question names the Collection, the count and where the notes li
 });
 
 test("the delete questions name the real Notes Home", () => {
-  assert.equal(deleteNoteQuestion("Flexbox", "github"), "Delete “Flexbox”? It is also removed from your GitHub repo.");
-  assert.equal(deleteNoteQuestion("Flexbox", "google-drive"), "Delete “Flexbox”? It is also removed from Google Drive.");
-  assert.equal(deleteNoteQuestion("Flexbox", "folder"), "Delete “Flexbox”? It is also removed from your notes folder.");
+  assert.equal(deleteNoteQuestion("Flexbox", "github"), "Delete “Flexbox” for good? It is also removed from your GitHub repo.");
+  assert.equal(deleteNoteQuestion("Flexbox", "google-drive"), "Delete “Flexbox” for good? It is also removed from Google Drive.");
+  assert.equal(deleteNoteQuestion("Flexbox", "folder"), "Delete “Flexbox” for good? It is also removed from your notes folder.");
   assert.equal(
     deleteCollectionQuestion("Testing", 1, "google-drive"),
     "Delete the collection “Testing” and its 1 note? They're also removed from Google Drive.",
@@ -296,8 +256,8 @@ test("the delete questions name the real Notes Home", () => {
 });
 
 test("with notes only in this browser the delete questions name no other place", () => {
-  assert.equal(deleteNoteQuestion("Flexbox", "browser"), "Delete “Flexbox”?");
-  assert.equal(deleteNoteQuestion("Flexbox", null), "Delete “Flexbox”?");
+  assert.equal(deleteNoteQuestion("Flexbox", "browser"), "Delete “Flexbox” for good?");
+  assert.equal(deleteNoteQuestion("Flexbox", null), "Delete “Flexbox” for good?");
   assert.equal(deleteCollectionQuestion("Testing", 12, "browser"), "Delete the collection “Testing” and its 12 notes?");
 });
 
@@ -321,9 +281,9 @@ test("with no note open the pill says Glacier quietly and cannot be renamed", ()
   assert.deepEqual(pillTitle({ note: null, freshPage: null }), { text: "Glacier", hint: "", renamable: false, draft: false });
 });
 
-test("the pill of an open note shows its title and offers to rename it, the hover showing the whole title", () => {
+test("the title of an open note shows its headings on a click, the hover showing the whole title", () => {
   const pill = pillTitle({ note: { title: "Grid" }, freshPage: null });
-  assert.deepEqual(pill, { text: "Grid", hint: "Grid\nClick to rename", renamable: true, draft: false });
+  assert.deepEqual(pill, { text: "Grid", hint: "Grid\nClick to see its headings", renamable: true, draft: false });
 });
 
 test("the pill of a fresh page offers to name the note", () => {
@@ -402,37 +362,7 @@ test("archived notes don't count for a page group", () => {
   assert.deepEqual(noCollectionPart(notebookMenu(notebook, ""))[0], { kind: "notes", titles: ["Loose page", "Margins"] });
 });
 
-test("the note's Download says it can save or print the note", () => {
-  const download = noteMenu({ title: "Grid" }).actions.find((action) => action.kind === "download");
-  assert.equal(download.hint, "Save this note as Markdown or PDF, or print it");
-});
-
-test("the This note menu offers Extract to a new note and says to select text first", () => {
-  const action = noteMenu({ title: "A" }).actions.find((a) => a.kind === "extract");
-  assert.equal(action.label, "Extract to a new note");
-  assert.match(action.hint, /Select some text/);
-});
-
-test("a pinned note offers Unpin this note instead", () => {
-  const action = noteMenu({ title: "A" }, { pinned: true }).actions[0];
-  assert.deepEqual([action.kind, action.label], ["unpin", "Unpin this note"]);
-  assert.match(action.hint, /follows your tabs again/);
-});
-
-test("the pin in the pill says what one click does, pinned or not", () => {
-  assert.deepEqual(pinButton(false), { pinned: false, label: "Pin this note", hint: "Pin this note: it stays when you change the page or tab" });
-  assert.deepEqual(pinButton(true), { pinned: true, label: "Unpin this note", hint: "Pinned: it stays when you change the page. Click to follow your tabs again" });
-});
-
-// Secret notes (#109): ⋯ makes a note secret or not, and a lock shows before
-// a secret note's title.
-test("a secret note offers Make not secret instead of Make secret", () => {
-  const menu = noteMenu({ title: "Diary", secret: true });
-  const action = menu.actions.find((a) => a.kind === "notSecret");
-  assert.equal(action.label, "Make not secret");
-  assert.equal(menu.actions.some((a) => a.kind === "secret"), false);
-});
-
+// Secret notes (#109): a lock shows before a secret note's title.
 test("a secret note's title has the lock before it, a plain one none", async () => {
   const notebook = notebookWith();
   await notebook.setPasscode("pass");
@@ -446,4 +376,64 @@ test("the notice after a delete names what went", () => {
   assert.equal(deletedCollectionNotice("Testing", 3), "Deleted the collection “Testing” and its 3 notes.");
   assert.equal(deletedCollectionNotice("Testing", 1), "Deleted the collection “Testing” and its 1 note.");
   assert.equal(deletedCollectionNotice("Biology", 0), "Deleted the empty collection “Biology”.");
+});
+
+// The ⋯ menu (#121): three big icons, Delete on its own, then Keyboard
+// shortcuts and Help. The actions that move later stay at the bottom.
+test("⋯ starts with Rename, Download and Archive as three big icons with words", () => {
+  const menu = noteMenu({ title: "Grid" });
+  assert.deepEqual(menu.big.map((a) => [a.kind, a.label, a.icon]), [
+    ["rename", "Rename", "pencil"],
+    ["download", "Download", "download"],
+    ["archive", "Archive", "archive"],
+  ]);
+  assert.equal(menu.big.every((a) => a.hint), true);
+});
+
+test("⋯ on an archived note offers Unarchive among the big icons", () => {
+  const menu = noteMenu({ title: "Grid", archived: true });
+  assert.deepEqual(menu.big.map((a) => a.label), ["Rename", "Download", "Unarchive"]);
+});
+
+test("Delete stands on its own and asks for good right there, naming the note", () => {
+  const menu = noteMenu({ title: "Grid" });
+  assert.deepEqual([menu.delete.kind, menu.delete.label, menu.delete.icon], ["delete", "Delete", "trash"]);
+  assert.equal(deleteNoteQuestion("Grid", null), "Delete “Grid” for good?");
+});
+
+test("⋯ ends its main part with Keyboard shortcuts and Help", () => {
+  const menu = noteMenu({ title: "Grid" });
+  assert.deepEqual(menu.help.map((a) => [a.kind, a.label, a.icon]), [
+    ["shortcuts", "Keyboard shortcuts", "keyboard"],
+    ["help", "Help", "help"],
+  ]);
+});
+
+test("Help opens the common questions page", () => {
+  assert.equal(HELP_URL, "https://github.com/kabekri-dot/glacier/blob/main/docs/help.md");
+});
+
+test("pin, move, extract and secret wait at the bottom of ⋯, extract showing its shortcut", () => {
+  const menu = noteMenu({ title: "Grid" });
+  assert.deepEqual(menu.later.map((a) => [a.kind, a.label, a.keys ?? null]), [
+    ["pin", "Pin this note", null],
+    ["move", "Move to collection…", null],
+    ["extract", "Extract to a new note", "Ctrl Shift E"],
+    ["secret", "Make secret", null],
+  ]);
+  assert.match(menu.later[2].hint, /Select some text/);
+});
+
+test("a pinned note offers Unpin this note, and a secret one Make not secret", () => {
+  const kinds = noteMenu({ title: "Grid", secret: true }, { pinned: true }).later.map((a) => a.label);
+  assert.deepEqual(kinds, ["Unpin this note", "Move to collection…", "Extract to a new note", "Make not secret"]);
+});
+
+test("the Download icon says it can save or print the note", () => {
+  const download = noteMenu({ title: "Grid" }).big.find((action) => action.kind === "download");
+  assert.equal(download.hint, "Save this note as Markdown or PDF, or print it");
+});
+
+test("hovering ← names the note it goes back to", () => {
+  assert.equal(backButtonHint("Flexbox"), "Back to Flexbox");
 });

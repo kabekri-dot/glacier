@@ -1,4 +1,5 @@
-// Rename by clicking the title (#54): the title in the pill becomes a text
+// Rename in place (#54): the pen after the title, Rename in ⋯ (#121) or a
+// click on a fresh page's title turns the title in the bar into a text
 // field. Enter or clicking away saves, Esc puts the old title back. A refused
 // title keeps the field open with a hint under the pill. On a fresh page a
 // confirmed title makes the note (#61). A locked secret note opens first,
@@ -6,7 +7,7 @@
 // and the Notebook rewrites the Links (#11).
 //
 //   createTitleEdit({ titleEl, hintEl, screen, draw, render, askPasscode, beforeStart })
-//     titleEl         the pill's title, which a click or Enter turns into a field
+//     titleEl         the bar's title, which the field takes the place of
 //     hintEl          the line under the pill for a refused title
 //     draw(view), render()   the panel's drawing of a Screen view, of the paper
 //     askPasscode(heading)   resolves to true once the secret notes are open
@@ -107,14 +108,6 @@ export function createTitleEdit({ titleEl, hintEl, screen, draw, render, askPass
     field.focus();
     field.select();
   }
-
-  titleEl.addEventListener("click", start);
-  titleEl.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      start();
-    }
-  });
 
   return { start, stop, isEditing: () => input !== null };
 }

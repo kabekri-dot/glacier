@@ -1,10 +1,11 @@
-// The ▾ menu (#12): search, the notes for this page, recent notes, the
-// Notebook with its Collections and Page groups, and the Archive. What to list
+// The notes list (#12), opened by ☰ Notes (#121): search, the notes for this
+// page, recent notes, the Notebook with its Collections and Page groups, and
+// the Archive. What to list
 // and what a search matches comes from src/menu-contents.mjs; this draws its
 // parts, wires their hover icons and asks the questions before deleting.
 //
 // The sidebar (panel.js) plugs in the Notebook, the Screen and these:
-//   el, button        the menu's box and the ▾ that opens it
+//   el, button        the menu's box and the Notes button that opens it
 //   noteEl            the paper, where the question before deleting a note shows
 //   draw(view)        draws what a Screen action returned
 //   render()          redraws the open note with the caret in it
@@ -113,15 +114,23 @@ export function createMenuView({ notebook, screen, el, button: menuButtonEl, not
     const { card, keep } = removeQuestion({
       text: deleteNoteQuestion(doomed.title, home),
       action: "Delete",
-      onAction: () => {
-        const { kept, view } = screen.delete();
-        draw(view);
-        offerUndoDelete(deletedNotice(doomed.title), kept);
-      },
+      onAction: deleteOpenNote,
       onKeep: () => draw(screen.reopen()),
     });
     noteEl.appendChild(card);
     keep.focus();
+  }
+
+  // Delete the open note now, once the question was answered: in ⋯ (#121) or
+  // on the paper. The Opening flow decides what the sidebar shows next, and a
+  // notice offers Undo (#116).
+  function deleteOpenNote() {
+    const doomed = screen.note();
+    if (!doomed) return;
+    screen.flush();
+    const { kept, view } = screen.delete();
+    draw(view);
+    offerUndoDelete(deletedNotice(doomed.title), kept);
   }
 
   // The notice after a delete, like Archived (#116): Undo puts back what
@@ -568,5 +577,6 @@ export function createMenuView({ notebook, screen, el, button: menuButtonEl, not
 
     act,
     askDeleteNote,
+    deleteOpenNote,
   };
 }

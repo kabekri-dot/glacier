@@ -8,7 +8,8 @@
 // - art/welcome-day.svg and art/welcome-night.svg: the scene at the top of
 //   the welcome (#90), a glacier and a little iceberg on calm water, in day
 //   colours for light papers and night colours for dark ones.
-// - art/icon-<name>.svg: the small pictures before the welcome's lines.
+// - art/icon-<name>.svg: the small pictures before the welcome's lines, and
+//   in the top bar and its menus (#121).
 //
 // A developer tool, never loaded by the extension. Run it again after
 // changing the art:  node tools/draw-art.mjs
@@ -466,6 +467,109 @@ const PICTURES = {
       "............",
     ],
     colours: { r: "#d9584a", b: "#4a86cf", g: "#5d9a5a", y: "#f6e7b0", p: "#efe8d6" },
+  },
+  // The top bar and its menus (#121).
+  list: {
+    rows: [
+      "............",
+      "............",
+      ".oo.oooooooo",
+      ".oo.oooooooo",
+      "............",
+      ".oo.oooooooo",
+      ".oo.oooooooo",
+      "............",
+      ".oo.oooooooo",
+      ".oo.oooooooo",
+      "............",
+      "............",
+    ],
+    colours: { o: "#5b7fa8" },
+  },
+  download: {
+    rows: [
+      ".....oo.....",
+      "....obbo....",
+      "....obbo....",
+      "....obbo....",
+      ".oooobbooo..",
+      "..obbbbbo...",
+      "...obbbo....",
+      "....obo.....",
+      "o....o.....o",
+      "o..........o",
+      "oooooooooooo",
+      "............",
+    ],
+    colours: { o: "#3f6c9e", b: "#6aa8e6" },
+  },
+  archive: {
+    rows: [
+      "............",
+      "oooooooooooo",
+      "oyyyyyyyyyyo",
+      "oooooooooooo",
+      ".obbbbbbbbo.",
+      ".obboooobbo.",
+      ".obbbbbbbbo.",
+      ".obbbbbbbbo.",
+      ".obbbbbbbbo.",
+      ".oooooooooo.",
+      "............",
+      "............",
+    ],
+    colours: { o: "#8a6a4a", y: "#e8c98f", b: "#c9a26b" },
+  },
+  trash: {
+    rows: [
+      "....oooo....",
+      "oooooooooooo",
+      "............",
+      ".oooooooooo.",
+      ".owlwwlwwlo.",
+      ".owlwwlwwlo.",
+      ".owlwwlwwlo.",
+      ".owlwwlwwlo.",
+      ".owlwwlwwlo.",
+      ".owwwwwwwwo.",
+      "..oooooooo..",
+      "............",
+    ],
+    colours: { o: "#a9483f", w: "#f8fbff", l: "#e0a39b" },
+  },
+  keyboard: {
+    rows: [
+      "............",
+      "............",
+      "oooooooooooo",
+      "owkwkwkwkwko",
+      "owwwwwwwwwwo",
+      "okwkwkwkwkwo",
+      "owwwwwwwwwwo",
+      "owwkkkkkkwwo",
+      "owwwwwwwwwwo",
+      "oooooooooooo",
+      "............",
+      "............",
+    ],
+    colours: { o: "#5b7fa8", w: "#f8fbff", k: "#9ccbee" },
+  },
+  help: {
+    rows: [
+      "...oooooo...",
+      "..obbbbbbo..",
+      ".obbwwwwbbo.",
+      "obbwbbbbwbbo",
+      "obbbbbbbwbbo",
+      "obbbbbbwbbbo",
+      "obbbbbwbbbbo",
+      "obbbbbwbbbbo",
+      ".obbbbbbbbo.",
+      "..obbbwbbo..",
+      "...oooooo...",
+      "............",
+    ],
+    colours: { o: "#3f6c9e", b: "#6aa8e6", w: "#f8fbff" },
   },
 };
 

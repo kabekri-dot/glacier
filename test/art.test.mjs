@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { PAPERS } from "../src/look.mjs";
 import { WELCOME_LINES } from "../src/guidance.mjs";
+import { noteMenu } from "../src/menu-contents.mjs";
+import { newNoteChoices } from "../src/new-note-choices.mjs";
 
 const path = (file) => new URL(`../${file}`, import.meta.url);
 const manifest = JSON.parse(readFileSync(path("manifest.json"), "utf8"));
@@ -32,6 +34,16 @@ test("every welcome line's picture is drawn", () => {
   for (const { icon } of WELCOME_LINES) {
     assert.ok(existsSync(path(`art/icon-${icon}.svg`)), icon);
   }
+});
+
+test("every picture in the top bar and its menus is drawn", () => {
+  const menu = noteMenu({ title: "A" });
+  const icons = [
+    "list",
+    ...[...menu.big, menu.delete, ...menu.help].map((action) => action.icon),
+    ...newNoteChoices({ website: { title: "A" } }).map((choice) => choice.icon),
+  ];
+  for (const icon of icons) assert.ok(existsSync(path(`art/icon-${icon}.svg`)), icon);
 });
 
 test("the toolbar icon is the glacier art in both browsers", () => {

@@ -218,6 +218,28 @@ function placeOf(status) {
   return notesHomeName(status.home ?? "github");
 }
 
+// The short word in the top bar (#121), in place of the dot. Null while all
+// is well (only in this browser, syncing, synced); otherwise the one thing
+// that needs the user. A click on it opens the sync box. While the notes live
+// only in this browser the tiny pixel cloud stays there instead (#98, ADR 0011).
+export function showsCloud(status) {
+  return status.state === "off";
+}
+
+export function syncWord(status) {
+  switch (status.state) {
+    case "offline":
+      return "Offline";
+    case "conflict":
+      return "2 versions";
+    case "error":
+      if (needsFolderOk(status)) return "Reconnect";
+      return status.reason === "unauthorized" ? "Sign in again" : "Not synced";
+    default:
+      return null;
+  }
+}
+
 // What hovering the sync dot says, for every state (#70).
 export function syncDotText(status) {
   switch (status.state) {

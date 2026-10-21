@@ -37,8 +37,6 @@ import { createNoteHistory } from "./note-history.mjs";
 import { isOpenedByPage } from "./page-open.mjs";
 import { clipQuote, appendClip } from "./clip.mjs";
 
-const LAST_NOTES_SHOWN = 3;
-
 export function createScreen({ notebook, onSaveError, onSaved, beforeLeave = () => {}, welcomeSeen = true, onWelcomeSeen = () => {}, ...timers }) {
   let note = null;
   let welcome = !welcomeSeen;
@@ -211,9 +209,6 @@ export function createScreen({ notebook, onSaveError, onSaved, beforeLeave = () 
     onScreen: () => ({ current: note, openedByPage }),
     // The title ← would open, or null.
     previous: () => history.previous(),
-    // The last notes you were on, newest first, for the ← box (#81). Notes
-    // that have since gone are left out.
-    lastNotes: () => history.recent(Infinity).filter((title) => notebook.note(title)).slice(0, LAST_NOTES_SHOWN),
     flush: () => session.flush(),
 
     // A view the Opening flow decided on.

@@ -5,7 +5,7 @@
 // caret and draws the result.
 //
 //   createFocusedLine({ editor, render, drawMenu, dismissMenu, selectWholeNote,
-//                       focusedEl, hint, onEdited, onTyped, pickSketch })
+//                       focusedEl, hint, onTyped, pickSketch })
 //     editor            the Editor session
 //     render()          draw the paper again
 //     drawMenu()        draw the `/` menu for the session's menu state
@@ -13,7 +13,6 @@
 //     selectWholeNote() the second Ctrl A
 //     focusedEl()       the line being edited after a redraw
 //     hint()            the quiet text on an empty line
-//     onEdited()        after each edit drawn in place (no full redraw)
 //     onTyped()         after a key typed into the line
 //     pickSketch(yes)   whether the next redraw shows a sketch as picked
 //   returns build(range) -> { el, start }: the element for a block's line range
@@ -31,7 +30,7 @@ import { caretAtPoint, textOffset, selectionIn, placeSelection, placeCaret } fro
 // is kept free for search.
 const FORMAT_KEYS = { b: "bold", i: "italic", e: "code" };
 
-export function createFocusedLine({ editor, render, drawMenu, dismissMenu, selectWholeNote, focusedEl, hint, onEdited, onTyped, pickSketch }) {
+export function createFocusedLine({ editor, render, drawMenu, dismissMenu, selectWholeNote, focusedEl, hint, onTyped, pickSketch }) {
   // One part of the focused line: a faded mark, or text in its inline style
   // (#38) — bold, italic, code, a Link or a web link.
   function styledPart(part) {
@@ -122,7 +121,6 @@ export function createFocusedLine({ editor, render, drawMenu, dismissMenu, selec
         drawFocused(el, editor.lines.slice(start, start + editor.state.blockCount));
         placeCaret(el, caret);
       }
-      onEdited();
       // Open, refilter or close the `/` command menu for the new caret (#32).
       // The session knows not to open inside a code block, where `/` is code.
       editor.refreshMenu();
