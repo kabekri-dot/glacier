@@ -11,6 +11,19 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Empty notes go when you leave them (#119)
+
+- [ ] In a note, write [[Nothing here]] and click it. Press ← without writing: the link shows as missing again, and "Nothing here" is not in the menu.
+- [ ] Click a Missing Link, write nothing, then close the sidebar and open it again: the note is not in the menu.
+- [ ] Click a Missing Link and type one letter, then press ←: the note stays.
+- [ ] Click a Missing Link, put it in a Collection, then press ←: the note stays.
+- [ ] Click a Missing Link, rename it in the pill, then press ←: the note stays.
+- [ ] Click + then New note, type / and take it out again, then open another note: no "New note" is left in the menu.
+- [ ] Click + then New note, type a title and press Enter, then open another note: the note with that title stays.
+- [ ] Click a Missing Link and draw a box in a sketch, take out the text around it, then press ←: the note stays.
+- [ ] Make an empty note in another browser and sync. Open it here and leave it: it stays.
+- [ ] After any of these, sync: no empty file shows up in the Notes Home.
+
 ### Titles that differ only in capitals (#118)
 
 - [ ] Make a note called "Lists" and another called "Arrays". Rename "Arrays" to "lists": it is refused and "lists 2" is offered instead.
@@ -559,7 +572,7 @@ Reload with ↻ first.
 - [ ] + and "New note": a blank note with "Title" faded in the pill. Name it and write: the line above the text shows only "Add to a collection", no site link. Click it to give it a Collection.
 - [ ] Hover the two + choices: "A blank note, not tied to any page." and "A note for the page you're on. It opens again when you visit the page."
 - [ ] On a settings page, + offers only "New note".
-- [ ] Click a Missing Link: the new note has no site link and "Add to a collection".
+- [ ] Click a Missing Link: the new note has no site link and "Add to a collection". Leave it without writing: it is gone again.
 - [ ] Look through the pill, both menus, the + menu, the start prompt, the permission card and settings: nothing says Lesson or Concept.
 - [ ] With a Notes repo that still has a `concepts/` folder, sync: on GitHub one commit moves those files to `notes/`, and the notes still open with their text and backlinks.
 - [ ] Restore from an older Export zip (with `concepts/` in it): every note comes back.

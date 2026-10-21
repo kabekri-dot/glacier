@@ -59,6 +59,9 @@ export function createScreen({ notebook, onSaveError, onSaved, beforeLeave = () 
   let closedByArchive = null;
   // The title of the note a delete just closed, for Undo (#116).
   let closedByDelete = null;
+  // The note made here whose title nobody typed (a Missing Link, or a title
+  // from its first line): left completely empty, it goes (#119).
+  let untitled = null;
   const history = createNoteHistory();
   const session = createNoteSession({
     notebook,
@@ -75,12 +78,16 @@ export function createScreen({ notebook, onSaveError, onSaved, beforeLeave = () 
     onWelcomeSeen();
   }
 
-  // Leaving the note on screen: an empty sketch left empty goes (#104).
-  // True when that changed the note.
+  // Leaving the note on screen: an empty sketch left empty goes (#104), and
+  // so does a note made here that is still completely empty and was never
+  // given a title by the user (#119). True when that changed the Notebook.
   function dropEmptySketches() {
     if (!note) return false;
     session.flush();
-    return notebook.dropEmptySketches(note.title);
+    const dropped = notebook.dropEmptySketches(note.title);
+    const wasUntitled = untitled === note.title;
+    untitled = null;
+    return (wasUntitled && notebook.dropEmptyNote(note.title)) || dropped;
   }
 
   function showNote(next, { byPage = false, fromHistory = false } = {}) {
@@ -127,14 +134,15 @@ export function createScreen({ notebook, onSaveError, onSaved, beforeLeave = () 
   }
 
   // The Note session made the note on the fresh page: from here it is a
-  // normal note, with its text as typed.
-  function freshPageBecameNote() {
+  // normal note, with its text as typed. `named` when the user gave the title.
+  function freshPageBecameNote({ named = true } = {}) {
     hideWelcome();
     const made = created;
     created = null;
     freshPage = null;
     before = null;
     note = made;
+    if (!named) untitled = made.title;
     openedByPage = isOpenedByPage(made);
     history.visit(made.title);
     notebook.markOpened(made.title);
@@ -233,6 +241,24 @@ export function createScreen({ notebook, onSaveError, onSaved, beforeLeave = () 
       return showNote(next, { byPage });
     },
 
+    // Follow a `[[Title]]` Link. A Missing Link makes the note, which goes
+    // again if it is left completely empty (#119).
+    openLink(title) {
+      const missing = notebook.isMissingLink(title);
+      const view = showNote(notebook.openLink(title));
+      if (missing) untitled = title;
+      return { ...view, ...(missing && { changed: true }) };
+    },
+
+    // The sidebar is closing: leave the note on screen as if another note
+    // opened (#119). Nothing is drawn after this.
+    closing() {
+      const dropped = dropEmptySketches();
+      session.flush();
+      if (note && !notebook.note(note.title)) showNothing();
+      return dropped;
+    },
+
     startFreshPage,
 
     // "New note for this page": the Opening flow reads the page for a fresh
@@ -246,9 +272,11 @@ export function createScreen({ notebook, onSaveError, onSaved, beforeLeave = () 
     // The text changed. The first character on a fresh page makes the note.
     edit(body) {
       hideWelcome();
+      const named = Boolean(freshPage?.title.trim());
       session.edit(body);
-      if (created) return freshPageBecameNote();
+      if (created) return freshPageBecameNote({ named });
       if (!retitled) return null;
+      if (untitled === note.title) untitled = retitled.title;
       note = retitled;
       retitled = null;
       history.rename(note.title);
@@ -284,6 +312,7 @@ export function createScreen({ notebook, onSaveError, onSaved, beforeLeave = () 
 
     rename(title) {
       session.flush();
+      untitled = null;
       const result = notebook.renameNote(note.title, title);
       if (result.locked) return { type: "renameLocked" };
       if (!result.ok) return { type: "titleRefused", suggestion: result.suggestion };
