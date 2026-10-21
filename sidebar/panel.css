@@ -1736,10 +1736,12 @@ code {
   margin: 0;
   padding: 0.2rem 0.65rem;
   border: 1px solid var(--rule);
-  border-radius: 999px;
+  border-radius: 14px;
   background: var(--paper);
   color: var(--ink);
   font-size: 0.85rem;
+  /* A longer notice wraps onto a second line: keep it tight, not on the ruling. */
+  line-height: 1.35;
   pointer-events: none;
 }
 
