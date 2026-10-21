@@ -676,7 +676,7 @@ async function start() {
         await autoSync.syncNow();
         return { notes: 0 };
       }
-      const name = place === "github" ? repo : notesHomeName(place);
+      const name = notesHomeName(place, { repo });
       let result;
       try {
         result = await notesHomes.switchTo(place, { repo, token, onProgress });

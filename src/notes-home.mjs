@@ -74,10 +74,35 @@ export function syncErrorMessage(error, { home = "github", repo = "" } = {}) {
   return (words[error?.reason] ?? words.other)(repo);
 }
 
-// The place as a sentence names it: "GitHub", "your notes folder".
-export function notesHomeName(id) {
+// The place as a sentence names it: "GitHub", "your notes folder", or
+// GitHub by its repo where the sentence knows it.
+export function notesHomeName(id, { repo = "" } = {}) {
+  if (id === "github" && repo) return repo;
   const home = NOTES_HOMES.find((each) => each.id === id);
   return home ? (home.place ?? home.name) : id;
+}
+
+// The place's pixel icon; with no place chosen, the browser's.
+export function notesHomeIcon(id) {
+  return NOTES_HOMES.find((home) => home.id === id)?.icon ?? "browser";
+}
+
+// Where else deleting takes the notes from (#117): null for notes only in
+// this browser, or with no Notes Home yet.
+export function alsoDeletedFrom(id) {
+  if (!id || id === "browser") return null;
+  return id === "github" ? "your GitHub repo" : notesHomeName(id);
+}
+
+// What the sync box says once a place that let Glacier in stops doing so.
+const SIGN_IN_LOST = {
+  github: "GitHub no longer accepts your token. It may have expired. Make a new one and paste it under Where your notes live.",
+  "google-drive": "Google asks you to sign in again. Your changes are kept in this browser until you do.",
+  folder: FOLDER_NEEDS_OK,
+};
+
+export function signInLostText(id) {
+  return SIGN_IN_LOST[id] ?? SIGN_IN_LOST.github;
 }
 
 export function switchQuestion(id) {

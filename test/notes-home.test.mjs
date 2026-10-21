@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createNotebook, noteToFile } from "../src/notebook.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { memoryRemote } from "../src/memory-remote.mjs";
-import { NOTES_HOMES, notesHomeName, switchQuestion, chosenNotesHome, notesHomeChoices, googleReady, folderReady, syncErrorMessage } from "../src/notes-home.mjs";
+import { NOTES_HOMES, notesHomeName, notesHomeIcon, alsoDeletedFrom, signInLostText, switchQuestion, chosenNotesHome, notesHomeChoices, googleReady, folderReady, syncErrorMessage } from "../src/notes-home.mjs";
 import { createAutoSync, syncBox, syncDotText, syncStatusText, needsFolderOk } from "../src/auto-sync.mjs";
 import { GOOGLE_CONFIG } from "../src/google-config.mjs";
 
@@ -215,4 +215,30 @@ test("when Chrome forgot the folder, the sync box asks for its OK with one Recon
   assert.equal(box.signIn, undefined);
   assert.equal(needsFolderOk(status), true);
   assert.equal(needsFolderOk({ ...status, home: "github" }), false);
+});
+
+test("GitHub is named by its repo where a sentence knows it", () => {
+  assert.equal(notesHomeName("github", { repo: "mito/notes" }), "mito/notes");
+  assert.equal(notesHomeName("github"), "GitHub");
+  assert.equal(notesHomeName("folder", { repo: "mito/notes" }), "your notes folder");
+});
+
+test("each place has its pixel icon, and no place shows the browser", () => {
+  assert.equal(notesHomeIcon("google-drive"), "cloud");
+  assert.equal(notesHomeIcon("github"), "github");
+  assert.equal(notesHomeIcon(undefined), "browser");
+});
+
+test("deleting names where else the notes go from, and notes only here go from nowhere else", () => {
+  assert.equal(alsoDeletedFrom("github"), "your GitHub repo");
+  assert.equal(alsoDeletedFrom("folder"), "your notes folder");
+  assert.equal(alsoDeletedFrom("google-drive"), "Google Drive");
+  assert.equal(alsoDeletedFrom("browser"), null);
+  assert.equal(alsoDeletedFrom(undefined), null);
+});
+
+test("a sign-in that stops working is explained in the place's own words", () => {
+  assert.match(signInLostText("github"), /^GitHub no longer accepts your token\./);
+  assert.match(signInLostText("google-drive"), /^Google asks you to sign in again\./);
+  assert.equal(signInLostText("folder"), "Chrome needs your OK to write to your notes folder again.");
 });

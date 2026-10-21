@@ -15,7 +15,7 @@
 //   { kind: "result", title, titleMark, snippet }           a search result
 //   { kind: "pair", notes: [{ title, label, actions }] }   a Conflict Copy and its original, with the row icons
 import { COLLECTIONS_HINT } from "./guidance.mjs";
-import { notesHomeName } from "./notes-home.mjs";
+import { alsoDeletedFrom } from "./notes-home.mjs";
 import { normalizeSource } from "./notebook.mjs";
 import { PAGE_NOTE_HINT } from "./new-note-choices.mjs";
 
@@ -290,22 +290,16 @@ export function deletedCollectionNotice(course, count) {
 }
 
 // The questions before deleting name where else the notes go from, by the
-// Notes Home's id (#117). Notes only in this browser, or with no Notes Home
-// yet, go from nowhere else.
-function removedFrom(home) {
-  if (!home || home === "browser") return null;
-  return home === "github" ? "your GitHub repo" : notesHomeName(home);
-}
-
+// Notes Home's id (#117).
 export function deleteNoteQuestion(title, home) {
-  const place = removedFrom(home);
+  const place = alsoDeletedFrom(home);
   const question = `Delete “${title}”?`;
   return place ? `${question} It is also removed from ${place}.` : question;
 }
 
 export function deleteCollectionQuestion(course, count, home) {
   if (count === 0) return `Delete the empty collection “${course}”?`;
-  const place = removedFrom(home);
+  const place = alsoDeletedFrom(home);
   const question = `Delete the collection “${course}” and its ${noteCount(count)}?`;
   return place ? `${question} They're also removed from ${place}.` : question;
 }

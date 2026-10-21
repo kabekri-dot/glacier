@@ -16,7 +16,7 @@
 //   hasPasscode() and changePasscode(passcode, next) -> { ok, locked } (#109)
 import { syncStatusText, syncResultText, syncBox, JUST_SYNCED } from "../src/auto-sync.mjs";
 import { notesRepoName } from "../src/notebook.mjs";
-import { notesHomeChoices, notesHomeName, switchQuestion, googleReady, folderReady } from "../src/notes-home.mjs";
+import { notesHomeChoices, notesHomeName, notesHomeIcon, switchQuestion, googleReady, folderReady } from "../src/notes-home.mjs";
 import { GOOGLE_CONFIG } from "../src/google-config.mjs";
 import { HANDLED_KEYS, SHORTCUT_GROUPS, shortcutRows } from "../src/shortcuts-panel.mjs";
 import { PAPERS, paperGroups, FONT_OVERRIDES, TEXT_SIZE, fontPreview } from "../src/look.mjs";
@@ -564,7 +564,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
     else if (shown === "folder") place = [folderCard(saved, error)];
 
     const status = await repo.status();
-    const icon = notesHomeChoices({ googleReady: true, folderReady: true }).find((home) => home.id === saved.home)?.icon ?? "browser";
+    const icon = notesHomeIcon(saved.home);
     const connected = status.state !== "off" && !ask && shown === saved.home;
     const sync = connected ? [homeStatusLine({ status, syncNow: repo.syncNow, notice: repo.notice, icon })] : [];
     bodies["notes-home"].replaceChildren(choices, ...sync, ...place, ...(await backupControls()));
@@ -754,7 +754,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
     }
 
     const notes = result.notes === 1 ? "1 note" : `${result.notes} notes`;
-    const from = place === "github" ? repoName : notesHomeName(place);
+    const from = notesHomeName(place, { repo: repoName });
     const done = element("p", "settings-text", `Your notes are here. Brought in ${notes} from ${from}.`);
     const ok = element("button", "card-button", "Start writing");
     ok.type = "button";

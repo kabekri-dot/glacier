@@ -8,7 +8,7 @@
 // The Notebook core does the syncing itself; this only decides when. Timers
 // are injected for tests. No browser APIs here.
 
-import { FOLDER_NEEDS_OK, notesHomeName, syncErrorMessage } from "./notes-home.mjs";
+import { notesHomeName, signInLostText, syncErrorMessage } from "./notes-home.mjs";
 
 const NOTHING_MOVED = { sent: 0, received: 0 };
 
@@ -192,11 +192,7 @@ export function needsFolderOk(status) {
 }
 
 function errorDetail(status, last) {
-  if (needsGoogleSignIn(status)) return "Google asks you to sign in again. Your changes are kept in this browser until you do.";
-  if (needsFolderOk(status)) return FOLDER_NEEDS_OK;
-  if (status.reason === "unauthorized") {
-    return "GitHub no longer accepts your token. It may have expired. Make a new one and paste it under Where your notes live.";
-  }
+  if (status.reason === "unauthorized") return signInLostText(status.home);
   return `${status.message} ${last}`;
 }
 
