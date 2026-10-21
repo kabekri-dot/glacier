@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Glacier",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "A personal notebook in the browser's sidebar, for taking and connecting notes while following online courses.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwfjg13LkG28Vja43b8hpi81vlfLv0U40aAu8uBddP5kr0BHv1nNh2VPvuBf7tFbhpgjaU35Iy7TQGSsl7t44QCNBpURHyNJ3tam2irATBKCFhCXLpUq3arkbLcTtSGiWoVqOGoTmPJAZQAGyga2mCY+CHEuCPKO9RDAectyLvSO5Ia3dsgc9LuVruMfxi/iCbu9yGDEZ8y/TTD6l0LZOvg/4aMU0ENgEFoXFyfNebOh8Q51d7Z1eelde/Eg/eghhEM5gKQGIaeslwVJqqXYIfvuFiGvJ51tj3tRs3QlS2Z1Vg8GD8PVil7kPT7XN9KBUavAs+3wKhc7fKxzJbUW4mQIDAQAB",
   "icons": {
