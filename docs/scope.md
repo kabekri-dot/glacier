@@ -63,6 +63,24 @@ Also asked for on the way: a table of contents (#107), and **notes as pages** (#
 
 Also: the open polish and the user's brother's feedback, as they come (bugs first).
 
+## Next (the user's backlog, 2026-10-21)
+
+Each of these gets a grilling with the user before it becomes a ticket, in
+this order.
+
+1. **Urgent: the top bar.** It is cluttered and hard to understand. Glacier
+   should be usable with no tutorial at all.
+2. **Settings, more organized.** Keep the style; less at once.
+3. **Two more layouts** next to Zen (picked from the list under Later).
+4. **Hidden games.** A secret command (for example `/takebreak`) starts a
+   small pixel game in the note, with highscores. Each Theme has its own game
+   that matches it. (Pixel art stays still or slow; no flicker.)
+5. **Support Glacier.** Pay once, weekly or monthly, like "buy me a coffee";
+   maybe it unlocks two extra Themes, but it doesn't have to.
+6. **Codes for influencers.** A small creator gets a code that unlocks two
+   custom Themes for their followers.
+7. **A website with SEO** to promote Glacier.
+
 ## Later (maybe never)
 
 Each of these gets a grilling with the user before it becomes a ticket.
