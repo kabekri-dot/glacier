@@ -34,6 +34,8 @@ import { createPageView } from "./page-view.js";
 import { createContents } from "./contents-view.js";
 import { createTitleEdit } from "./title-edit.js";
 import { createFind } from "./find-view.js";
+import { createPaperSelection } from "./paper-selection.js";
+import { caretAtPoint, renderedOffsetAt, textOffset, selectionIn, placeSelection, placeCaret } from "./paper-text.js";
 import { readLook, lookStyle, wholeRows, applyLook } from "../src/look.mjs";
 import { readPanelPlace, createPanelPlacement } from "../src/panel-place.mjs";
 import { createBrowserPanels } from "../src/browser-panels.mjs";
@@ -51,7 +53,6 @@ import { WELCOME_GREETING, WELCOME_LINES, WELCOME_TIP, welcomeShown, saveErrorTe
 import { drawBesideFrames } from "./beside-frames.js";
 import {
   blockRanges,
-  copiedMessage,
   editorTextToBody,
   focusedLineSpans,
   isFence,
@@ -548,7 +549,7 @@ async function start() {
     box: document.querySelector(".note-menu"),
     screen,
     onAction: (kind) => {
-      if (kind === "extract") extractSelection();
+      if (kind === "extract") paperSelection.extract();
       else if (kind === "secret") secrets.makeSecret();
       else if (kind === "notSecret") secrets.makeNotSecret();
       else if (kind === "pin" || kind === "unpin") setPinned(kind === "pin");
@@ -1016,34 +1017,6 @@ async function start() {
     openNote(notebook.openLink(title));
   }
 
-  // The text node and offset the browser puts the caret at for a point.
-  function caretAtPoint(x, y) {
-    if (document.caretRangeFromPoint) {
-      const range = document.caretRangeFromPoint(x, y);
-      if (range) return { node: range.startContainer, offset: range.startOffset };
-    } else if (document.caretPositionFromPoint) {
-      const pos = document.caretPositionFromPoint(x, y);
-      if (pos) return { node: pos.offsetNode, offset: pos.offset };
-    }
-    return null;
-  }
-
-  // The rendered-text offset of a click inside a rendered block, walking its
-  // text nodes up to the caret the browser reports for the click point.
-  function renderedOffsetAt(blockEl, x, y) {
-    const at = caretAtPoint(x, y);
-    if (!at) return 0;
-    let offset = 0;
-    const walker = document.createTreeWalker(blockEl, NodeFilter.SHOW_TEXT);
-    let textNode = walker.nextNode();
-    while (textNode) {
-      if (textNode === at.node) return offset + at.offset;
-      offset += textNode.textContent.length;
-      textNode = walker.nextNode();
-    }
-    return offset;
-  }
-
   // Move the caret and redraw. The placement decision is the session's; this
   // only draws the result. Moving the caret is clicking elsewhere, so it
   // dismisses an open menu first; if that took out a `/` on its own line above
@@ -1312,65 +1285,6 @@ async function start() {
     return el;
   }
 
-  // The text offset of (node, nodeOffset) inside `root`: the length of all the
-  // text before it. A `<br>` the browser leaves behind counts as nothing, so
-  // this is always an offset into the raw Markdown.
-  function textOffset(root, node, nodeOffset) {
-    if (!root.contains(node)) return root.textContent.length;
-    const range = document.createRange();
-    range.selectNodeContents(root);
-    range.setEnd(node, nodeOffset);
-    return range.toString().length;
-  }
-
-  // The selection inside the focused line as raw offsets { start, end }.
-  function selectionIn(root) {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return { start: 0, end: 0 };
-    const range = selection.getRangeAt(0);
-    return {
-      start: textOffset(root, range.startContainer, range.startOffset),
-      end: textOffset(root, range.endContainer, range.endOffset),
-    };
-  }
-
-  // The text node and offset for a raw offset inside the focused line. At the
-  // edge between two spans it is in the later one, so text typed right after
-  // `## ` lands in the heading text, not in the faded mark.
-  function pointAt(root, offset) {
-    let point = { node: root, offset: 0 };
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    let remaining = offset;
-    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-      const length = node.textContent.length;
-      if (remaining < length) return { node, offset: remaining };
-      // Past every character so far: the end of this node, unless a later
-      // node takes it.
-      point = { node, offset: length };
-      remaining -= length;
-    }
-    return point;
-  }
-
-  // Select the raw offsets [start, end] inside the focused line; with start
-  // equal to end this places the caret.
-  function placeSelection(root, start, end) {
-    const range = document.createRange();
-    const from = pointAt(root, start);
-    range.setStart(from.node, from.offset);
-    if (end !== start) {
-      const to = pointAt(root, end);
-      range.setEnd(to.node, to.offset);
-    }
-    const selection = window.getSelection();
-    selection.removeAllRanges();
-    selection.addRange(range);
-  }
-
-  function placeCaret(root, offset) {
-    placeSelection(root, offset, offset);
-  }
-
   // One part of the focused line: a faded mark, or text in its inline style
   // (#38) — bold, italic, code, a Link or a web link.
   function styledPart(part) {
@@ -1554,7 +1468,7 @@ async function start() {
           event.preventDefault();
           const { start: from, end: to } = selectionIn(el);
           const selected = editor.selectAll(el.textContent, from, to);
-          if (selected.type === "note") selectWholeNote();
+          if (selected.type === "note") paperSelection.selectWholeNote();
           else placeSelection(el, selected.start, selected.end);
           return;
         }
@@ -1661,87 +1575,16 @@ async function start() {
     return { el, start };
   }
 
-  // --- Selecting and copying as Markdown (#7) -------------------------------
-
-  // Is a note drawn in the page (rather than a form or a card)?
-  const noteShown = () => noteEl.querySelector(".line-row") !== null;
-
-  // Select the whole note, and only the note, not the rest of the panel. The
-  // line being edited lets go of the focus, so typing can't edit a selection
-  // that reaches outside it.
-  function selectWholeNote() {
-    dismissAndRedraw();
-    focusedEl?.blur();
-    const range = document.createRange();
-    range.selectNodeContents(noteEl);
-    const selection = window.getSelection();
-    selection.removeAllRanges();
-    selection.addRange(range);
-  }
-
-  // Ctrl+A anywhere else in the panel (after the whole note is selected, the
-  // focus is on the page) keeps selecting the note, never the whole panel.
-  document.addEventListener("keydown", (event) => {
-    const isSelectAll = isShortcut(event, "a");
-    if (!isSelectAll || event.defaultPrevented || !noteShown()) return;
-    if (event.target.closest?.("input, textarea, [contenteditable='true']")) return;
-    event.preventDefault();
-    selectWholeNote();
+  // --- Selecting, copying and Extract (#7, #99): sidebar/paper-selection.js --
+  const paperSelection = createPaperSelection({
+    noteEl,
+    editor,
+    focusedEl: () => focusedEl,
+    dismissMenu: () => dismissAndRedraw(),
+    render: () => render(),
+    showNotice: (text, ms) => showNotice(text, ms),
   });
-
-  // One edge of the page's selection, as the Editor session reads it: a raw
-  // line and column in the line being edited, a drawn offset in a drawn line,
-  // or an offset in the code of a drawn code block. An edge between two blocks
-  // is the start of the later one, or the end of the last.
-  function selectionEdge(node, offset) {
-    if (node === noteEl) {
-      const blocks = noteEl.children;
-      if (offset < blocks.length) return selectionEdge(blocks[offset], 0);
-      const last = noteEl.lastElementChild;
-      return selectionEdge(last, last.childNodes.length);
-    }
-    let blockEl = node;
-    while (blockEl.parentNode !== noteEl) blockEl = blockEl.parentNode;
-    const drawn = textOffset(blockEl, node, offset);
-    if (blockEl.dataset.start === undefined) {
-      // The row of the line being edited: its + button comes before the line.
-      const plus = blockEl.querySelector(".line-plus").textContent.length;
-      const raw = Math.max(0, drawn - plus);
-      return editor.lineColFromOffset(focusedEl.textContent, raw);
-    }
-    const start = Number(blockEl.dataset.start);
-    if (blockEl.dataset.code !== undefined) return { code: start, offset: drawn };
-    return { line: start, rendered: drawn };
-  }
-
-  // Extract to a new note (#99): the selected text becomes a note and a Link
-  // takes its place. The new note does not open and nothing floats next to the
-  // selection.
-  function extractSelection() {
-    const selection = window.getSelection();
-    const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-    if (!range || range.collapsed || !noteShown() || !noteEl.contains(range.commonAncestorContainer)) {
-      showNotice("Select some text in the note first.");
-      return;
-    }
-    const done = editor.extract(
-      selectionEdge(range.startContainer, range.startOffset),
-      selectionEdge(range.endContainer, range.endOffset),
-    );
-    if (!done) {
-      showNotice("Select some text in the note first.");
-      return;
-    }
-    render();
-    showNotice(`Made the note '${done.title}'.`);
-  }
-
-  document.addEventListener("keydown", (event) => {
-    const isExtract = isShortcut(event, "e", { shift: true });
-    if (!isExtract || !noteShown()) return;
-    event.preventDefault();
-    if (!event.isComposing) extractSelection();
-  });
+  const noteShown = paperSelection.noteShown;
 
   const copiedEl = document.querySelector(".copied");
   let copiedTimer = null;
@@ -1759,12 +1602,6 @@ async function start() {
     }
     copiedNote.hidden = false;
   });
-
-  // A short confirmation of how many lines were copied, that fades on its own.
-  function showCopied(count) {
-    showNotice(copiedMessage(count), 1500);
-  }
-
   // A short message in the bottom corner, gone after a moment.
   // With `action` ({ label, run }) the notice has a button, like Undo.
   function showNotice(text, ms = 4000, action = null) {
@@ -1785,22 +1622,6 @@ async function start() {
     clearTimeout(copiedTimer);
     copiedTimer = setTimeout(() => (copiedEl.hidden = true), ms);
   }
-
-  // Copying a selection in the note puts its Markdown on the clipboard, so it
-  // pastes back into a note or Obsidian intact.
-  document.addEventListener("copy", (event) => {
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed || selection.rangeCount === 0) return;
-    const range = selection.getRangeAt(0);
-    if (!noteShown() || !noteEl.contains(range.commonAncestorContainer)) return;
-    const copied = editor.copy(
-      selectionEdge(range.startContainer, range.startOffset),
-      selectionEdge(range.endContainer, range.endOffset),
-    );
-    event.preventDefault();
-    event.clipboardData.setData("text/plain", copied.text);
-    showCopied(copied.count);
-  });
 
   // Rebuild the page from the current lines, with the focused block as the
   // styled editing surface and every other block rendered. The caret is
