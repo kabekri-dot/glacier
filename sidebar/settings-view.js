@@ -23,7 +23,7 @@ import { GOOGLE_CONFIG } from "../src/google-config.mjs";
 import { HANDLED_KEYS, SHORTCUT_GROUPS, shortcutRows } from "../src/shortcuts-panel.mjs";
 import { PAPERS, paperGroups, FONT_OVERRIDES, TEXT_SIZE, fontPreview } from "../src/look.mjs";
 import { NO_RECOVERY } from "./secret-view.js";
-import { SETTINGS_PARTS, LABELS, NO_SETTING_MATCHES, partValue, matchingParts, nextOpenPart, homeLabel } from "../src/settings-parts.mjs";
+import { SETTINGS_PARTS, LABELS, NO_SETTING_MATCHES, partValue, matchingParts, nextOpenPart, homeLabel, settingsLayout, FIRST_RAIL_PART, showsPreview, railMove, paperPreview } from "../src/settings-parts.mjs";
 
 // A labelled control row, for the settings.
 export function field(labelText, control) {
@@ -170,8 +170,12 @@ export const INSIDE_NOTE = "This page doesn't allow panels beside the sidebar, s
 // A part opened before #124 by its old name, from the sync box.
 const OLD_PART_NAMES = { "notes-home": "saving" };
 
-export function createSettingsView({ prefs, repo, onClose }) {
+// `place` is "inside" (Settings cover the paper: the icon rail, #125) or
+// "beside" (the parts one under the other, #124).
+export function createSettingsView({ prefs, repo, onClose, place = "beside" }) {
+  const layout = settingsLayout(place);
   const el = element("aside", "settings");
+  el.classList.add(`is-${layout}`);
   el.id = "settings";
   el.setAttribute("aria-label", "Settings");
   el.hidden = true;
@@ -204,6 +208,17 @@ export function createSettingsView({ prefs, repo, onClose }) {
   noMatch.hidden = true;
   el.append(header, insideNote, noMatch);
 
+  // Inside, the rail on the left and the picked part on the right (#125).
+  const partsBox = element("div", "settings-parts");
+  const rail = element("nav", "settings-rail");
+  rail.setAttribute("aria-label", "Parts of Settings");
+  const railButtons = {};
+  if (layout === "rail") {
+    const railWrap = element("div", "settings-rail-wrap");
+    railWrap.append(rail, partsBox);
+    el.append(railWrap);
+  } else el.append(partsBox);
+
   // The parts one under the other (#124). A closed part shows its name and
   // its current value in one line; one part is open at a time.
   const parts = {};
@@ -228,16 +243,87 @@ export function createSettingsView({ prefs, repo, onClose }) {
     });
     bodies[part.id] = element("div", "settings-body");
     bodies[part.id].id = `settings-part-${part.id}`;
-    section.append(head, bodies[part.id]);
+    // The part's name as a heading, inside where there is no head button.
+    const heading = element("h2", "settings-part-title", part.name);
+    section.append(head, heading, bodies[part.id]);
     parts[part.id] = { section, head, value };
-    el.append(section);
+    partsBox.append(section);
+    if (layout === "rail") rail.append(railButton(part));
+  }
+
+  function railButton(part) {
+    const button = element("button", "settings-rail-button");
+    button.type = "button";
+    button.title = part.name;
+    button.dataset.part = part.id;
+    const picture = element("img", "settings-rail-icon");
+    picture.src = `../art/icon-${part.icon}.svg`;
+    picture.alt = "";
+    button.append(picture, element("span", "settings-rail-name", part.short));
+    button.addEventListener("click", () => pick(part.id));
+    railButtons[part.id] = button;
+    return button;
+  }
+
+  function pick(id, { focus = false } = {}) {
+    railPart = id;
+    search.value = "";
+    showParts();
+    if (focus) railButtons[id].focus();
+  }
+
+  // Up and Down move through the rail; only the picked button is in the Tab
+  // order, so Tab goes on into the picked part.
+  rail.addEventListener("keydown", (event) => {
+    const next = railMove(railPart, event.key);
+    if (!next) return;
+    event.preventDefault();
+    pick(next, { focus: true });
+  });
+
+  // The small piece of paper on Look, inside only (#125). It follows every
+  // pick of paper, font and text size at once.
+  const preview = element("div", "paper-preview");
+  preview.setAttribute("aria-hidden", "true");
+  if (layout === "rail") bodies.look.append(preview);
+
+  function drawPreview() {
+    if (layout !== "rail") return;
+    const { heading, lines, pattern, vars } = paperPreview(prefs.look());
+    preview.dataset.pattern = pattern;
+    for (const [name, value] of Object.entries(vars)) preview.style.setProperty(name, value);
+    preview.replaceChildren(element("p", "paper-preview-heading", heading), ...lines.map((line) => element("p", "paper-preview-line", line)));
   }
 
   let openPart = null;
+  let railPart = FIRST_RAIL_PART;
   // What the closed parts show that only the Notebook knows.
   const known = { home: "browser", hasPasscode: false };
 
   function showParts() {
+    if (layout === "rail") showRail();
+    else showSections();
+    showValues();
+  }
+
+  // Inside: the picked part, or every part that matches the search one under
+  // the other with its name as a heading (the rail hides while searching).
+  function showRail() {
+    const matching = matchingParts(search.value);
+    noMatch.hidden = !matching || matching.length > 0;
+    rail.hidden = Boolean(matching);
+    for (const part of SETTINGS_PARTS) {
+      const shown = matching ? matching.includes(part.id) : railPart === part.id;
+      parts[part.id].section.hidden = !shown;
+      bodies[part.id].hidden = !shown;
+      const button = railButtons[part.id];
+      button.setAttribute("aria-current", String(railPart === part.id));
+      button.tabIndex = railPart === part.id ? 0 : -1;
+    }
+    preview.hidden = !showsPreview(place, "look");
+  }
+
+  function showSections() {
     const matching = matchingParts(search.value);
     noMatch.hidden = !matching || matching.length > 0;
     for (const part of SETTINGS_PARTS) {
@@ -249,12 +335,12 @@ export function createSettingsView({ prefs, repo, onClose }) {
       bodies[part.id].hidden = !open;
       value.hidden = open;
     }
-    showValues();
   }
 
   function showValues() {
     const state = { look: prefs.look(), tabSettings: prefs.tabSettings(), ...known };
     for (const part of SETTINGS_PARTS) parts[part.id].value.textContent = partValue(part.id, state);
+    drawPreview();
   }
 
   search.addEventListener("input", showParts);
@@ -821,6 +907,8 @@ export function createSettingsView({ prefs, repo, onClose }) {
       drawBackup();
       const id = OLD_PART_NAMES[section] ?? section;
       openPart = parts[id] ? id : null;
+      // Inside, Look is picked unless a part was asked for.
+      railPart = openPart ?? FIRST_RAIL_PART;
       search.value = "";
       showParts();
       el.hidden = false;
@@ -828,6 +916,10 @@ export function createSettingsView({ prefs, repo, onClose }) {
       // A switch still running keeps its progress on screen.
       const repoDrawn = switchRunning ? Promise.resolve() : drawNotesHome({ picked: picked ?? undefined });
       if (!openPart) return;
+      if (layout === "rail") {
+        repoDrawn.then(() => parts[openPart].section.querySelector(".repo-input")?.focus());
+        return;
+      }
       const target = parts[openPart].section;
       repoDrawn.then(() => {
         el.scrollTop = target.offsetTop - header.offsetHeight;

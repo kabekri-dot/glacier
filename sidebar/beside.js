@@ -123,7 +123,7 @@ async function start() {
   panelPlace = readPanelPlace(saved.panelPlace);
   drawLook();
 
-  const view = createSettingsView({ prefs, repo, onClose: () => ask("closeSettings") });
+  const view = createSettingsView({ prefs, repo, onClose: () => ask("closeSettings"), place: "beside" });
   document.body.append(view.el);
   view.open(params.get("section"));
 

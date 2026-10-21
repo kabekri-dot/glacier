@@ -36,7 +36,7 @@ Open Settings with the round glacier button (the one with the small gear), then 
 
 ## How do I find a setting?
 
-Open Settings with the round glacier button and type in "Search settings" on top, for example "font" or "passcode". Every part that matches opens. Each closed part shows what it is set to now, so you can see everything at a glance. To make a copy of all your notes, open Back up and restore and choose Download all notes.
+Open Settings with the round glacier button and type in "Search settings" on top, for example "font" or "passcode". Every part that matches opens. Each closed part shows what it is set to now, so you can see everything at a glance. When Settings open inside the sidebar, the parts sit in a narrow column of pictures on the left (Look, Pages, Tabs and so on), and Look shows a small piece of paper with your paper, font and text size. To make a copy of all your notes, open Back up and restore and choose Download all notes.
 
 ## What does the word next to the title mean?
 
