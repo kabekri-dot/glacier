@@ -22,7 +22,8 @@ import { notesHomeName, syncErrorMessage } from "../src/notes-home.mjs";
 import { reminderDue, reminderOpened, reminderNotNow, reminderText } from "../src/cloud-reminder.mjs";
 import { createAutoSync, needsFolderOk } from "../src/auto-sync.mjs";
 import { createScreen } from "../src/screen.mjs";
-import { pillTitle, backButtonHint, secretMark, HELP_URL } from "../src/menu-contents.mjs";
+import { pillTitle, backButtonHint, secretMark, pushpin, HELP_URL } from "../src/menu-contents.mjs";
+import { END_HIDDEN_NOTICE, END_SHOWN_NOTICE } from "../src/pages.mjs";
 import { createOpeningFlow } from "../src/opening-flow.mjs";
 import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
@@ -40,7 +41,8 @@ import { createMenuView } from "./menu-view.js";
 import { createDownloads } from "./downloads.js";
 import { createSyncBoxView } from "./sync-box-view.js";
 import { createHeadingsMenu, createNewMenu, createNoteMenu } from "./pill-menus.js";
-import { createNoteMetaView } from "./note-meta-view.js";
+import { createSecondVersionView } from "./second-version-view.js";
+import { createNoteDetailsView } from "./note-details-view.js";
 import { createSketchView } from "./sketch-view.js";
 import { createSecrets } from "./secret-view.js";
 import { pageCard, panelsCard, startPrompt } from "./cards.js";
@@ -76,6 +78,7 @@ const backEl = document.querySelector(".pill-back");
 const newButtonEl = document.querySelector(".pill-new");
 const menuPanelEl = document.querySelector(".menu");
 const glacierButtonEl = document.querySelector(".glacier-button");
+const pushpinEl = document.querySelector(".pushpin");
 
 // This browser's own extension storage: the Notes Repo connection and the
 // chosen look. Neither is ever written into the Notebook (ADR 0003).
@@ -277,6 +280,8 @@ async function start() {
     notebook,
     sketchView,
     pagesOn: () => look.pages,
+    endHidden: () => !look.newPageAtEnd,
+    onHideEnd: () => showNewPageAtEnd(false),
     settingsOpen: () => panels.settingsOpen(),
     showIfLocked: () => secrets.showIfLocked(),
     openLink,
@@ -322,7 +327,6 @@ async function start() {
     openNote,
     showSearchMatch: (query) => paper.showSearchMatch(query),
     startNoteForPage,
-    moveNote: () => noteMeta.pickCollection(),
     changed: () => autoSync.changed(),
     notice: showNotice,
     notesHome: async () => (await notesHomes.load()).home,
@@ -360,7 +364,7 @@ async function start() {
         }
         updatePill();
         updateBacklinks();
-        noteMeta.update();
+        secondVersion.update();
         break;
       case "freshPage":
         findInNote.close();
@@ -368,7 +372,7 @@ async function start() {
         menuView.close();
         updatePill();
         updateBacklinks();
-        noteMeta.update();
+        secondVersion.update();
         paper.open();
         if (view.editTitle) titleEdit.start();
         break;
@@ -380,7 +384,7 @@ async function start() {
         break;
       case "followPage":
         updatePill();
-        noteMeta.update();
+        secondVersion.update();
         updateBacklinks();
         if (view.newForPage) openingFlow.newNoteForPage();
         else openingFlow.start();
@@ -394,20 +398,13 @@ async function start() {
     }
   }
 
-  // --- The note's header (#13, #61) ----------------------------------------
-  //
-  // The "Collection · site ↗" line above the text and the bar above a second
-  // version, drawn by sidebar/note-meta-view.js.
-  const noteMeta = createNoteMetaView({
-    el: document.querySelector(".note-meta"),
+  // --- The bar above a second version (#70): sidebar/second-version-view.js
+  const secondVersion = createSecondVersionView({
     barEl: document.querySelector(".second-version-bar"),
     noteEl,
     notebook,
     screen,
-    draw,
-    render: () => paper.render(),
     openNote,
-    openSource: (source) => browserPage.openSource(source),
     askDelete: () => menuView.askDeleteNote(),
   });
 
@@ -489,6 +486,7 @@ async function start() {
     pillLockEl.hidden = !secret;
     pillLockEl.title = secret?.hint ?? "";
     noteMenu.update();
+    updatePushpin();
     const previous = screen.previous();
     backEl.hidden = previous === null || !tabSettings.showPreviousButton;
     if (previous !== null) {
@@ -539,14 +537,26 @@ async function start() {
     headingsMenu.toggle();
   });
 
-  // A pinned note stays when the page changes; unpinning catches up with the
-  // tab you are on.
-  function setPinned(pin) {
+  // The pushpin on the paper (#122): a pinned note stays when the page
+  // changes; unpinning catches up with the tab you are on. A notice says
+  // which, each time.
+  function updatePushpin() {
+    const pin = pushpin(screen.pinned());
+    pushpinEl.hidden = !screen.note();
+    pushpinEl.classList.toggle("is-pinned", screen.pinned());
+    pushpinEl.setAttribute("aria-pressed", String(screen.pinned()));
+    pushpinEl.setAttribute("aria-label", pin.label);
+    pushpinEl.title = pin.hint;
+  }
+
+  pushpinEl.addEventListener("click", () => {
+    const pin = !screen.pinned();
     if (pin) screen.pin();
     else screen.unpin();
-    updatePill();
+    updatePushpin();
+    showNotice(pushpin(pin).notice);
     if (!pin) openingFlow.pageChanged();
-  }
+  });
 
   function startNoteForPage() {
     draw(screen.startNoteForPage());
@@ -579,20 +589,37 @@ async function start() {
       if (kind === "rename") titleEdit.start();
       else if (kind === "shortcuts") openShortcuts();
       else if (kind === "help") api.tabs.create({ url: HELP_URL }).catch(() => {});
-      else if (kind === "extract") paper.extract();
-      else if (kind === "secret") secrets.makeSecret();
-      else if (kind === "notSecret") secrets.makeNotSecret();
-      else if (kind === "pin" || kind === "unpin") setPinned(kind === "pin");
+      else if (kind === "details") noteDetails.open();
       else menuView.act("note", kind, { title: screen.note().title }, anchor);
     },
     onDelete: () => menuView.deleteOpenNote(),
     beforeOpen: () => closeOverlays(),
   });
 
+  // Note details (#122), from ⋯: sidebar/note-details-view.js.
+  const noteDetails = createNoteDetailsView({
+    el: document.querySelector(".note-details"),
+    veilEl: document.querySelector(".details-veil"),
+    notebook,
+    screen,
+    draw,
+    render: () => paper.render(),
+    openNote,
+    openSource: (source) => browserPage.openSource(source),
+    makeSecret: () => secrets.makeSecret(),
+    makeNotSecret: () => secrets.makeNotSecret(),
+    notice: showNotice,
+    beforeOpen: () => {
+      closeSettings({ redraw: false });
+      closeOverlays();
+    },
+  });
+
   // Only one of the notes list, the headings, the ⋯ menu, the + menu, the
-  // sync box and the Shortcuts panel is open at a time (#83).
+  // sync box, Note details and the Shortcuts panel is open at a time (#83).
   function closeOverlays({ keepShortcuts = false } = {}) {
     menuView.close();
+    noteDetails.close({ redraw: false });
     newMenu.close();
     noteMenu.close();
     headingsMenu.close();
@@ -679,7 +706,7 @@ async function start() {
 
   function drawSyncStatus(status) {
     syncBoxView.drawStatus(status);
-    noteMeta.updateBar();
+    secondVersion.update();
     if (status.state === "off") remindAboutHome().catch((error) => console.warn("Glacier: reminder failed", error));
   }
 
@@ -757,10 +784,11 @@ async function start() {
     look: () => look,
     // Live while dragging the text size; kept when let go.
     saveLook(change, { keep = true } = {}) {
-      const pagesBefore = look.pages;
+      const before = look;
       look = readLook({ ...look, ...change });
       drawLook();
-      if (look.pages !== pagesBefore) paper.redrawPages();
+      if (look.pages !== before.pages) paper.redrawPages();
+      else if (look.newPageAtEnd !== before.newPageAtEnd) paper.updatePageBar();
       if (!keep) return;
       extensionStorage.set({ look }).catch((error) => {
         console.warn("Glacier: could not keep the chosen look", error);
@@ -785,6 +813,14 @@ async function start() {
     panelPlace: () => panels.choice(),
     choosePanelPlace: (place) => panels.choosePlace(place),
   };
+
+  // The × on New page at the end hides it for every note, with Show again
+  // in the notice; Settings has the same switch (#122).
+  function showNewPageAtEnd(shown) {
+    prefs.saveLook({ newPageAtEnd: shown });
+    if (shown) showNotice(END_SHOWN_NOTICE);
+    else showNotice(END_HIDDEN_NOTICE, 7000, { label: "Show again", run: () => showNewPageAtEnd(true) });
+  }
 
   const settingsView = createSettingsView({ prefs, repo: repoActions, onClose: () => closeSettings() });
   const openShortcutsPage = (url) => api.tabs.create({ url }).catch(() => {});
@@ -972,10 +1008,11 @@ async function start() {
     if (area !== "local") return;
     if (changes.pendingClip?.newValue) takePendingClip();
     if (changes.look) {
-      const pagesBefore = look.pages;
+      const before = look;
       look = readLook(changes.look.newValue);
       drawLook();
-      if (look.pages !== pagesBefore) paper.redrawPages();
+      if (look.pages !== before.pages) paper.redrawPages();
+      else if (look.newPageAtEnd !== before.newPageAtEnd) paper.updatePageBar();
     }
     if (changes.tabSettings) {
       tabSettings = readTabSettings(changes.tabSettings.newValue);
@@ -1124,7 +1161,7 @@ async function start() {
   // The start prompt and the card before the browser's prompt (sidebar/cards.js).
   function showStartPrompt() {
     updatePill();
-    noteMeta.update();
+    secondVersion.update();
     noteEl.replaceChildren(startPrompt({ onNew: () => openingFlow.newNoteForPage() }));
     paper.updatePageBar();
   }

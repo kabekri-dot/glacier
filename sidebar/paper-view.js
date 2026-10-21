@@ -2,18 +2,20 @@
 // as its editing surface (sidebar/focused-line.js), selecting and copying
 // (sidebar/paper-selection.js), the `/` menu list, clicks on drawn lines and
 // on the bare paper, sketches between the lines, and notes as pages with the
-// ‹ 1 of 3 › bar (#108, sidebar/page-view.js). What the note's lines are, and
+// ‹ 1 of 3 › bar and New page at the end (#108, #122, sidebar/page-view.js). What the note's lines are, and
 // what each click and key means, is the Editor session's; this draws it.
 //
 //   createPaper({ noteEl, editor, screen, notebook, sketchView, pagesOn,
-//                 settingsOpen, showIfLocked, openLink, hint, onTyped,
-//                 showNotice, fitRows, afterDraw })
+//                 endHidden, onHideEnd, settingsOpen, showIfLocked, openLink,
+//                 hint, onTyped, showNotice, fitRows, afterDraw })
 //     noteEl          the paper element
 //     editor          the Editor session
 //     screen          the Screen (the open note, a fresh page)
 //     notebook        for Links that exist and a sketch's shapes
 //     sketchView      draws a sketch for its embed line
 //     pagesOn()       whether notes show as pages
+//     endHidden()     whether New page at the end of notes was hidden
+//     onHideEnd()     the × on New page at the end was clicked
 //     settingsOpen()  whether settings hold the focus
 //     showIfLocked()  draw the passcode card for a locked note; true if it did
 //     openLink(title) follow a Link
@@ -30,7 +32,8 @@
 //   .shownPageSpan()         the lines of the page on screen, or null for all
 //   .noteShown()             whether a note is drawn (not a card)
 //   .selectWholeNote(), .extract()
-//   .updatePageBar()         after a card replaced the note
+//   .updatePageBar()         after a card replaced the note, or the end
+//                            button was hidden or shown
 //   .redrawPages()           the pages setting switched
 //   .showSearchMatch(query)  a note opened from search: its first match's page
 import {
@@ -42,7 +45,7 @@ import {
 } from "../src/editor-model.mjs";
 import { isSketchLine } from "../src/sketch-file.mjs";
 import { isShortcut } from "../src/keys.mjs";
-import { pagesOf, pageOfLine, pageBreaks, lineOfSearch } from "../src/pages.mjs";
+import { pagesOf, pageOfLine, pageBreaks, lineOfSearch, pageControls } from "../src/pages.mjs";
 import { createPageView } from "./page-view.js";
 import { createFocusedLine } from "./focused-line.js";
 import { createPaperSelection } from "./paper-selection.js";
@@ -56,6 +59,8 @@ export function createPaper({
   notebook,
   sketchView,
   pagesOn,
+  endHidden,
+  onHideEnd,
   settingsOpen,
   showIfLocked,
   openLink,
@@ -502,11 +507,12 @@ export function createPaper({
     }
   }
 
-  // --- Notes as pages (#108) --------------------------------------------------
+  // --- Notes as pages (#108, #122) --------------------------------------------
   //
-  // Which lines are pages is src/pages.mjs; the session steps ↑ and ↓ over
-  // the breaks. This draws the caret's page, the ‹ 1 of 3 › bar and the
-  // pixel page turn (sidebar/page-view.js).
+  // Which lines are pages, and which page controls show, is src/pages.mjs;
+  // the session steps ↑ and ↓ over the breaks. This draws the caret's page,
+  // the ‹ 1 of 3 › bar under the top bar, New page at the end of the paper
+  // and the pixel page turn (sidebar/page-view.js).
   const pageView = createPageView({
     onTurn: (step) => turnPage(step),
     onNewPage: () => {
@@ -519,8 +525,11 @@ export function createPaper({
       pageView.forget();
       if (editor.deletePage()) render();
     },
+    onHideEnd,
   });
-  noteEl.after(pageView.bar);
+  noteEl.after(pageView.bar, pageView.end);
+  // A wider or narrower sidebar moves the last line, and the end button with it.
+  new ResizeObserver(() => updatePageBar()).observe(noteEl);
 
   // The line span of the page on screen, or null when all pages show.
   function shownPageSpan() {
@@ -534,8 +543,12 @@ export function createPaper({
 
   function updatePageBar() {
     const shown = pagesDrawn() && !screen.freshPage();
-    document.documentElement.toggleAttribute("data-pages", Boolean(shown));
-    pageView.update(shown ? { index: pageOfLine(editor.lines, editor.state.focus.line), count: pagesOf(editor.lines).length } : null);
+    const count = pagesOf(editor.lines).length;
+    const controls = pageControls({ pagesOn: shown, count, endHidden: endHidden() });
+    document.documentElement.toggleAttribute("data-pages", controls.strip);
+    pageView.update(controls.strip ? { index: pageOfLine(editor.lines, editor.state.focus.line), count } : null);
+    noteEl.classList.toggle("has-end", controls.endButton);
+    pageView.showEnd(controls.endButton ? noteEl.lastElementChild : null, parseFloat(getComputedStyle(noteEl).lineHeight));
   }
 
   // ‹ and › and Ctrl PageUp / PageDown: the caret goes to the top of the

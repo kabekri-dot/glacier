@@ -15,7 +15,13 @@ import {
 const px = (value) => Number.parseFloat(value);
 
 test("Glacier is the paper until another one is chosen", () => {
-  assert.deepEqual(readLook(undefined), { paper: "Glacier", font: "Theme default", textSize: 100, pages: false });
+  assert.deepEqual(readLook(undefined), { paper: "Glacier", font: "Theme default", textSize: 100, pages: false, newPageAtEnd: true });
+});
+
+test("New page at the end of notes shows until it is hidden, and then stays hidden", () => {
+  assert.equal(readLook({ paper: "Forest" }).newPageAtEnd, true);
+  assert.equal(readLook({ newPageAtEnd: false }).newPageAtEnd, false);
+  assert.equal(readLook({ newPageAtEnd: "no" }).newPageAtEnd, true);
 });
 
 test("notes as pages is off until it is switched on, and then stays on", () => {

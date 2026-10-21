@@ -36,7 +36,7 @@ It shows only when syncing needs you. "Offline" means your changes are kept in t
 
 ## Can I lock a note?
 
-Yes. Open ⋯ and choose Make secret. Its text is then locked with your Glacier passcode everywhere it is kept. Nobody can recover a forgotten passcode, so keep it somewhere safe.
+Yes. Open ⋯, choose Note details and click Secret. Its text is then locked with your Glacier passcode everywhere it is kept. Nobody can recover a forgotten passcode, so keep it somewhere safe.
 
 ## Which keys can I use?
 

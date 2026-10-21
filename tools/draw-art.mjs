@@ -571,6 +571,24 @@ const PICTURES = {
     ],
     colours: { o: "#3f6c9e", b: "#6aa8e6", w: "#f8fbff" },
   },
+  // Note details in ⋯ (#122).
+  info: {
+    rows: [
+      "...oooooo...",
+      "..obbbbbbo..",
+      ".obbbwwbbbo.",
+      "obbbbwwbbbbo",
+      "obbbbbbbbbbo",
+      "obbbwwwbbbbo",
+      "obbbbwwbbbbo",
+      "obbbbwwbbbbo",
+      ".obbwwwwbbo.",
+      "..obbbbbbo..",
+      "...oooooo...",
+      "............",
+    ],
+    colours: { o: "#3f6c9e", b: "#6aa8e6", w: "#f8fbff" },
+  },
 };
 
 function pictureSvg({ rows, colours }) {

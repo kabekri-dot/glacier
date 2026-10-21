@@ -1,14 +1,19 @@
-// Notes as pages (#108): the ‹ 1 of 3 › bar at the top of the paper, on
-// the right of the note's header line, with a small delete, and the
-// page turn, a corner curling over. Which lines make a page is
-// src/pages.mjs; this only draws.
+// Notes as pages (#108, #122): the line under the top bar with ‹ 1 of 3 ›,
+// a small delete and + New page, shown from two pages on; the faint New page
+// at the end of the paper of a note of one page, with a × that hides it; and
+// the page turn, a corner curling over. Which lines make a page and which
+// controls show is src/pages.mjs; this only draws.
 //
-//   createPageView({ onTurn, onNewPage, onDelete })
+//   createPageView({ onTurn, onNewPage, onDelete, onHideEnd })
 //                                          onTurn(-1 or 1) for ‹ and ›;
-//                                          onNewPage() for › on the last page;
-//                                          onDelete() once "Delete" is confirmed
+//                                          onNewPage() for either New page;
+//                                          onDelete() once "Delete" is confirmed;
+//                                          onHideEnd() for the × on the end button
 //   .bar                                   the bar, for the panel to place
+//   .end                                   the end button, for the panel to place
 //   .update({ index, count } or null)      redraw, or hide it
+//   .showEnd(lastEl or null, rowHeight)    the end button one row under lastEl,
+//                                          or hidden
 //   .turnFor(index, count, noteEl)         before a redraw: a turn to play once
 //                                          page `index` of `count` is drawn, or
 //                                          null
@@ -78,7 +83,24 @@ function sheet(className, { copy, top }) {
   return el;
 }
 
-export function createPageView({ onTurn, onNewPage, onDelete }) {
+// The faint New page at the end of the paper, with its pixel page and the ×
+// that hides it, which only shows on hover.
+function endButton(onNewPage, onHideEnd) {
+  const end = element("div", "page-end");
+  end.hidden = true;
+  const add = element("button", "page-end-add");
+  add.type = "button";
+  add.title = "Start a fresh page in this note";
+  add.append(Object.assign(element("img", "page-end-icon"), { src: "../art/icon-page.svg", alt: "" }), "New page");
+  add.addEventListener("click", onNewPage);
+  const hide = button("page-end-hide", "×", "Hide this button");
+  hide.addEventListener("click", onHideEnd);
+  end.append(add, hide);
+  return end;
+}
+
+export function createPageView({ onTurn, onNewPage, onDelete, onHideEnd }) {
+  const end = endButton(onNewPage, onHideEnd);
   const bar = element("nav", "page-bar");
   bar.setAttribute("aria-label", "Pages");
   bar.hidden = true;
@@ -92,22 +114,23 @@ export function createPageView({ onTurn, onNewPage, onDelete }) {
     '<path d="M3 4.5 H13 M6.5 4.5 V3 H9.5 V4.5 M4.5 4.5 L5.3 13.5 H10.7 L11.5 4.5"/></svg>';
   // The quiet question before a page goes: its text and two small answers,
   // in the bar's place until answered.
+  const add = button("page-bar-turn page-bar-new", "+ New page", "Start a fresh page at the end of this note");
   const question = element("span", "page-bar-question");
   const ask = element("span", "page-bar-ask");
   const yes = button("page-bar-turn page-bar-yes", "Delete", "Delete the page and everything on it");
   const no = button("page-bar-turn", "Keep", "Keep the page");
   question.append(ask, yes, no);
   question.hidden = true;
-  bar.append(back, count, next, remove, question);
+  bar.append(back, count, next, remove, add, question);
 
-  let last = false;
   let pageNumber = 1;
   back.addEventListener("click", () => onTurn(-1));
-  next.addEventListener("click", () => (last ? onNewPage() : onTurn(1)));
+  next.addEventListener("click", () => onTurn(1));
+  add.addEventListener("click", onNewPage);
 
   function asking(on) {
     question.hidden = !on;
-    for (const el of [back, count, next, remove]) el.hidden = on;
+    for (const el of [back, count, next, remove, add]) el.hidden = on;
   }
   remove.addEventListener("click", () => {
     ask.textContent = `Delete page ${pageNumber}?`;
@@ -194,6 +217,7 @@ export function createPageView({ onTurn, onNewPage, onDelete }) {
 
   return {
     bar,
+    end,
 
     update(pages) {
       bar.hidden = !pages;
@@ -204,11 +228,15 @@ export function createPageView({ onTurn, onNewPage, onDelete }) {
       count.textContent = `${index + 1} of ${total}`;
       remove.hidden = total < 2 || !question.hidden;
       back.disabled = index === 0;
-      last = index === total - 1;
-      next.textContent = last ? "+ New page" : "›";
-      next.title = last ? "New page" : "Next page";
-      next.setAttribute("aria-label", next.title);
-      next.classList.toggle("is-new", last);
+      next.disabled = index === total - 1;
+    },
+
+    // In the page, one row under the last line drawn, so it scrolls with
+    // the text.
+    showEnd(lastEl, rowHeight) {
+      end.hidden = !lastEl;
+      if (!lastEl) return;
+      end.style.top = `${lastEl.getBoundingClientRect().bottom + window.scrollY + rowHeight}px`;
     },
 
     turnFor(index, count, noteEl) {

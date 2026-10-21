@@ -10,8 +10,8 @@
 //   draw(view)        draws what a Screen action returned
 //   render()          redraws the open note with the caret in it
 //   openNote(note, options), showSearchMatch(query) (a search inside notes
-//   opens on the page of its match, #108), startNoteForPage(), moveNote()
-//   (the ⋯ "Move to collection…"), changed() (for Sync), notice(text, ms, action),
+//   opens on the page of its match, #108), startNoteForPage(), changed() (for
+//   Sync), notice(text, ms, action),
 //   notesHome() (the Notes Home's id, which the delete questions name), downloads
 //   (see downloads.js) and beforeOpen(), which closes whatever else is open.
 import { notebookMenu, rowActions, archivedNotice, deleteNoteQuestion, deleteCollectionQuestion, deletedNotice, deletedCollectionNotice, noteOrigin, secretMark } from "../src/menu-contents.mjs";
@@ -21,7 +21,7 @@ import { menuButton, iconButton, originIcon, askFormat } from "./settings-view.j
 import { lockIcon } from "./secret-view.js";
 import { removeQuestion } from "./cards.js";
 
-export function createMenuView({ notebook, screen, el, button: menuButtonEl, noteEl, draw, render, openNote, showSearchMatch, startNoteForPage, moveNote, changed, notice, notesHome, downloads, beforeOpen }) {
+export function createMenuView({ notebook, screen, el, button: menuButtonEl, noteEl, draw, render, openNote, showSearchMatch, startNoteForPage, changed, notice, notesHome, downloads, beforeOpen }) {
   // The search box and the list under it, while the menu is open.
   let search = null;
   let body = null;
@@ -35,7 +35,6 @@ export function createMenuView({ notebook, screen, el, button: menuButtonEl, not
       archive: ({ title }) => archiveNote(title),
       unarchive: ({ title }) => unarchiveNote(title),
       delete: ({ title }) => deleteNote(title),
-      move: () => moveNote(),
     },
     collection: {
       download: ({ course, archived }, anchor) => askFormat(anchor, (format) => downloads.downloadCourse(course, format, { archived })),

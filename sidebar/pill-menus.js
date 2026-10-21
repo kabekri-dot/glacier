@@ -16,13 +16,13 @@ function element(tag, className, text) {
   return el;
 }
 
-function pixelIcon(name, className = "bar-icon") {
+export function pixelIcon(name, className = "bar-icon") {
   return Object.assign(element("img", className), { src: `../art/icon-${name}.svg`, alt: "" });
 }
 
 // One row of a menu: a pixel icon, the label with an optional quiet line
-// under it, and the shortcut on the right, faint.
-function menuRow({ icon, label, under = null, keys = null, hint }, onClick) {
+// under it, and the shortcut on the right, faint. Note details uses it too.
+export function menuRow({ icon, label, under = null, keys = null, hint }, onClick) {
   const button = element("button", "bar-item");
   button.type = "button";
   button.title = hint;
@@ -139,9 +139,9 @@ export function createNewMenu({ button, box, website, onPick, beforeOpen }) {
   return { close: menu.close };
 }
 
-// ⋯ (#63, #121): three big icons with words, Delete on its own, Keyboard
-// shortcuts and Help, then the actions that move later. Delete asks right
-// there in the menu, with Delete and Keep, like every delete in Glacier.
+// ⋯ (#63, #121, #122): three big icons with words, Delete on its own, then
+// Note details, Keyboard shortcuts and Help. Delete asks right there in the
+// menu, with Delete and Keep, like every delete in Glacier.
 // `notesHome()` names where else the note goes from; `onAction(kind, anchor)`
 // does the rest, `onDelete()` deletes the open note.
 export function createNoteMenu({ button, box, screen, notesHome, onAction, onDelete, beforeOpen }) {
@@ -207,7 +207,7 @@ export function createNoteMenu({ button, box, screen, notesHome, onAction, onDel
   }
 
   function open() {
-    const actions = noteMenu(screen.note(), { pinned: screen.pinned() });
+    const actions = noteMenu(screen.note());
     if (!actions) return;
     screen.flush();
     question = null;
@@ -222,8 +222,6 @@ export function createNoteMenu({ button, box, screen, notesHome, onAction, onDel
       deleteRow,
       line(),
       ...actions.help.map((action) => menuRow(action, run(action.kind))),
-      line(),
-      ...actions.later.map((action) => menuRow(action, run(action.kind))),
     ]);
   }
 

@@ -11,6 +11,28 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Top bar part 2: pushpin, Note details, pages and New page (#122)
+
+- [ ] Open a note: a faint pixel pushpin sits in the top right corner of the paper. There is no Collection line above the text: the text starts right under the bar.
+- [ ] Click the pushpin: it presses in, bright with a small shadow, in one short smooth move, and "Pinned. This note stays open when you change tabs." shows. Switch tabs: the note stays. Click it again: it pulls out and goes faint, "Unpinned. Glacier follows your tabs again." shows and the sidebar shows the tab's note.
+- [ ] Switch on reduce motion: the pushpin changes at once, with no move.
+- [ ] Click ⋯: three big icons, a line, Delete, a line, then Note details with "Collection, secret, page, links" under it, Keyboard shortcuts and Help. There is no Pin, Move to collection, Extract or Make secret.
+- [ ] Click Note details: a drawer slides in from the right over the paper. Under small labels: Collection, Secret (On or Off with one sentence), Page, Linked from, then Words, Created and Edited as label and value lines with no dots, and Done.
+- [ ] In Note details, click the Collection: the Collections show right there, with "No collection" and "+ New collection". Pick one: the row says it, and "Moved to …" shows with Undo. Click Undo: it is back. Pick "No collection": "Taken out of its collection."
+- [ ] In Note details, click Secret on a plain note: the drawer closes and the passcode card asks as before. Open Note details again: Secret says On. Click it: the note is plain again.
+- [ ] In Note details, click the Page of a website's note: its tab shows, or it opens in a new one. A note without a website says "This note doesn't belong to a website."
+- [ ] In Note details, Linked from lists the notes with a link to this one; click one: it opens. A note nobody links to says how to link it.
+- [ ] Type a few words and open Note details: Words counts them, without `#`, `-` or `[ ]`. A locked secret note says Locked. Created and Edited say Today, Yesterday or a date.
+- [ ] Close Note details with Done, with Esc and with a click beside the drawer: each closes it and the caret is back in the note.
+- [ ] Settings, Writing, Notes as pages: On. A note of one page shows nothing under the bar, and a faint dashed "New page" with a pixel page sits one line under the last line. Click it: page 2 opens with the caret on it.
+- [ ] With two pages, the line under the bar shows ‹ 1 of 2 ›, the small bin and "+ New page", and the button at the end of the paper is gone. › is faded on the last page. "+ New page" adds page 3.
+- [ ] Delete page 2 of 2 with the bin: the line under the bar goes and New page is back at the end.
+- [ ] Hover New page at the end: a small × shows. Click it: the button goes for every note, and "Hidden. Type / and pick New page to add a page." shows with Show again. Click Show again: it is back.
+- [ ] Settings, Writing, "Show New page at the end of notes": choose Hidden, then Shown. The button goes and comes back at once.
+- [ ] Type `/new`: the menu shows New page. Pick it: a new page starts there.
+- [ ] Select some text in a note with the mouse: a small "Extract to a new note" shows under the end of the selection. Click it: the text becomes a link and the new note exists. Click elsewhere: the button goes. Select with Shift and the arrows: it shows too.
+- [ ] Break it on purpose: open Note details with no Collections yet, on an archived note and on a locked secret note; make the sidebar narrow with the drawer open; type in a note while New page sits at the end.
+
 ### The top bar: Notes, the title, + and ⋯ (#121)
 
 - [ ] Open a note: the bar reads, left to right, ← (once there is a note to go back to), ☰ Notes with a small pixel list, the title, + and ⋯. There is no ▾, no "1 of 3", no pin and no `?` in the bar, and no ≡ tab on the left of the paper.
@@ -22,7 +44,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 - [ ] On a website, click +: "Note for" and the page's title with "linked to this page" under it and a pixel globe, then "Blank note" with a pixel sheet. The first is picked already: press Enter and a fresh page for the website opens with its title ready to type.
 - [ ] On a website, click + and then Blank note: a blank fresh page opens. Up and down walk the two choices.
 - [ ] On a new tab (or chrome://settings), click +: a blank fresh page opens at once, with no menu.
-- [ ] Click ⋯: three big pixel icons with a word under each (Rename, Download, Archive), a line, Delete, a line, Keyboard shortcuts and Help, a line, then Pin this note, Move to collection…, Extract to a new note with Ctrl Shift E faint on the right, and Make secret.
+- [ ] Click ⋯: three big pixel icons with a word under each (Rename, Download, Archive), a line, Delete, a line, then Note details, Keyboard shortcuts and Help (#122).
 - [ ] ⋯, Rename: the title becomes the field, as with the pen. ⋯, Download: the Markdown, PDF or Print choice. ⋯, Archive: "Archived." with Undo.
 - [ ] ⋯, Delete: the menu asks right there "Delete “title” for good?" with Delete and Keep. The paper stays as it was. Click Keep: Delete is back in the menu. Press Esc while it asks: the same.
 - [ ] ⋯, Delete, then Delete: the note goes, the menu closes and "Deleted “title”." shows with Undo. Click Undo: the note is back with its text.
@@ -145,7 +167,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ### Secret notes with a passcode (#109)
 
-- [ ] Open a note with some text, ⋯, Make secret. A card asks you to choose your Glacier passcode, typed twice, with the line "If you forget this passcode, your secret notes can't be opened again. Nobody can recover it."
+- [ ] Open a note with some text, ⋯, Note details, click Secret. A card asks you to choose your Glacier passcode, typed twice, with the line "If you forget this passcode, your secret notes can't be opened again. Nobody can recover it."
 - [ ] Type two different passcodes: it says they are not the same. Type the same one twice and press Enter: the note stays on screen as it was, "This note is secret now." shows, and a small pixel lock sits before the title in the pill.
 - [ ] Ctrl K: the note has the lock before its title in the menu, in search results and in the ← box.
 - [ ] Make a second note secret: it doesn't ask for the passcode again.
@@ -164,12 +186,12 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ### Notes as pages, turned with a pixel page flip (#108)
 
-- [ ] Type `/page` at the start of a line: the menu shows Page break with `%%page%%`. Pick it: a dotted line with "page 2" on it appears, and the caret is on the line under it.
+- [ ] Type `/page` at the start of a line: the menu shows New page with `%%page%%`. Pick it: a dotted line with "page 2" on it appears, and the caret is on the line under it.
 - [ ] With the setting off (the start), every page shows one after the other, each break a quiet dotted line with its page number. Click the dotted line: it shows `%%page%%` to edit.
 - [ ] Backspace at the start of the line under a break takes the break out and joins the two pages. Delete at the end of the line above a break does the same.
 - [ ] A `%%page%%` line inside a code block stays code and makes no new page.
-- [ ] Settings, Writing, Notes as pages: choose "On, one page at a time". The paper shows only the page with the caret, as long as its text, and at the top, on the right of the "Add to a collection" line, a quiet ‹ 1 of 3 › and a small bin.
-- [ ] Click › and ‹: the page turns. ‹ is faded on page 1. On the last page › reads "+ New page", and clicking it adds an empty page with the caret on it.
+- [ ] Settings, Writing, Notes as pages: choose "On, one page at a time". The paper shows only the page with the caret, as long as its text, and from two pages on, on the line under the bar, a quiet ‹ 1 of 3 ›, a small bin and "+ New page" (#122).
+- [ ] Click › and ‹: the page turns. ‹ is faded on page 1 and › on the last page. "+ New page" adds an empty page with the caret on it.
 - [ ] Click the bin on page 2 of 3: the bar asks "Delete page 2?" with Delete and Keep. Keep changes nothing; Delete takes the page and its text away and shows the page before. Ctrl Z brings it back. A note of one page shows no bin.
 - [ ] Ctrl PageDown and Ctrl PageUp turn the page too (Cmd on a Mac). Note whether the browser lets them through or switches tabs instead, in Chrome and in Firefox.
 - [ ] The turn: the old page folds up from the bottom right corner and over to the left in fourteen frames, its edge a pixel staircase with a hard pixel shadow, over about a second: slow to lift, quick across, slow to settle. Turning back runs it the other way, the page before coming down over the old one.
@@ -196,7 +218,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 ### Montserrat, each font in its own lettering (asked for 2026-10-14)
 
 - [ ] Settings, Writing: every font is one line written in that font (Caveat looks like Caveat, and so on); Theme default shows the paper's font. The last one is Montserrat, a clean sans-serif.
-- [ ] Pick Montserrat: the note, the pill and the Collection line switch to it at once, with ä, ö, ü and ß.
+- [ ] Pick Montserrat: the note, the pill and Note details switch to it at once, with ä, ö, ü and ß.
 - [ ] In a note that has only a drawing, click on the paper under the drawing and type: the text goes on the line under it.
 
 ### Sketch blocks: colours and fill (#106)
@@ -267,7 +289,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ### Pin a note, ← in one click (asked for 2026-10-13)
 
-- [ ] Open a website's note: a faint grey pin sits after the title. Click it (or ⋯ → Pin this note): it turns red and the menu does not open. Switch to other tabs and websites (with Tabs and notes set to follow the tab): the pinned note stays. Click the pin again: it turns grey, and the sidebar shows the note of the tab you are on. With no note open there is no pin.
+- [ ] Open a website's note: a faint pushpin sits in the top right corner of the paper (#122). Click it: it presses in, bright. Switch to other tabs and websites (with Tabs and notes set to follow the tab): the pinned note stays. Click the pushpin again: it goes faint, and the sidebar shows the note of the tab you are on. With no note open there is no pin.
 - [ ] Pinned, open another note from the menu: the pin goes with it. Rename the pinned note: it stays pinned.
 - [ ] Let a tab switch change the note, then click ← once: you are back on the note before, in one click. Holding it opens nothing more (#121).
 
@@ -283,12 +305,12 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 ### Extract to a new note (#99)
 
 - [ ] Select one line of text in a note and press Ctrl Shift E (Cmd Shift E on a Mac): the text turns into a link in its place, and a new note with that title exists. You stay in the note you were writing.
-- [ ] Select several lines, including a bold or italic word, and use ⋯ then Extract to a new note: one link replaces them, and the new note has all the lines with the formatting kept.
+- [ ] Select several lines, including a bold or italic word, and click "Extract to a new note" next to the selection (#122): one link replaces them, and the new note has all the lines with the formatting kept.
 - [ ] Type `/ex` at the start of a line with some text after it and pick Extract to a new note: the text after it becomes the new note and a link replaces it.
 - [ ] The new note has the same page and Collection as the note it came from. Open it from the link to check.
 - [ ] Extract text whose first line is the title of a note that already exists: the new note gets a free name instead of overwriting.
 - [ ] Press Ctrl Z right after: the text comes back and the new note stays.
-- [ ] Nothing floats next to the selection. Hover over Extract to a new note in ⋯ with nothing selected: the hover text says to select some text first. Clicking it with nothing selected shows a short message.
+- [ ] With nothing selected, no Extract button shows, and Ctrl Shift E shows a short message to select some text first.
 - [ ] Ctrl Shift E is listed in the Shortcuts panel.
 
 ### Pixel cloud reminder (#98)
@@ -354,14 +376,14 @@ Nothing should look or work differently. Check each in Chrome and Firefox:
 
 - [ ] notes list: search titles, then `//` and a word inside a note. Collections and page groups fold open and shut. Hover a note row and a Collection heading: the icons show.
 - [ ] notes list: click Delete on a Collection, then Keep, then Esc on the question. Click "+ New collection", type a name, press Enter.
-- [ ] ⋯ menu: Move to collection…, Download, Archive (then Undo) and Delete (then Keep, and then Delete and Undo) each still work. On an archived note it says Unarchive.
+- [ ] ⋯ menu: Note details (and its Collection), Download, Archive (then Undo) and Delete (then Keep, and then Delete and Undo) each still work. On an archived note it says Unarchive.
 - [ ] Download as .md, PDF and Print for a note (row icon and ⋯), for a Collection, and for a Collection inside the Archive section.
 - [ ] On a website with two notes and no Collection, hover the page group under No collection, click the move icon and pick a Collection: both notes move.
 - [ ] +, ⋯, the title and the sync word each open their box, Esc closes it, and opening one closes the one that was open.
 
 ### Collections only by choice, page groups (#92)
 
-- [ ] Use a Collection, then on a new website write a note: it is in no Collection (the line above the text says "Add to a collection"). `+` → New note: also none.
+- [ ] Use a Collection, then on a new website write a note: it is in no Collection (Note details says "No collection"). `+` → New note: also none.
 - [ ] Put that page's note in a Collection, then make a second note for the same page: it joins that Collection.
 - [ ] On another website with no Collection, make two notes. notes list, under No collection: one group with a globe and the page's title, its notes under it, newest first. A page with one note stays a plain row.
 - [ ] Hover the group: a move icon on the right. Click it: the Collections and "+ New collection". Pick one: both notes move there and the group is gone. Try "+ New collection" with a new name too. Esc or a click elsewhere closes the list.
@@ -369,7 +391,7 @@ Nothing should look or work differently. Check each in Chrome and Firefox:
 
 ### How Glacier works opens the welcome page (#91)
 
-- [ ] Open a note, open the Shortcuts panel with ⋯, Keyboard shortcuts, and click "How Glacier works" (dotted underline): the panel folds and the full welcome shows on the paper, with the pixel picture, greeting, three lines with icons, Start writing and the tip. The note's Collection line and backlinks are hidden while it shows.
+- [ ] Open a note, open the Shortcuts panel with ⋯, Keyboard shortcuts, and click "How Glacier works" (dotted underline): the panel folds and the full welcome shows on the paper, with the pixel picture, greeting, three lines with icons, Start writing and the tip. The pushpin and backlinks are hidden while it shows.
 - [ ] Click Start writing: you are back in the same note with the cursor in it. Show it again and press Esc: the same.
 - [ ] Do it on School Notebook and Aurora: the day and the night picture. Do it with no note open: Start writing gives the fresh page.
 
@@ -379,7 +401,7 @@ Nothing should look or work differently. Check each in Chrome and Firefox:
 
 ### Collections to download stay in Settings (hand fix)
 
-- [ ] In Settings, open Where your notes live and click Sync now: under Export the Collections with their download icon sit in the list, not floating over the Settings heading. Click a note's Collection line: its list of Collections still opens under it and scrolls when long.
+- [ ] In Settings, open Where your notes live and click Sync now: under Export the Collections with their download icon sit in the list, not floating over the Settings heading. In Note details, click the Collection: its list of Collections opens under it.
 
 ### A welcoming first page (#90)
 
@@ -434,7 +456,7 @@ Nothing should look or work differently. Check each in Chrome and Firefox:
 
 - [ ] In a fresh profile, open Glacier: three lines in the handwriting font explain notes, website notes and Collections, with a quiet "Start writing" button. Click it: the welcome goes and the caret is on the paper. Reload the extension and open Glacier again: the welcome does not come back.
 - [ ] With no Collections, open the notes list: under "Notebook" a quiet line says "Collections hold notes that belong together. Make one with + New collection." Make a Collection: the line is gone.
-- [ ] On a note without a Collection, hover "Add to a collection" above the text: it explains what Collections are. Hover the `+` in the pill: it says "New note".
+- [ ] Hover the `+` in the pill: it says "New note".
 - [ ] Open the Shortcuts panel with ⋯, Keyboard shortcuts: it starts with the link "How Glacier works" (#91).
 - [ ] Settings, Where your notes live, "Sync now": a small pen moves across and writes "Just synced" in the handwriting font, left to right. After a few seconds the box shows its normal status again. With the network off you get the plain words and no pen.
 - [ ] With "reduce motion" turned on in your system, "Just synced" just appears, with no pen.
@@ -452,11 +474,9 @@ Reload with ↻ first. Try Aurora and Chalkboard too.
 
 Reload with ↻ first.
 
-- [ ] Click in the text of a note, then click "Add to a collection" with the mouse: the list opens every time. Do it also right after pressing Enter or typing.
-- [ ] The Collection list has a solid background: the note's text does not show through it.
 - [ ] Open ☰ Notes, ⋯, the ← box, the sync box and the Shortcuts panel one after another: the round Glacier button is always under them, and opening one closes the one that was open.
 - [ ] With the Shortcuts panel open, open ☰ Notes: the panel closes. With ☰ Notes open, open the Shortcuts panel: the menu closes. A Collection heading's Archive and Delete icons are never hidden.
-- [ ] Choose a Collection on a note, then press + and "New note" and type: the new note is already in that Collection, shown above the text. The same from ☰ Notes and "+ New note".
+- [ ] Choose a Collection on a note, then press + and "New note" and type: the new note is already in that Collection, shown in Note details. The same from ☰ Notes and "+ New note".
 - [ ] Without permission for the page, press "New note for this page" and decline: the card says settings open inside the sidebar, and does not talk about two panels.
 - [ ] With no note open, the pill shows a quiet "Glacier". Hovering shows no text and no pointer, and clicking does nothing.
 - [ ] Open note A, then note B. In ⋯ choose Archive: note A shows, with "Archived. Undo". Undo puts B back in the Notebook, not archived.
@@ -467,12 +487,11 @@ Reload with ↻ first.
 
 Reload with ↻ first.
 
-- [ ] A note without a Collection shows a faded "Add to a collection" above the text. Hover it: "Click to choose a collection".
-- [ ] Click it: a list shows your Collections and "+ New collection" at the bottom. Choose "+ New collection", type a name, press Enter: the note is in it and the name shows above the text.
-- [ ] On a note with a Collection, click the name: the list also has "No collection". Choose it: the line goes back to "Add to a collection".
-- [ ] Open ⋯ and choose "Move to collection…": the same list opens above the text.
+- [ ] A note without a Collection: ⋯, Note details says "No collection" with "Click to put it in a collection" (#122).
+- [ ] Click it: a list shows your Collections and "+ New collection" at the bottom. Choose "+ New collection", type a name, press Enter: the note is in it and the name shows in Note details.
+- [ ] On a note with a Collection, click the name: the list also has "No collection". Choose it: Note details says "No collection" again.
 - [ ] Open ☰ Notes: under Notebook, click "+ New collection", type a name, press Enter: an empty Collection appears in the list. Hover it: only the Delete icon shows.
-- [ ] Choose that empty Collection from "Add to a collection" on a note: the note shows under it in ☰ Notes.
+- [ ] Choose that empty Collection in a note's Note details: the note shows under it in ☰ Notes.
 - [ ] Type an existing name in other capitals as a new Collection: no second Collection appears.
 - [ ] Sync, then look at the Notes repo: a moved note's file is in its new folder, in one commit.
 
@@ -542,7 +561,7 @@ Reload with ↻ first.
 
 Reload with ↻ first. You need a connected Notes repo for the last two checks.
 
-- [ ] The line above the text says "Add to a collection" on a note without one. Hover it: "Click to choose a collection". Click it: the list ends with "+ New collection".
+- [ ] Note details says "No collection" on a note without one. Click it: the list ends with "+ New collection".
 - [ ] Open the notes list: the Notebook lists Collections, then "No collection" with the rest. Hover a Collection heading: three icons show, and Download names the Collection and its note count.
 - [ ] Settings, Where your notes live: the list under Export holds Collections, and hovering a Download icon names the Collection. Nowhere in the sidebar, menus or settings does the word Course show.
 - [ ] Put a note in "Testing Test", then click "+ New collection" on another note and type "testing test": the note joins "Testing Test", and the menu shows one Collection.
@@ -604,10 +623,10 @@ Reload with ↻ first.
 - [ ] Switch to another tab and back, or reopen the sidebar: the note you wrote in last opens.
 - [ ] Click ☰ Notes: the list opens with "Notes for this page" at the top, both notes newest first, the open one in bold, and "+ New note for this page" under them. Click the other note: it opens. (The "1 of 2" after the title went in #121.)
 - [ ] Write a word in that note, switch tabs and come back: now it opens first.
-- [ ] + and "New note": a blank note with "Title" faded in the pill. Name it and write: the line above the text shows only "Add to a collection", no site link. Click it to give it a Collection.
+- [ ] + and "New note": a blank note with "Title" faded in the pill. Name it and write: Note details shows "No collection" and no website. Click the Collection to give it one.
 - [ ] Hover the two + choices: "A blank note, not tied to any page." and "A note for the page you're on. It opens again when you visit the page."
 - [ ] On a settings page, + offers only "New note".
-- [ ] Click a Missing Link: the new note has no site link and "Add to a collection". Leave it without writing: it is gone again.
+- [ ] Click a Missing Link: the new note has no website and no Collection in Note details. Leave it without writing: it is gone again.
 - [ ] Look through the pill, both menus, the + menu, the start prompt, the permission card and settings: nothing says Lesson or Concept.
 - [ ] With a Notes repo that still has a `concepts/` folder, sync: on GitHub one commit moves those files to `notes/`, and the notes still open with their text and backlinks.
 - [ ] Restore from an older Export zip (with `concepts/` in it): every note comes back.
@@ -749,7 +768,7 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 - [ ] `/` at the start of a line opens the menu. Every command shows its Markdown.
 - [ ] Typing `/he` filters to the headings. ↑/↓ and Enter or Tab pick, Esc closes, and the mouse wheel scrolls.
 - [ ] `/` in the middle of a line or in a code block opens nothing.
-- [ ] `/page` puts in a page break: a dotted line with the page number, or with notes as pages, a new page.
+- [ ] `/page` lists New page, which puts in a page break: a dotted line with the page number, or with notes as pages, a new page.
 - [ ] The `+` on the left opens the same menu, on a new line when the line already has text.
 - [ ] `+` and then Esc, Enter, a paste or following a link leaves no stray `/` behind.
 - [ ] Empty lines show the hint "Type / for commands, or click + on the left".
@@ -787,11 +806,13 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 
 - [ ] No text in Glacier uses dashes as punctuation, words in capitals, or emoji.
 
-### The Collection and site line
+### Note details, the pushpin and the page controls (#122)
 
-- [ ] A note with a Collection and a website shows a small "Collection · site ↗" line above its text (for example "youtube.com ↗"), and no `---` lines. Clicking the site switches to the page's tab when it is open, otherwise opens it in a new tab.
-- [ ] Clicking the Collection opens a small list to move the note to another Collection or a new one.
-- [ ] A note without a page shows only its Collection, or "Add to a collection".
+- [ ] No `---` lines and no Collection line show above a note's text. ⋯, Note details shows its Collection, Secret, Page, Linked from, Words, Created and Edited, and Done. Clicking the Page switches to the page's tab when it is open, otherwise opens it in a new tab.
+- [ ] Clicking the Collection there opens a small list to move the note to another Collection or a new one, with Undo in the notice.
+- [ ] The pushpin in the top right corner of the paper pins and unpins, with a notice each time.
+- [ ] With notes as pages, one page shows New page at the end of the paper (× hides it, Settings shows it again), and two pages show ‹ 1 of 2 › and + New page under the bar.
+- [ ] Selected text in a note shows "Extract to a new note" next to it.
 
 ### Export and Restore from backup file
 
@@ -987,7 +1008,7 @@ Reload the extension with the reload button first. In Settings, Panels, choose "
 Reload the extension with the reload button first.
 
 - [ ] Open a website that has no note: the sidebar shows the ruled paper with one faded line, "No note for this page yet. Just start writing." The pill shows the page's title, faded. Nothing looks like a web form: no boxes, no big buttons, no heading.
-- [ ] Click the paper and type a letter: the note exists now, with the page's title in the pill (no longer faded) and the line "Add to a collection · site ↗" above the text (no Collection, #92).
+- [ ] Click the paper and type a letter: the note exists now, with the page's title in the pill (no longer faded) and no Collection in Note details (#92).
 - [ ] On another website with no note, click the paper but type nothing, then switch tabs and back: no note was made (it is not in the pill menu).
 - [ ] Open a note, then + and "New note": the pill shows "Title" faded, ready to type. Type a name and press Enter: the caret drops onto the first line. Write something, and the note is in the menu under that name, never "Untitled".
 - [ ] + and "New note" again, then press Esc: the note from before comes back and nothing was made.
@@ -1013,7 +1034,7 @@ Reload the extension with the reload button first.
 
 - [ ] Reload the extension with the reload button first. Open a note: the bar shows ☰ Notes, the title, + and ⋯. Hovering ⋯ shows "More for this note".
 - [ ] Open ☰ Notes (or press Ctrl+K): it has only notebook things (search, recent notes, the lists, Archive). There is no Download, Archive or Delete for the open note.
-- [ ] Open ⋯: three big pixel icons with Rename, Download and Archive, a line, Delete, a line, Keyboard shortcuts and Help, a line, then Pin this note, Move to collection…, Extract to a new note (with Ctrl Shift E faint on the right) and Make secret. Each works on the open note.
+- [ ] Open ⋯: three big pixel icons with Rename, Download and Archive, a line, Delete, a line, then Note details (with "Collection, secret, page, links" under it), Keyboard shortcuts and Help. Each works on the open note.
 - [ ] On an archived note, ⋯ shows "Unarchive" instead of "Archive".
 - [ ] Click Delete: the question shows right there in the menu, "Delete “title” for good?", with Delete and Keep. The paper stays as it was.
 - [ ] With no note open (empty paper for a new note), ⋯ is not shown.

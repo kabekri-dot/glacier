@@ -41,6 +41,7 @@ test("every picture in the top bar and its menus is drawn", () => {
   const icons = [
     "list",
     ...[...menu.big, menu.delete, ...menu.help].map((action) => action.icon),
+    "pin",
     ...newNoteChoices({ website: { title: "A" } }).map((choice) => choice.icon),
   ];
   for (const icon of icons) assert.ok(existsSync(path(`art/icon-${icon}.svg`)), icon);
