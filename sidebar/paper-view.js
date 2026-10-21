@@ -434,7 +434,8 @@ export function createPaper({
     for (const el of shownEls.slice(head, shownEls.length - tail)) el.remove();
     ranges.forEach((range, i) => {
       if (i < head || i >= ranges.length - tail) {
-        const kept = shownEls[i < head ? i : shownEls.length - (ranges.length - i)];
+        // The unchanged end is matched from the back, so count from there.
+        const kept = i < head ? shownEls[i] : shownEls[shownEls.length - (ranges.length - i)];
         if (!keys[i].startsWith("sketch:")) {
           if (kept.dataset.start !== String(range.start)) kept.dataset.start = range.start;
           return;
