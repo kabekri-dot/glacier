@@ -171,6 +171,20 @@ this order.
    - Highscores are your own: a top 5 per game with the date, synced with
      the notes. A shared leaderboard needs a server; maybe later with the
      website.
+   - Movement is smooth at the screen's full frame rate (never choppy),
+     flat colours only (no dithering, nothing shimmers), a calm pace, no
+     flashing. One key pauses; Esc goes straight back to the note.
+   - Typing `/break` at the start of an empty line and Enter starts the
+     game of the current paper. Completely hidden: not in the `/` menu, not
+     in Help. The game covers the paper (the whole sidebar); the typed
+     `/break` goes away and the note is untouched.
+   - First the Glacier game with everything around it (a penguin slides
+     over the ice, catches fish, jumps the cracks; prototype
+     https://claude.ai/artifact/DHpw8ARgMnt6uTWcdUTCy6). Then one game at a
+     time: Forest squirrel and acorns, Ocean fish and jellyfish, Desert
+     camel and cacti, Volcano catch the stones but not the glowing ones,
+     Aurora a light collecting stars, Blank Page and School Notebook a paper
+     plane, Chalkboard a chalk snake, Moleskine and Engineer stacking blocks.
 5. **Support Glacier.** Pay once, weekly or monthly, like "buy me a coffee";
    maybe it unlocks two extra Themes, but it doesn't have to.
 6. **Codes for influencers.** A small creator gets a code that unlocks two
