@@ -102,10 +102,23 @@ this order.
      to this page) and `Blank note`, each with a pixel-art icon (a globe, a
      sheet of paper). The first is picked already, so `+` then Enter works.
      With no website open, `+` makes a blank note at once.
-   - `⋯` menu in groups with thin lines between, each item with a pixel-art
-     icon: Rename, Move to collection…, Make secret, Download or print |
-     Archive, Delete | Keyboard shortcuts, Help. (Alternatives shown to the
-     user; to be confirmed.)
+   - `⋯` drops down with the quick actions: a row of three big pixel-art
+     icons with words (Rename, Download, Archive) | Delete on its own (asks
+     Keep or Delete in place) | Note details, Keyboard shortcuts, Help.
+   - "Note details" slides a drawer in from the right over the paper:
+     Collection (click to change), Secret on or off with one sentence on
+     what it means, the Page, Linked from (backlinks), then the stats as
+     label and value lines (Words, Created, Edited), and Done. Prototype:
+     https://claude.ai/artifact/CySDb3iB1Yj2MFgVbgp5ck
+   - The line under the bar loses the collection (it is in Note details).
+     The page arrows show only when a note has more than one page; with one
+     page the paper starts right under the bar.
+   - "New page": with one page, a faint New page button sits at the end of
+     the paper (pixel-art sheet). An × on hover hides it; the notice says
+     "Hidden. Type / and pick New page to add a page." with Show again.
+     Settings has the same switch ("Show New page at the end of notes").
+     From two pages on, the line under the bar shows ‹ 1 of 2 › and
+     + New page, and the button at the end goes. New page is always in `/`.
    - "Extract to a new note" leaves the menu: it appears when text is
      selected. Whether selecting text shows more options is still open.
 2. **Settings, more organized.** Keep the style; less at once.
