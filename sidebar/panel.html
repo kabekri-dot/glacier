@@ -36,8 +36,13 @@
     <div class="menu" hidden></div>
     <!-- Under the sync word: the status, Sync now, notes with two versions (#75). -->
     <div class="sync-box" hidden></div>
-    <!-- The note's Collection and Source, instead of its frontmatter (#13). -->
-    <header class="note-meta" hidden></header>
+    <!-- The pushpin in the top right corner of the paper (#122): faint, or
+         stuck in when the note is pinned. -->
+    <button type="button" class="pushpin" aria-pressed="false" hidden><img src="../art/icon-pin.svg" alt=""></button>
+    <!-- Note details (#122), from ⋯: a drawer over the paper, and the dim
+         layer beside it that closes it. -->
+    <div class="details-veil" hidden></div>
+    <aside class="note-details" role="dialog" aria-label="Note details" hidden></aside>
     <!-- The welcome on the first start, until Start writing (#85). -->
     <section class="welcome" aria-label="Welcome" hidden></section>
     <main class="note" aria-label="Note"></main>

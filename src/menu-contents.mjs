@@ -216,13 +216,13 @@ export function secondVersionBar(notebook, note) {
 // Help in ⋯ opens this page in a new tab (#121).
 export const HELP_URL = "https://github.com/kabekri-dot/glacier/blob/main/docs/help.md";
 
-// The ⋯ menu (#63, #121) for the open note: a row of three big pixel icons
-// with words (`big`), Delete on its own (`delete`, which asks right there),
-// then Keyboard shortcuts and Help (`help`). `later` holds the actions that
-// move to Note details and the notes list, at the bottom until then. Each
+// The ⋯ menu (#63, #121, #122) for the open note: a row of three big pixel
+// icons with words (`big`), Delete on its own (`delete`, which asks right
+// there), then Note details, Keyboard shortcuts and Help (`help`). Each
 // action has its `kind`, `label`, `hint`, pixel `icon` (art/icon-<icon>.svg)
-// and, when it has one, its shortcut `keys`. No note open means no menu.
-export function noteMenu(note, { pinned = false } = {}) {
+// and, when it has one, a quiet line `under` its label. No note open means
+// no menu.
+export function noteMenu(note) {
   if (!note) return null;
   return {
     big: [
@@ -234,20 +234,19 @@ export function noteMenu(note, { pinned = false } = {}) {
     ],
     delete: { kind: "delete", label: "Delete", icon: "trash", hint: "Remove this note for good" },
     help: [
+      { kind: "details", label: "Note details", icon: "info", under: "Collection, secret, page, links", hint: "Its collection, secret, page, the notes that link here and its numbers" },
       { kind: "shortcuts", label: "Keyboard shortcuts", icon: "keyboard", hint: "Every key and Markdown mark Glacier knows" },
       { kind: "help", label: "Help", icon: "help", hint: "Answers to the most common questions, in a new tab" },
     ],
-    later: [
-      pinned
-        ? { kind: "unpin", label: "Unpin this note", icon: "pin", hint: "The sidebar follows your tabs again" }
-        : { kind: "pin", label: "Pin this note", icon: "pin", hint: "Keep this note open when you change the page or tab" },
-      { kind: "move", label: "Move to collection…", icon: "folder", hint: "Put this note in a collection" },
-      { kind: "extract", label: "Extract to a new note", icon: "page", keys: "Ctrl Shift E", hint: "Select some text in the note first. It becomes a new note and a link takes its place" },
-      note.secret
-        ? { kind: "notSecret", label: "Make not secret", icon: "lock", hint: "Keep this note as plain text again, readable without your passcode" }
-        : { kind: "secret", label: "Make secret", icon: "lock", hint: "Lock this note with your Glacier passcode. Its text is encrypted everywhere it is kept" },
-    ],
   };
+}
+
+// The pushpin in the top right corner of the paper (#122): what a click does,
+// and the notice once it was clicked and the note is `pinned` or not.
+export function pushpin(pinned) {
+  return pinned
+    ? { label: "Unpin this note", hint: "Unpin this note. Glacier follows your tabs again", notice: "Pinned. This note stays open when you change tabs." }
+    : { label: "Pin this note", hint: "Pin this note. It stays open when you change tabs", notice: "Unpinned. Glacier follows your tabs again." };
 }
 
 // Hovering ← (#121).

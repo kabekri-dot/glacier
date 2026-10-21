@@ -269,7 +269,8 @@ export function createSettingsView({ prefs, repo, onClose }) {
     return label;
   }
 
-  // The Font Override, the text size and notes as pages. Each font is one
+  // The Font Override, the text size, notes as pages and New page at the
+  // end of notes. Each font is one
   // line, written in that font, like the papers; "Theme default" names the paper's own font
   // and shows in it. A new paper redraws this.
   function drawWriting() {
@@ -323,7 +324,17 @@ export function createSettingsView({ prefs, repo, onClose }) {
       look.pages ? "on" : "off",
       (value) => prefs.saveLook({ pages: value === "on" }),
     );
-    bodies.writing.replaceChildren(fontField, field("Text size", sizeRow), pages);
+    // The faint New page at the end of a note of one page (#122).
+    const endPage = choice(
+      "Show New page at the end of notes",
+      [
+        ["shown", "Shown"],
+        ["hidden", "Hidden"],
+      ],
+      look.newPageAtEnd ? "shown" : "hidden",
+      (value) => prefs.saveLook({ newPageAtEnd: value === "shown" }),
+    );
+    bodies.writing.replaceChildren(fontField, field("Text size", sizeRow), pages, endPage);
   }
 
   function choice(labelText, options, value, onChange) {

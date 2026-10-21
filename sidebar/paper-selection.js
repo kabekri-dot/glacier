@@ -1,7 +1,8 @@
 // Selecting and copying the note as Markdown (#7), and Extract (#99). The
 // browser's selection is read as edges the Editor session understands; the
 // session decides what was copied or extracted. Ctrl A, Ctrl C and
-// Ctrl Shift E are listened for here.
+// Ctrl Shift E are listened for here, and a small "Extract to a new note"
+// button shows next to text selected in the note (#122).
 //
 //   createPaperSelection({ noteEl, editor, focusedEl, dismissMenu, render, showNotice })
 //     noteEl          the paper the note is drawn on
@@ -79,8 +80,7 @@ export function createPaperSelection({ noteEl, editor, focusedEl, dismissMenu, r
   }
 
   // Extract to a new note (#99): the selected text becomes a note and a Link
-  // takes its place. The new note does not open and nothing floats next to the
-  // selection.
+  // takes its place. The new note does not open.
   function extract() {
     const range = rangeInNote();
     const done =
@@ -96,6 +96,45 @@ export function createPaperSelection({ noteEl, editor, focusedEl, dismissMenu, r
     render();
     showNotice(`Made the note '${done.title}'.`);
   }
+
+  // The button next to the selection (#122), under its last line. It waits
+  // while the mouse is still selecting, and goes once nothing is selected.
+  // mousedown, not click, so the selection stays for the extract.
+  const extractButton = document.createElement("button");
+  extractButton.type = "button";
+  extractButton.className = "extract-button";
+  extractButton.textContent = "Extract to a new note";
+  extractButton.title = "The selected text becomes a new note and a link takes its place. Ctrl Shift E";
+  extractButton.hidden = true;
+  extractButton.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+    extractButton.hidden = true;
+    extract();
+  });
+  document.body.append(extractButton);
+
+  let selecting = false;
+  function placeExtractButton() {
+    const range = selecting ? null : rangeInNote();
+    const rects = range ? [...range.getClientRects()].filter((rect) => rect.width > 0) : [];
+    const last = rects.at(-1);
+    extractButton.hidden = !last;
+    if (!last) return;
+    const width = extractButton.offsetWidth;
+    const left = Math.max(4, Math.min(last.right - width, window.innerWidth - width - 8));
+    extractButton.style.left = `${left + window.scrollX}px`;
+    extractButton.style.top = `${last.bottom + window.scrollY + 4}px`;
+  }
+  noteEl.addEventListener("mousedown", () => {
+    selecting = true;
+    extractButton.hidden = true;
+  });
+  document.addEventListener("mouseup", () => {
+    if (!selecting) return;
+    selecting = false;
+    placeExtractButton();
+  });
+  document.addEventListener("selectionchange", placeExtractButton);
 
   document.addEventListener("keydown", (event) => {
     const isExtract = isShortcut(event, "e", { shift: true });

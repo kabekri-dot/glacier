@@ -21,7 +21,8 @@ which version.
   icons and the questions before deleting), `pill-menus.js` (the headings
   under the title, + and ⋯), `title-edit.js` (renaming in place),
   `sync-box-view.js` (the sync word and its box),
-  `note-meta-view.js` (the Collection line above the text), `cards.js`,
+  `note-details-view.js` (the Note details drawer from ⋯),
+  `second-version-view.js` (the bar above a second version), `cards.js`,
   `downloads.js` (download and print) and `settings-view.js` (settings and the
   Shortcuts panel, also drawn beside the sidebar by `beside.js`).
 - `fonts/` — the bundled handwriting fonts (Latin subset, woff2), each with

@@ -132,114 +132,6 @@ body {
   line-height: var(--line-height);
 }
 
-/* The note's "Collection · source" line (#13) sits on the first ruled line, and
-   the text starts one line lower so it stays on the rules. */
-.note-meta {
-  position: absolute;
-  top: var(--note-top);
-  left: var(--note-left);
-  right: 1.25rem;
-  overflow: hidden;
-  font-size: 0.8em;
-  line-height: var(--line-height);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  /* Above the note, which is positioned later and would swallow real clicks.
-     The fade is on the colour, so the Collection list keeps a solid background. */
-  z-index: 2;
-  color: color-mix(in srgb, var(--ink) 70%, transparent);
-}
-
-.note-meta[hidden] {
-  display: none;
-}
-
-.note-meta a {
-  color: var(--accent);
-  opacity: 0.7;
-}
-
-/* The Collection on that line is a quiet button that opens a small list right
-   there (#61). The line is allowed to show the list below it. */
-.note-meta.is-picking {
-  z-index: 15;
-  overflow: visible;
-}
-
-.note-meta-course {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.note-meta-course:hover,
-.note-meta-course:focus-visible {
-  outline: none;
-  text-decoration: underline dotted;
-}
-
-.note-meta-course.is-empty {
-  opacity: 0.6;
-}
-
-.course-list {
-  position: absolute;
-  top: var(--line-height);
-  left: 0;
-  z-index: 15;
-  display: flex;
-  flex-direction: column;
-  min-width: 10rem;
-  max-width: 100%;
-  max-height: 10rem;
-  overflow-y: auto;
-  padding: 0.3rem;
-  background: var(--paper);
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-  box-shadow: 0 6px 20px var(--shadow);
-}
-
-.course-choice {
-  padding: 0.15rem 0.5rem;
-  border: 0;
-  border-radius: 6px;
-  background: none;
-  color: var(--ink);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.course-choice:hover,
-.course-choice:focus-visible {
-  outline: none;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-}
-
-.course-choice.is-new {
-  color: var(--accent);
-}
-
-.course-input {
-  width: 12rem;
-  max-width: 100%;
-  padding: 0;
-  border: 0;
-  border-bottom: 1px dotted currentColor;
-  outline: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-}
-
-.note.has-meta {
-  padding-top: calc(var(--note-top) + var(--line-height));
-}
-
 /* The note fills the sidebar and must stay usable from about 260px wide. */
 .note {
   position: relative;
@@ -1790,7 +1682,7 @@ code {
   display: none;
 }
 
-/* Above the text of an original or a second version (#70, #80), under the Collection line. */
+/* Above the text of an original or a second version (#70, #80), under the line for the pages. */
 .second-version-bar {
   position: absolute;
   top: calc(var(--note-top) + var(--line-height));
@@ -2417,10 +2309,6 @@ html.beside .settings {
   opacity: 0.6;
 }
 
-.note-meta .origin-icon {
-  margin-right: 0.2rem;
-}
-
 /* After Sync now, a pixel pencil hops across and writes Just synced in the
    Theme's handwriting a few letters at a time, flicks off two specks of ink
    and fades in steps (#85). Its tip, the pencil's bottom left pixel, sits on
@@ -2554,7 +2442,7 @@ html.beside .settings {
 }
 
 .welcome:not([hidden]) ~ .note > *,
-body:has(.welcome:not([hidden])) :is(.note-meta, .second-version-bar, .backlinks-list, .backlinks-button) {
+body:has(.welcome:not([hidden])) :is(.pushpin, .page-end, .second-version-bar, .backlinks-list, .backlinks-button) {
   visibility: hidden;
 }
 
@@ -2696,11 +2584,12 @@ html[data-dark] .welcome-scene {
   border-top: 2px dotted var(--rule);
 }
 
-/* One page at a time: the ‹ 1 of 3 › bar sits on the right of the note's
-   header line, at the top of the paper, quiet like the line itself. The
-   header line makes room for it. */
-html[data-pages] .note-meta {
-  right: 11rem;
+/* One page at a time, from two pages on (#122): the ‹ 1 of 3 › bar and
+   + New page sit on the line under the top bar, on the right, quiet. The
+   text starts one line lower. With one page nothing shows there and the
+   paper starts right under the top bar. */
+html[data-pages] .note:not(.has-bar) {
+  padding-top: calc(var(--note-top) + var(--line-height));
 }
 
 .page-bar {
@@ -2780,8 +2669,289 @@ html[data-pages] .note-meta {
   cursor: default;
 }
 
-.page-bar-turn.is-new {
+.page-bar-turn.page-bar-new {
+  margin-left: 0.3rem;
   color: var(--accent);
+}
+
+/* New page at the end of the paper of a note of one page (#122): faint and
+   dashed, one row under the last line; the × that hides it shows on hover.
+   The paper keeps room for it below the text. */
+.note.has-end {
+  padding-bottom: calc(var(--note-bottom) + 3 * var(--line-height));
+}
+
+.page-end {
+  position: absolute;
+  left: var(--note-left);
+  right: 1.25rem;
+  z-index: 3;
+}
+
+.page-end[hidden] {
+  display: none;
+}
+
+.page-end-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  height: calc(var(--line-height) * 1.3);
+  border: 1.5px dashed var(--rule);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--paper) 60%, transparent);
+  color: color-mix(in srgb, var(--ink) 45%, transparent);
+  font-family: "Montserrat", system-ui, sans-serif;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: color 120ms, border-color 120ms;
+}
+
+.page-end-add:hover,
+.page-end-add:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.page-end-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+  image-rendering: pixelated;
+}
+
+.page-end-hide {
+  position: absolute;
+  top: 50%;
+  right: 0.4rem;
+  transform: translateY(-50%);
+  padding: 0.1rem 0.4rem;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: color-mix(in srgb, var(--ink) 50%, transparent);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+
+.page-end:hover .page-end-hide,
+.page-end-hide:focus-visible {
+  opacity: 1;
+}
+
+.page-end-hide:hover {
+  background: var(--tint);
+  color: var(--ink);
+}
+
+/* The pushpin in the top right corner of the paper (#122). Faint while the
+   note isn't pinned; pinned, it is pressed in, bright, with a small shadow.
+   One short smooth move each way, none with reduced motion. */
+.pushpin {
+  position: absolute;
+  top: calc(var(--note-top) + 0.1rem);
+  right: 0.15rem;
+  z-index: 4;
+  padding: 0.15rem;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  opacity: 0.35;
+  filter: grayscale(1);
+  transform: translateY(-2px);
+  transition: transform 160ms ease-out, opacity 160ms ease-out, filter 160ms ease-out;
+}
+
+html[data-pages] .pushpin {
+  top: calc(var(--note-top) + var(--line-height) + 0.1rem);
+}
+
+.pushpin img {
+  display: block;
+  width: 1.1rem;
+  height: 1.1rem;
+  image-rendering: pixelated;
+}
+
+.pushpin:hover,
+.pushpin:focus-visible {
+  outline: none;
+  opacity: 0.7;
+}
+
+.pushpin.is-pinned {
+  opacity: 1;
+  filter: drop-shadow(1px 2px 0 var(--shadow));
+  transform: translateY(2px) scale(0.92);
+}
+
+.pushpin[hidden] {
+  display: none;
+}
+
+/* Note details (#122): a drawer from the right over the paper, with a dim
+   layer beside it. */
+.details-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 26;
+  background: color-mix(in srgb, var(--ink) 22%, transparent);
+}
+
+.note-details {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 27;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: min(86%, 22rem);
+  padding: 0.9rem 0.6rem;
+  overflow-y: auto;
+  background: var(--paper);
+  color: var(--ink);
+  border-left: 1px solid var(--rule);
+  box-shadow: -8px 0 24px var(--shadow);
+  font-family: "Montserrat", system-ui, sans-serif;
+  animation: details-in 180ms ease-out;
+}
+
+@keyframes details-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+.details-veil[hidden],
+.note-details[hidden] {
+  display: none;
+}
+
+.details-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0 0.45rem 0.4rem;
+}
+
+.details-title {
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
+.details-label {
+  margin: 0.5rem 0 0;
+  padding: 0 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--ink) 50%, transparent);
+}
+
+.details-head .details-label {
+  margin: 0;
+  padding: 0;
+}
+
+.note-details .bar-item.is-wrapping .bar-item-words {
+  white-space: normal;
+}
+
+.details-empty {
+  margin: 0;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--ink) 60%, transparent);
+  overflow-wrap: anywhere;
+}
+
+.details-collections {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 0.3rem 1.5rem;
+  padding-left: 0.3rem;
+  border-left: 2px solid var(--rule);
+}
+
+.details-choice.is-new {
+  color: var(--accent);
+}
+
+.details-new-collection {
+  margin: 0.2rem 0.45rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--field);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.details-stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0.2rem 0;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.82rem;
+}
+
+.details-stats dt {
+  color: color-mix(in srgb, var(--ink) 60%, transparent);
+}
+
+.details-stats dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.details-done {
+  margin: 0.5rem 0.45rem 0;
+}
+
+/* Extract to a new note, next to text selected in the note (#122). */
+.extract-button {
+  position: absolute;
+  z-index: 18;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--accent);
+  font-family: "Montserrat", system-ui, sans-serif;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 2px 8px var(--shadow);
+}
+
+.extract-button:hover {
+  border-color: var(--accent);
+}
+
+.extract-button[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pushpin,
+  .page-end-add,
+  .page-end-hide {
+    transition: none;
+  }
+
+  .note-details {
+    animation: none;
+  }
 }
 
 /* The page turn: a still copy of the old page curls up from the bottom
@@ -2854,10 +3024,8 @@ html[data-pages] .note-meta {
   display: none;
 }
 
-/* While the find box is open it takes the header line's place: the
-   Collection line and the ‹ 1 of 3 › bar step aside instead of peeking out
-   from under it. */
-body:has(.find-box:not([hidden])) .note-meta,
+/* While the find box is open it takes the line under the top bar: the
+   ‹ 1 of 3 › bar steps aside instead of peeking out from under it. */
 body:has(.find-box:not([hidden])) .page-bar {
   visibility: hidden;
 }

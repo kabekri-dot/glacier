@@ -75,3 +75,17 @@ export function lineOfSearch(lines, query) {
   const line = lines.findIndex((l) => words.some((word) => l.toLowerCase().includes(word)));
   return Math.max(line, 0);
 }
+
+// Which page controls show (#122), with notes as pages on. One page: a faint
+// New page at the end of the paper, unless it was hidden (`endHidden`), and
+// nothing under the bar. From two pages on, the line under the bar shows
+// ‹ 1 of 2 › and + New page, and the end of the paper stays empty.
+export function pageControls({ pagesOn, count, endHidden }) {
+  if (!pagesOn) return { strip: false, endButton: false };
+  return { strip: count > 1, endButton: count === 1 && !endHidden };
+}
+
+// The notices after hiding New page at the end (with Show again), and after
+// showing it again.
+export const END_HIDDEN_NOTICE = "Hidden. Type / and pick New page to add a page.";
+export const END_SHOWN_NOTICE = "New page shows at the end of notes again.";

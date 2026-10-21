@@ -202,7 +202,9 @@ export function readLook(saved) {
     : TEXT_SIZE.standard;
   // "Notes as pages" (#108): one page at a time, off until chosen.
   const pages = saved?.pages === true;
-  return { paper, font, textSize, pages };
+  // "Show New page at the end of notes" (#122): on until hidden.
+  const newPageAtEnd = saved?.newPageAtEnd !== false;
+  return { paper, font, textSize, pages, newPageAtEnd };
 }
 
 // Everything the panel needs to draw a look. The row height is whole pixels

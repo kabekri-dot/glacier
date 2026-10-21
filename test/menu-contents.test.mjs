@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createNotebook } from "../src/notebook.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
-import { notebookMenu, deletedNotice, deleteNoteQuestion, deletedCollectionNotice, noteMenu, deleteCollectionQuestion, archivedNotice, secondVersionBar, rowActions, noteOrigin, pillTitle, secretMark, backButtonHint, HELP_URL } from "../src/menu-contents.mjs";
+import { notebookMenu, deletedNotice, deleteNoteQuestion, deletedCollectionNotice, noteMenu, deleteCollectionQuestion, archivedNotice, secondVersionBar, rowActions, noteOrigin, pillTitle, secretMark, backButtonHint, HELP_URL, pushpin } from "../src/menu-contents.mjs";
 
 // What the ▾ Notebook and ⋯ This note menus list (#67), as plain data the
 // sidebar only has to draw.
@@ -378,8 +378,8 @@ test("the notice after a delete names what went", () => {
   assert.equal(deletedCollectionNotice("Biology", 0), "Deleted the empty collection “Biology”.");
 });
 
-// The ⋯ menu (#121): three big icons, Delete on its own, then Keyboard
-// shortcuts and Help. The actions that move later stay at the bottom.
+// The ⋯ menu (#121, #122): three big icons, Delete on its own, then Note
+// details, Keyboard shortcuts and Help.
 test("⋯ starts with Rename, Download and Archive as three big icons with words", () => {
   const menu = noteMenu({ title: "Grid" });
   assert.deepEqual(menu.big.map((a) => [a.kind, a.label, a.icon]), [
@@ -401,32 +401,38 @@ test("Delete stands on its own and asks for good right there, naming the note", 
   assert.equal(deleteNoteQuestion("Grid", null), "Delete “Grid” for good?");
 });
 
-test("⋯ ends its main part with Keyboard shortcuts and Help", () => {
+test("⋯ ends with Note details, Keyboard shortcuts and Help", () => {
   const menu = noteMenu({ title: "Grid" });
   assert.deepEqual(menu.help.map((a) => [a.kind, a.label, a.icon]), [
+    ["details", "Note details", "info"],
     ["shortcuts", "Keyboard shortcuts", "keyboard"],
     ["help", "Help", "help"],
   ]);
+  assert.equal(menu.help[0].under, "Collection, secret, page, links");
 });
 
 test("Help opens the common questions page", () => {
   assert.equal(HELP_URL, "https://github.com/kabekri-dot/glacier/blob/main/docs/help.md");
 });
 
-test("pin, move, extract and secret wait at the bottom of ⋯, extract showing its shortcut", () => {
-  const menu = noteMenu({ title: "Grid" });
-  assert.deepEqual(menu.later.map((a) => [a.kind, a.label, a.keys ?? null]), [
-    ["pin", "Pin this note", null],
-    ["move", "Move to collection…", null],
-    ["extract", "Extract to a new note", "Ctrl Shift E"],
-    ["secret", "Make secret", null],
-  ]);
-  assert.match(menu.later[2].hint, /Select some text/);
+test("pin, move, extract and secret are no longer in ⋯", () => {
+  const menu = noteMenu({ title: "Grid", secret: true }, { pinned: true });
+  const kinds = [...menu.big, menu.delete, ...menu.help].map((a) => a.kind);
+  for (const gone of ["pin", "unpin", "move", "extract", "secret", "notSecret"]) assert.equal(kinds.includes(gone), false, gone);
+  assert.equal(menu.later, undefined);
 });
 
-test("a pinned note offers Unpin this note, and a secret one Make not secret", () => {
-  const kinds = noteMenu({ title: "Grid", secret: true }, { pinned: true }).later.map((a) => a.label);
-  assert.deepEqual(kinds, ["Unpin this note", "Move to collection…", "Extract to a new note", "Make not secret"]);
+test("the pushpin says what a click does, and its notice what just happened", () => {
+  assert.deepEqual(pushpin(false), {
+    label: "Pin this note",
+    hint: "Pin this note. It stays open when you change tabs",
+    notice: "Unpinned. Glacier follows your tabs again.",
+  });
+  assert.deepEqual(pushpin(true), {
+    label: "Unpin this note",
+    hint: "Unpin this note. Glacier follows your tabs again",
+    notice: "Pinned. This note stays open when you change tabs.",
+  });
 });
 
 test("the Download icon says it can save or print the note", () => {

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { splitIntoLines, SLASH_COMMANDS, applySlashCommand } from "../src/editor-model.mjs";
-import { isPageBreak, pagesOf, pageOfLine, removePageBreak, addPage, removePage, lineOfSearch } from "../src/pages.mjs";
+import { isPageBreak, pagesOf, pageOfLine, removePageBreak, addPage, removePage, lineOfSearch, pageControls, END_HIDDEN_NOTICE, END_SHOWN_NOTICE } from "../src/pages.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
 
 const lines = (body) => splitIntoLines(body);
@@ -45,8 +45,9 @@ test("a trailing break belongs to the last page", () => {
   assert.equal(pageOfLine(lines("one\n%%page%%"), 1), 0);
 });
 
-test("the Page break command in the / menu inserts a break and moves to the new page", () => {
+test("the New page command in the / menu inserts a break and moves to the new page", () => {
   const command = SLASH_COMMANDS.find((c) => c.id === "page");
+  assert.equal(command.label, "New page");
   assert.equal(command.markdown, "%%page%%");
   const next = applySlashCommand(["before", "/page"], 1, 5, command);
   assert.deepEqual(next, { lines: ["before", "%%page%%", ""], line: 2, col: 0 });
@@ -156,4 +157,30 @@ test("deleting a page can be undone", () => {
 test("deleting the first page leaves no page break at the top", () => {
   const result = removePage(lines("%%page%%\none\n%%page%%\ntwo"), 0);
   assert.deepEqual(result.lines, ["two"]);
+});
+
+// Which page controls show (#122): with one page, New page at the end of the
+// paper (unless hidden); from two pages on, ‹ 1 of 2 › and + New page under
+// the bar instead. Only with notes as pages.
+test("a note of one page shows New page at the end of the paper and nothing under the bar", () => {
+  assert.deepEqual(pageControls({ pagesOn: true, count: 1, endHidden: false }), { strip: false, endButton: true });
+});
+
+test("hiding New page at the end leaves a one page note with no page controls", () => {
+  assert.deepEqual(pageControls({ pagesOn: true, count: 1, endHidden: true }), { strip: false, endButton: false });
+});
+
+test("from two pages on the pages and + New page sit under the bar and the end button goes", () => {
+  assert.deepEqual(pageControls({ pagesOn: true, count: 2, endHidden: false }), { strip: true, endButton: false });
+  assert.deepEqual(pageControls({ pagesOn: true, count: 5, endHidden: true }), { strip: true, endButton: false });
+});
+
+test("with notes as pages off no page controls show", () => {
+  assert.deepEqual(pageControls({ pagesOn: false, count: 1, endHidden: false }), { strip: false, endButton: false });
+  assert.deepEqual(pageControls({ pagesOn: false, count: 3, endHidden: false }), { strip: false, endButton: false });
+});
+
+test("hiding New page says how to add a page, and showing it again says so", () => {
+  assert.equal(END_HIDDEN_NOTICE, "Hidden. Type / and pick New page to add a page.");
+  assert.equal(END_SHOWN_NOTICE, "New page shows at the end of notes again.");
 });
