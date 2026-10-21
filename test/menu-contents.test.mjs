@@ -250,11 +250,12 @@ test("a Collection's ⋯ offers a new note in it, Download all, Archive all and 
   const [top] = folders(notebookMenu(notebookWith(), ""));
   assert.deepEqual(top.menu.map((item) => [item.kind, item.label]), [
     ["newNote", "New note in TOP Foundations"],
+    ["course", "Make it a course"],
     ["download", "Download all"],
     ["archive", "Archive all"],
     ["delete", "Delete collection"],
   ]);
-  assert.equal(top.menu[1].hint, "Download the 2 notes in “TOP Foundations” as one zip");
+  assert.equal(top.menu[2].hint, "Download the 2 notes in “TOP Foundations” as one zip");
 });
 
 test("an empty Collection's ⋯ only offers a new note in it and Delete collection", () => {
@@ -551,4 +552,14 @@ test("the Download icon says it can save or print the note", () => {
 
 test("hovering ← names the note it goes back to", () => {
   assert.equal(backButtonHint("Flexbox"), "Back to Flexbox");
+});
+
+test("a course's ⋯ offers Not a course any more instead (#126)", () => {
+  const notebook = notebookWith();
+  notebook.makeCourse("TOP Foundations");
+  const [top] = folders(notebookMenu(notebook, ""));
+  const item = top.menu.find((one) => one.kind === "notCourse");
+  assert.equal(item.label, "Not a course any more");
+  assert.ok(item.hint);
+  assert.equal(top.menu.some((one) => one.kind === "course"), false);
 });

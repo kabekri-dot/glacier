@@ -15,7 +15,13 @@ import {
 const px = (value) => Number.parseFloat(value);
 
 test("Glacier is the paper until another one is chosen", () => {
-  assert.deepEqual(readLook(undefined), { paper: "Glacier", font: "Theme default", textSize: 100, pages: false, newPageAtEnd: true });
+  assert.deepEqual(readLook(undefined), { paper: "Glacier", font: "Theme default", textSize: 100, pages: false, newPageAtEnd: true, layout: "zen" });
+});
+
+test("the layout is Zen until Course is chosen, and an unknown one goes back to Zen", () => {
+  assert.equal(readLook({ paper: "Forest" }).layout, "zen");
+  assert.equal(readLook({ layout: "course" }).layout, "course");
+  assert.equal(readLook({ layout: "tabs" }).layout, "zen");
 });
 
 test("New page at the end of notes shows until it is hidden, and then stays hidden", () => {

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isShortcut } from "../src/keys.mjs";
+import { isShortcut, lessonStep } from "../src/keys.mjs";
 
 // Glacier's shortcuts are Ctrl (Cmd on a Mac) plus a key, with or without
 // Shift, never with Alt.
@@ -22,4 +22,12 @@ test("Shift must match, and Alt is never part of a shortcut", () => {
 
 test("a named key like PageUp is matched as it is", () => {
   assert.equal(isShortcut(press("PageUp", { ctrlKey: true }), "PageUp"), true);
+});
+
+test("Alt PageDown and Alt PageUp step to the next and the previous lesson", () => {
+  assert.equal(lessonStep(press("PageDown", { altKey: true })), 1);
+  assert.equal(lessonStep(press("PageUp", { altKey: true })), -1);
+  assert.equal(lessonStep(press("PageDown")), 0);
+  assert.equal(lessonStep(press("PageDown", { altKey: true, ctrlKey: true })), 0);
+  assert.equal(lessonStep(press("PageUp", { altKey: true, shiftKey: true })), 0);
 });

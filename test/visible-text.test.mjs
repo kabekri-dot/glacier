@@ -79,14 +79,18 @@ test("manifest.json descriptions have no em or en dashes", () => {
 
 // Course became Collection (#73). Only text with a space can be shown to the
 // user, so names like "courses" or a class like "course-list" in the code
-// don't count.
+// don't count. Since #126 a Course is a Collection marked for learning: the
+// Course layout's own texts (src/course-view.mjs) and the few phrases that
+// mark or unmark one elsewhere may say it.
 const STRINGS = /"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`/g;
 const COURSE_WORD = /(?<![-.\w$])courses?(?![-\w])/i;
+const COURSE_LAYOUT_FILE = "src/course-view.mjs";
+const COURSE_PHRASES = /Make it a course|Not a course any more|Course layout/g;
 
-for (const file of jsFiles) {
+for (const file of jsFiles.filter((name) => name !== COURSE_LAYOUT_FILE)) {
   test(`${file} shows no Course in its strings`, () => {
     const shown = (withoutJsComments(read(file)).match(STRINGS) ?? [])
-      .map((literal) => literal.replace(/\$\{[^}]*\}/g, ""))
+      .map((literal) => literal.replace(/\$\{[^}]*\}/g, "").replace(COURSE_PHRASES, ""))
       .filter((literal) => literal.includes(" "));
     assert.deepEqual(shown.filter((literal) => COURSE_WORD.test(literal)), []);
   });

@@ -9,6 +9,7 @@ import { unzipFiles } from "./zip.mjs";
 import { sketchFilePath, sketchFromSvg, sketchInLine } from "./sketch-file.mjs";
 import { createSealedNotes } from "./sealed-notes.mjs";
 import { createNotesSync } from "./notes-sync.mjs";
+import { createCourses } from "./courses.mjs";
 import { nextSketchNumber, noteFromFile, noteToFile, safeName, sameCollection, sameNote, sketchEmbed, sketchNumbers, withTitle, zipNotes } from "./note-file.mjs";
 
 // The note file format, as the Notebook has always offered it.
@@ -153,6 +154,8 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
   // goes through them, so a locked note is never read or written into.
   const sealed = createSealedNotes({ storage, onSaveError });
   const { reveal, readable, readableNotes, store } = sealed;
+  // Courses and their lessons (#126), in src/courses.mjs.
+  const courses = createCourses({ storage });
 
   // The text around the earliest match of any word, cut to a short stretch on
   // each side, as pieces in order: `{ text, match }`, with `match` true for
@@ -211,6 +214,8 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
     const course = typed && existingCollection(typed);
     const note = { title: uniqueTitle(title, course) };
     if (course) note.course = course;
+    // A new note in a course is its last lesson (#126).
+    if (courses.isCourse(course)) note.lesson = courses.nextNumber(course);
     if (source) note.source = normalizeSource(source);
     if (source && pageTitle) note.pageTitle = pageTitle;
     Object.assign(note, { created: made, edited: made, body: "" });
@@ -413,25 +418,29 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
     // stay, without a Collection. Returns what putBackCollection needs.
     deleteCollectionKeepNotes(course) {
       storage.putMeta(EMPTY_COURSES, emptyCollections().filter((name) => !sameCollection(name, course)));
-      const titles = listed()
+      const inIt = listed()
         .filter((note) => note.course && sameCollection(note.course, course))
-        .map((note) => this.removeFromCourse(note.title).title)
-        .sort((a, b) => a.localeCompare(b));
-      return { course, titles };
+        .map((note) => note.title);
+      const lessons = courses.places(inIt);
+      const titles = inIt.map((title) => this.removeFromCourse(title).title).sort((a, b) => a.localeCompare(b));
+      return { course, titles, ...(Object.keys(lessons).length > 0 && { lessons }) };
     },
 
     // Undo "Delete, keep notes": the notes go back in the Collection, or
-    // the empty Collection is listed again.
-    putBackCollection({ course, titles }) {
+    // the empty Collection is listed again. A course's lessons get their
+    // places and progress back (#126).
+    putBackCollection({ course, titles, lessons }) {
       if (titles.length === 0) this.newCollection(course);
       for (const title of titles) this.moveToCourse(title, course);
+      courses.putPlaces(lessons);
     },
 
     // Take a note out of its Collection (#82). The last used Collection stays.
+    // A lesson stops being one (#126).
     removeFromCourse(title) {
       const note = storage.getNote(title);
       if (!note) return note;
-      const { course, ...moved } = note;
+      const { course, ...moved } = courses.withoutLesson(note);
       storage.putNote(moved);
       return reveal(moved);
     },
@@ -445,7 +454,13 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
       const typed = (course ?? "").trim();
       if (!note || !typed) return note;
       const name = existingCollection(typed);
-      const moved = { ...note, course: name };
+      // Into a course it is the last lesson; out of one it is no lesson any
+      // more; within its own Collection it keeps its place (#126).
+      let moved = { ...note, course: name };
+      if (!sameCollection(note.course, name)) {
+        moved = courses.withoutLesson(moved);
+        if (courses.isCourse(name)) moved.lesson = courses.nextNumber(name);
+      }
       storage.putNote(moved);
       storage.putMeta(LAST_COURSE, name);
       return reveal(moved);
@@ -573,11 +588,14 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
         }
       }
       const sorted = (titles) => titles.sort((a, b) => a.localeCompare(b));
+      // A course lists its lessons in their order (#126).
+      const inOrder = (course) =>
+        courses.isCourse(course) ? courses.lessons(course).map((lesson) => lesson.title) : sorted(byCourse.get(course));
       for (const course of emptyCollections()) byCourse.set(course, []);
       return {
         courses: [...byCourse.keys()]
           .sort((a, b) => a.localeCompare(b))
-          .map((course) => ({ course, titles: sorted(byCourse.get(course)) })),
+          .map((course) => ({ course, titles: inOrder(course) })),
         uncategorised: sorted(uncategorised),
       };
     },
@@ -811,6 +829,21 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
 
     hasSketches(title) {
       return sketchNumbers(storage.getNote(title) ?? {}).length > 0;
+    },
+
+    // --- Courses (#126), in src/courses.mjs ---
+    isCourse: courses.isCourse,
+    lessons: courses.lessons,
+    lessonOf: courses.lessonOf,
+    markDone: courses.markDone,
+    makeCourse: courses.makeCourse,
+    unmakeCourse: courses.unmakeCourse,
+    putLessonsBack: courses.putPlaces,
+
+    // "+" after the last lesson's tab: a note at the end of the course,
+    // named after its place, e.g. "Lesson 5".
+    newLesson(course) {
+      return this.createNote({ title: `Lesson ${courses.lessons(course).length + 1}`, course });
     },
 
     // --- Secret notes (#109, ADR 0012), in src/sealed-notes.mjs ---
