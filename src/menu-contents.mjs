@@ -213,14 +213,15 @@ export function secondVersionBar(notebook, note) {
   };
 }
 
+// Help in ⋯ opens this page in a new tab (#121).
+export const HELP_URL = "https://github.com/kabekri-dot/glacier/blob/main/docs/help.md";
+
 // The ⋯ menu (#63, #121) for the open note: a row of three big pixel icons
 // with words (`big`), Delete on its own (`delete`, which asks right there),
 // then Keyboard shortcuts and Help (`help`). `later` holds the actions that
 // move to Note details and the notes list, at the bottom until then. Each
 // action has its `kind`, `label`, `hint`, pixel `icon` (art/icon-<icon>.svg)
 // and, when it has one, its shortcut `keys`. No note open means no menu.
-export const HELP_URL = "https://github.com/kabekri-dot/glacier/blob/main/docs/help.md";
-
 export function noteMenu(note, { pinned = false } = {}) {
   if (!note) return null;
   return {
