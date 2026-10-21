@@ -402,8 +402,6 @@ test("the pill of a fresh page offers to name the note", () => {
 });
 
 // Page groups (#92): a website with several notes outside any Collection is
-
-// Page groups (#92): a website with several notes outside any Collection is
 // its own folder in "Not in a collection", named after the page, until you
 // move it.
 function noCollectionPart(parts) {

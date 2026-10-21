@@ -571,9 +571,7 @@ export function createMenuView({ notebook, screen, el, button: menuButtonEl, not
       value: course,
       placeholder: "Collection name",
       label: `New name for the collection “${course}”`,
-      onSave: (value) => {
-        return renameCollection(course, value);
-      },
+      onSave: (value) => renameCollection(course, value),
     });
   }
 
