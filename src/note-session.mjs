@@ -26,7 +26,7 @@ export function titleFromText(body) {
   return words.slice(0, 5).join(" ") || "New note";
 }
 
-export function createNoteSession({ notebook, onSaveError, onCreate, onRetitle, ...timers }) {
+export function createNoteSession({ notebook, onSaveError, onSaved, onCreate, onRetitle, ...timers }) {
   let openTitle = null;
   // True while a note that was named from its first line is still being
   // written on that line: its title follows what is typed (#80).
@@ -38,6 +38,7 @@ export function createNoteSession({ notebook, onSaveError, onCreate, onRetitle, 
     save: ({ title, body }) => {
       try {
         notebook.saveBody(title, body);
+        onSaved?.();
       } catch (error) {
         onSaveError?.(error);
       }

@@ -29,7 +29,9 @@
 //
 // `changed: true` means the Notebook changed, for Sync. `beforeLeave()` is
 // called just before the note on screen is left, so the editor can take an
-// untouched `/` back out before it is saved (#28). Timers are injected.
+// untouched `/` back out before it is saved (#28). `onSaveError(error)` and
+// `onSaved()` hear how each save of the open note went, so a save error can
+// go again once a save works (#117). Timers are injected.
 import { createNoteSession, titleFromText } from "./note-session.mjs";
 import { createNoteHistory } from "./note-history.mjs";
 import { isOpenedByPage } from "./page-open.mjs";
@@ -37,7 +39,7 @@ import { clipQuote, appendClip } from "./clip.mjs";
 
 const LAST_NOTES_SHOWN = 3;
 
-export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, welcomeSeen = true, onWelcomeSeen = () => {}, ...timers }) {
+export function createScreen({ notebook, onSaveError, onSaved, beforeLeave = () => {}, welcomeSeen = true, onWelcomeSeen = () => {}, ...timers }) {
   let note = null;
   let welcome = !welcomeSeen;
   // Whether the page opened the note, so a later page change may replace it
@@ -61,6 +63,7 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, we
   const session = createNoteSession({
     notebook,
     onSaveError,
+    onSaved,
     onCreate: (made) => (created = made),
     onRetitle: (renamed) => (retitled = renamed),
     ...timers,

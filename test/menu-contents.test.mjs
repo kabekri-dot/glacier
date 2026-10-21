@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createNotebook } from "../src/notebook.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
-import { notebookMenu, deletedNotice, deletedCollectionNotice, noteMenu, pinButton, pageNoteCount, deleteCollectionQuestion, archivedNotice, secondVersionBar, rowActions, noteOrigin, lastNotesBox, pillTitle, secretMark } from "../src/menu-contents.mjs";
+import { notebookMenu, deletedNotice, deleteNoteQuestion, deletedCollectionNotice, noteMenu, pinButton, pageNoteCount, deleteCollectionQuestion, archivedNotice, secondVersionBar, rowActions, noteOrigin, lastNotesBox, pillTitle, secretMark } from "../src/menu-contents.mjs";
 
 // What the ▾ Notebook and ⋯ This note menus list (#67), as plain data the
 // sidebar only has to draw.
@@ -131,7 +131,7 @@ test("an empty Notebook says there are no notes yet", () => {
     { kind: "heading", text: "Notebook", hint: null },
     { kind: "empty", text: "Collections hold notes that belong together. Make one with + New collection." },
     { kind: "newCollection", label: "+ New collection", hint: "Make an empty collection to fill later" },
-    { kind: "empty", text: "No notes yet" },
+    { kind: "empty", text: "No notes yet. Just start writing on a page, or press + for a new note." },
   ]);
 });
 
@@ -277,12 +277,28 @@ test("a Collection in the Archive offers Unarchive for all its notes", () => {
   ]);
 });
 
-test("the delete question names the Collection and the count", () => {
+test("the delete question names the Collection, the count and where the notes live", () => {
   assert.equal(
-    deleteCollectionQuestion("Testing", 12),
-    "Delete the collection 'Testing' and its 12 notes? They're also removed from your Notes repo.",
+    deleteCollectionQuestion("Testing", 12, "github"),
+    "Delete the collection “Testing” and its 12 notes? They're also removed from your GitHub repo.",
   );
   assert.equal(archivedNotice(12), "Archived 12 notes.");
+});
+
+test("the delete questions name the real Notes Home", () => {
+  assert.equal(deleteNoteQuestion("Flexbox", "github"), "Delete “Flexbox”? It is also removed from your GitHub repo.");
+  assert.equal(deleteNoteQuestion("Flexbox", "google-drive"), "Delete “Flexbox”? It is also removed from Google Drive.");
+  assert.equal(deleteNoteQuestion("Flexbox", "folder"), "Delete “Flexbox”? It is also removed from your notes folder.");
+  assert.equal(
+    deleteCollectionQuestion("Testing", 1, "google-drive"),
+    "Delete the collection “Testing” and its 1 note? They're also removed from Google Drive.",
+  );
+});
+
+test("with notes only in this browser the delete questions name no other place", () => {
+  assert.equal(deleteNoteQuestion("Flexbox", "browser"), "Delete “Flexbox”?");
+  assert.equal(deleteNoteQuestion("Flexbox", null), "Delete “Flexbox”?");
+  assert.equal(deleteCollectionQuestion("Testing", 12, "browser"), "Delete the collection “Testing” and its 12 notes?");
 });
 
 test("a note with a page is from a website and one without is your own", () => {
@@ -298,7 +314,7 @@ test("the Notebook part offers + New collection, and an empty Collection only De
   assert.equal(parts.find((part) => part.kind === "newCollection").label, "+ New collection");
   const group = parts.find((part) => part.kind === "group" && part.course === "Biology");
   assert.deepEqual(group.actions.map((action) => action.kind), ["delete"]);
-  assert.equal(deleteCollectionQuestion("Biology", 0), "Delete the empty collection 'Biology'?");
+  assert.equal(deleteCollectionQuestion("Biology", 0, "github"), "Delete the empty collection “Biology”?");
 });
 
 test("with no note open the pill says Glacier quietly and cannot be renamed", () => {

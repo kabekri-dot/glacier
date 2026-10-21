@@ -365,8 +365,14 @@ export function createSketchView({ notebook, rowHeight, onSaved }) {
     }
     block.redraw = redraw;
 
+    // Drawn anew while already picked (Keep on the removal question, #117):
+    // this block takes over the pick, so Backspace asks again.
     function pick({ notify = true } = {}) {
-      if (picked === key) return;
+      if (picked === key) {
+        pickedEl = block;
+        block.classList.add("is-picked");
+        return;
+      }
       unpick();
       picked = key;
       pickedEl = block;

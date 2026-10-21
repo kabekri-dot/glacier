@@ -22,8 +22,12 @@ export function createDownloads({ notebook, screen, notice, unlockFirst }) {
 
   function printWindow(notes) {
     const win = window.open("", "_blank");
+    // A blocked pop-up says how to let it through, and offers to try again (#117).
     if (!win) {
-      notice("Your browser blocked the print window");
+      notice("Your browser blocked the print window. Allow pop-ups for Glacier, then try again.", 10000, {
+        label: "Try again",
+        run: () => printWindow(notes),
+      });
       return;
     }
     win.document.write(printHtml(notes));

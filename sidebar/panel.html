@@ -45,10 +45,12 @@
     <button type="button" class="backlinks-button" aria-expanded="false" hidden></button>
     <!-- How many lines a copy put on the clipboard (#7), or how an Import went (#13). -->
     <p class="copied" role="status" hidden></p>
-    <!-- Shown only when a save to this browser's copy fails (issue #25). -->
+    <!-- Shown only when a save to this browser's copy fails (issue #25), with
+         its one fix, Copy note (#117). It goes again once a save works. -->
     <p class="save-error" role="alert" hidden>
-      Couldn't save your last changes to this browser. Your text is still here.
-      Copy it somewhere safe.
+      <span class="save-error-text"></span>
+      <button type="button" class="notice-action save-error-copy">Copy note</button>
+      <span class="save-error-copied" role="status" hidden>Copied.</span>
     </p>
     <!-- Settings (#18): the round glacier button opens them, beside the
          sidebar or inside it (#21). The button, the settings header and the

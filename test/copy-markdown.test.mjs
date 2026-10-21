@@ -107,6 +107,6 @@ test("Ctrl+A in a code block selects only the caret's line of code", () => {
 });
 
 test("the confirmation says how many lines were copied", () => {
-  assert.equal(copiedMessage(1), "Copied 1 line");
-  assert.equal(copiedMessage(4), "Copied 4 lines");
+  assert.equal(copiedMessage(1), "Copied 1 line.");
+  assert.equal(copiedMessage(4), "Copied 4 lines.");
 });

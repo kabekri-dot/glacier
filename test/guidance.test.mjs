@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { WELCOME_GREETING, WELCOME_LINES, WELCOME_TIP, welcomeShown } from "../src/guidance.mjs";
+import { WELCOME_GREETING, WELCOME_LINES, WELCOME_TIP, welcomeShown, saveErrorText } from "../src/guidance.mjs";
 import { SHORTCUT_GROUPS } from "../src/shortcuts-panel.mjs";
 
 test("the welcome shows on the first start", () => {
@@ -33,4 +33,19 @@ test("the Shortcuts panel starts with How Glacier works, which shows the welcome
   assert.equal(SHORTCUT_GROUPS[0].opensWelcome, true);
   assert.equal(SHORTCUT_GROUPS[0].hint, "Show the welcome page again");
   assert.deepEqual(SHORTCUT_GROUPS[0].entries, []);
+});
+
+test("a failed save says the text is still here and how to keep it", () => {
+  assert.equal(
+    saveErrorText(new Error("disk")),
+    "Couldn't save your last changes to this browser. Your text is still here. Copy it somewhere safe.",
+  );
+});
+
+test("a failed save because the storage is full says so", () => {
+  const full = Object.assign(new Error("quota"), { name: "QuotaExceededError" });
+  assert.equal(
+    saveErrorText(full),
+    "This browser's storage is full, so your last changes weren't saved. Your text is still here. Copy it somewhere safe.",
+  );
 });

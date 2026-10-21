@@ -47,7 +47,7 @@ import { createSketchView } from "./sketch-view.js";
 import { createSecrets } from "./secret-view.js";
 import { pageCard, panelsCard, startPrompt, removeQuestion } from "./cards.js";
 import { shortcutNotice } from "../src/shortcuts-panel.mjs";
-import { WELCOME_GREETING, WELCOME_LINES, WELCOME_TIP, welcomeShown } from "../src/guidance.mjs";
+import { WELCOME_GREETING, WELCOME_LINES, WELCOME_TIP, welcomeShown, saveErrorText } from "../src/guidance.mjs";
 import { drawBesideFrames } from "./beside-frames.js";
 import {
   blockRanges,
@@ -138,12 +138,20 @@ function fitRows() {
 
 // A write to this browser's copy failed (aborted or threw). Tell the user so
 // they don't trust a save that didn't happen (issue #25); their text is still
-// on screen to copy out, and Sync is the cross-browser backup.
+// on screen, and Copy note in the banner copies it out (#117). Sync is the
+// cross-browser backup.
 function reportSaveError(error) {
   console.error("Glacier: could not save", error);
   if (saveErrorEl) {
+    saveErrorEl.querySelector(".save-error-text").textContent = saveErrorText(error);
+    saveErrorEl.querySelector(".save-error-copied").hidden = true;
     saveErrorEl.hidden = false;
   }
+}
+
+// A later save worked, so the warning goes again (#117).
+function clearSaveError() {
+  if (saveErrorEl) saveErrorEl.hidden = true;
 }
 
 // How notes follow tabs (#53), kept per browser like the look.
@@ -229,6 +237,7 @@ async function start() {
   const screen = createScreen({
     notebook,
     onSaveError: reportSaveError,
+    onSaved: clearSaveError,
     // Leaving a note with the menu open is a dismissal, so an untouched + `/`
     // is taken back out before the note we're leaving is saved (#28).
     beforeLeave: () => editor.dismissMenu(),
@@ -293,7 +302,7 @@ async function start() {
   const downloads = createDownloads({
     notebook,
     screen,
-    notice: (text) => showNotice(text),
+    notice: showNotice,
     unlockFirst: (title) => (notebook.isLocked(title) ? secrets.askPasscode("Type your Glacier passcode to print or download it") : Promise.resolve(true)),
   });
 
@@ -313,6 +322,7 @@ async function start() {
     moveNote: () => noteMeta.pickCollection(),
     changed: () => autoSync.changed(),
     notice: showNotice,
+    notesHome: async () => (await notesHomes.load()).home,
     downloads,
     beforeOpen: () => {
       closeSettings({ redraw: false });
@@ -691,7 +701,7 @@ async function start() {
         updateBacklinks();
       } catch (error) {
         console.error("Glacier: could not import", error);
-        showNotice("Couldn't read that zip file");
+        showNotice("Couldn't read that file. Nothing was changed. Pick a zip made with Export.", 8000);
       }
     },
 
@@ -1735,6 +1745,20 @@ async function start() {
 
   const copiedEl = document.querySelector(".copied");
   let copiedTimer = null;
+
+  // Copy note in the save error banner (#117): the open note's text as it
+  // stands on screen, then a quiet "Copied." beside the button.
+  saveErrorEl?.querySelector(".save-error-copy").addEventListener("click", async () => {
+    const copiedNote = saveErrorEl.querySelector(".save-error-copied");
+    try {
+      await navigator.clipboard.writeText(editor.lines.join("\n"));
+      copiedNote.textContent = "Copied.";
+    } catch (error) {
+      console.error("Glacier: could not copy the note", error);
+      copiedNote.textContent = "Couldn't copy. Select the text and press Ctrl C.";
+    }
+    copiedNote.hidden = false;
+  });
 
   // A short confirmation of how many lines were copied, that fades on its own.
   function showCopied(count) {

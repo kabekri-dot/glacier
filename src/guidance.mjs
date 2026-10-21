@@ -14,6 +14,18 @@ export const WELCOME_TIP = "Tip: open any website and just start writing.";
 export const COLLECTIONS_HINT = "Collections hold notes that belong together. Make one with + New collection.";
 export const ADD_TO_COLLECTION_HINT = "Collections hold notes that belong together, like a notebook for one topic.";
 
+// The banner after a save to this browser's copy failed (#25, #117): what
+// happened, that the text is still on screen, and its one fix (Copy note).
+// A full storage says so.
+const STILL_HERE = "Your text is still here. Copy it somewhere safe.";
+
+export function saveErrorText(error) {
+  if (error?.name === "QuotaExceededError") {
+    return `This browser's storage is full, so your last changes weren't saved. ${STILL_HERE}`;
+  }
+  return `Couldn't save your last changes to this browser. ${STILL_HERE}`;
+}
+
 // The welcome shows until it has been dismissed once. `saved` is what the
 // extension's (not synced) storage holds under "welcomeSeen".
 export function welcomeShown(saved) {

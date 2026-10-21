@@ -15,6 +15,7 @@
 //   { kind: "result", title, titleMark, snippet }           a search result
 //   { kind: "pair", notes: [{ title, label, actions }] }   a Conflict Copy and its original, with the row icons
 import { COLLECTIONS_HINT } from "./guidance.mjs";
+import { notesHomeName } from "./notes-home.mjs";
 import { normalizeSource } from "./notebook.mjs";
 import { PAGE_NOTE_HINT } from "./new-note-choices.mjs";
 
@@ -87,7 +88,7 @@ function browse(notebook, openNote) {
   if (outline.courses.length === 0) parts.push({ kind: "empty", text: COLLECTIONS_HINT });
   parts.push({ kind: "newCollection", label: "+ New collection", hint: "Make an empty collection to fill later" });
   if (outline.courses.length + outline.uncategorised.length === 0) {
-    parts.push({ kind: "empty", text: "No notes yet" });
+    parts.push({ kind: "empty", text: "No notes yet. Just start writing on a page, or press + for a new note." });
   }
   for (const { course, titles } of outline.courses) {
     parts.push({ kind: "group", label: course, hint: "Notes in this collection", open: true, archive: false, titles, course, actions: collectionActions(course, titles.length) });
@@ -288,9 +289,25 @@ export function deletedCollectionNotice(course, count) {
   return `Deleted the collection “${course}” and its ${noteCount(count)}.`;
 }
 
-export function deleteCollectionQuestion(course, count) {
-  if (count === 0) return `Delete the empty collection '${course}'?`;
-  return `Delete the collection '${course}' and its ${noteCount(count)}? They're also removed from your Notes repo.`;
+// The questions before deleting name where else the notes go from, by the
+// Notes Home's id (#117). Notes only in this browser, or with no Notes Home
+// yet, go from nowhere else.
+function removedFrom(home) {
+  if (!home || home === "browser") return null;
+  return home === "github" ? "your GitHub repo" : notesHomeName(home);
+}
+
+export function deleteNoteQuestion(title, home) {
+  const place = removedFrom(home);
+  const question = `Delete “${title}”?`;
+  return place ? `${question} It is also removed from ${place}.` : question;
+}
+
+export function deleteCollectionQuestion(course, count, home) {
+  if (count === 0) return `Delete the empty collection “${course}”?`;
+  const place = removedFrom(home);
+  const question = `Delete the collection “${course}” and its ${noteCount(count)}?`;
+  return place ? `${question} They're also removed from ${place}.` : question;
 }
 
 // The small icon before a note's title (#81): a globe for a note that belongs
