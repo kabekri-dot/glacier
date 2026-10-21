@@ -37,10 +37,10 @@
 import {
   blockRanges,
   isFence,
-  isSketchLine,
   listNumbers,
   renderLineHtml,
 } from "../src/editor-model.mjs";
+import { isSketchLine } from "../src/sketch-file.mjs";
 import { isShortcut } from "../src/keys.mjs";
 import { pagesOf, pageOfLine, pageBreaks, lineOfSearch } from "../src/pages.mjs";
 import { createPageView } from "./page-view.js";

@@ -21,9 +21,9 @@ import {
   editorTextToBody,
   focusedLineSpans,
   isFence,
-  isSketchLine,
   lineMarkLength,
 } from "../src/editor-model.mjs";
+import { isSketchLine } from "../src/sketch-file.mjs";
 import { caretAtPoint, textOffset, selectionIn, placeSelection, placeCaret } from "./paper-text.js";
 
 

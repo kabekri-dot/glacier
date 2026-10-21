@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { createNotebook, noteToFile, sketchToSvg, sketchFromSvg, sketchEmbed, sketchInLine } from "../src/notebook.mjs";
+import { createNotebook, noteToFile, sketchEmbed } from "../src/notebook.mjs";
+import { sketchToSvg, sketchFromSvg, sketchInLine } from "../src/sketch-file.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { memoryRemote } from "../src/memory-remote.mjs";
 import { unzipFiles } from "../src/zip.mjs";

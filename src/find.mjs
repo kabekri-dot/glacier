@@ -2,7 +2,8 @@
 // ignoring capitals, on the text as you see it. Sketch lines and page breaks
 // are skipped, and the lines of a code block are matched as they are written. Pure, so
 // node --test can check it.
-import { blockRanges, isFence, isSketchLine, visibleText } from "./editor-model.mjs";
+import { blockRanges, isFence, visibleText } from "./editor-model.mjs";
+import { isSketchLine } from "./sketch-file.mjs";
 import { pageBreaks } from "./pages.mjs";
 
 // Each match is { line, from, to, rawFrom, rawTo }: `from` and `to` count the

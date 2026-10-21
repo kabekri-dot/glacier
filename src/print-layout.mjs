@@ -2,7 +2,7 @@
 // library (ADR 0002), so "PDF" means a clean page the user prints with "Save
 // as PDF". Pure: notes in, one HTML string out.
 
-import { sketchInLine, sketchToSvg } from "./notebook.mjs";
+import { sketchInLine, sketchToSvg } from "./sketch-file.mjs";
 import { pageBreaks } from "./pages.mjs";
 
 function escapeHtml(text) {

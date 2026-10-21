@@ -21,7 +21,6 @@ import {
   editorTextToBody,
   blockRanges,
   isFence,
-  isSketchLine,
   pressEnter,
   columnAfterFormatting,
   breakInsideFormatting,
@@ -41,6 +40,7 @@ import {
   linkAtRendered,
   toggleCheckbox,
 } from "./editor-model.mjs";
+import { isSketchLine } from "./sketch-file.mjs";
 import { isPageBreak, removePageBreak, addPage, removePage, pageOfLine } from "./pages.mjs";
 
 export function createEditorSession({

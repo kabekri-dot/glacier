@@ -6,7 +6,7 @@
 import { fewAtATime } from "./few-at-a-time.mjs";
 import { findLinks } from "./editor-model.mjs";
 import { zipFiles, unzipFiles } from "./zip.mjs";
-import { readShapes, shapesSvg, sketchLook } from "./sketch-model.mjs";
+import { renameEmbeds, sketchFileName, sketchFilePath, sketchFromSvg, sketchInLine, sketchToSvg } from "./sketch-file.mjs";
 import { newPasscode, openPasscode, sealText, readSealed, openSealed } from "./secret.mjs";
 
 // Query parameters that only record where a click came from, never which
@@ -207,77 +207,10 @@ export function noteFromFile(path, text) {
 
 // --- Sketch files (#101, ADR 0007) ------------------------------------------
 //
-// A Sketch is kept inside its note as `note.sketches`, numbered from 1:
-// `{ 1: { width, height, shapes } }`, the shapes as src/sketch-model.mjs
-// describes them. In the Notes Home and in an Export each one is an `.svg`
-// file next to the note's file, `<Title> – sketch <n>.svg`, which GitHub,
-// Obsidian and any
-// browser show as a picture. The shapes are kept as JSON in the file's
-// `<metadata>`, so Glacier reads its own drawing back unchanged. The note's
-// text holds the embed line `![[<Title> – sketch <n>.svg]]` where it sits.
-
-// The en dash ADR 0007 puts in a sketch's file name.
-const SKETCH_DASH = "\u2013";
-const SKETCH_NAME = new RegExp(`^(.*) ${SKETCH_DASH} sketch (\\d+)\\.svg$`);
-const SKETCH_LINE = new RegExp(`^!\\[\\[(.*) ${SKETCH_DASH} sketch (\\d+)\\.svg\\]\\]$`);
-// The pen the picture is drawn with outside Glacier, on a light page.
-const SKETCH_INK = "#2b2b2b";
-// The size given to a sketch file that doesn't say its own.
-const SKETCH_SIZE = 160;
-
-function sketchFileName(stem, n) {
-  return `${stem} ${SKETCH_DASH} sketch ${n}.svg`;
-}
 
 // The embed line that shows a note's sketch number `n`.
 export function sketchEmbed(title, n) {
   return `![[${sketchFileName(safeName(title), n)}]]`;
-}
-
-// The file name and number an embed line points at, or null for any other
-// line: `{ stem, n }`.
-export function sketchInLine(line) {
-  const match = SKETCH_LINE.exec((line ?? "").trim());
-  return match ? { stem: match[1], n: Number(match[2]) } : null;
-}
-
-function escapeXml(text) {
-  return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
-}
-
-function unescapeXml(text) {
-  return text.replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&quot;", '"').replaceAll("&amp;", "&");
-}
-
-// A sketch as its svg file's text.
-export function sketchToSvg(sketch) {
-  const { width, height, shapes } = sketch;
-  const look = sketchLook(sketch);
-  const data = escapeXml(JSON.stringify({ glacier: "sketch", width, height, shapes, ...(look === "clean" && { look }) }));
-  return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">\n` +
-    `<metadata>${data}</metadata>\n` +
-    `<g fill="none" stroke="${SKETCH_INK}" color="${SKETCH_INK}" stroke-width="2" stroke-linejoin="round">\n` +
-    shapesSvg(shapes, look) +
-    "</g>\n</svg>\n"
-  );
-}
-
-// A sketch from its svg file's text, or undefined when the file isn't one
-// of Glacier's sketches. Only plain numbers and known shapes are kept.
-export function sketchFromSvg(text) {
-  const match = /<metadata>([\s\S]*?)<\/metadata>/.exec(text ?? "");
-  if (!match) return undefined;
-  try {
-    const data = JSON.parse(unescapeXml(match[1]));
-    if (data?.glacier !== "sketch" || !Array.isArray(data.shapes)) return undefined;
-    const size = (value) => (Number.isFinite(value) && value > 0 ? value : SKETCH_SIZE);
-    const sketch = { width: size(data.width), height: size(data.height), shapes: readShapes(data.shapes) };
-    if (data.look === "clean") sketch.look = "clean";
-    return sketch;
-  } catch {
-    return undefined;
-  }
 }
 
 // The note's sketch numbers, in order.
@@ -299,7 +232,7 @@ function nextSketchNumber(note) {
 function withTitle(note, title) {
   const renamed = { ...note, title };
   if (note.sketches && note.body) {
-    renamed.body = note.body.replaceAll(`![[${safeName(note.title)} ${SKETCH_DASH} sketch `, `![[${safeName(title)} ${SKETCH_DASH} sketch `);
+    renamed.body = renameEmbeds(note.body, safeName(note.title), safeName(title));
   }
   return renamed;
 }
@@ -317,14 +250,6 @@ function noteFiles(note, stem = safeName(note.title)) {
       sketch: n,
     })),
   ];
-}
-
-// For a sketch file's path: the path of its note's Markdown file and the
-// sketch's number, or null when the file is no sketch.
-function sketchFilePath(path) {
-  const at = path.lastIndexOf("/") + 1;
-  const match = SKETCH_NAME.exec(path.slice(at));
-  return match ? { notePath: `${path.slice(0, at)}${match[1]}.md`, n: Number(match[2]) } : null;
 }
 
 // Collection names ignore capital letters (#73), so "Testing Test" and
