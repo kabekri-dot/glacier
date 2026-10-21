@@ -830,7 +830,7 @@ async function start() {
     else showNotice(END_HIDDEN_NOTICE, 7000, { label: "Show again", run: () => showNewPageAtEnd(true) });
   }
 
-  const settingsView = createSettingsView({ prefs, repo: repoActions, onClose: () => closeSettings() });
+  const settingsView = createSettingsView({ prefs, repo: repoActions, onClose: () => closeSettings(), place: "inside" });
   const openShortcutsPage = (url) => api.tabs.create({ url }).catch(() => {});
   const shortcutsView = createShortcutsView({
     openShortcutsPage,

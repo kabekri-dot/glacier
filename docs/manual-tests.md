@@ -11,10 +11,21 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Settings part 2: icon rail and preview inside the sidebar (#125)
+
+- [ ] Turn off "Next to the sidebar" (Help and shortcuts) or open Settings on a new tab, so Settings cover the paper. "Search settings" is on top with the caret in it. Below it, on the left, a narrow column of seven pixel pictures with short names: Look, Pages, Tabs, Saving, Backup, Secret, Help. Look is marked, and on the right "How your notes look" is the heading with its settings.
+- [ ] Click each picture in turn: it is marked, and the right side shows that part's name as a heading and its settings. Each setting works as beside the sidebar.
+- [ ] On Look, a small piece of paper above the choices shows the heading "Flexbox basics" and two lines. Pick Aurora: it turns dark at once. Pick Engineer: it shows a grid. Pick School Notebook: ruled with a red margin line. Pick Caveat as the font: the preview is written in Caveat. Drag the text size: the preview's text grows and shrinks while you drag.
+- [ ] Type "passcode" in the search: the column goes and Secret notes shows with its name as a heading. Type "glacier": How your notes look and When you change tabs show one under the other, each with its heading. Type "zebra": "No setting matches." Press Esc: the search clears and the column is back with the part you had picked. Press Esc again: Settings close.
+- [ ] Keyboard: Tab from the search to the column. Down moves to the next part and shows it, Up to the one before; at Help Down stays on Help, at Look Up stays on Look. Press Tab: the focus goes into the picked part's settings, not to the next picture.
+- [ ] Make the sidebar as narrow as it goes (about 320 px): the column and every part's settings fit, with no sideways scrolling. Check Look, Saving with GitHub picked (the two fields) and Help.
+- [ ] Click "Where your notes are saved" in the box of a sync word with Settings inside: Saving is marked and shown.
+- [ ] Turn "Next to the sidebar" back on and open Settings on a website: they show the sections one under the other as before, and How your notes look has no preview.
+
 ### Settings part 1: plain names, search, parts with their values, gear (#124)
 
 - [ ] Reload the extension first. The round glacier button has a small pixel gear on its top right edge. Hover it: it says "Settings" and the gear's ring takes the accent colour. The gear never moves.
-- [ ] Open Settings beside the sidebar, then again inside it (Help and shortcuts, turn off "Next to the sidebar"). Both show "Search settings" on top with the caret in it, and below it seven closed parts with a pixel picture each: How your notes look, Pages, When you change tabs, Where your notes are saved, Back up and restore, Secret notes, Help and shortcuts.
+- [ ] Open Settings beside the sidebar. It shows "Search settings" on top with the caret in it, and below it seven closed parts with a pixel picture each: How your notes look, Pages, When you change tabs, Where your notes are saved, Back up and restore, Secret notes, Help and shortcuts. (Inside the sidebar Settings use the icon rail instead, #125. The checks below are for beside.)
 - [ ] Each closed part shows its value under its name, for example "Glacier paper, its own font, text 100 %", "Each note on one long page", "Opens the note for each website", "Only in this browser", "No secret notes yet".
 - [ ] Click How your notes look: it opens. Click Pages: Pages opens and How your notes look closes. Click Pages again: it closes. Nothing else folds inside a part.
 - [ ] Change the paper, the font and the text size, then close the part: its line shows the new paper, font and size at once. Same with "Split long notes into pages" (the Pages line says "Long notes split into pages"), the website choice under When you change tabs, and the place under Where your notes are saved.
@@ -936,7 +947,8 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 ### Settings, Classic papers and handwriting
 
 - [ ] With "Next to the sidebar" off under Help and shortcuts (#21): a round glacier button sits in the bottom right corner. Clicking it opens settings over the lower part of the sidebar, with the note still showing above. Clicking it again, the × in the header, or Esc closes them.
-- [ ] Settings shows seven parts, each closed with its current value under its name. Click one: it opens and the one that was open closes. Click it again: it closes. Open How your notes look and scroll: the "Settings" header and the search stay on top.
+- [ ] Inside the sidebar, Settings show a narrow column of seven pixel pictures (Look, Pages, Tabs, Saving, Backup, Secret, Help) with Look picked, and the picked part on the right under its name (#125). On Look a small piece of paper above the choices follows every pick of paper, font and text size at once. Up and Down move through the column; Tab goes on into the picked part. It all fits a 320 px sidebar with no sideways scrolling.
+- [ ] Beside the sidebar, Settings show seven parts, each closed with its current value under its name, and no preview. Click one: it opens and the one that was open closes. Click it again: it closes. Open How your notes look and scroll: the "Settings" header and the search stay on top.
 - [ ] Under How your notes look, Classics, choose each one in turn: Blank Page, School Notebook (blue lines and a red margin line), Chalkboard (dark, chalk white writing), Moleskine (very faint lines) and Engineer (a green grid, darker every fifth line). The note changes at once.
 - [ ] Close the sidebar and open it again: the paper you chose is still there. In the other browser it is its own choice.
 - [ ] On Chalkboard, the pill, the menu, the search box and the settings are all readable.

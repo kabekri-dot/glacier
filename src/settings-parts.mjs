@@ -3,7 +3,7 @@
 // one line a closed part shows; and what the search on top finds. Pure, so it
 // can be tested with node --test; sidebar/settings-view.js draws it, with the
 // words from LABELS so the search finds what is on screen.
-import { PAPERS, FONT_OVERRIDES } from "./look.mjs";
+import { PAPERS, FONT_OVERRIDES, lookStyle } from "./look.mjs";
 
 export const LABELS = {
   search: "Search settings",
@@ -134,4 +134,56 @@ export function matchingParts(query) {
   return SETTINGS_PARTS.filter((part) =>
     [part.name, part.short, ...part.labels].some((text) => text.toLowerCase().includes(wanted)),
   ).map((part) => part.id);
+}
+
+// Part 2 (#125): inside the sidebar Settings cover the paper, so the parts
+// sit in an icon rail on the left with the picked one on the right; beside
+// the sidebar they stay one under the other. `place` is "inside" or "beside".
+export function settingsLayout(place) {
+  return place === "inside" ? "rail" : "sections";
+}
+
+export const FIRST_RAIL_PART = SETTINGS_PARTS[0].id;
+
+// The small paper on Look only helps when the real paper is covered.
+export function showsPreview(place, partId) {
+  return settingsLayout(place) === "rail" && partId === "look";
+}
+
+// The part Up or Down moves to from `current`, stopping at the ends, or null
+// for any other key.
+const RAIL_STEPS = { ArrowUp: -1, ArrowDown: 1 };
+
+export function railMove(current, key) {
+  const step = RAIL_STEPS[key];
+  if (!step) return null;
+  const at = SETTINGS_PARTS.findIndex((part) => part.id === current);
+  const next = Math.min(SETTINGS_PARTS.length - 1, Math.max(0, at + step));
+  return SETTINGS_PARTS[next].id;
+}
+
+// The preview's text is a little smaller than the real paper's, so a heading
+// and two lines fit in a narrow sidebar.
+const PREVIEW_SCALE = 0.8;
+
+// A heading and two lines in the chosen paper, font and text size, as CSS
+// custom properties for the small piece of paper on Look.
+export function paperPreview(look) {
+  const style = lookStyle(look);
+  const paper = PAPERS.find((p) => p.name === look.paper);
+  return {
+    heading: "Flexbox basics",
+    lines: ["justify-content moves items along the row.", "align-items moves them across it."],
+    pattern: style.pattern,
+    vars: {
+      "--preview-paper": paper.paper,
+      "--preview-ink": paper.ink,
+      "--preview-rule": paper.rule,
+      "--preview-margin": paper.margin ?? paper.rule,
+      "--preview-font": style.vars["--font-family"],
+      "--preview-weight": style.vars["--font-weight"],
+      "--preview-text-size": `${Math.round(style.textSize * PREVIEW_SCALE * 10) / 10}px`,
+      "--preview-line-height": `${Math.round(style.lineHeight * PREVIEW_SCALE)}px`,
+    },
+  };
 }

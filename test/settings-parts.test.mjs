@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
-import { SETTINGS_PARTS, partValue, matchingParts, nextOpenPart, homeLabel, NO_SETTING_MATCHES } from "../src/settings-parts.mjs";
+import { SETTINGS_PARTS, partValue, matchingParts, nextOpenPart, homeLabel, NO_SETTING_MATCHES, settingsLayout, FIRST_RAIL_PART, showsPreview, railMove, paperPreview } from "../src/settings-parts.mjs";
 import { readLook } from "../src/look.mjs";
 import { readTabSettings } from "../src/tab-settings.mjs";
 
@@ -119,4 +119,57 @@ test("searching shows every part that matches", () => {
 test("searching for something no setting has finds nothing", () => {
   assert.deepEqual(matchingParts("zebra"), []);
   assert.equal(NO_SETTING_MATCHES, "No setting matches.");
+});
+
+// Part 2 (#125): inside the sidebar Settings cover the paper, so they use an
+// icon rail and show a small paper preview on Look.
+test("inside the sidebar Settings show the icon rail, beside it the sections", () => {
+  assert.equal(settingsLayout("inside"), "rail");
+  assert.equal(settingsLayout("beside"), "sections");
+});
+
+test("the rail starts on Look", () => {
+  assert.equal(FIRST_RAIL_PART, "look");
+});
+
+test("the paper preview shows on Look only when Settings cover the paper", () => {
+  assert.equal(showsPreview("inside", "look"), true);
+  assert.equal(showsPreview("inside", "pages"), false);
+  assert.equal(showsPreview("beside", "look"), false);
+});
+
+test("Down and Up move through the rail and stop at its ends", () => {
+  assert.equal(railMove("look", "ArrowDown"), "pages");
+  assert.equal(railMove("pages", "ArrowUp"), "look");
+  assert.equal(railMove("look", "ArrowUp"), "look");
+  assert.equal(railMove("help", "ArrowDown"), "help");
+});
+
+test("other keys leave the rail where it is", () => {
+  assert.equal(railMove("tabs", "Tab"), null);
+});
+
+test("the preview shows a heading and two lines", () => {
+  const preview = paperPreview(readLook(undefined));
+  assert.ok(preview.heading);
+  assert.equal(preview.lines.length, 2);
+});
+
+test("the preview is drawn in the chosen paper", () => {
+  const preview = paperPreview(readLook({ paper: "Aurora" }));
+  assert.equal(preview.vars["--preview-paper"], "#151e35");
+  assert.equal(preview.vars["--preview-ink"], "#e4ecfa");
+  assert.equal(preview.pattern, "ruled");
+  assert.equal(paperPreview(readLook({ paper: "Engineer" })).pattern, "grid");
+});
+
+test("the preview is written in the paper's own font or the chosen one", () => {
+  assert.match(paperPreview(readLook({ paper: "Desert" })).vars["--preview-font"], /^Caveat/);
+  assert.match(paperPreview(readLook({ paper: "Desert", font: "Montserrat" })).vars["--preview-font"], /^Montserrat/);
+});
+
+test("a bigger text size makes the preview's text bigger", () => {
+  const size = (textSize) => Number.parseFloat(paperPreview(readLook({ textSize })).vars["--preview-text-size"]);
+  assert.ok(size(150) > size(100));
+  assert.ok(size(85) < size(100));
 });
