@@ -81,9 +81,9 @@ export function sketchFromSvg(text) {
   }
 }
 
-export // For a sketch file's path: the path of its note's Markdown file and the
+// For a sketch file's path: the path of its note's Markdown file and the
 // sketch's number, or null when the file is no sketch.
-function sketchFilePath(path) {
+export function sketchFilePath(path) {
   const at = path.lastIndexOf("/") + 1;
   const match = SKETCH_NAME.exec(path.slice(at));
   return match ? { notePath: `${path.slice(0, at)}${match[1]}.md`, n: Number(match[2]) } : null;

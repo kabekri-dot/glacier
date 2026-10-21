@@ -33,7 +33,10 @@ which version.
 - `src/` — the note logic, with no screen code (the first two files are the
   two test seams):
   - `notebook.mjs` — the **Notebook core** (all note logic; storage is plugged
-    in from outside).
+    in from outside). It hands on the parts kept in their own files:
+    `note-file.mjs` (notes as Markdown files), `sketch-file.mjs` (sketches as
+    `.svg` files), `sealed-notes.mjs` (secret notes) and `notes-sync.mjs`
+    (sync with the Notes Home).
   - `editor-model.mjs` — the **editor model** (pure functions on one note's
     text).
   - `memory-storage.mjs` — an in-memory storage stand-in for tests.
