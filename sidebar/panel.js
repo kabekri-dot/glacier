@@ -1012,9 +1012,9 @@ async function start() {
   // Follow a `[[Title]]` Link: save any pending edits to the note we're leaving
   // first, then open the note the Link names in place. A Missing Link creates a
   // note with that title, without a page or Collection, and opens that (#8, #68).
+  // Left completely empty, that note goes again (#119).
   function openLink(title) {
-    if (notebook.isMissingLink(title)) autoSync.changed();
-    openNote(notebook.openLink(title));
+    draw(screen.openLink(title));
   }
 
   const copiedEl = document.querySelector(".copied");
@@ -1188,7 +1188,7 @@ async function start() {
     } else autoSync.syncNow();
   });
   window.addEventListener("pagehide", () => {
-    screen.flush();
+    if (screen.closing()) autoSync.changed();
     autoSync.flush();
   });
   window.addEventListener("online", () => autoSync.syncNow());
@@ -1208,7 +1208,7 @@ async function keepBackgroundInformed(screen) {
       const port = api.runtime.connect({ name: `glacier-panel:${windowId}` });
       port.onMessage.addListener((message) => {
         if (message && message.type === "close") {
-          screen.flush();
+          screen.closing();
           window.close();
         }
       });

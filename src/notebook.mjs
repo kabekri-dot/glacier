@@ -752,6 +752,17 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
       return true;
     },
 
+    // Delete a note that is completely empty (#119): no text, no sketch, no
+    // Collection, not secret or archived. Returns true when it went. The
+    // Screen only asks for a note whose title nobody typed.
+    dropEmptyNote(title) {
+      const note = readable(title);
+      const empty = note && !note.secret && !note.archived && !note.course && (note.body ?? "").trim() === "" && sketchNumbers(note).length === 0;
+      if (!empty) return false;
+      this.deleteNote(title);
+      return true;
+    },
+
     hasSketches(title) {
       return sketchNumbers(storage.getNote(title) ?? {}).length > 0;
     },

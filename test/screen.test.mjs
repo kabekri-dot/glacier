@@ -1054,6 +1054,108 @@ test("a sketch with a shape stays when the note is left", () => {
   assert.equal(notebook.note("First").body, line);
 });
 
+// A note left completely empty, whose title nobody typed, goes when it is
+// left (#119): a Missing Link click or a New note left unused leaves nothing.
+
+test("a note from a Missing Link left without writing is gone, and the Link is missing again", () => {
+  const { notebook, screen, first, second } = withNotes();
+  screen.open(first);
+  screen.edit("See [[Grids]]");
+  screen.openLink("Grids");
+  assert.equal(screen.note().title, "Grids");
+  const view = screen.open(second);
+  assert.equal(notebook.note("Grids"), undefined);
+  assert.equal(notebook.isMissingLink("Grids"), true);
+  assert.equal(view.changed, true);
+});
+
+test("a note from a Missing Link goes when ← leads back", () => {
+  const { notebook, screen, first } = withNotes();
+  screen.open(first);
+  screen.openLink("Grids");
+  screen.back();
+  assert.equal(screen.note().title, "First");
+  assert.equal(notebook.note("Grids"), undefined);
+});
+
+test("a note from a Missing Link goes when the sidebar closes", () => {
+  const { notebook, screen } = withNotes();
+  screen.openLink("Grids");
+  screen.closing();
+  assert.equal(notebook.note("Grids"), undefined);
+});
+
+test("a New note whose text was all taken out again is gone when left", () => {
+  const { notebook, screen, second } = withNotes();
+  screen.startFreshPage({ editTitle: true });
+  screen.edit("/");
+  const title = screen.note().title;
+  screen.edit("");
+  screen.open(second);
+  assert.equal(notebook.note(title), undefined);
+});
+
+test("a New note with only a typed title stays", () => {
+  const { notebook, screen, second } = withNotes();
+  screen.startFreshPage({ editTitle: true });
+  screen.confirmTitle("Ideas");
+  screen.open(second);
+  assert.ok(notebook.note("Ideas"));
+});
+
+test("a note from a Missing Link renamed by the user stays", () => {
+  const { notebook, screen, second } = withNotes();
+  screen.openLink("Grids");
+  screen.rename("Grid ideas");
+  screen.open(second);
+  assert.ok(notebook.note("Grid ideas"));
+});
+
+test("a note from a Missing Link with one character stays", () => {
+  const { notebook, screen, second } = withNotes();
+  screen.openLink("Grids");
+  screen.edit("a");
+  screen.open(second);
+  assert.equal(notebook.note("Grids").body, "a");
+});
+
+test("a note from a Missing Link with a sketch stays", () => {
+  const { notebook, screen, second } = withNotes();
+  screen.openLink("Grids");
+  const { n, line } = notebook.addSketch("Grids");
+  notebook.saveSketch("Grids", n, { width: 300, height: 100, shapes: [{ type: "rectangle", x: 1, y: 1, w: 20, h: 20 }] });
+  screen.edit(line);
+  screen.edit("");
+  screen.open(second);
+  assert.equal(notebook.sketch("Grids", n).shapes.length, 1);
+});
+
+test("a note from a Missing Link put in a Collection stays", () => {
+  const { notebook, screen, second } = withNotes();
+  screen.openLink("Grids");
+  screen.moveToCourse("TOP");
+  screen.open(second);
+  assert.equal(notebook.note("Grids").course, "TOP");
+});
+
+test("a note from a Missing Link that was archived stays in the Archive", () => {
+  const { notebook, screen, first } = withNotes();
+  screen.open(first);
+  screen.openLink("Grids");
+  screen.archive();
+  assert.equal(notebook.note("Grids").archived, true);
+});
+
+test("an empty note that was already there is not removed just by opening it", () => {
+  const { notebook, screen, second } = withNotes();
+  notebook.createNote({ title: "Synced empty" });
+  screen.openLink("Synced empty");
+  screen.open(second);
+  screen.open(notebook.note("Synced empty"));
+  screen.open(second);
+  assert.ok(notebook.note("Synced empty"));
+});
+
 // --- Secret notes (#109) -----------------------------------------------------
 
 async function withSecretNote() {
