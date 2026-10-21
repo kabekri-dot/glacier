@@ -11,6 +11,30 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### The top bar: Notes, the title, + and ⋯ (#121)
+
+- [ ] Open a note: the bar reads, left to right, ← (once there is a note to go back to), ☰ Notes with a small pixel list, the title, + and ⋯. There is no ▾, no "1 of 3", no pin and no `?` in the bar, and no ≡ tab on the left of the paper.
+- [ ] Click ☰ Notes: the notes list opens with the search box ready. Click it again, or press Esc: it closes. Ctrl K still opens it.
+- [ ] Click the title of a note with a few headings: a small menu under it lists them, indented by level. Click one: the paper jumps there with the caret at its start. Ctrl Shift O opens and closes the same menu.
+- [ ] Click the title of a note with no headings: "No headings yet. Start a line with # to make one."
+- [ ] Click the title of a locked secret note: it says the note is locked and to type your passcode. The pixel lock still sits before the title, and an archived note still shows "Archived".
+- [ ] Hover the title: a small pixel pen shows after it. Click the pen: the title becomes a field. Type a new name and press Enter: it is renamed and links follow. Esc puts the old one back.
+- [ ] On a website, click +: "Note for" and the page's title with "linked to this page" under it and a pixel globe, then "Blank note" with a pixel sheet. The first is picked already: press Enter and a fresh page for the website opens with its title ready to type.
+- [ ] On a website, click + and then Blank note: a blank fresh page opens. Up and down walk the two choices.
+- [ ] On a new tab (or chrome://settings), click +: a blank fresh page opens at once, with no menu.
+- [ ] Click ⋯: three big pixel icons with a word under each (Rename, Download, Archive), a line, Delete, a line, Keyboard shortcuts and Help, a line, then Pin this note, Move to collection…, Extract to a new note with Ctrl Shift E faint on the right, and Make secret.
+- [ ] ⋯, Rename: the title becomes the field, as with the pen. ⋯, Download: the Markdown, PDF or Print choice. ⋯, Archive: "Archived." with Undo.
+- [ ] ⋯, Delete: the menu asks right there "Delete “title” for good?" with Delete and Keep. The paper stays as it was. Click Keep: Delete is back in the menu. Press Esc while it asks: the same.
+- [ ] ⋯, Delete, then Delete: the note goes, the menu closes and "Deleted “title”." shows with Undo. Click Undo: the note is back with its text.
+- [ ] With GitHub, Google Drive or a folder chosen, the question also says where else it is removed from.
+- [ ] ⋯, Keyboard shortcuts: the Shortcuts panel slides in. ⋯, Help: a new tab opens on Glacier's help page with ten common questions.
+- [ ] Open note A, then note B. Hover ←: "Back to A". Click it: A opens. Holding it or a right click opens no list.
+- [ ] Turn the network off (devtools, Offline) with a Notes Home chosen, then type: a grey "Offline" shows after the title. Click it: the sync box opens. Turn the network on: after the next sync the word goes.
+- [ ] While all is synced, nothing shows after the title. With notes only in this browser, the tiny pixel cloud sits there instead; click it for the box.
+- [ ] Make two versions of a note (see Conflict Copies): an orange "2 versions" shows. Revoke the GitHub token: a red "Sign in again" shows.
+- [ ] Opening one of ☰ Notes, the headings, +, ⋯ or the sync box closes the one that was open. A click outside closes it too.
+- [ ] Make the sidebar narrow: a long title ends with "…" and the buttons stay in the bar.
+
 ### Enter is quick in a very long note (#120)
 
 - [ ] Paste a long text of about 3000 lines into a note (a transcript or a long article). Put the caret in the middle and press Enter a few times: each new line comes at once, as quick as typing a letter. To measure, open the sidebar's devtools, Performance, record while pressing Enter, and look at the keydown: under 100 ms.
@@ -51,7 +75,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 - [ ] Force a full storage: open the sidebar's devtools, Application, Storage, tick Simulate custom storage quota and set it very small, then type in a note. A banner at the bottom says the browser's storage is full and your text is still here, with Copy note.
 - [ ] Click Copy note: "Copied." shows beside it. Paste somewhere: the whole note's text is there.
 - [ ] Undo the storage limit, then type again: the banner goes away by itself.
-- [ ] In a fresh browser profile (or after deleting every note), open the ▾ menu: it says "No notes yet. Just start writing on a page, or press + for a new note."
+- [ ] In a fresh browser profile (or after deleting every note), open the notes list: it says "No notes yet. Just start writing on a page, or press + for a new note."
 - [ ] Copy a few lines in a note: the notice says "Copied 3 lines." with a full stop.
 - [ ] With GitHub as where your notes live, delete a note: the question says "It is also removed from your GitHub repo." With Google Drive it names Google Drive, with a folder "your notes folder", and with Only in this browser the sentence is left out.
 - [ ] Delete a Collection: the question puts its name in curly quotes, “Name”, like the notice after it, and names the same place as above.
@@ -59,11 +83,11 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ### Deleting says so and can be undone, and the sketch question (#116)
 
-- [ ] Delete a note from the ⋯ This note menu and click Delete: a notice says "Deleted “title”." with Undo. Click Undo within 6 seconds: the note opens again with its text, Collection, page and sketches.
+- [ ] Delete a note from the ⋯ menu and click Delete: a notice says "Deleted “title”." with Undo. Click Undo within 6 seconds: the note opens again with its text, Collection, page and sketches.
 - [ ] Do the same with a secret note while unlocked: after Undo it is still secret and readable. Lock it: it asks for the passcode again.
 - [ ] Delete a note, Undo, then sync: the note is still there, and still in the Notes repo.
 - [ ] Delete a note, wait for the sync, then Undo from the notice in time: after the next sync its file is back in the Notes repo.
-- [ ] Delete a Collection of three notes from the ▾ menu: a notice says "Deleted the collection “Name” and its 3 notes." with Undo. Undo brings the Collection and all three notes back. If one of them was open, it opens again.
+- [ ] Delete a Collection of three notes from the notes list: a notice says "Deleted the collection “Name” and its 3 notes." with Undo. Undo brings the Collection and all three notes back. If one of them was open, it opens again.
 - [ ] Delete an empty Collection and Undo: it is listed again.
 - [ ] Wait for the notice to go without clicking Undo: the note or Collection stays deleted.
 - [ ] In a sketch with shapes, pick it and press Backspace: a card under the sketch asks "Remove this sketch and its shapes?" with Remove and Keep. No browser dialog shows.
@@ -105,7 +129,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 - [ ] Words inside a sketch are not found.
 - [ ] Press Ctrl F again with the box open: the text in the field is selected.
 - [ ] Press Esc: the box and the marks go, and the caret is at the current match. Do it again with a word that has no match: the caret stays where it was.
-- [ ] Open the find box, then open the ▾ menu, or open another note: the box closes.
+- [ ] Open the find box, then open the notes list, or open another note: the box closes.
 - [ ] On a web page (not in Glacier), Ctrl F still opens the browser's own find.
 
 ### Numbered lists and checkboxes (#110)
@@ -129,7 +153,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 - [ ] Type a wrong passcode: "That passcode doesn't open this note." Type the right one: the note opens with its text.
 - [ ] Leave the sidebar open without typing for 10 minutes: the open secret note locks again and shows the passcode field.
 - [ ] While it is locked: Ctrl K and `//` with a word from inside it finds nothing; its title still finds it. The backlinks button doesn't show, and a note it links to doesn't list it as a backlink.
-- [ ] While it is locked: ⋯, Download as a file, Print. It asks for the passcode first; Cancel puts the paper back. After the passcode the print window shows the text, and Markdown saves the file still encrypted.
+- [ ] While it is locked: ⋯, Download, Print. It asks for the passcode first; Cancel puts the paper back. After the passcode the print window shows the text, and Markdown saves the file still encrypted.
 - [ ] Clip text from a page while a locked secret note is open: nothing goes in, and a line says to type the passcode, then clip again.
 - [ ] Select text in an open secret note and Extract it: the new note has the lock too.
 - [ ] Sync, then look at the note's file in Google Drive, the folder or GitHub: `secret: true` in the frontmatter and one ```` ```glacier-secret ```` block with no readable text. Same in a Download everything zip.
@@ -152,7 +176,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 - [ ] Switch on reduce motion in the system settings (or the browser's): the page just changes, with no turn.
 - [ ] ↑ on the first line of page 2 goes to the end of page 1; ↓ on the last line of page 1 goes to the start of page 2.
 - [ ] Clicking on the paper under a page that isn't the last puts the caret at the end of that page.
-- [ ] In a note with a heading on page 3, open the ≡ contents and click that heading: page 3 shows, with the caret at the heading.
+- [ ] In a note with a heading on page 3, click the note's title and then that heading: page 3 shows, with the caret at the heading.
 - [ ] Ctrl K, search `//` and a word that is only on page 3 of a note, open the result: the note opens on page 3, with no turn.
 - [ ] Follow a Link to a note with pages: it opens on page 1.
 - [ ] Switch the setting off again: every page shows again, the bar is gone. The note is still one file, on GitHub or Drive and in Obsidian, where the `%%page%%` lines are hidden.
@@ -161,9 +185,9 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ### Table of contents (#107)
 
-- [ ] In a note with no headings there is no ≡ tab on the left edge of the paper. Type `# First` on a line: the tab appears. Hover text: Contents.
-- [ ] Click the tab: a drawer slides in from the left with the headings in order, indented by level (# ## ###), in the note's font. Code blocks with a # line inside add nothing.
-- [ ] In a long note, click a heading: the paper scrolls so the heading sits near the top and the caret is at its start. The drawer closes, so the heading is in view.
+- [ ] The headings now show under the note's title (#121); there is no ≡ tab on the left edge any more. In a note with no headings, click the title: "No headings yet. Start a line with # to make one." Type `# First` on a line and click the title again: First is listed.
+- [ ] The headings are in order, indented by level (# ## ###). Code blocks with a # line inside add nothing.
+- [ ] In a long note, click a heading: the paper scrolls so the heading sits near the top and the caret is at its start. The headings close, so the heading is in view.
 - [ ] With the drawer open, type a new heading or change one: the list follows as you type. Delete the last heading: the tab and the drawer go away.
 - [ ] The drawer closes with a click on the paper, a click on the tab again, or Esc.
 - [ ] Ctrl Shift O (Cmd on a Mac) opens and closes the drawer. It is listed in the Shortcuts panel under Keys.
@@ -238,14 +262,14 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 - [ ] Sync, then open the Notes Repo on GitHub: next to the note is a file named like the note with "sketch 1.svg" after it, and opening it shows the picture. The note's text holds a line like `![[My note – sketch 1.svg]]`.
 - [ ] In the other browser, sync: the sketch shows in the same note. Move a shape there, sync both: the move arrives.
 - [ ] Rename the note: the sketch still shows, and after a sync the svg file on GitHub has the new name. Move the note to a Collection, archive it and unarchive it: the svg file moves with the note each time. Delete the note: the svg file goes too.
-- [ ] ⋯ then Download as a file on a note with a sketch: a zip comes with the note and its svg. Export everything, then Restore from backup file in a fresh browser profile: the sketches come back.
+- [ ] ⋯ then Download on a note with a sketch: a zip comes with the note and its svg. Export everything, then Restore from backup file in a fresh browser profile: the sketches come back.
 - [ ] `/sketch` is listed in the Shortcuts panel, and Delete there mentions removing the picked shape.
 
 ### Pin a note, ← in one click (asked for 2026-10-13)
 
 - [ ] Open a website's note: a faint grey pin sits after the title. Click it (or ⋯ → Pin this note): it turns red and the menu does not open. Switch to other tabs and websites (with Tabs and notes set to follow the tab): the pinned note stays. Click the pin again: it turns grey, and the sidebar shows the note of the tab you are on. With no note open there is no pin.
 - [ ] Pinned, open another note from the menu: the pin goes with it. Rename the pinned note: it stays pinned.
-- [ ] Let a tab switch change the note, then click ← once: you are back on the note before, in one click. Right-click ← (or hold it): the list of your last notes opens.
+- [ ] Let a tab switch change the note, then click ← once: you are back on the note before, in one click. Holding it opens nothing more (#121).
 
 ### Clip highlighted text from a web page (#100)
 
@@ -271,7 +295,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 Needs a browser where the notes live only in this browser (the default). To start again, clear `cloudReminder` from the extension's storage.
 
-- [ ] With fewer than 3 notes, the sync dot is a tiny pixel cloud and the sync box does not open by itself.
+- [ ] With fewer than 3 notes, a tiny pixel cloud sits after the title and the sync box does not open by itself.
 - [ ] Write a 3rd note and wait a few seconds: the sync box opens by itself with a small pixel cloud and "Your notes live only in this browser for now. Give them a safe home." (with "in your Google Drive" once Google Drive is set up), and two buttons, Keep them safe and Not now.
 - [ ] Keep them safe closes the box and opens Settings at Where your notes live.
 - [ ] Not now closes the box. Write more notes or reopen the sidebar: the box does not open again by itself.
@@ -286,13 +310,13 @@ Chrome or Edge only. Have Obsidian (or any text editor) at hand.
 - [ ] In Chrome click it: a short text says each note becomes a Markdown file in a folder you pick, with a "Choose a folder" button. Click it: the browser's folder picker opens. Close the picker: nothing changes.
 - [ ] Click "Choose a folder" again and pick an empty folder. Chrome may ask to let Glacier edit files there; allow it. One line asks "Your notes will be combined with the ones in your notes folder. Nothing is deleted." Keep leaves the old place chosen. Switch shows Connecting to your notes folder, Downloading, Combining notes and Ready.
 - [ ] Open the folder in your file manager: `notes/`, `collections/<Collection>/` and, with archived notes, `archive/` hold one `.md` file per note.
-- [ ] Hover the sync dot: "All saved to your notes folder".
+- [ ] Once synced, no sync word shows after the title.
 - [ ] Edit a note's file in another editor and save it, then press Sync now in the sync box (or close and open the sidebar): the edit comes in.
 - [ ] Type in the same note in Glacier and edit its file in another editor before Glacier syncs: after the sync the note has two versions and nothing is lost.
 - [ ] Move a note to another Collection: its file moves to the new Collection's folder, and the old Collection's folder goes once it is empty.
 - [ ] Open the folder in Obsidian as a vault: the notes and Links show, and Obsidian's own `.obsidian` folder is left alone by Glacier.
 - [ ] Close Chrome completely and start it again, open the sidebar and type: the first click or key reconnects the folder without asking, and the note reaches the folder.
-- [ ] If Chrome still asks or refuses after a restart: the sync dot becomes a small pixel folder, and its box says "Chrome needs your OK to write to your notes folder again." with one Reconnect button. Notes keep saving in the browser meanwhile. Reconnect asks and syncs.
+- [ ] If Chrome still asks or refuses after a restart: a red "Reconnect" shows after the title, and its box says "Chrome needs your OK to write to your notes folder again." with one Reconnect button. Notes keep saving in the browser meanwhile. Reconnect asks and syncs.
 - [ ] Choose a folder with Settings open beside the sidebar: clicking "Choose a folder" moves Settings inside the sidebar with the folder choice shown; click "Choose a folder" there to pick it. Closing Settings and opening them again puts them beside the sidebar again.
 - [ ] Choose "Only in this browser" or GitHub: the folder keeps every file, and Glacier stops writing to it.
 
@@ -305,7 +329,7 @@ Before reloading in Chrome: Glacier now has a fixed extension ID, so Chrome sees
 - [ ] Click "Sign in with Google": one line asks "Your notes will be combined with the ones in Google Drive. Nothing is deleted." Switch opens Google's sign-in (Chrome may sign in straight away), then shows Connecting to Google Drive, Downloading, Combining notes and Ready.
 - [ ] Open drive.google.com: there is one folder named Glacier with `notes/` and `collections/` inside, and each note is a `.md` file you can open.
 - [ ] Do the same in Firefox with the same Google account: the notes from Chrome show up. Edit a note in Firefox, then open Chrome's sidebar: the edit comes in. Rename a note: the old file is in Drive's trash and the new one in its folder.
-- [ ] Hover the sync dot: "All saved to Google Drive".
+- [ ] Once synced, no sync word shows after the title.
 - [ ] Close the browser and start it again, open the sidebar: it still syncs without asking to sign in. In Firefox wait more than an hour, then type: it still syncs without asking.
 - [ ] Sign out of Google in the browser (or remove Glacier's access at myaccount.google.com, Security, Third party access), wait an hour in Firefox, then type: the dot turns red, the box says Google asks you to sign in again and has one "Sign in with Google" button. Clicking it signs in and syncs.
 - [ ] Choose "Only in this browser" or GitHub: after the switch Glacier is signed out of Google, and the Glacier folder in Drive still has every file.
@@ -316,36 +340,36 @@ Before reloading in Chrome: Glacier now has a fixed extension ID, so Chrome sees
 Reload with ↻ first.
 
 - [ ] Open Settings: the last section is called "Where your notes live". It shows the choices "Google Drive", "A folder on this computer", "Only in this browser" and "GitHub", each with a small pixel icon, and Backup under them. It looks calm, with no "For developers" text.
-- [ ] With GitHub connected from before, GitHub is chosen and its repo and token form shows right under it. Type a note: it still syncs, and the sync dot says "All saved to GitHub" on hover.
+- [ ] With GitHub connected from before, GitHub is chosen and its repo and token form shows right under it. Type a note: it still syncs, and no sync word shows after the title.
 - [ ] Click "Only in this browser": one line asks "Your notes will stay in this browser and stop syncing. Nothing is deleted." with Switch and Keep. Keep leaves GitHub chosen. Switch: the dot turns quiet and says your notes live only in this browser; type a note and check GitHub: nothing new arrives.
 - [ ] Close the sidebar and open it again: "Only in this browser" is still chosen.
 - [ ] Click "GitHub", press "Connect and sync": the line "Your notes will be combined with the ones in GitHub. Nothing is deleted." asks first. Switch shows Connecting to GitHub, Downloading, Combining notes and Ready. Afterwards the note you typed while only in this browser is on GitHub too, and nothing on GitHub was deleted.
 - [ ] Connect another, empty repo the same way: every note shows up there, and the first repo stays as it was.
-- [ ] With only this browser chosen, click the sync dot: the box says "Only in this browser" and "Choose where they live" opens this section. Connected, the box's link reads "Where your notes live".
+- [ ] With only this browser chosen, click the tiny pixel cloud after the title: the box says "Only in this browser" and "Choose where they live" opens this section. Connected, the box's link reads "Where your notes live".
 - [ ] Do the same switches in Settings beside the sidebar.
 
 ### The sidebar code split into parts (#93)
 
 Nothing should look or work differently. Check each in Chrome and Firefox:
 
-- [ ] ▾ menu: search titles, then `//` and a word inside a note. Collections and page groups fold open and shut. Hover a note row and a Collection heading: the icons show.
-- [ ] ▾ menu: click Delete on a Collection, then Keep, then Esc on the question. Click "+ New collection", type a name, press Enter.
-- [ ] ⋯ menu: Move to collection…, Download as a file, Archive (then Undo) and Delete (then Keep, and then Delete and Undo) each still work. On an archived note it says Unarchive.
+- [ ] notes list: search titles, then `//` and a word inside a note. Collections and page groups fold open and shut. Hover a note row and a Collection heading: the icons show.
+- [ ] notes list: click Delete on a Collection, then Keep, then Esc on the question. Click "+ New collection", type a name, press Enter.
+- [ ] ⋯ menu: Move to collection…, Download, Archive (then Undo) and Delete (then Keep, and then Delete and Undo) each still work. On an archived note it says Unarchive.
 - [ ] Download as .md, PDF and Print for a note (row icon and ⋯), for a Collection, and for a Collection inside the Archive section.
 - [ ] On a website with two notes and no Collection, hover the page group under No collection, click the move icon and pick a Collection: both notes move.
-- [ ] ←, + and the sync dot each open their box, Esc closes it, and opening one closes the one that was open.
+- [ ] +, ⋯, the title and the sync word each open their box, Esc closes it, and opening one closes the one that was open.
 
 ### Collections only by choice, page groups (#92)
 
 - [ ] Use a Collection, then on a new website write a note: it is in no Collection (the line above the text says "Add to a collection"). `+` → New note: also none.
 - [ ] Put that page's note in a Collection, then make a second note for the same page: it joins that Collection.
-- [ ] On another website with no Collection, make two notes. ▾ menu, under No collection: one group with a globe and the page's title, its notes under it, newest first. A page with one note stays a plain row.
+- [ ] On another website with no Collection, make two notes. notes list, under No collection: one group with a globe and the page's title, its notes under it, newest first. A page with one note stays a plain row.
 - [ ] Hover the group: a move icon on the right. Click it: the Collections and "+ New collection". Pick one: both notes move there and the group is gone. Try "+ New collection" with a new name too. Esc or a click elsewhere closes the list.
 - [ ] Sync, then look at the note file on GitHub: it has a `pageTitle:` line under `source:`.
 
 ### How Glacier works opens the welcome page (#91)
 
-- [ ] Open a note, open the Shortcuts panel with `?` and click "How Glacier works" (dotted underline): the panel folds and the full welcome shows on the paper, with the pixel picture, greeting, three lines with icons, Start writing and the tip. The note's Collection line and backlinks are hidden while it shows.
+- [ ] Open a note, open the Shortcuts panel with ⋯, Keyboard shortcuts, and click "How Glacier works" (dotted underline): the panel folds and the full welcome shows on the paper, with the pixel picture, greeting, three lines with icons, Start writing and the tip. The note's Collection line and backlinks are hidden while it shows.
 - [ ] Click Start writing: you are back in the same note with the cursor in it. Show it again and press Esc: the same.
 - [ ] Do it on School Notebook and Aurora: the day and the night picture. Do it with no note open: Start writing gives the fresh page.
 
@@ -365,17 +389,17 @@ Nothing should look or work differently. Check each in Chrome and Firefox:
 - [ ] One empty row, then a soft rounded "Start writing" button in the paper's colour, and under it a quiet "Tip: open any website and just start writing."
 - [ ] The welcome fades in gently once. With reduce motion on in the system, it just appears.
 - [ ] Do the same on School Notebook (day picture on white paper) and Aurora (the picture at night, with stars): everything sits on the rules, looks calm and hand made, and nothing overlaps the pill.
-- [ ] Click Start writing: the welcome goes for good. Open the Shortcuts panel with `?`: it starts with the link "How Glacier works" (#91).
+- [ ] Click Start writing: the welcome goes for good. Open the Shortcuts panel with ⋯, Keyboard shortcuts: it starts with the link "How Glacier works" (#91).
 
 ### Collection icons, welcome overlap, Just synced, beside frame, Recent 5, page note Collection (#89)
 
-- [ ] Open the ▾ menu and hover a Collection heading: Download, Archive and Delete sit together on the right, as close as the icons on a note row.
+- [ ] Open the notes list and hover a Collection heading: Download, Archive and Delete sit together on the right, as close as the icons on a note row.
 - [ ] On a fresh install (or after clearing "welcomeSeen"), visit a website that already has a note: the note opens and the welcome is gone, with no text on top of the note. Reload: the welcome does not come back.
 - [ ] With the welcome showing, type a letter, press +, or open a note from the menu: the welcome goes in each case.
-- [ ] Click the sync dot, then "Sync now": the box stays open and the pen writes "Just synced". Press it again when nothing changed: the pen writes it again.
+- [ ] With the tiny pixel cloud or a sync word showing, click it, then "Sync now": the box stays open and the pen writes "Just synced". Press it again when nothing changed: the pen writes it again.
 - [ ] In Settings, Where your notes live, press "Sync now": the status line is written out as "Just synced" by the pen, then returns to normal. With reduce motion on, the words just appear. With the network off you read the plain error text.
 - [x] With Settings beside the sidebar: the frame touches the sidebar's edge with no overlap and no gap, fits the window height, and has no scrollbar of its own on the outside. Scroll its list to the end and keep scrolling: the web page behind does not move.
-- [ ] Open the ▾ menu: Recent lists at most 5 notes.
+- [ ] Open the notes list: Recent lists at most 5 notes.
 - [ ] On a page whose notes are in no Collection, press "New note for this page" while another Collection was used last: the new note is in no Collection. On a page with a note in a Collection, the new note joins it. On a page with no notes yet, it is in no Collection (#92).
 
 ### Round 4 bugs: Backspace in bullets, plus click, dot colour, snippets, Restore text, long titles, reopen (#88)
@@ -393,7 +417,7 @@ Nothing should look or work differently. Check each in Chrome and Firefox:
 
 - [ ] Type a line starting with `> ` and move to another line: it shows as a quote with a quiet bar on the left and no `>`. Click back into it: the `>` shows faded.
 - [ ] Type a code block (three backticks, a few lines, three backticks) and a normal line after it: the code lines and the line after the block sit on the ruled lines, also while the caret is inside the block.
-- [ ] Open a note that is in a Collection, then archive the whole Collection from the ▾ menu: the pill shows "Glacier" and no "Archived" label.
+- [ ] Open a note that is in a Collection, then archive the whole Collection from the notes list: the pill shows "Glacier" and no "Archived" label.
 - [ ] Click Undo in the notice: the notes come back and the note that was open is on screen again.
 - [ ] Choose the Aurora paper, open settings and tab to the close button: the focus ring is the soft accent colour, not a white box.
 - [ ] Open the Shortcuts panel: there is no sideways scrollbar at its bottom, and a long key wraps to its own line.
@@ -409,10 +433,10 @@ Nothing should look or work differently. Check each in Chrome and Firefox:
 ### Explaining Notes and Collections, and the pen that writes Just synced (#85)
 
 - [ ] In a fresh profile, open Glacier: three lines in the handwriting font explain notes, website notes and Collections, with a quiet "Start writing" button. Click it: the welcome goes and the caret is on the paper. Reload the extension and open Glacier again: the welcome does not come back.
-- [ ] With no Collections, open the ▾ menu: under "Notebook" a quiet line says "Collections hold notes that belong together. Make one with + New collection." Make a Collection: the line is gone.
+- [ ] With no Collections, open the notes list: under "Notebook" a quiet line says "Collections hold notes that belong together. Make one with + New collection." Make a Collection: the line is gone.
 - [ ] On a note without a Collection, hover "Add to a collection" above the text: it explains what Collections are. Hover the `+` in the pill: it says "New note".
-- [ ] Open the Shortcuts panel with `?`: it starts with the link "How Glacier works" (#91).
-- [ ] Click the sync dot, then "Sync now": a small pen moves across the box and writes "Just synced" in the handwriting font, left to right. After a few seconds the box shows its normal status again. With the network off you get the plain words and no pen.
+- [ ] Open the Shortcuts panel with ⋯, Keyboard shortcuts: it starts with the link "How Glacier works" (#91).
+- [ ] Settings, Where your notes live, "Sync now": a small pen moves across and writes "Just synced" in the handwriting font, left to right. After a few seconds the box shows its normal status again. With the network off you get the plain words and no pen.
 - [ ] With "reduce motion" turned on in your system, "Just synced" just appears, with no pen.
 
 ### Calmer menus: compact Shortcuts panel, quiet search box and plus entries (#84)
@@ -420,9 +444,9 @@ Nothing should look or work differently. Check each in Chrome and Firefox:
 Reload with ↻ first. Try Aurora and Chalkboard too.
 
 - [ ] Open the Shortcuts panel: each key sits on the left and its description on the right, on one row. The panel is narrow and still readable at a sidebar width of 260 px.
-- [ ] Open ▾ and click in the search box: no black border, a quiet line that turns to the accent colour while you type.
-- [ ] In ▾, "+ New note" and "+ New collection" look like the other rows, with the same hover look. Click "+ New collection": the name field has a quiet border too.
-- [ ] Compare ▾, ⋯, the ← box, the sync box, the + menu and the Collection list: same row height, padding, font weight and hover look.
+- [ ] Open ☰ Notes and click in the search box: no black border, a quiet line that turns to the accent colour while you type.
+- [ ] In ☰ Notes, "+ New note" and "+ New collection" look like the other rows, with the same hover look. Click "+ New collection": the name field has a quiet border too.
+- [ ] Compare ☰ Notes, ⋯, the headings under the title, the sync box, the + menu and the Collection list: same row height, padding, font weight and hover look.
 
 ### Bugs from the browser test: Collection click, overlaps, after archive or delete (#83)
 
@@ -430,14 +454,14 @@ Reload with ↻ first.
 
 - [ ] Click in the text of a note, then click "Add to a collection" with the mouse: the list opens every time. Do it also right after pressing Enter or typing.
 - [ ] The Collection list has a solid background: the note's text does not show through it.
-- [ ] Open ▾, ⋯, the ← box, the sync box and the Shortcuts panel one after another: the round Glacier button is always under them, and opening one closes the one that was open.
-- [ ] With the Shortcuts panel open, open ▾: the panel closes. With ▾ open, open the Shortcuts panel: the menu closes. A Collection heading's Archive and Delete icons are never hidden.
-- [ ] Choose a Collection on a note, then press + and "New note" and type: the new note is already in that Collection, shown above the text. The same from ▾ and "+ New note".
+- [ ] Open ☰ Notes, ⋯, the ← box, the sync box and the Shortcuts panel one after another: the round Glacier button is always under them, and opening one closes the one that was open.
+- [ ] With the Shortcuts panel open, open ☰ Notes: the panel closes. With ☰ Notes open, open the Shortcuts panel: the menu closes. A Collection heading's Archive and Delete icons are never hidden.
+- [ ] Choose a Collection on a note, then press + and "New note" and type: the new note is already in that Collection, shown above the text. The same from ☰ Notes and "+ New note".
 - [ ] Without permission for the page, press "New note for this page" and decline: the card says settings open inside the sidebar, and does not talk about two panels.
 - [ ] With no note open, the pill shows a quiet "Glacier". Hovering shows no text and no pointer, and clicking does nothing.
 - [ ] Open note A, then note B. In ⋯ choose Archive: note A shows, with "Archived. Undo". Undo puts B back in the Notebook, not archived.
 - [ ] Open note A, then note B, and delete B from ⋯ or from the trash icon on its row: note A shows. With no earlier note, you see the page's note or the empty page.
-- [ ] The ▾ menu heading reads "No collection".
+- [ ] The notes list heading reads "No collection".
 
 ### Putting a note into a Collection (#82)
 
@@ -447,18 +471,18 @@ Reload with ↻ first.
 - [ ] Click it: a list shows your Collections and "+ New collection" at the bottom. Choose "+ New collection", type a name, press Enter: the note is in it and the name shows above the text.
 - [ ] On a note with a Collection, click the name: the list also has "No collection". Choose it: the line goes back to "Add to a collection".
 - [ ] Open ⋯ and choose "Move to collection…": the same list opens above the text.
-- [ ] Open ▾: under Notebook, click "+ New collection", type a name, press Enter: an empty Collection appears in the list. Hover it: only the Delete icon shows.
-- [ ] Choose that empty Collection from "Add to a collection" on a note: the note shows under it in ▾.
+- [ ] Open ☰ Notes: under Notebook, click "+ New collection", type a name, press Enter: an empty Collection appears in the list. Hover it: only the Delete icon shows.
+- [ ] Choose that empty Collection from "Add to a collection" on a note: the note shows under it in ☰ Notes.
 - [ ] Type an existing name in other capitals as a new Collection: no second Collection appears.
 - [ ] Sync, then look at the Notes repo: a moved note's file is in its new folder, in one commit.
 
 ### Several versions, last 3 notes on ←, website or own icons, handwritten Just synced (#81)
 
-- [ ] With a note that has a second version, open the ▾ menu: the heading reads "Several versions (1)". Hovering it explains why Glacier kept every version.
+- [ ] With a note that has a second version, open the notes list: the heading reads "Several versions (1)". Hovering it explains why Glacier kept every version.
 - [ ] Hover a row under that heading: Download, Archive and Delete icons show, like on the other rows.
 - [ ] Open four or five different notes one after another, then click `←`: a small box opens under it with the last 3 notes, newest first, each with a small icon. Hovering `←` says "Your last notes".
 - [ ] In that box, ↑ and ↓ move between the notes and Enter opens one. A click on a note opens it. Esc, or a click outside, closes the box.
-- [ ] In the ▾ menu lists, in search results and in the `←` box, a note from a website has a small globe, and a note you made yourself has a small pencil. Hovering says "From a website" or "Your own note". The line above the text of a website note shows the globe before the site link.
+- [ ] In the notes list lists, in search results and in the `←` box, a note from a website has a small globe, and a note you made yourself has a small pencil. Hovering says "From a website" or "Your own note". The line above the text of a website note shows the globe before the site link.
 
 ### A new note's name follows its first line (#80)
 
@@ -479,18 +503,18 @@ Reload with ↻ first.
 
 ### Sync lives in the dot; the Notebook menu holds only notes (#75)
 
-- [ ] Reload the extension with the ↻ button first. Click the sync dot in the pill: a small box opens under it with the status in words (for example "Up to date") and a quiet line "Last synced 2 minutes ago". Leave it open for a minute: the time moves on by itself.
+- [ ] Reload the extension with the ↻ button first. Turn the network off so "Offline" shows after the title, and click it: a small box opens under it with the status in words (for example "Up to date") and a quiet line "Last synced 2 minutes ago". Leave it open for a minute: the time moves on by itself.
 - [ ] Click "Sync now": the button reads "Syncing…", then a pen writes "Just synced" across the box for a few seconds, then the box shows its status again. Turn the network off and try again: the result is "Offline. Your changes are kept here".
 - [ ] Press Esc, or click anywhere outside the box: it closes.
-- [ ] Make a note with two versions (see Conflict Copies below). The box shows "1 note has two versions. Check them" style text. Clicking it opens the ▾ menu with "Several versions (n)" at the very top, each original with its second version under it.
+- [ ] Make a note with two versions (see Conflict Copies below). The box shows "1 note has two versions. Check them" style text. Clicking it opens the notes list with "Several versions (n)" at the very top, each original with its second version under it.
 - [ ] Click "Where your notes live" in the box: settings open at Where your notes live. With the notes only in this browser, the box says "Only in this browser" and offers "Choose where they live", which opens the same place.
-- [ ] Open the ▾ menu: there is no Sync, no "Sync now" and no "Notes repo" in it. The order is search, Several versions (only while there are any), Notes for this page, Recent, Collections, Archive.
+- [ ] Open the notes list: there is no Sync, no "Sync now" and no "Notes repo" in it. The order is search, Several versions (only while there are any), Notes for this page, Recent, Collections, Archive.
 - [ ] Nothing in the menus or the box is bold.
 
 ### Actions on a whole Collection (#74)
 
-- [ ] Reload with ↻ first. Open the ▾ menu and hover a Collection heading: Download, Archive and Delete icons show, and they also show when the heading has keyboard focus. Each hover text names the Collection and its note count, like "Archive 'Testing', 12 notes".
-- [ ] Click Download on a Collection: a small choice shows Markdown (.md), PDF and Print. Markdown saves a zip. PDF and Print open the print window with every note of the Collection, each on a new page. Do the same from a note row and from ⋯ This note: the same three choices.
+- [ ] Reload with ↻ first. Open the notes list and hover a Collection heading: Download, Archive and Delete icons show, and they also show when the heading has keyboard focus. Each hover text names the Collection and its note count, like "Archive 'Testing', 12 notes".
+- [ ] Click Download on a Collection: a small choice shows Markdown (.md), PDF and Print. Markdown saves a zip. PDF and Print open the print window with every note of the Collection, each on a new page. Do the same from a note row and from ⋯: the same three choices.
 - [ ] Click Archive on a Collection: its notes leave the lists and "Archived 12 notes." shows with Undo. Undo puts them all back.
 - [ ] Open the Archive section: the notes sit under their Collection, and hovering that heading offers Unarchive. It brings back every note of that Collection.
 - [ ] Click Delete on a Collection: the question names the count and where your notes live, "Delete the collection “Testing” and its 12 notes? They're also removed from your GitHub repo." Keep (or Esc) leaves everything. Delete removes the notes and a notice offers Undo, which brings them all back. Without Undo, after the next sync they are gone from the Notes repo too.
@@ -519,7 +543,7 @@ Reload with ↻ first.
 Reload with ↻ first. You need a connected Notes repo for the last two checks.
 
 - [ ] The line above the text says "Add to a collection" on a note without one. Hover it: "Click to choose a collection". Click it: the list ends with "+ New collection".
-- [ ] Open the ▾ menu: the Notebook lists Collections, then "No collection" with the rest. Hover a Collection heading: three icons show, and Download names the Collection and its note count.
+- [ ] Open the notes list: the Notebook lists Collections, then "No collection" with the rest. Hover a Collection heading: three icons show, and Download names the Collection and its note count.
 - [ ] Settings, Where your notes live: the list under Export holds Collections, and hovering a Download icon names the Collection. Nowhere in the sidebar, menus or settings does the word Course show.
 - [ ] Put a note in "Testing Test", then click "+ New collection" on another note and type "testing test": the note joins "Testing Test", and the menu shows one Collection.
 - [ ] If you had "Testing Test" and "Testing test" before this change: after the reload they show as one Collection, spelled like the one with more notes.
@@ -527,11 +551,10 @@ Reload with ↻ first. You need a connected Notes repo for the last two checks.
 
 ### Shortcuts panel on the right, inside the sidebar (#76)
 
-Reload with ↻ first. Turn the Shortcuts panel on in settings.
+Reload with ↻ first. The `?` tab left the bar in #121; ⋯, Keyboard shortcuts opens the cheat sheet.
 
-- [ ] On a website and on a new tab, a small tab with a question mark sits top right, next to the + button.
-- [ ] Click the tab: the cheat sheet slides in from the right edge of the sidebar over the right part of the note. The pill and the tab stay visible above it.
-- [ ] Click in the note: the cheat sheet closes. Click the tab to open it, then the tab again: it closes. The arrow in its header closes it too.
+- [ ] Open ⋯, Keyboard shortcuts: the cheat sheet slides in from the right edge of the sidebar over the right part of the note. The bar stays visible above it.
+- [ ] Click in the note: the cheat sheet closes. The arrow in its header closes it too.
 - [ ] Close and reopen the sidebar: the cheat sheet is still open or closed as you left it.
 - [ ] On a website, open Settings: it still opens beside the sidebar on the left. On a new tab, Settings open inside the sidebar with the line about the page not allowing panels. The cheat sheet shows no such line.
 - [ ] Under Panels in settings, the choice is named "Settings open". Choosing Inside the sidebar or Beside the sidebar moves only Settings.
@@ -540,13 +563,13 @@ Reload with ↻ first. Turn the Shortcuts panel on in settings.
 
 Reload with ↻ first.
 
-- [ ] Open the ▾ menu and hover a note row (also in Recent, search results and the Archive section): three small icons show on the right. Tab to a row: they show too. Each has a hover text naming the note, like "Archive 'Arrays basics'".
+- [ ] Open the notes list and hover a note row (also in Recent, search results and the Archive section): three small icons show on the right. Tab to a row: they show too. Each has a hover text naming the note, like "Archive 'Arrays basics'".
 - [ ] Click Download: a small choice appears there, Markdown (.md), PDF or Print. Markdown saves the .md file. PDF and Print open the print window with only the title and text, where you pick Save as PDF.
 - [ ] Click Archive: the note leaves the list at once and "Archived. Undo" shows at the bottom. Click Undo: it comes back.
 - [ ] In the Archive section the middle icon is Unarchive and puts the note back.
 - [ ] Click Delete: the usual question appears. Keep leaves it, Delete removes it.
 - [ ] Hover a Collection heading: three icons show (see the Collection section above). Markdown gives a zip of .md files. PDF gives one document with every note of the Collection, each on a new page.
-- [ ] In ⋯ This note, Download asks the same Markdown or PDF choice.
+- [ ] In ⋯, Download asks the same Markdown or PDF choice.
 - [ ] Settings, Where your notes live: a list of every Collection (it scrolls when long), each with a Download icon that asks the same choice. Export everything and Export archive are still there.
 
 ### Conflict line you can close, guided second versions, sync dot explained (#70)
@@ -555,7 +578,7 @@ Reload with ↻ first. Make a conflict first (see Conflict Copies, #16).
 
 - [ ] No line shows under the pill. The dot is orange, and hovering it says "A note has two versions. Click to see them".
 - [ ] Only the original and its second version show a bar above their text. Every other note shows nothing.
-- [ ] Click the line: the ▾ menu opens with each original and its second version under it. Click the second version to open it.
+- [ ] Click the line: the notes list opens with each original and its second version under it. Click the second version to open it.
 - [ ] The second version shows a bar above its text: "This is a second version of 'Title'. Copy what you want to keep into 'Title', then delete this version."
 - [ ] Click Open 'Title' in the bar: the original opens.
 - [ ] Click Delete this version: the usual question appears. Keep brings the note back, Delete removes it. When the last second version is gone, the line and the orange dot go away.
@@ -578,10 +601,9 @@ Reload with ↻ first. Make a conflict first (see Conflict Copies, #16).
 Reload with ↻ first.
 
 - [ ] On a website with no note, write something: a note for the page is made. Then + and "New note for this page": a fresh page with the page's title ready to type. Press Enter and write: a second note for the same page.
-- [ ] The pill now says "1 of 2" after the title. Hover it: "Other notes for this page".
-- [ ] Switch to another tab and back, or reopen the sidebar: the note you wrote in last opens, and the pill says "1 of 2".
-- [ ] Click "1 of 2": the ▾ menu opens with "Notes for this page" at the top, both notes newest first, the open one in bold, and "+ New note for this page" under them. Click the other note: it opens and the pill says "2 of 2".
-- [ ] Write a word in that note, switch tabs and come back: now it opens first, with "1 of 2".
+- [ ] Switch to another tab and back, or reopen the sidebar: the note you wrote in last opens.
+- [ ] Click ☰ Notes: the list opens with "Notes for this page" at the top, both notes newest first, the open one in bold, and "+ New note for this page" under them. Click the other note: it opens. (The "1 of 2" after the title went in #121.)
+- [ ] Write a word in that note, switch tabs and come back: now it opens first.
 - [ ] + and "New note": a blank note with "Title" faded in the pill. Name it and write: the line above the text shows only "Add to a collection", no site link. Click it to give it a Collection.
 - [ ] Hover the two + choices: "A blank note, not tied to any page." and "A note for the page you're on. It opens again when you visit the page."
 - [ ] On a settings page, + offers only "New note".
@@ -644,7 +666,7 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 
 - [ ] On a website without a note, the empty paper shows with "No note for this page yet. Just start writing." Typing makes the note, with the page title and no Collection (#92).
 - [ ] Clicking the paper without typing, or leaving, makes no note.
-- [ ] Reopening the sidebar on that page opens the same note again. With several notes for the page, the one you wrote in last opens, and the pill says "1 of 2" or more.
+- [ ] Reopening the sidebar on that page opens the same note again. With several notes for the page, the one you wrote in last opens. ☰ Notes lists them under "Notes for this page".
 - [ ] Two videos on the same site (different `?v=`) get different notes.
 - [ ] The same page with `#part-2` or `?utm_source=mail` at the end opens the same note.
 
@@ -656,19 +678,19 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 - [ ] Switching quickly between several tabs always ends on the note of the tab you're on.
 - [ ] Text typed just before switching is saved in the right note.
 
-### The pill at the top
+### The bar at the top
 
-- [ ] The pill shows the note's title and a sync dot. Its colour shows the sync status, and hovering it says the status in words (#15).
-- [ ] Clicking the ▾ after the title, the bare part of the pill, or pressing Ctrl+K, opens the menu with the search box ready.
+- [ ] The bar shows, left to right: ← (only when there is a note to go back to), ☰ Notes, the note's title, + and ⋯ (#121). While sync is well no sync word shows; when sync needs you a short word shows after the title, and hovering it says the status in words (#15).
+- [ ] Clicking ☰ Notes, or pressing Ctrl+K, opens the notes list with the search box ready.
 - [ ] Search finds words in titles and in the text, with the match highlighted. Clicking a result opens it and closes the menu.
 - [ ] Recent notes are listed, including notes made by hand.
 - [ ] The Notebook is listed: Collections with their notes, then "No collection" with the rest.
 - [ ] On a note with a page, the menu starts with "Notes for this page", newest first, and "+ New note for this page" under them.
 - [ ] Esc closes the menu.
-- [ ] `←` appears after the note changed. Hovering shows "Your last notes". Clicking opens a box with the last 3 notes, newest first.
-- [ ] `+` is always there. It offers "New note", and on a website also "New note for this page". On a settings page it offers only "New note".
-- [ ] Hovering over each `+` choice, and "+ New note" in the menu, shows a short explanation.
-- [ ] Each `+` choice opens a fresh page with the title in the pill ready to type. Enter makes the note, Esc goes back to the note from before and makes nothing.
+- [ ] `←` appears after the note changed. Hovering shows "Back to" and the note's title. One click opens that note. Holding it or a right click opens nothing more.
+- [ ] `+` is always there. On a website it offers "Note for" the page's title, with "linked to this page" under it, picked already, and "Blank note". On a new tab or a settings page it makes a blank note at once, with no menu.
+- [ ] Hovering over each `+` choice, and "+ New note" in the list, shows a short explanation.
+- [ ] Each `+` choice opens a fresh page with the title ready to type. Enter makes the note, Esc goes back to the note from before and makes nothing.
 
 ### Saving
 
@@ -797,32 +819,31 @@ Connect a Notes repo first (see #14).
 Connect the same Notes repo in Chrome and in Firefox first (see #14).
 
 - [ ] Turn the network off in Firefox (devtools, Offline). Change the same note in both browsers, with different text. Turn Firefox's network on again and let it sync. Both texts are kept: the note has Firefox's text, and a second note "Title (conflict date)" with today's date has Chrome's text. Both files are on GitHub.
-- [ ] The dot turns orange. Hovering it says "A note has two versions. Click to see them". Clicking it opens the sync box, which says "A note has two versions. Check it" and opens the list.
-- [ ] Type something or press "Sync now" in the dot's box: the dot stays orange while the copy is there.
-- [ ] Open Chrome's sidebar: it also has both notes and an orange dot.
-- [ ] Rename the copy by clicking its title in the pill (for example to "Margins old"). A few seconds later the dot turns green.
-- [ ] Make another conflict, then delete the copy's file on GitHub and press "Sync now": the copy is gone from the menu and the dot turns green.
+- [ ] An orange "2 versions" shows after the title. Hovering it says "A note has two versions. Click to see them". Clicking it opens the sync box, which says "A note has two versions. Check it" and opens the list.
+- [ ] Type something or press "Sync now" in the box: "2 versions" stays while the copy is there.
+- [ ] Open Chrome's sidebar: it also has both notes and "2 versions".
+- [ ] Rename the copy with the pen after its title (for example to "Margins old"). A few seconds later "2 versions" goes.
+- [ ] Make another conflict, then delete the copy's file on GitHub and press "Sync now": the copy is gone from the list and "2 versions" goes.
 - [ ] Change the same note in both browsers to exactly the same text: no copy appears.
 
 ### Automatic two way sync
 
 Connect the same Notes repo in Chrome and in Firefox first (see #14).
 
-- [ ] Type in a note in Chrome and stop. A few seconds later the dot in the pill turns green. Hovering it says "Synced" and when the last sync was. On GitHub the note's file has your text.
-- [ ] While it syncs the dot pulses. Hovering it says "Syncing".
+- [ ] Type in a note in Chrome and stop. Nothing shows after the title while it syncs and once it has. Settings, Where your notes live says when the last sync was. On GitHub the note's file has your text.
 - [ ] Open Firefox's sidebar: the note shows the text from Chrome. If it was already open on screen, it shows the new text after a moment.
 - [ ] Make a new note in Chrome, then open the sidebar in Firefox: the note is there. Rename it in Firefox, open Chrome's sidebar again: it has the new name, and on GitHub the old file is gone.
-- [ ] Turn the network off (devtools, Offline) and type. The dot becomes an empty ring and hovering it says "Offline" and that your changes are kept. Turn the network on again: the dot turns green and GitHub has the text.
-- [ ] Change the same note in both browsers while one of them is offline, then let both sync. The dot turns orange, hovering says "Conflict", and the other text is kept as "Title (conflict date)".
-- [ ] Click the dot: the box has the status, the last sync and a "Sync now" button. Pressing it shows "Syncing…" and then the result for a moment.
-- [ ] Revoke or delete the token on GitHub, then type or press "Sync now": the dot turns red and the message says GitHub no longer accepts your token, it may have expired, and to paste a new one under Where your notes live. Pasting a new token there makes it sync again.
-- [ ] Without a Notes repo connected, the dot stays as before, hovering it says your notes live only in this browser, and the box offers "Choose where they live" instead of "Sync now".
+- [ ] Turn the network off (devtools, Offline) and type. A grey "Offline" shows after the title, and hovering it says your changes are kept. Turn the network on again: the word goes and GitHub has the text.
+- [ ] Change the same note in both browsers while one of them is offline, then let both sync. An orange "2 versions" shows, and the other text is kept as "Title (conflict date)".
+- [ ] Click "Offline": the box has the status, the last sync and a "Sync now" button. Pressing it shows "Syncing…" and then the result for a moment.
+- [ ] Revoke or delete the token on GitHub, then type: a red "Sign in again" shows, and its box says GitHub no longer accepts your token, it may have expired, and to paste a new one under Where your notes live. Pasting a new token there makes it sync again and the word goes.
+- [ ] Without a Notes repo connected, a tiny pixel cloud sits after the title, hovering it says your notes live only in this browser, and its box offers "Choose where they live" instead of "Sync now".
 
 ### Connect GitHub and the first sync
 
 You need a private GitHub repo for your notes and a fine grained token for it (GitHub, Settings, Developer settings, Fine grained tokens), limited to that repo with Contents set to read and write. Put a few notes in it first, for example from an Export zip, in `collections/` and `notes/`.
 
-- [ ] Click the sync dot and then "Where your notes live" (or "Choose where they live" when not connected). It opens settings at Where your notes live; choosing GitHub shows Repo and Token fields and a short text about the token.
+- [ ] Click the tiny pixel cloud after the title and then "Choose where they live" (or "Where your notes live" in the box of a sync word when connected). It opens settings at Where your notes live; choosing GitHub shows Repo and Token fields and a short text about the token.
 - [ ] The × in the settings header returns to the note that was open.
 - [ ] Type the repo as `yourname/notes` (pasting its GitHub address works too), paste the token, press "Connect and sync", then Switch. A screen shows Connecting to GitHub, then Downloading 1 of N notes counting up, then Combining notes, then Ready, and says how many notes came in.
 - [ ] "Start writing" closes settings. Every note from the repo is in the menu, with its Collection, text and backlinks.
@@ -835,21 +856,21 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 
 ### Export: this note, a collection, or everything
 
-- [ ] Open the ⋯ This note menu after the title: "Download as a file" is there. Open settings (the round glacier button), then Where your notes live: under a small "Export" heading are a Collection list, "Export a collection", "Export everything" and "Restore from backup file". Hovering each shows what it does.
-- [ ] "Download as a file" saves one `.md` file named after the note's title, with its text. A note with a sketch comes as a zip with its svg files.
+- [ ] Open ⋯: "Download" is there. Open settings (the round glacier button), then Where your notes live: under a small "Export" heading are a Collection list, "Export a collection", "Export everything" and "Restore from backup file". Hovering each shows what it does.
+- [ ] Download, Markdown saves one `.md` file named after the note's title, with its text. A note with a sketch comes as a zip with its svg files.
 - [ ] Pick a Collection and press "Export a collection": the zip has only that Collection's notes.
 - [ ] "Export everything" downloads a zip of every note, as before.
 - [ ] "Restore from backup file" works as before (see section 2).
 
-### Rename by clicking the title
+### Rename with the pen after the title
 
-- [ ] Click the title in the pill. It becomes a text field with the whole title selected. Hovering the title shows "Click to rename".
-- [ ] Type a new name and press Enter: the pill shows it, the note stays open, and links in other notes follow.
-- [ ] Click the title, change it, then click elsewhere on the page: it is saved too.
-- [ ] Click the title, change it, press Esc: the old title comes back.
+- [ ] Hover the title: a small pixel pen shows after it. Click the pen: the title becomes a text field with the whole title selected. Rename in ⋯ does the same.
+- [ ] Type a new name and press Enter: the bar shows it, the note stays open, and links in other notes follow.
+- [ ] Click the pen, change the title, then click elsewhere on the page: it is saved too.
+- [ ] Click the pen, change the title, press Esc: the old title comes back.
 - [ ] Rename to a name another note has: the field stays open and a hint under the pill says "That name is taken. Use ...?". Clicking the suggested name fills it in and saves.
 - [ ] Clear the field and press Enter: the hint says "Type a name for this note."
-- [ ] The small ▾ after the title opens the menu, and so does Ctrl+K and a click on the bare part of the pill. The menu has no Rename item.
+- [ ] A click on the title itself shows the note's headings, not the field. ☰ Notes and Ctrl+K open the notes list.
 
 ### Settings, Classic papers and handwriting
 
@@ -893,10 +914,10 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 ### Shortcuts panel
 
 - [ ] Open settings, then Shortcuts panel. It starts as Off, and no cheat sheet shows.
-- [ ] Choose On: a small tab appears top right next to +. Click it: a Shortcuts sheet slides in from the right edge of the sidebar. It lists the start of a line (/, #, ##, ###, -, three backticks), anything in a line ([[Title]], bold, code) and the keys (Enter, Backspace, up and down, Esc, Ctrl A twice, Ctrl C, Ctrl K).
-- [ ] Click the arrow in its header, click in the note, or click the tab: the sheet closes. Click the tab: the sheet opens again.
+- [ ] Choose On, or open ⋯, Keyboard shortcuts: a Shortcuts sheet slides in from the right edge of the sidebar. It lists the start of a line (/, #, ##, ###, -, three backticks), anything in a line ([[Title]], bold, code) and the keys (Enter, Backspace, up and down, Esc, Ctrl A twice, Ctrl C, Ctrl K).
+- [ ] Click the arrow in its header, or click in the note: the sheet closes. ⋯, Keyboard shortcuts opens it again.
 - [ ] Fold it, close and reopen the sidebar: it is still folded. Open it, reopen the sidebar: it is still open.
-- [ ] Choose Off in settings: the sheet and the tab both go away. Choose On again: the tab comes back, and the sheet is open or closed as you left it.
+- [ ] Choose Off in settings: the sheet goes away. There is no `?` tab in the bar.
 
 ### Panels beside the sidebar
 
@@ -922,7 +943,7 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 
 ### Delete this note
 
-- [ ] Open a note and open the ⋯ This note menu after the title: "Delete" is there, and hovering shows "Remove this note for good".
+- [ ] Open a note and open the ⋯ menu after the title: "Delete" is there, and hovering shows "Remove this note for good".
 - [ ] Click it: the sidebar asks "Delete “title”? It is also removed from your GitHub repo." (or Google Drive, or your notes folder; nothing more with notes only in this browser) with Delete and Keep. No browser dialog shows.
 - [ ] Click Keep: the note comes back as it was. Do it again and press Esc: same result.
 - [ ] Click Delete: the sidebar shows the note of the tab you are on, or the empty paper for a new note if that page has none. A notice says "Deleted “title”." with Undo; Undo opens the note again as it was.
@@ -932,10 +953,10 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 
 ### Archive
 
-- [ ] Open a note and open the ⋯ This note menu after the title: "Archive" is there, and hovering shows "Hide this note from your lists. You can bring it back any time".
+- [ ] Open a note and open the ⋯ menu after the title: "Archive" is there, and hovering shows "Hide this note from your lists. You can bring it back any time".
 - [ ] Click it: the note leaves the Notebook list, recent notes and search. On a page that had only this note, the empty paper for a new note shows.
 - [ ] Open the pill menu: an "Archive" section is at the bottom, folded shut. Open it and the archived note is listed.
-- [ ] Click the archived note: a small "Archived" label shows in the pill, and the ⋯ This note menu has "Unarchive" instead of "Archive".
+- [ ] Click the archived note: a small "Archived" label shows in the pill, and the ⋯ menu has "Unarchive" instead of "Archive".
 - [ ] Click Unarchive: the label goes, and the note is back in its Collection (or No collection) in the list.
 - [ ] A link to an archived note in another note still opens it.
 - [ ] After a sync, the archived note's file is under the archive folder on GitHub (for example archive/collections/Collection name/Title.md), and it moves back out after Unarchive and a sync.
@@ -946,11 +967,11 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 
 Make a conflict first (see Conflict Copies, #16).
 
-- [ ] No line shows under the pill. The dot in the pill is orange.
+- [ ] No line shows under the bar. An orange "2 versions" shows after the title.
 - [ ] Open the second version: a bar shows above its text, with Open and Delete this version buttons.
 - [ ] Open the original: a bar shows above its text saying it has a second version, with an Open button.
 - [ ] Open any other note: no bar and no message.
-- [ ] Delete the last second version (the ⋯ This note menu, "Delete"): the dot turns normal and the original's bar goes away.
+- [ ] Delete the last second version (⋯, Delete): "2 versions" goes and the original's bar goes away.
 
 ### Why a panel opens inside the sidebar
 
@@ -988,20 +1009,20 @@ Reload the extension with the reload button first.
 - [ ] Rename a note and archive a note. Both arrive on GitHub.
 - [ ] Turn the network off and type. The pill says Offline and the console shows one warning with the cause, not one per retry. Turn it back on and the change syncs.
 
-### Two menus: Notebook and This note
+### Two menus: the notes list and ⋯
 
-- [ ] Reload the extension with the reload button first. Open a note: the pill shows the title, ▾, ⋯ and the dot. Hovering ⋯ shows "Actions for this note".
-- [ ] Open ▾ (or press Ctrl+K): it has only notebook things (search, recent notes, the lists, Archive, Sync). There is no Download, Archive or Delete for the open note.
-- [ ] Open ⋯: the first line is the open note's name, then "Download as a file", "Archive" and "Delete". Each works on the open note.
+- [ ] Reload the extension with the reload button first. Open a note: the bar shows ☰ Notes, the title, + and ⋯. Hovering ⋯ shows "More for this note".
+- [ ] Open ☰ Notes (or press Ctrl+K): it has only notebook things (search, recent notes, the lists, Archive). There is no Download, Archive or Delete for the open note.
+- [ ] Open ⋯: three big pixel icons with Rename, Download and Archive, a line, Delete, a line, Keyboard shortcuts and Help, a line, then Pin this note, Move to collection…, Extract to a new note (with Ctrl Shift E faint on the right) and Make secret. Each works on the open note.
 - [ ] On an archived note, ⋯ shows "Unarchive" instead of "Archive".
-- [ ] Click Delete: the question names the note, with Delete and Keep.
+- [ ] Click Delete: the question shows right there in the menu, "Delete “title” for good?", with Delete and Keep. The paper stays as it was.
 - [ ] With no note open (empty paper for a new note), ⋯ is not shown.
-- [ ] Esc closes either menu. Opening ▾ closes ⋯, and opening ⋯ closes ▾.
+- [ ] Esc closes either menu. Opening ☰ Notes closes ⋯, and opening ⋯ closes the notes list.
 
 ### Fixes from the code review
 
 - [ ] Open a note, press + and "New note", then click the paper and write "Box model basics" without typing a title: the note in the pill menu is called "Box model basics", never "Untitled".
 - [ ] Do the same with a first line that starts with "# " and a bold word: the title has no marks in it.
-- [ ] Make a conflict, then open the copy and delete it from ⋯ This note: the conflict line goes away and the dot turns normal at once, before any sync. Do the same with Archive.
+- [ ] Make a conflict, then open the copy and delete it from ⋯: the conflict line goes away and the dot turns normal at once, before any sync. Do the same with Archive.
 - [ ] Close the sidebar while it says Syncing, then open it again: it ends on Synced, Offline or Conflict, never stays on Syncing.
 - [ ] Rename a note and archive a note, then sync: both arrive on GitHub as one commit each.

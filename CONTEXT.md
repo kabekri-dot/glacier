@@ -13,7 +13,7 @@ A named group of notes chosen by hand, e.g. "The Odin Project – Foundations", 
 _Avoid_: Course (its old name, which only fit learning paths), Folder, category, website
 
 **Page group**:
-The notes of one page that are in no Collection, shown together in the ▾ menu under "No collection" once there are two or more, named after the page's title as it was when its first note was made (`pageTitle`). Not something you make or name: it goes away when its notes move to a Collection, all at once from the group or one by one. A note only joins a Collection when you put it there; the one exception is a new note for a page whose other notes you already put in one.
+The notes of one page that are in no Collection, shown together in the notes list (☰ Notes) under "No collection" once there are two or more, named after the page's title as it was when its first note was made (`pageTitle`). Not something you make or name: it goes away when its notes move to a Collection, all at once from the group or one by one. A note only joins a Collection when you put it there; the one exception is a new note for a page whose other notes you already put in one.
 _Avoid_: site folder, website Collection
 
 **Source**:

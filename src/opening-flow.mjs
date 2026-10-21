@@ -108,12 +108,13 @@ export function createOpeningFlow({
       await followCurrentPage();
     },
 
-    // Whether the page behind the sidebar is a website, for the + menu. With no
-    // permission the page can't be read, so it is taken as a website and the
-    // "New note for this page" choice leads to the permission card.
-    async onWebsite() {
-      if (!(await page.hasPermission())) return true;
-      return (await readWebsite()) !== null;
+    // The website behind the sidebar, for the + menu (#121): { url, title },
+    // or null for a new tab or a browser page. With no permission the page
+    // can't be read, so it is taken as a website with no known title, and
+    // its choice leads to the permission card.
+    async website() {
+      if (!(await page.hasPermission())) return { url: null, title: null };
+      return readWebsite();
     },
 
     // Start listening for page changes from the port.

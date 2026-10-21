@@ -6,8 +6,8 @@
 // what each click and key means, is the Editor session's; this draws it.
 //
 //   createPaper({ noteEl, editor, screen, notebook, sketchView, pagesOn,
-//                 settingsOpen, showIfLocked, openLink, hint, onEdited,
-//                 onTyped, showNotice, fitRows, afterDraw })
+//                 settingsOpen, showIfLocked, openLink, hint, onTyped,
+//                 showNotice, fitRows, afterDraw })
 //     noteEl          the paper element
 //     editor          the Editor session
 //     screen          the Screen (the open note, a fresh page)
@@ -18,7 +18,6 @@
 //     showIfLocked()  draw the passcode card for a locked note; true if it did
 //     openLink(title) follow a Link
 //     hint()          the quiet text on an empty line
-//     onEdited()      after an edit drawn in place
 //     onTyped()       after a key typed into the note
 //     showNotice(text, ms)  a short message in the bottom corner
 //     fitRows(blocks) keep the ruled rows in step with the text of these blocks
@@ -61,7 +60,6 @@ export function createPaper({
   showIfLocked,
   openLink,
   hint,
-  onEdited,
   onTyped,
   showNotice,
   fitRows,
@@ -365,7 +363,6 @@ export function createPaper({
     selectWholeNote: () => paperSelection.selectWholeNote(),
     focusedEl: () => focusedEl,
     hint,
-    onEdited,
     onTyped,
     pickSketch: (yes) => (pickSketchOnRender = yes),
   });

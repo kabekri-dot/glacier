@@ -288,3 +288,21 @@ test("a fresh sidebar on a website without a note still shows its empty page", a
   await flow.start();
   assert.deepEqual(shown, [{ type: "pageDraft", page: { url: "https://new.test/x", title: "New" } }]);
 });
+
+// The + choices (#121) name the website behind the sidebar.
+test("the + menu learns the website behind the sidebar with its title", async () => {
+  const { flow, state } = setup({ permission: true });
+  state.tab = { url: "https://mdn.test/flex", title: "Flexbox" };
+  assert.deepEqual(await flow.website(), { url: "https://mdn.test/flex", title: "Flexbox" });
+});
+
+test("a new tab or a browser page is no website for the + menu", async () => {
+  const { flow, state } = setup({ permission: true });
+  state.tab = { url: "chrome://newtab/", title: "New Tab" };
+  assert.equal(await flow.website(), null);
+});
+
+test("without the permission the + menu takes the page as a website with no known title", async () => {
+  const { flow } = setup();
+  assert.deepEqual(await flow.website(), { url: null, title: null });
+});

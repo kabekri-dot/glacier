@@ -6,7 +6,6 @@
 //   visit(title)  the note on screen changed (a tab switch, the menu, a Link,
 //                 a new note); steps forward from a "back" are dropped
 //   previous()    the title ← would open, or null
-//   recent(count) the last notes you were on before this one, newest first
 //   back()        step back and return that title, or null
 export function createNoteHistory() {
   const titles = [];
@@ -27,17 +26,6 @@ export function createNoteHistory() {
 
     previous() {
       return position > 0 ? titles[position - 1] : null;
-    },
-
-    recent(count) {
-      const seen = new Set([titles[position]]);
-      const found = [];
-      for (let at = position - 1; at >= 0 && found.length < count; at--) {
-        if (seen.has(titles[at])) continue;
-        seen.add(titles[at]);
-        found.push(titles[at]);
-      }
-      return found;
     },
 
     back() {

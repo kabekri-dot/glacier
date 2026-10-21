@@ -1061,8 +1061,8 @@ code {
   display: none;
 }
 
-/* The Zen pill: the one control on the page. It shows the open note's title and
-   the sync dot, and opens the menu. */
+/* The top bar (#121): ← and ☰ Notes, the pill with the open note's title, its
+   pen and the sync word, then + and ⋯. */
 .pill-bar {
   position: fixed;
   top: 0.5rem;
@@ -1089,7 +1089,6 @@ code {
   font: inherit;
   font-size: 0.9rem;
   line-height: 1.4rem;
-  cursor: pointer;
   box-shadow: 0 2px 8px var(--shadow);
 }
 
@@ -1113,6 +1112,301 @@ code {
   display: none;
 }
 
+/* ☰ Notes (#121): a pill with a pixel list and the word. */
+.pill-notes {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 1.9rem;
+  padding: 0 0.75rem 0 0.6rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 8px var(--shadow);
+}
+
+.pill-notes img {
+  width: 0.85rem;
+  height: 0.85rem;
+  image-rendering: pixelated;
+}
+
+.pill-notes:hover,
+.pill-notes:focus-visible,
+.pill-notes[aria-expanded="true"],
+.pill-side:hover,
+.pill-side:focus-visible,
+.pill-side[aria-expanded="true"] {
+  border-color: var(--accent);
+  outline: none;
+}
+
+/* The small pixel pen after the title: shown while the title is hovered,
+   a click edits the title in place. */
+.pill-pen {
+  flex: none;
+  display: inline-flex;
+  margin-left: -0.3rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.pill:hover .pill-pen,
+.pill-pen:focus-visible {
+  opacity: 0.75;
+  outline: none;
+}
+
+.pill-pen:hover {
+  opacity: 1;
+}
+
+.pill-pen[hidden],
+.pill-title[hidden] ~ .pill-pen {
+  display: none;
+}
+
+.pill-pen img {
+  width: 0.8rem;
+  height: 0.8rem;
+  image-rendering: pixelated;
+}
+
+/* The sync word (#121): hidden while all is well, a short word in the sync
+   colours when the user is needed. The colours are fixed, the same on every
+   paper (#88). */
+.sync-word {
+  flex: none;
+  padding: 0 0.45rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: none;
+  font: inherit;
+  font-size: 0.7rem;
+  line-height: 1.2rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sync-word[hidden] {
+  display: none;
+}
+
+/* No place chosen yet (#98, ADR 0011): a tiny pixel cloud until one is. */
+.sync-word.is-cloud {
+  width: 0.85rem;
+  height: 0.85rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: url("../art/icon-cloud.svg") center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.sync-word[data-state="offline"] {
+  color: #8a8f99;
+}
+
+.sync-word[data-state="conflict"] {
+  color: #d98a1c;
+}
+
+.sync-word[data-state="error"] {
+  color: #c8443a;
+}
+
+/* The headings under the title (#121), in the note's own font. */
+.title-menu {
+  position: fixed;
+  top: 2.6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  width: max-content;
+  min-width: 10rem;
+  max-width: calc(100% - 1rem);
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 0.4rem;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  box-shadow: 0 6px 20px var(--shadow);
+}
+
+.title-menu[hidden] {
+  display: none;
+}
+
+.title-menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.25rem 0.5rem;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.title-menu-item:hover,
+.title-menu-item:focus {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  outline: none;
+}
+
+.title-menu-level-1 {
+  font-weight: 700;
+}
+
+.title-menu-level-2 {
+  padding-left: 1.2rem;
+}
+
+.title-menu-level-3 {
+  padding-left: 2rem;
+}
+
+.title-menu-empty {
+  margin: 0;
+  padding: 0.25rem 0.5rem;
+  max-width: 16rem;
+  color: color-mix(in srgb, var(--ink) 65%, transparent);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+/* A row in the + and ⋯ menus (#121): a pixel icon, the words with an
+   optional quiet line under them, and the shortcut on the right, faint. */
+.bar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.3rem 0.45rem;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bar-item:hover,
+.bar-item:focus {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  outline: none;
+}
+
+.bar-icon {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  image-rendering: pixelated;
+}
+
+.bar-item-words {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-item-under {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--ink) 55%, transparent);
+}
+
+.bar-item-keys {
+  flex: none;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+.bar-item.is-danger {
+  color: #b4443a;
+}
+
+/* The three big icons with a word under each, at the top of ⋯. */
+.bar-big-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.25rem;
+}
+
+.bar-big {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.5rem 0.2rem 0.4rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.bar-big:hover,
+.bar-big:focus {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  outline: none;
+}
+
+.bar-big-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  image-rendering: pixelated;
+}
+
+.bar-line {
+  width: 100%;
+  margin: 0.15rem 0;
+  border: 0;
+  border-top: 1px solid var(--rule);
+}
+
+/* Delete asks right there in ⋯: the same quiet question as every delete. */
+.bar-question {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.3rem 0.45rem;
+}
+
+.bar-question p {
+  margin: 0;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.bar-question .perm-cancel {
+  padding: 0.25rem 0.8rem;
+}
+
 .new-menu {
   position: fixed;
   top: 2.6rem;
@@ -1121,6 +1415,8 @@ code {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  width: max-content;
+  max-width: calc(100% - 1rem);
   padding: 0.4rem;
   background: var(--paper);
   border: 1px solid var(--rule);
@@ -1137,62 +1433,6 @@ code {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.sync-dot {
-  flex: none;
-  padding: 0;
-  border: 0;
-  cursor: pointer;
-  width: 0.55rem;
-  height: 0.55rem;
-  border-radius: 50%;
-  background: #8a8f99;
-}
-
-/* The sync status (#15): the dot's colour tells the state, hovering it
-   tells it in words. The colours are fixed, the same on every paper (#88);
-   not connected is a quiet grey. */
-.sync-dot[data-state="synced"] {
-  background: #3a9a5b;
-}
-
-.sync-dot[data-state="syncing"] {
-  background: var(--accent);
-  animation: sync-pulse 1s ease-in-out infinite alternate;
-}
-
-.sync-dot[data-state="offline"] {
-  background: transparent;
-  box-shadow: inset 0 0 0 2px #8a8f99;
-}
-
-.sync-dot[data-state="conflict"] {
-  background: #d98a1c;
-  cursor: pointer;
-}
-
-.sync-dot[data-state="error"] {
-  background: #c8443a;
-}
-
-/* Chrome needs its OK to write to the notes folder again (#97): the dot
-   becomes a small pixel folder. */
-.sync-dot[data-needs="folder"] {
-  width: 0.85rem;
-  height: 0.85rem;
-  border-radius: 0;
-  background: url("../art/icon-folder.svg") center / contain no-repeat;
-  image-rendering: pixelated;
-}
-
-/* No place chosen yet (#98): a tiny pixel cloud until one is. */
-.sync-dot[data-needs="cloud"] {
-  width: 0.85rem;
-  height: 0.85rem;
-  border-radius: 0;
-  background: url("../art/icon-cloud.svg") center / contain no-repeat;
-  image-rendering: pixelated;
 }
 
 /* The reminder in the sync box (#98): the cloud beside one sentence, then
@@ -1218,12 +1458,6 @@ code {
 .sync-box-choices {
   display: flex;
   gap: 0.4rem;
-}
-
-@keyframes sync-pulse {
-  to {
-    opacity: 0.3;
-  }
 }
 
 .sync-box {
@@ -1353,38 +1587,6 @@ code {
   color: var(--accent);
 }
 
-/* The pin after the title while a note is open: faint and grey, one click
-   pins the note so it stays when the page changes (red), another unpins. */
-.pill-pin {
-  display: inline-flex;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-}
-
-.pill-pin[hidden] {
-  display: none;
-}
-
-.pill-pin img {
-  width: 0.9rem;
-  height: 0.9rem;
-  image-rendering: pixelated;
-  filter: grayscale(1);
-  opacity: 0.35;
-}
-
-.pill-pin:hover img,
-.pill-pin:focus-visible img {
-  opacity: 0.7;
-}
-
-.pill-pin.is-pinned img {
-  filter: none;
-  opacity: 1;
-}
-
 /* Secret notes (#109): a small pixel lock before the title in the pill and
    the menus, and the passcode card on the paper. */
 .pill-lock,
@@ -1422,22 +1624,6 @@ code {
   font-size: 0.7rem;
   color: var(--accent);
   white-space: nowrap;
-}
-
-/* "1 of 3": the page has more notes (#68). */
-.pill-count {
-  border: none;
-  background: none;
-  padding: 0 0.15rem;
-  font: inherit;
-  font-size: 0.7rem;
-  color: var(--accent);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.pill-count:hover {
-  text-decoration: underline;
 }
 
 /* The open note in Notes for this page. */
@@ -1561,7 +1747,7 @@ code {
 }
 
 .pill-title {
-  cursor: text;
+  cursor: pointer;
 }
 
 /* A fresh page that is not a note yet shows its title faded (#61). */
@@ -1583,17 +1769,6 @@ code {
   background: transparent;
   color: inherit;
   font: inherit;
-}
-
-.pill-menu,
-.pill-note-menu {
-  flex: none;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
 }
 
 .rename-hint {
@@ -1891,8 +2066,7 @@ code {
 }
 
 /* The Shortcuts panel (#20, #76): a drawer on the sidebar's right edge, under
-   the pill bar so its tab stays reachable. It slides in over the right part
-   of the note. */
+   the top bar. It slides in over the right part of the note. */
 .shortcuts {
   position: fixed;
   right: 0;
@@ -1916,8 +2090,7 @@ code {
   }
 }
 
-.shortcuts[hidden],
-.shortcuts-tab[hidden] {
+.shortcuts[hidden] {
   display: none;
 }
 
@@ -1982,23 +2155,6 @@ code {
   margin: 0;
 }
 
-/* The small tab in the pill bar, next to +. */
-.shortcuts-tab {
-  flex: none;
-  width: 1.5rem;
-  height: 1.9rem;
-  padding: 0;
-  border: 1px solid var(--rule);
-  border-radius: 8px;
-  background: var(--paper);
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.85rem;
-  line-height: 1;
-  cursor: pointer;
-  box-shadow: 0 2px 8px var(--shadow);
-}
-
 .panels-card {
   top: 25%;
   padding: 1rem;
@@ -2042,18 +2198,16 @@ html.beside .settings {
   opacity: 0.7;
 }
 
-.pill-note-menu[hidden] {
-  display: none;
-}
-
+/* The ⋯ quick actions, under ⋯ on the right (#121). */
 .note-menu {
   position: fixed;
   top: 2.6rem;
-  left: 0.5rem;
+  right: 0.5rem;
   z-index: 25;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  width: 15rem;
   max-width: calc(100% - 1rem);
   padding: 0.4rem;
   background: var(--paper);
@@ -2064,15 +2218,6 @@ html.beside .settings {
 
 .note-menu[hidden] {
   display: none;
-}
-
-.note-menu-heading {
-  margin: 0 0 0.2rem;
-  padding: 0 0.3rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--ink);
 }
 
 /* Hover icons on note rows and Collection headings, and the Download choice (#71). */
@@ -2274,27 +2419,6 @@ html.beside .settings {
 
 .note-meta .origin-icon {
   margin-right: 0.2rem;
-}
-
-/* The box under the ← button: the last notes you were on (#81). */
-.back-box {
-  position: fixed;
-  top: 2.6rem;
-  left: 0.5rem;
-  z-index: 25;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  max-width: calc(100% - 1rem);
-  padding: 0.4rem;
-  background: var(--paper);
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-  box-shadow: 0 6px 20px var(--shadow);
-}
-
-.back-box[hidden] {
-  display: none;
 }
 
 /* After Sync now, a pixel pencil hops across and writes Just synced in the
@@ -2552,100 +2676,6 @@ html[data-dark] .welcome-scene {
 
 .menu-new-collection-input:focus {
   border-color: var(--accent);
-}
-
-/* The table of contents (#107): a tab on the paper's left edge and a drawer
-   in the note's own font, mirroring the Shortcuts panel on the right. */
-/* Level with the ? tab in the pill bar, so it covers no text. */
-.contents-tab {
-  position: fixed;
-  left: 0;
-  top: 0.55rem;
-  z-index: 25;
-  width: 1.5rem;
-  height: 1.9rem;
-  padding: 0;
-  border: 1px solid var(--rule);
-  border-left: none;
-  border-radius: 0 8px 8px 0;
-  background: var(--paper);
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.95rem;
-  line-height: 1;
-  cursor: pointer;
-  box-shadow: 0 2px 8px var(--shadow);
-}
-
-.contents {
-  position: fixed;
-  left: 0;
-  top: 3rem;
-  bottom: 0;
-  z-index: 26;
-  width: clamp(11rem, 34%, 15rem);
-  overflow-x: hidden;
-  overflow-y: auto;
-  background: var(--paper);
-  border-right: 1px solid var(--rule);
-  box-shadow: 6px 0 20px var(--shadow);
-  font-size: 0.85rem;
-  line-height: 1.35;
-  animation: contents-slide-in 0.18s ease-out;
-}
-
-@keyframes contents-slide-in {
-  from {
-    transform: translateX(-100%);
-  }
-}
-
-.contents[hidden],
-.contents-tab[hidden] {
-  display: none;
-}
-
-.contents-title {
-  margin: 0;
-  padding: 0.4rem 0.7rem;
-  font-size: 1rem;
-  border-bottom: 1px solid var(--rule);
-}
-
-.contents-list {
-  margin: 0;
-  padding: 0.3rem 0.4rem 0.7rem;
-  list-style: none;
-}
-
-.contents-item {
-  display: block;
-  width: 100%;
-  padding: 0.2rem 0.3rem;
-  border: none;
-  border-radius: 6px;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  overflow-wrap: anywhere;
-  cursor: pointer;
-}
-
-.contents-item:hover {
-  background: var(--shadow);
-}
-
-.contents-level-1 {
-  font-weight: 700;
-}
-
-.contents-level-2 {
-  padding-left: 1.1rem;
-}
-
-.contents-level-3 {
-  padding-left: 1.9rem;
 }
 
 /* Notes as pages (#108). With all pages shown, a page break is a quiet

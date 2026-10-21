@@ -16,9 +16,11 @@ which version.
 - `background.js` — opens the sidebar from the toolbar button and the
   keyboard shortcut.
 - `sidebar/` — the Zen panel: `panel.html`, `panel.css` and `panel.js`, which
-  wires the note, the pill and settings together. The parts it draws with live
-  beside it: `menu-view.js` (the ▾ menu, its hover icons and the questions
-  before deleting), `pill-menus.js` (←, + and ⋯), `sync-box-view.js`,
+  wires the note, the top bar and settings together. The parts it draws with
+  live beside it: `menu-view.js` (the notes list behind ☰ Notes, its hover
+  icons and the questions before deleting), `pill-menus.js` (the headings
+  under the title, + and ⋯), `title-edit.js` (renaming in place),
+  `sync-box-view.js` (the sync word and its box),
   `note-meta-view.js` (the Collection line above the text), `cards.js`,
   `downloads.js` (download and print) and `settings-view.js` (settings and the
   Shortcuts panel, also drawn beside the sidebar by `beside.js`).
@@ -26,7 +28,8 @@ which version.
   its SIL Open Font License.
 - `icons/` — the glacier art: the toolbar icon (PNG) and the round settings
   button (SVG).
-- `art/` — one pixel-art panorama (SVG) per Nature paper.
+- `art/` — one pixel-art panorama (SVG) per Nature paper, and the small
+  pixel pictures of the welcome and the top bar.
 - `tools/draw-art.mjs` — a developer tool that draws `icons/` and `art/`.
   Run `node tools/draw-art.mjs` after changing the art; the extension never
   loads it.
