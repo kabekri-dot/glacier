@@ -118,7 +118,7 @@ test("an expired token gives a clear message", async () => {
   const status = await autoSync.syncNow();
   assert.equal(status.state, "error");
   assert.match(syncStatusText(status).detail, /expired/);
-  assert.match(syncStatusText(status).detail, /Where your notes live/);
+  assert.match(syncStatusText(status).detail, /Where your notes are saved/);
 });
 
 test("each status has a short label, and says when the last sync was", () => {

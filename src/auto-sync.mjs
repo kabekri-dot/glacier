@@ -284,6 +284,6 @@ export function syncStatusText(status, now = new Date()) {
         detail: errorDetail(status, last),
       };
     default:
-      return { label: "Saved in this browser", detail: "Saved only in this browser. Choose where your notes live in Settings." };
+      return { label: "Saved in this browser", detail: "Saved only in this browser. Choose where your notes are saved in Settings." };
   }
 }

@@ -43,7 +43,7 @@ export function createSyncBoxView({ wordEl, boxEl, autoSync, signInAgain, reconn
 
   function goToSettings() {
     close();
-    openSettings("notes-home");
+    openSettings("saving");
   }
 
   async function syncNow(run = () => autoSync.syncNow()) {
@@ -70,9 +70,9 @@ export function createSyncBoxView({ wordEl, boxEl, autoSync, signInAgain, reconn
     const text = document.createElement("p");
     text.className = "sync-box-status";
     text.textContent = reminder.text;
-    const keep = menuButton(KEEP_THEM_SAFE, "Choose where your notes live", () => {
+    const keep = menuButton(KEEP_THEM_SAFE, "Choose where your notes are saved", () => {
       close();
-      openSettings("notes-home");
+      openSettings("saving");
     });
     const notNow = menuButton(NOT_NOW, "Ask me again later", () => {
       close();
@@ -102,7 +102,7 @@ export function createSyncBoxView({ wordEl, boxEl, autoSync, signInAgain, reconn
     if (box.last) addLine("sync-box-last", box.last);
 
     const hint =
-      status.state === "off" ? "Choose where your notes live"
+      status.state === "off" ? "Choose where your notes are saved"
       : box.signIn ? "Sign in with Google again, then sync"
       : box.reconnect ? "Let Glacier write to your notes folder again, then sync"
       : "Pull and push your notes right away";
@@ -129,8 +129,8 @@ export function createSyncBoxView({ wordEl, boxEl, autoSync, signInAgain, reconn
       const settings = document.createElement("button");
       settings.type = "button";
       settings.className = "sync-box-link";
-      settings.textContent = "Where your notes live";
-      settings.title = "Change where your notes live";
+      settings.textContent = "Where your notes are saved";
+      settings.title = "Change where your notes are saved";
       settings.addEventListener("click", goToSettings);
       parts.push(settings);
     }

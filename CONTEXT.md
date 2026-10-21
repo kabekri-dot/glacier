@@ -25,11 +25,11 @@ A drawing inside a note, made of shapes and free text, kept as a picture file ne
 _Avoid_: Canvas, diagram, whiteboard, image
 
 **Page break**:
-A line `%%page%%` that splits a note into pages, each as long as its text, shown one at a time when "Notes as pages" is on (#108). The note stays one file. Not to be confused with a note's page, its Source.
+A line `%%page%%` that splits a note into pages, each as long as its text, shown one at a time when "Split long notes into pages" is on (#108, #124). The note stays one file. Not to be confused with a note's page, its Source.
 _Avoid_: Section, sheet, chapter
 
 **Paper**:
-Where the open note is drawn and written on: ruled lines, the line being edited shown as its Markdown, every other line in its finished look, sketches between them. With "Notes as pages" on, it shows one page at a time.
+Where the open note is drawn and written on: ruled lines, the line being edited shown as its Markdown, every other line in its finished look, sketches between them. With "Split long notes into pages" on, it shows one page at a time.
 _Avoid_: Editor (that is the code that decides what typing does), canvas, page (a note's page is its Source)
 
 **Notebook**:
@@ -63,7 +63,7 @@ _Avoid_: Custom font, font setting
 ## Keeping notes safe
 
 **Notes Home**:
-The one place outside the browser that holds a copy of the Notebook as Markdown files: a Glacier folder in Google Drive, a folder on this computer, or a GitHub repository (the Notes Repo). Called "Where your notes live" on screen. There is at most one; without it the notes live only in this browser (ADR 0011).
+The one place outside the browser that holds a copy of the Notebook as Markdown files: a Glacier folder in Google Drive, a folder on this computer, or a GitHub repository (the Notes Repo). Called "Where your notes are saved" on screen (#124). There is at most one; without it the notes live only in this browser (ADR 0011).
 _Avoid_: cloud, server, remote, account
 
 **Notes Repo**:
@@ -79,7 +79,7 @@ A second note created when the same note was changed in two places before Sync, 
 _Avoid_: Duplicate, merge conflict
 
 **Export**:
-Markdown files made by hand from the Notebook: one note as a `.md` file, or a Collection, the Archive or the whole Notebook as a zip. Restore from backup file turns a zip back into notes without overwriting any.
+Markdown files made by hand from the Notebook: one note as a `.md` file, or a Collection, the Archive or the whole Notebook as a zip. Restore notes from a download (in Settings, Back up and restore) turns a zip back into notes without overwriting any.
 _Avoid_: Backup, snapshot, Import
 
 **Archive**:

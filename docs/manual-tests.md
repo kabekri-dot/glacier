@@ -11,6 +11,22 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Settings part 1: plain names, search, parts with their values, gear (#124)
+
+- [ ] Reload the extension first. The round glacier button has a small pixel gear on its top right edge. Hover it: it says "Settings" and the gear's ring takes the accent colour. The gear never moves.
+- [ ] Open Settings beside the sidebar, then again inside it (Help and shortcuts, turn off "Next to the sidebar"). Both show "Search settings" on top with the caret in it, and below it seven closed parts with a pixel picture each: How your notes look, Pages, When you change tabs, Where your notes are saved, Back up and restore, Secret notes, Help and shortcuts.
+- [ ] Each closed part shows its value under its name, for example "Glacier paper, its own font, text 100 %", "Each note on one long page", "Opens the note for each website", "Only in this browser", "No secret notes yet".
+- [ ] Click How your notes look: it opens. Click Pages: Pages opens and How your notes look closes. Click Pages again: it closes. Nothing else folds inside a part.
+- [ ] Change the paper, the font and the text size, then close the part: its line shows the new paper, font and size at once. Same with "Split long notes into pages" (the Pages line says "Long notes split into pages"), the website choice under When you change tabs, and the place under Where your notes are saved.
+- [ ] Type "passcode" in the search: only Secret notes shows, opened. Type "glacier": How your notes look and When you change tabs show, both open. Type "zebra": "No setting matches." Press Esc: the search clears and every part is back. Press Esc again: Settings close.
+- [ ] Pages has two switches, "Split long notes into pages" (Turn them like a notebook) and "Show the New page button" (At the end of a note that has one page). Each works at once on the paper.
+- [ ] When you change tabs reads "When you go to another website, Glacier" with "opens the note for that website" or "keeps your note open", then "On a new tab, Glacier" with "keeps your note open" or "starts a new note", then the "Show the back button" switch. Each works as before.
+- [ ] Where your notes are saved lists "Only in this browser", "In a folder on this computer", "In Google Drive" and "On GitHub", with Sync now when connected. Switching place works as before.
+- [ ] Back up and restore: Download all notes, Download the archive, the Collections, and Restore notes from a download, each with a pixel picture. Each works, also beside the sidebar.
+- [ ] Help and shortcuts: the "Next to the sidebar" switch (When the page has room. Otherwise it opens inside.) moves Settings at once, and asks the browser when the permission is missing. The Shortcuts panel switch shows and hides the panel. Keyboard shortcuts closes Settings and opens the Shortcuts panel. Help opens the help page in a new tab. The version shows at the end, for example "Glacier 2.4.0".
+- [ ] Click "Where your notes are saved" in the box of a sync word: Settings open with that part open.
+- [ ] Break it: search for something, then click a part's name (the search clears, that part stays open); turn off "Next to the sidebar" on a page that can't show panels beside; open Settings with the sidebar very narrow (a long value ends in … and never wraps).
+
 ### Top bar part 3: the notes list (#123)
 
 - [ ] Reload the extension first. Click ☰ Notes: the search box is on top with the caret in it, and ⤢ beside it. Type part of a title: the results replace the list. Type a word no note has: "No notes match “…”." and a "New note “…”" button. Click it: a fresh page with that title ready.
@@ -70,7 +86,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 - [ ] ⋯, Delete: the menu asks right there "Delete “title” for good?" with Delete and Keep. The paper stays as it was. Click Keep: Delete is back in the menu. Press Esc while it asks: the same.
 - [ ] ⋯, Delete, then Delete: the note goes, the menu closes and "Deleted “title”." shows with Undo. Click Undo: the note is back with its text.
 - [ ] With GitHub, Google Drive or a folder chosen, the question also says where else it is removed from.
-- [ ] ⋯, Keyboard shortcuts: the Shortcuts panel slides in. ⋯, Help: a new tab opens on Glacier's help page with ten common questions.
+- [ ] ⋯, Keyboard shortcuts: the Shortcuts panel slides in. ⋯, Help: a new tab opens on Glacier's help page with its common questions.
 - [ ] Open note A, then note B. Hover ←: "Back to A". Click it: A opens. Holding it or a right click opens no list.
 - [ ] Turn the network off (devtools, Offline) with a Notes Home chosen, then type: a grey "Offline" shows after the title. Click it: the sync box opens. Turn the network on: after the next sync the word goes.
 - [ ] While all is synced, nothing shows after the title. With notes only in this browser, the tiny pixel cloud sits there instead; click it for the box.
@@ -700,7 +716,7 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 - [ ] **Not now** leads to the empty paper, where typing makes a note without a page.
 - [ ] The first start shows the welcome: a pixel picture of a glacier (at night on dark papers), "Welcome to Glacier", three lines with small pictures, a soft "Start writing" button and a tip, all on the ruled lines and clear of the pill (#90). Start writing or opening a note makes it go for good.
 - [ ] Installing shows no permission warning. The first time settings open, Glacier's own card explains drawing beside the sidebar, and the browser asks only after **Allow** (#21).
-- [ ] Allowed, settings open beside the sidebar on websites and inside it on browser pages. Declined, they open inside. Settings, Panels changes it later.
+- [ ] Allowed, settings open beside the sidebar on websites and inside it on browser pages. Declined, they open inside. Settings, Help and shortcuts, Next to the sidebar changes it later.
 
 ### Notes for the page you're on
 
@@ -838,10 +854,10 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 - [ ] With notes as pages, one page shows New page at the end of the paper (× hides it, Settings shows it again), and two pages show ‹ 1 of 2 › and + New page under the bar.
 - [ ] Selected text in a note shows "Extract to a new note" next to it.
 
-### Export and Restore from backup file
+### Export and Restore notes from a download
 
-- [ ] Open settings, then Where your notes live: "Export everything" and "Restore from backup file" sit under "Export", and hovering shows what they do.
-- [ ] "Export everything" downloads a zip named "Glacier notes" with the date.
+- [ ] Open settings, then Back up and restore: "Download all notes", "Download the archive" and "Restore notes from a download" are there, each with its pixel picture, and hovering shows what they do.
+- [ ] "Download all notes" downloads a zip named "Glacier notes" with the date.
 - [ ] Unzip it: notes with a Collection are in `collections/<Collection>/`, all others in `notes/`, each file named after its title with a short block of details at the top.
 - [ ] In Obsidian, "Open folder as vault" on the unzipped folder: the notes open and clicking a Link goes to the other note.
 - [ ] Restore from that zip again: a message says no notes were added and all were already here, and nothing changed.
@@ -875,37 +891,37 @@ Connect the same Notes repo in Chrome and in Firefox first (see #14).
 
 Connect the same Notes repo in Chrome and in Firefox first (see #14).
 
-- [ ] Type in a note in Chrome and stop. Nothing shows after the title while it syncs and once it has. Settings, Where your notes live says when the last sync was. On GitHub the note's file has your text.
+- [ ] Type in a note in Chrome and stop. Nothing shows after the title while it syncs and once it has. Settings, Where your notes are saved says when the last sync was. On GitHub the note's file has your text.
 - [ ] Open Firefox's sidebar: the note shows the text from Chrome. If it was already open on screen, it shows the new text after a moment.
 - [ ] Make a new note in Chrome, then open the sidebar in Firefox: the note is there. Rename it in Firefox, open Chrome's sidebar again: it has the new name, and on GitHub the old file is gone.
 - [ ] Turn the network off (devtools, Offline) and type. A grey "Offline" shows after the title, and hovering it says your changes are kept. Turn the network on again: the word goes and GitHub has the text.
 - [ ] Change the same note in both browsers while one of them is offline, then let both sync. An orange "2 versions" shows, and the other text is kept as "Title (conflict date)".
 - [ ] Click "Offline": the box has the status, the last sync and a "Sync now" button. Pressing it shows "Syncing…" and then the result for a moment.
-- [ ] Revoke or delete the token on GitHub, then type: a red "Sign in again" shows, and its box says GitHub no longer accepts your token, it may have expired, and to paste a new one under Where your notes live. Pasting a new token there makes it sync again and the word goes.
+- [ ] Revoke or delete the token on GitHub, then type: a red "Sign in again" shows, and its box says GitHub no longer accepts your token, it may have expired, and to paste a new one under Where your notes are saved. Pasting a new token there makes it sync again and the word goes.
 - [ ] Without a Notes repo connected, a tiny pixel cloud sits after the title, hovering it says your notes live only in this browser, and its box offers "Choose where they live" instead of "Sync now".
 
 ### Connect GitHub and the first sync
 
 You need a private GitHub repo for your notes and a fine grained token for it (GitHub, Settings, Developer settings, Fine grained tokens), limited to that repo with Contents set to read and write. Put a few notes in it first, for example from an Export zip, in `collections/` and `notes/`.
 
-- [ ] Click the tiny pixel cloud after the title and then "Choose where they live" (or "Where your notes live" in the box of a sync word when connected). It opens settings at Where your notes live; choosing GitHub shows Repo and Token fields and a short text about the token.
+- [ ] Click the tiny pixel cloud after the title and then "Choose where they live" (or "Where your notes are saved" in the box of a sync word when connected). It opens settings at Where your notes are saved; choosing GitHub shows Repo and Token fields and a short text about the token.
 - [ ] The × in the settings header returns to the note that was open.
 - [ ] Type the repo as `yourname/notes` (pasting its GitHub address works too), paste the token, press "Connect and sync", then Switch. A screen shows Connecting to GitHub, then Downloading 1 of N notes counting up, then Combining notes, then Ready, and says how many notes came in.
 - [ ] "Start writing" closes settings. Every note from the repo is in the menu, with its Collection, text and backlinks.
 - [ ] Typing just "notes" (no owner) says to type it as owner and name.
 - [ ] A wrong token says GitHub didn't accept it. A repo name that doesn't exist says it couldn't find that repo. Nothing in the Notebook changes.
 - [ ] With the network off (devtools, Offline), it says it couldn't reach GitHub.
-- [ ] Open "Where your notes live" again: it says which repo is connected, the repo is filled in and the token field says it is saved. Change the repo and sync again without pasting the token.
+- [ ] Open "Where your notes are saved" again: it says which repo is connected, the repo is filled in and the token field says it is saved. Change the repo and sync again without pasting the token.
 - [ ] A note you already had with different text is kept, and the repo's version shows up next to it as "Title (conflict date)".
 - [ ] The token is in neither the repo nor an Export zip. It shows only in the extension's storage (devtools of the sidebar, Application or Storage, Extension storage).
 
 ### Export: this note, a collection, or everything
 
-- [ ] Open ⋯: "Download" is there. Open settings (the round glacier button), then Where your notes live: under a small "Export" heading are a Collection list, "Export a collection", "Export everything" and "Restore from backup file". Hovering each shows what it does.
+- [ ] Open ⋯: "Download" is there. Open settings (the round glacier button), then Back up and restore: Download all notes, Download the archive, the Collections list and Restore notes from a download. Hovering each shows what it does.
 - [ ] Download, Markdown saves one `.md` file named after the note's title, with its text. A note with a sketch comes as a zip with its svg files.
-- [ ] Pick a Collection and press "Export a collection": the zip has only that Collection's notes.
-- [ ] "Export everything" downloads a zip of every note, as before.
-- [ ] "Restore from backup file" works as before (see section 2).
+- [ ] Click a Collection under Collections: the zip has only that Collection's notes.
+- [ ] "Download all notes" downloads a zip of every note, as before.
+- [ ] "Restore notes from a download" works as before (see section 2).
 
 ### Rename with the pen after the title
 
@@ -919,36 +935,36 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 
 ### Settings, Classic papers and handwriting
 
-- [ ] With "Inside the sidebar" chosen under Panels (#21): a round glacier button sits in the bottom right corner. Clicking it opens settings over the lower part of the sidebar, with the note still showing above. Clicking it again, the × in the header, or Esc closes them.
-- [ ] Paper, Writing and Where your notes live fold open and closed when you click their names. Open all three and scroll: the "Settings" header stays on top.
-- [ ] Under Paper, Classics, choose each one in turn: Blank Page, School Notebook (blue lines and a red margin line), Chalkboard (dark, chalk white writing), Moleskine (very faint lines) and Engineer (a green grid, darker every fifth line). The note changes at once.
+- [ ] With "Next to the sidebar" off under Help and shortcuts (#21): a round glacier button sits in the bottom right corner. Clicking it opens settings over the lower part of the sidebar, with the note still showing above. Clicking it again, the × in the header, or Esc closes them.
+- [ ] Settings shows seven parts, each closed with its current value under its name. Click one: it opens and the one that was open closes. Click it again: it closes. Open How your notes look and scroll: the "Settings" header and the search stay on top.
+- [ ] Under How your notes look, Classics, choose each one in turn: Blank Page, School Notebook (blue lines and a red margin line), Chalkboard (dark, chalk white writing), Moleskine (very faint lines) and Engineer (a green grid, darker every fifth line). The note changes at once.
 - [ ] Close the sidebar and open it again: the paper you chose is still there. In the other browser it is its own choice.
 - [ ] On Chalkboard, the pill, the menu, the search box and the settings are all readable.
-- [ ] Under Writing, pick each font: Shantell Sans, Patrick Hand, Kalam Light, Caveat, Architects Daughter. The note changes at once.
+- [ ] Under How your notes look, pick each font: Shantell Sans, Patrick Hand, Kalam Light, Caveat, Architects Daughter. The note changes at once.
 - [ ] With School Notebook and each font, set the text size to 85 %, 100 % and 150 %: the letters sit just on the ruled lines, from the top of the note down to the last line, also in a long note.
 - [ ] Write a heading, a line with `inline code`, a code block and a bullet list, then a few plain lines below them: the plain lines are still on the ruled lines. Same on Engineer.
-- [ ] Choose Caveat, then switch the paper a few times: Caveat stays. Pick "Theme default": each paper uses its own font again (the list shows which, for example "Theme default (Patrick Hand)").
+- [ ] Choose Caveat, then switch the paper a few times: Caveat stays. Pick "The paper's own font": each paper uses its own font again (the list shows which, for example "The paper's own font (Patrick Hand)").
 - [ ] Drag the text size slider: the note grows and shrinks while you drag, and the line spacing grows with it. It goes from 85 % to 150 %.
 - [ ] Turn the network off (devtools, Offline) and reload the sidebar: every font still shows. In devtools, Network, the fonts come from the extension itself.
 - [ ] Clicking in the note while settings are open closes them and puts the cursor where you clicked. Ctrl+K and the pill menu also close them.
 
-### Tabs and notes settings
+### When you change tabs settings
 
-- [ ] Open settings and fold open "Tabs and notes". It has three choices: when I switch tabs, on a page that isn't a website, and the previous note button.
-- [ ] Leave "When I switch tabs" on "Show the note of the tab I'm on". Open a note from the menu, then switch to a website tab: the note of that tab shows.
-- [ ] Choose "Keep a note I opened myself", open a note without a page from the menu, then switch tabs: the note stays, without reopening the sidebar.
-- [ ] Leave "On a page that isn't a website" on "Keep the open note", then switch to a new tab: the note stays. Choose "Show an empty page for a new note" and switch to a new tab again: the empty paper shows, and typing makes a note without a page.
-- [ ] Choose "Hidden" for the previous note button: the ← button leaves the pill at once. Choose "Shown": it comes back when there is a note to go back to.
+- [ ] Open settings and open "When you change tabs". It has two sentences to finish and one switch: when you go to another website, on a new tab, and Show the back button.
+- [ ] Leave "When you go to another website, Glacier" on "opens the note for that website". Open a note from the menu, then switch to a website tab: the note of that tab shows.
+- [ ] Choose "keeps your note open", open a note without a page from the menu, then switch tabs: the note stays, without reopening the sidebar.
+- [ ] Leave "On a new tab, Glacier" on "keeps your note open", then switch to a new tab: the note stays. Choose "starts a new note" and switch to a new tab again: the empty paper shows, and typing makes a note without a page.
+- [ ] Turn off "Show the back button": the ← button leaves the bar at once. Turn it on: it comes back when there is a note to go back to.
 - [ ] Close the sidebar and open it again: all three choices are still as you left them.
 
 ### Nature papers and pixel art
 
 - [ ] The toolbar button shows the glacier picture: white ice on a blue sky above blue water. Same in Chrome and Firefox.
-- [ ] The round button in the bottom right corner shows the same glacier, and so does the "Settings" header next to its title.
-- [ ] Open settings, then Paper: two groups, "Nature" (Glacier, Forest, Ocean, Desert, Volcano, Aurora (dark)) and "Classics" below it. Each Nature paper's swatch shows a bit of its picture.
+- [ ] The round button in the bottom right corner shows the same glacier, with a small pixel gear on its top right edge, and so does the "Settings" header next to its title.
+- [ ] Open settings, then How your notes look: two groups, "Nature" (Glacier, Forest, Ocean, Desert, Volcano, Aurora (dark)) and "Classics" below it. Each Nature paper's swatch shows a bit of its picture.
 - [ ] On a fresh start (or after removing the extension's storage) the paper is Glacier.
 - [ ] Choose each Nature paper in turn. Along the bottom of the page sits a faint pixel landscape that fades out upwards: glaciers and ice on water, pine forest by a lake, sailboats and islands on the sea, dunes and cacti, smoking volcanoes with lava, mountains under a green aurora at night. Each one changes as it goes to the right, it doesn't repeat the same picture.
-- [ ] Each Nature paper uses its own font with "Theme default": Glacier, Ocean and Aurora Shantell Sans, Forest Patrick Hand, Desert Caveat, Volcano Kalam Light.
+- [ ] Each Nature paper uses its own font with "The paper's own font": Glacier, Ocean and Aurora Shantell Sans, Forest Patrick Hand, Desert Caveat, Volcano Kalam Light.
 - [ ] Make the sidebar wider and narrower: the landscape stays the same height and a wider sidebar shows more of it.
 - [ ] Change the text size from 85 % to 150 %: the landscape keeps its height.
 - [ ] Write a long note and scroll to the end: the last line sits above the landscape, with some room between them. No text is ever drawn on it.
@@ -958,11 +974,11 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 
 ### Shortcuts panel
 
-- [ ] Open settings, then Shortcuts panel. It starts as Off, and no cheat sheet shows.
-- [ ] Choose On, or open ⋯, Keyboard shortcuts: a Shortcuts sheet slides in from the right edge of the sidebar. It lists the start of a line (/, #, ##, ###, -, three backticks), anything in a line ([[Title]], bold, code) and the keys (Enter, Backspace, up and down, Esc, Ctrl A twice, Ctrl C, Ctrl K).
+- [ ] Open settings, then Help and shortcuts. The Shortcuts panel switch starts off, and no cheat sheet shows.
+- [ ] Turn it on, or open ⋯, Keyboard shortcuts: a Shortcuts sheet slides in from the right edge of the sidebar. It lists the start of a line (/, #, ##, ###, -, three backticks), anything in a line ([[Title]], bold, code) and the keys (Enter, Backspace, up and down, Esc, Ctrl A twice, Ctrl C, Ctrl K).
 - [ ] Click the arrow in its header, or click in the note: the sheet closes. ⋯, Keyboard shortcuts opens it again.
 - [ ] Fold it, close and reopen the sidebar: it is still folded. Open it, reopen the sidebar: it is still open.
-- [ ] Choose Off in settings: the sheet goes away. There is no `?` tab in the bar.
+- [ ] Turn the switch off in settings: the sheet goes away. There is no `?` tab in the bar.
 
 ### Panels beside the sidebar
 
@@ -971,15 +987,15 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 - [ ] Press Esc on the card: it closes and nothing is chosen. Click the glacier button again: the card shows again.
 - [ ] Click Allow: now the browser's prompt shows. Accept it: settings open next to the sidebar, over the right edge of the web page. The note in the sidebar keeps its full width.
 - [ ] With settings beside the sidebar, change the paper, the font and drag the text size: the note changes at once, also while you drag.
-- [ ] Change "Tabs and notes", and the previous note button beside the sidebar: each one works at once in the sidebar.
+- [ ] Change "When you change tabs", and the back button switch beside the sidebar: each one works at once in the sidebar.
 - [ ] Close settings with the ×, with Esc, with the glacier button and by clicking in the note. Each way closes them.
-- [ ] Under Where your notes live beside the sidebar: Sync now, Export a collection, Export everything and Restore from backup file all work, and the downloads and messages show in the sidebar. With no repo connected, connecting one shows the first sync steps beside the sidebar.
+- [ ] Beside the sidebar, Sync now under Where your notes are saved, and a Collection, Download all notes, Download the archive and Restore notes from a download under Back up and restore all work, and the downloads and messages show in the sidebar. With no repo connected, connecting one shows the first sync steps beside the sidebar.
 - [ ] Switch to another website tab with settings open: they go with you. Go back: they are there and not left behind on the other tab.
 - [ ] Follow a link in the page: after it loads, settings come back beside the sidebar.
 - [ ] On a new tab, a browser settings page (`chrome://settings` or `about:preferences`) and a PDF, open settings: they open inside the sidebar. Switch back to a website: they move beside it.
 - [ ] Close the sidebar with settings beside it: within a few seconds they are gone from the page.
-- [ ] In settings, under Panels, choose "Inside the sidebar": settings move inside at once. Choose "Beside the sidebar": they move out again.
-- [ ] Take the permission back in the browser (Chrome: Details, Site access; Firefox: Permissions tab of the add-on). Open settings: they open inside the sidebar. Choose "Beside the sidebar" under Panels: the browser asks again.
+- [ ] In settings, under Help and shortcuts, turn off "Next to the sidebar": settings move inside at once. Turn it on: they move out again.
+- [ ] Take the permission back in the browser (Chrome: Details, Site access; Firefox: Permissions tab of the add-on). Open settings: they open inside the sidebar. Turn on "Next to the sidebar" under Help and shortcuts: the browser asks again.
 - [ ] Fresh start again, and this time click "Not now, open it inside" on the card: settings open inside the sidebar, no browser prompt shows, and everything else works as before. Reopen the sidebar: the card doesn't come back.
 - [ ] Fresh start, decline the browser's prompt after Allow: settings open inside the sidebar.
 - [ ] After allowing, + and "New note for this page" on a new page doesn't ask for the tabs permission again: the page's title fills in.
@@ -1005,8 +1021,8 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 - [ ] Click Unarchive: the label goes, and the note is back in its Collection (or No collection) in the list.
 - [ ] A link to an archived note in another note still opens it.
 - [ ] After a sync, the archived note's file is under the archive folder on GitHub (for example archive/collections/Collection name/Title.md), and it moves back out after Unarchive and a sync.
-- [ ] In Settings, Where your notes live, under Export: "Export archive" downloads a zip with only the archived notes.
-- [ ] "Export everything" includes archived notes, and "Restore from backup file" brings them back as archived.
+- [ ] In Settings, Back up and restore: "Download the archive" downloads a zip with only the archived notes.
+- [ ] "Download all notes" includes archived notes, and "Restore notes from a download" brings them back as archived.
 
 ### The bar on notes with two versions
 
@@ -1020,11 +1036,11 @@ Make a conflict first (see Conflict Copies, #16).
 
 ### Why a panel opens inside the sidebar
 
-Reload the extension with the reload button first. In Settings, Panels, choose "Beside the sidebar".
+Reload the extension with the reload button first. In Settings, Help and shortcuts, turn on "Next to the sidebar".
 
 - [ ] On a new tab, open Settings: it opens inside the sidebar with the line "This page doesn't allow panels beside the sidebar, so it opens here." at its top.
 - [ ] On a website such as the Odin Project, Settings open beside the sidebar with no line.
-- [ ] Choose "Inside the sidebar": on a website and on a new tab, no line shows.
+- [ ] Turn off "Next to the sidebar": on a website and on a new tab, no line shows.
 - [ ] Take the permission back in the browser's extension settings: no line shows on a new tab.
 
 ### Making a note: write straight away, no form

@@ -589,6 +589,60 @@ const PICTURES = {
     ],
     colours: { o: "#3f6c9e", b: "#6aa8e6", w: "#f8fbff" },
   },
+  // The parts of Settings (#124): a paint palette for How your notes look,
+  // two browser tabs for When you change tabs.
+  palette: {
+    rows: [
+      "...ooooo....",
+      "..owwwwwoo..",
+      ".owrrwwwwwo.",
+      "owwrrwwbbwo.",
+      "owwwwwwbbwwo",
+      "owggwwwwwwwo",
+      "owggwwwoowwo",
+      "owwwwwo..owo",
+      ".owyywo..oo.",
+      ".owyywwo....",
+      "..owwwwwo...",
+      "...ooooo....",
+    ],
+    colours: { o: "#8a6a4a", w: "#f3e3c3", r: "#d9584a", b: "#4a86cf", g: "#5d9a5a", y: "#e8b04f" },
+  },
+  tabs: {
+    rows: [
+      "............",
+      ".oooo.......",
+      ".obbo.oooo..",
+      ".obbooowwo..",
+      "oooooooooooo",
+      "obbbbbbbbbbo",
+      "obwwwwwwwwbo",
+      "obwwwwwwwwbo",
+      "obwwwwwwwwbo",
+      "obwwwwwwwwbo",
+      "oooooooooooo",
+      "............",
+    ],
+    colours: { o: "#3f6c9e", b: "#6aa8e6", w: "#f8fbff" },
+  },
+  // The small gear on the round glacier button, so it reads as Settings.
+  gear: {
+    rows: [
+      ".....oo.....",
+      "..o.oggo.o..",
+      ".oooggggooo.",
+      "..oggggggo..",
+      ".oggooooggo.",
+      "ooggo..oggoo",
+      "ooggo..oggoo",
+      ".oggooooggo.",
+      "..oggggggo..",
+      ".oooggggooo.",
+      "..o.oggo.o..",
+      ".....oo.....",
+    ],
+    colours: { o: "#4a5566", g: "#c3ccd8" },
+  },
 };
 
 function pictureSvg({ rows, colours }) {

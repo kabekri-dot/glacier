@@ -32,7 +32,11 @@ Right after a delete or an archive, click Undo in the notice at the bottom. An a
 
 ## How do I keep my notes safe?
 
-Open Settings with the round glacier button, then Where your notes live. Choose Google Drive, a folder on this computer or a GitHub repository. Glacier then keeps a copy there by itself and brings in what you wrote on another computer.
+Open Settings with the round glacier button (the one with the small gear), then Where your notes are saved. Choose In Google Drive, In a folder on this computer or On GitHub. Glacier then keeps a copy there by itself and brings in what you wrote on another computer.
+
+## How do I find a setting?
+
+Open Settings with the round glacier button and type in "Search settings" on top, for example "font" or "passcode". Every part that matches opens. Each closed part shows what it is set to now, so you can see everything at a glance. To make a copy of all your notes, open Back up and restore and choose Download all notes.
 
 ## What does the word next to the title mean?
 
