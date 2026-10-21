@@ -175,8 +175,12 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
       .filter((piece) => piece.text !== "");
   }
 
-  function titleTaken(title) {
-    return storage.getNote(title) !== undefined;
+  // Titles that differ only in capitals count as the same (#118): Windows
+  // and macOS would put both notes in one file. `except` is the note being
+  // renamed, which may take its own title in other capitals.
+  function titleTaken(title, except) {
+    const lower = title.toLowerCase();
+    return storage.allNotes().some((note) => note.title !== except && note.title.toLowerCase() === lower);
   }
 
   // Titles are unique across the whole Notebook (ADR 0005). On a clash we add
@@ -275,10 +279,57 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
     return storage.allNotes().filter((note) => Boolean(note.archived) === archived && note.course && sameCollection(note.course, course));
   }
 
+  // Give a note a new, free title and rewrite every exact Link to it in
+  // every note that can be read (ADR 0005), keeping it in the recent notes.
+  function retitle(oldTitle, title) {
+    for (const other of readableNotes()) {
+      if (other.locked) continue;
+      const body = rewriteLinks(other.body, oldTitle, title);
+      if (body !== other.body) {
+        store({ ...other, body });
+      }
+    }
+    const before = readable(oldTitle);
+    const stored = storage.getNote(oldTitle);
+    storage.deleteNote(oldTitle);
+    sealed.forget(oldTitle);
+    storage.putNote({ ...stored, title });
+    const renamed = before.locked ? readable(title) : store(withTitle(before, title));
+    const recent = storage.getMeta(RECENT);
+    if (recent) {
+      storage.putMeta(RECENT, recent.map((t) => (t === oldTitle ? title : t)));
+    }
+    return renamed;
+  }
+
+  // Notes saved before #118 may have titles that differ only in capitals.
+  // All but one in each group get a number, Links to them following, so each
+  // has its own file. The one kept is a note in `synced` (its file is already
+  // there), or else the oldest. A locked secret note can't be renamed until
+  // it is opened, so it waits for a later turn.
+  function numberTitleCases(synced = new Set()) {
+    const groups = new Map();
+    for (const note of storage.allNotes()) {
+      const key = note.title.toLowerCase();
+      groups.set(key, [...(groups.get(key) ?? []), note]);
+    }
+    for (const group of groups.values()) {
+      if (group.length < 2) continue;
+      group.sort(
+        (a, b) => synced.has(b.title) - synced.has(a.title) || (a.created ?? "").localeCompare(b.created ?? ""),
+      );
+      for (const note of group.slice(1)) {
+        if (readable(note.title).locked) continue;
+        retitle(note.title, uniqueTitle(note.title));
+      }
+    }
+  }
+
   // Notes saved before #73 may hold one Collection in different capitals.
   mergeCollectionCases();
+  numberTitleCases();
 
-  const notesSync = createNotesSync({ storage, sealed, uniqueTitle, mergeCollectionCases });
+  const notesSync = createNotesSync({ storage, sealed, uniqueTitle, mergeCollectionCases, numberTitleCases });
 
   return {
     // Every Note currently in the Notebook, archived ones too.
@@ -519,27 +570,10 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
       if (readable(oldTitle).locked) {
         return { ok: false, locked: true };
       }
-      if (titleTaken(title)) {
+      if (titleTaken(title, oldTitle)) {
         return { ok: false, suggestion: uniqueTitle(title, note.course) };
       }
-      for (const other of readableNotes()) {
-        if (other.locked) continue;
-        const body = rewriteLinks(other.body, oldTitle, title);
-        if (body !== other.body) {
-          store({ ...other, body });
-        }
-      }
-      const before = readable(oldTitle);
-      const stored = storage.getNote(oldTitle);
-      storage.deleteNote(oldTitle);
-      sealed.forget(oldTitle);
-      storage.putNote({ ...stored, title });
-      const renamed = before.locked ? readable(title) : store(withTitle(before, title));
-      const recent = storage.getMeta(RECENT);
-      if (recent) {
-        storage.putMeta(RECENT, recent.map((t) => (t === oldTitle ? title : t)));
-      }
-      return { ok: true, note: renamed };
+      return { ok: true, note: retitle(oldTitle, title) };
     },
 
     // Delete a note for good (#57). Links to it stay in other notes' text and

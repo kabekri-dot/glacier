@@ -4,7 +4,7 @@
 // changed on both sides is never overwritten but kept as a Conflict Copy.
 // The remote is plugged in from outside (ADR 0003).
 //
-//   createNotesSync({ storage, sealed, uniqueTitle, mergeCollectionCases })
+//   createNotesSync({ storage, sealed, uniqueTitle, mergeCollectionCases, numberTitleCases })
 //   .firstSync(remote, onProgress)   .sync(remote)
 //   .switchNotesHome(place, remote, onProgress)   .notesHome()
 //   .lastSynced()   .conflictCopies()   .conflictCopyPairs()
@@ -13,7 +13,7 @@ import { fewAtATime } from "./few-at-a-time.mjs";
 import { isNoteFile, isNotebookFile, isSketchFile, nextSketchNumber, noteFiles, noteFromFile, noteToFile, sameNote, sketchEmbed } from "./note-file.mjs";
 import { sketchFilePath, sketchFromSvg, sketchToSvg } from "./sketch-file.mjs";
 
-export function createNotesSync({ storage, sealed, uniqueTitle, mergeCollectionCases }) {
+export function createNotesSync({ storage, sealed, uniqueTitle, mergeCollectionCases, numberTitleCases }) {
   // What each Notes Repo file held when this browser last synced it, keyed by
   // path: `{ title, version, text }`. Comparing a note's file with it tells
   // which side changed since (#15).
@@ -41,6 +41,12 @@ export function createNotesSync({ storage, sealed, uniqueTitle, mergeCollectionC
   function unchangedSince(note, entry, path) {
     const was = noteFromFile(path, entry.text);
     return note.title === was.title && sameNote(note, was);
+  }
+
+  // Notes that came in with a title another note has in other capitals get
+  // a number (#118), keeping the ones whose files are already there.
+  function numberClashes(synced) {
+    numberTitleCases(new Set(Object.values(synced).filter((entry) => !entry.sketch).map((entry) => entry.title)));
   }
 
   // Bring one changed or new Notes Repo file into this browser. A note that
@@ -181,6 +187,7 @@ export function createNotesSync({ storage, sealed, uniqueTitle, mergeCollectionC
     }
     storage.putMeta(SYNCED, { ...synced });
     mergeCollectionCases();
+    numberClashes(synced);
   }
 
   // Send every note whose file differs from what was last synced, and delete
@@ -297,6 +304,7 @@ export function createNotesSync({ storage, sealed, uniqueTitle, mergeCollectionC
     storage.putMeta(SYNCED, synced);
     storage.putMeta(LAST_SYNCED, new Date().toISOString());
     mergeCollectionCases();
+    numberClashes(synced);
     await sealed.reopen();
     onProgress({ step: "ready", notes: notePaths.length });
     return { notes: notePaths.length };

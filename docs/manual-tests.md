@@ -11,6 +11,13 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Titles that differ only in capitals (#118)
+
+- [ ] Make a note called "Lists" and another called "Arrays". Rename "Arrays" to "lists": it is refused and "lists 2" is offered instead.
+- [ ] Rename "Lists" to "lists": it works, and Links to it now say [[lists]].
+- [ ] With a note called "Lists", start a new note and title it "lists": it gets a free title such as "lists 2".
+- [ ] With the notes in a folder on this computer, open the folder after a sync: every note has its own file, and no note's text was replaced by another's. Open the folder in Obsidian too: same notes, same text.
+
 ### Bad moments say what to do (#117)
 
 - [ ] Settings, Where your notes live, Restore from backup file, and pick a file that isn't a zip (a picture or a text file): a notice says "Couldn't read that file. Nothing was changed. Pick a zip made with Export." Your notes are all still there.
@@ -713,6 +720,7 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 - [ ] Click the title in the pill, give B a new name and press Enter. In A the link now shows the new name.
 - [ ] Renaming to a name that's already taken is refused, and a free name is suggested.
 - [ ] After a rename the note stays open and its backlinks still work.
+- [ ] A title another note already has, even in other capitals ("lists" next to "Lists"), is refused with a free title offered (#118).
 - [ ] With a Notes repo connected, a rename shows on GitHub as one commit with the renamed file and every changed link (#17).
 
 ### Selecting and copying
