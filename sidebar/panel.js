@@ -709,7 +709,7 @@ async function start() {
     if (status.state === "off") remindAboutHome().catch((error) => console.warn("Glacier: reminder failed", error));
   }
 
-  // What the Where your notes live section of Settings asks of the Notebook,
+  // What Settings asks of the Notebook and the sidebar,
   // wherever settings are drawn (see settings-view.js). The switch itself is
   // sidebar/notes-homes.js'; with settings closed meanwhile, a notice says
   // how it went.
@@ -768,6 +768,14 @@ async function start() {
     // note again, and opens them.
     hasPasscode: async () => notebook.hasPasscode(),
     changePasscode: (passcode, next) => secrets.changePasscode(passcode, next),
+
+    // Help and shortcuts in Settings (#124). Settings close, so the
+    // Shortcuts panel shows.
+    openShortcuts() {
+      closeSettings({ redraw: false });
+      openShortcuts();
+    },
+    openHelp: () => api.tabs.create({ url: HELP_URL }).catch(() => {}),
   };
 
   // --- Settings (#18) and the Shortcuts panel (#20) -------------------------
@@ -811,6 +819,7 @@ async function start() {
     },
     panelPlace: () => panels.choice(),
     choosePanelPlace: (place) => panels.choosePlace(place),
+    version: () => api.runtime.getManifest().version,
   };
 
   // The × on New page at the end hides it for every note, with Show again
@@ -956,7 +965,7 @@ async function start() {
     // settings move inside the sidebar to pick the folder there (#97).
     chooseFolderInside: () => {
       settingsPicked = "folder";
-      panels.openSettings("notes-home", { inside: true });
+      panels.openSettings("saving", { inside: true });
     },
     notesHome: async () => (await notesHomes.load()).home,
     switchHome: (place, repo, token) =>
@@ -965,9 +974,12 @@ async function start() {
       }),
     exportCourse: repoActions.exportCourse,
     exportAll: repoActions.exportAll,
+    exportArchive: repoActions.exportArchive,
     restore: (text) => repoActions.restore(Uint8Array.from(atob(text), (c) => c.charCodeAt(0))),
     hasPasscode: repoActions.hasPasscode,
     changePasscode: repoActions.changePasscode,
+    openShortcuts: repoActions.openShortcuts,
+    openHelp: repoActions.openHelp,
   };
 
   api.runtime.onMessage.addListener((message, _sender, sendResponse) => {

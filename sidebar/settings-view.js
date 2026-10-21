@@ -5,15 +5,17 @@
 // `prefs`, the choices kept per browser:
 //   look(), saveLook(change, { keep }), tabSettings(), saveTabSettings(change),
 //   shortcutsPanel(), saveShortcutsPanel(change), panelPlace(),
-//   choosePanelPlace("beside" | "inside") -> Promise of the place it got
+//   choosePanelPlace("beside" | "inside") -> Promise of the place it got,
+//   version() -> Glacier's version number
 //
 // `repo`, the Notes Home and the Notebook, which only the sidebar holds:
 //   connection() -> { home, repo, token }, status(), syncNow() -> sync status,
 //   courses(), switchHome(place, repo, token, onProgress) -> { notes } or { error },
 //   pickFolder() -> "picked", "closed" or "inside" (settings moved inside the
 //   sidebar to pick it there), called straight from the click,
-//   exportCourse(course, format), exportAll(), restore(bytes) and notice(text, ms),
-//   hasPasscode() and changePasscode(passcode, next) -> { ok, locked } (#109)
+//   exportCourse(course, format), exportAll(), exportArchive(), restore(bytes)
+//   and notice(text, ms), hasPasscode() and changePasscode(passcode, next) ->
+//   { ok, locked } (#109), openShortcuts() and openHelp() (#124)
 import { syncStatusText, syncResultText, syncBox, JUST_SYNCED } from "../src/auto-sync.mjs";
 import { notesRepoName } from "../src/notebook.mjs";
 import { notesHomeChoices, notesHomeIcon, switchSteps, nextSwitchStep, switchDoneText, switchQuestion, googleReady, folderReady } from "../src/notes-home.mjs";
@@ -21,6 +23,7 @@ import { GOOGLE_CONFIG } from "../src/google-config.mjs";
 import { HANDLED_KEYS, SHORTCUT_GROUPS, shortcutRows } from "../src/shortcuts-panel.mjs";
 import { PAPERS, paperGroups, FONT_OVERRIDES, TEXT_SIZE, fontPreview } from "../src/look.mjs";
 import { NO_RECOVERY } from "./secret-view.js";
+import { SETTINGS_PARTS, LABELS, NO_SETTING_MATCHES, partValue, matchingParts, nextOpenPart, homeLabel } from "../src/settings-parts.mjs";
 
 // A labelled control row, for the settings.
 export function field(labelText, control) {
@@ -160,19 +163,12 @@ function element(tag, className, text) {
   return el;
 }
 
-const SECTIONS = [
-  ["paper", "Paper", true],
-  ["writing", "Writing", true],
-  ["tabs", "Tabs and notes", false],
-  ["shortcuts", "Shortcuts panel", false],
-  ["panels", "Panels", false],
-  ["notes-home", "Where your notes live", false],
-  ["secret", "Secret notes", false],
-];
-
 // The quiet line a panel shows at its top when it opens inside the sidebar
 // although "beside the sidebar" is chosen (#60).
 export const INSIDE_NOTE = "This page doesn't allow panels beside the sidebar, so it opens here.";
+
+// A part opened before #124 by its old name, from the sync box.
+const OLD_PART_NAMES = { "notes-home": "saving" };
 
 export function createSettingsView({ prefs, repo, onClose }) {
   const el = element("aside", "settings");
@@ -181,6 +177,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
   el.hidden = true;
 
   const header = element("header", "settings-header");
+  const titleRow = element("div", "settings-title-row");
   const title = element("h1", "settings-title");
   const icon = element("img", "settings-icon");
   icon.src = "../icons/glacier.svg";
@@ -191,30 +188,101 @@ export function createSettingsView({ prefs, repo, onClose }) {
   closeButton.setAttribute("aria-label", "Close settings");
   closeButton.title = "Close settings";
   closeButton.addEventListener("click", () => onClose());
-  header.append(title, closeButton);
+  titleRow.append(title, closeButton);
+  // The search on top (#124): every part that matches shows, opened.
+  const search = element("input", "settings-search");
+  search.type = "search";
+  search.placeholder = LABELS.search;
+  search.setAttribute("aria-label", LABELS.search);
+  search.autocomplete = "off";
+  search.spellcheck = false;
+  header.append(titleRow, search);
   const insideNote = element("p", "panel-note", INSIDE_NOTE);
   insideNote.hidden = true;
-  el.append(header, insideNote);
+  const noMatch = element("p", "settings-no-match", NO_SETTING_MATCHES);
+  noMatch.setAttribute("role", "status");
+  noMatch.hidden = true;
+  el.append(header, insideNote, noMatch);
 
+  // The parts one under the other (#124). A closed part shows its name and
+  // its current value in one line; one part is open at a time.
+  const parts = {};
   const bodies = {};
-  for (const [name, summaryText, open] of SECTIONS) {
-    const details = element("details", "settings-section");
-    details.dataset.section = name;
-    details.open = open;
-    bodies[name] = element("div", "settings-body");
-    details.append(element("summary", "", summaryText), bodies[name]);
-    el.append(details);
+  for (const part of SETTINGS_PARTS) {
+    const section = element("section", "settings-part");
+    section.dataset.part = part.id;
+    const head = element("button", "settings-part-head");
+    head.type = "button";
+    head.setAttribute("aria-controls", `settings-part-${part.id}`);
+    const picture = element("img", "settings-part-icon");
+    picture.src = `../art/icon-${part.icon}.svg`;
+    picture.alt = "";
+    const words = element("span", "settings-part-words");
+    const value = element("span", "settings-part-value");
+    words.append(element("span", "settings-part-name", part.name), value);
+    head.append(picture, words);
+    head.addEventListener("click", () => {
+      openPart = search.value.trim() ? part.id : nextOpenPart(openPart, part.id);
+      search.value = "";
+      showParts();
+    });
+    bodies[part.id] = element("div", "settings-body");
+    bodies[part.id].id = `settings-part-${part.id}`;
+    section.append(head, bodies[part.id]);
+    parts[part.id] = { section, head, value };
+    el.append(section);
   }
 
-  el.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onClose();
+  let openPart = null;
+  // What the closed parts show that only the Notebook knows.
+  const known = { home: "browser", hasPasscode: false };
+
+  function showParts() {
+    const matching = matchingParts(search.value);
+    noMatch.hidden = !matching || matching.length > 0;
+    for (const part of SETTINGS_PARTS) {
+      const { section, head, value } = parts[part.id];
+      const open = matching ? matching.includes(part.id) : openPart === part.id;
+      section.hidden = Boolean(matching) && !open;
+      section.classList.toggle("is-open", open);
+      head.setAttribute("aria-expanded", String(open));
+      bodies[part.id].hidden = !open;
+      value.hidden = open;
     }
+    showValues();
+  }
+
+  function showValues() {
+    const state = { look: prefs.look(), tabSettings: prefs.tabSettings(), ...known };
+    for (const part of SETTINGS_PARTS) parts[part.id].value.textContent = partValue(part.id, state);
+  }
+
+  search.addEventListener("input", showParts);
+  // Every change shows in the closed parts' lines at once.
+  el.addEventListener("change", showValues);
+  el.addEventListener("input", (event) => {
+    if (event.target !== search) showValues();
+  });
+
+  el.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    // Esc in the search clears it first.
+    if (event.target === search && search.value) {
+      event.stopPropagation();
+      search.value = "";
+      showParts();
+      return;
+    }
+    onClose();
   });
 
   // The papers in their two groups, Nature and Classics (#19). A Nature
   // paper's swatch shows a corner of its panorama.
+  const papersBox = element("div", "settings-papers");
+  const fontBox = element("div", "settings-fonts");
+  bodies.look.append(papersBox, fontBox);
+
   function drawPapers() {
     const groups = paperGroups().map(({ group, papers }) => {
       const list = element("div", "paper-list");
@@ -223,7 +291,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
       list.append(element("h2", "settings-subheading", group), ...papers.map(paperChoice));
       return list;
     });
-    bodies.paper.replaceChildren(...groups);
+    papersBox.replaceChildren(...groups);
   }
 
   function paperChoice(paper) {
@@ -235,7 +303,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
     radio.checked = paper.name === prefs.look().paper;
     radio.addEventListener("change", () => {
       prefs.saveLook({ paper: paper.name });
-      drawWriting();
+      drawFont();
     });
     const swatch = element("span", "paper-swatch");
     swatch.style.backgroundColor = paper.paper;
@@ -246,16 +314,15 @@ export function createSettingsView({ prefs, repo, onClose }) {
     return label;
   }
 
-  // The Font Override, the text size, notes as pages and New page at the
-  // end of notes. Each font is one
-  // line, written in that font, like the papers; "Theme default" names the paper's own font
-  // and shows in it. A new paper redraws this.
-  function drawWriting() {
+  // The Font Override and the text size. Each font is one line, written in
+  // that font, like the papers; "The paper's own font" names it and shows in
+  // it. A new paper redraws this.
+  function drawFont() {
     const look = prefs.look();
     const themeFont = PAPERS.find((paper) => paper.name === look.paper).font;
     const font = element("div", "font-list");
     font.setAttribute("role", "radiogroup");
-    font.setAttribute("aria-label", "Font");
+    font.setAttribute("aria-label", LABELS.font);
     for (const name of FONT_OVERRIDES) {
       const label = element("label", "font-choice");
       const radio = document.createElement("input");
@@ -264,7 +331,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
       radio.value = name;
       radio.checked = name === look.font;
       radio.addEventListener("change", () => prefs.saveLook({ font: name }));
-      const text = element("span", "font-name", name === "Theme default" ? `Theme default (${themeFont})` : name);
+      const text = element("span", "font-name", name === "Theme default" ? `${LABELS.themeFont} (${themeFont})` : name);
       const { family, weight } = fontPreview(name, look.paper);
       text.style.fontFamily = family;
       text.style.fontWeight = String(weight);
@@ -290,83 +357,79 @@ export function createSettingsView({ prefs, repo, onClose }) {
 
     // Not a <label> like field(): the font choices are labels themselves.
     const fontField = element("div", "form-field");
-    fontField.append(element("span", "form-label", "Font"), font);
-    // Notes as pages (#108): one page at a time, or every page in a row.
-    const pages = choice(
-      "Notes as pages",
-      [
-        ["off", "Off, all pages one after the other"],
-        ["on", "On, one page at a time"],
-      ],
-      look.pages ? "on" : "off",
-      (value) => prefs.saveLook({ pages: value === "on" }),
-    );
-    // The faint New page at the end of a note of one page (#122).
-    const endPage = choice(
-      "Show New page at the end of notes",
-      [
-        ["shown", "Shown"],
-        ["hidden", "Hidden"],
-      ],
-      look.newPageAtEnd ? "shown" : "hidden",
-      (value) => prefs.saveLook({ newPageAtEnd: value === "shown" }),
-    );
-    bodies.writing.replaceChildren(fontField, field("Text size", sizeRow), pages, endPage);
+    fontField.append(element("span", "form-label", LABELS.font), font);
+    fontBox.replaceChildren(fontField, field(LABELS.textSize, sizeRow));
   }
 
-  function choice(labelText, options, value, onChange) {
-    const select = document.createElement("select");
+  // One setting that is on or off: its label, a line under it and a switch.
+  function toggle(labelText, hint, on, onChange) {
+    const label = element("label", "settings-switch");
+    const words = element("span", "settings-switch-words");
+    words.append(element("span", "", labelText), element("span", "settings-hint", hint));
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.setAttribute("role", "switch");
+    box.checked = on;
+    box.addEventListener("change", () => onChange(box.checked, box));
+    label.append(words, box);
+    return label;
+  }
+
+  // Notes as pages (#108) and the New page at the end of a note of one
+  // page (#122).
+  function drawPages() {
+    const look = prefs.look();
+    bodies.pages.replaceChildren(
+      toggle(LABELS.pages, LABELS.pagesHint, look.pages, (on) => prefs.saveLook({ pages: on })),
+      toggle(LABELS.newPage, LABELS.newPageHint, look.newPageAtEnd, (on) => prefs.saveLook({ newPageAtEnd: on })),
+    );
+  }
+
+  // A sentence finished by one of its choices: "On a new tab, Glacier" then
+  // "keeps your note open" or "starts a new note".
+  function sentence(name, lead, options, value, onChange) {
+    const group = element("fieldset", "settings-sentence");
+    group.append(element("legend", "", lead));
     for (const [optionValue, text] of options) {
-      select.add(new Option(text, optionValue, false, optionValue === value));
+      const label = element("label", "settings-option");
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = name;
+      radio.value = optionValue;
+      radio.checked = optionValue === value;
+      radio.addEventListener("change", () => onChange(optionValue));
+      label.append(radio, element("span", "", text));
+      group.append(label);
     }
-    select.addEventListener("change", () => onChange(select.value, select));
-    return field(labelText, select);
+    return group;
   }
 
-  // "Tabs and notes": three choices, each one taking effect at once.
+  // When you change tabs (#53): each choice takes effect at once.
   function drawTabs() {
     const tabSettings = prefs.tabSettings();
     bodies.tabs.replaceChildren(
-      choice(
-        "When I switch tabs",
+      sentence(
+        "other-website",
+        LABELS.otherWebsite,
         [
-          ["follow", "Show the note of the tab I'm on"],
-          ["keep", "Keep a note I opened myself"],
+          ["follow", LABELS.opensWebsiteNote],
+          ["keep", LABELS.keepsNote],
         ],
         tabSettings.keepUserOpenedNotes ? "keep" : "follow",
         (value) => prefs.saveTabSettings({ keepUserOpenedNotes: value === "keep" }),
       ),
-      choice(
-        "On a page that isn't a website",
+      sentence(
+        "new-tab",
+        LABELS.newTab,
         [
-          ["keep", "Keep the open note"],
-          ["newNoteForm", "Show an empty page for a new note"],
+          ["keep", LABELS.keepsNote],
+          ["newNoteForm", LABELS.startsNote],
         ],
         tabSettings.onNonWebsite,
         (value) => prefs.saveTabSettings({ onNonWebsite: value }),
       ),
-      choice(
-        "Previous note button",
-        [
-          ["shown", "Shown"],
-          ["hidden", "Hidden"],
-        ],
-        tabSettings.showPreviousButton ? "shown" : "hidden",
-        (value) => prefs.saveTabSettings({ showPreviousButton: value === "shown" }),
-      ),
-    );
-  }
-
-  function drawShortcutsSetting() {
-    bodies.shortcuts.replaceChildren(
-      choice(
-        "Shortcuts panel",
-        [
-          ["off", "Off"],
-          ["on", "On"],
-        ],
-        prefs.shortcutsPanel().on ? "on" : "off",
-        (value) => prefs.saveShortcutsPanel({ on: value === "on" }),
+      toggle(LABELS.backButton, LABELS.backButtonHint, tabSettings.showPreviousButton, (on) =>
+        prefs.saveTabSettings({ showPreviousButton: on }),
       ),
     );
   }
@@ -374,9 +437,11 @@ export function createSettingsView({ prefs, repo, onClose }) {
   // Secret notes (#109, ADR 0012): Change passcode encrypts every secret note
   // again. The current passcode is needed, as there is no recovery.
   async function drawSecret() {
-    if (!(await repo.hasPasscode())) {
+    known.hasPasscode = await repo.hasPasscode();
+    showValues();
+    if (!known.hasPasscode) {
       bodies.secret.replaceChildren(
-        element("p", "settings-text", "No secret notes yet. To make one, open a note and choose Make secret in its ⋯ menu."),
+        element("p", "settings-text", "No secret notes yet. To make one, open ⋯, choose Note details and click Secret."),
       );
       return;
     }
@@ -395,7 +460,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
     const said = element("p", "settings-text");
     said.setAttribute("role", "status");
     said.hidden = true;
-    const submit = element("button", "card-button", "Change passcode");
+    const submit = element("button", "card-button", LABELS.changePasscode);
     submit.type = "submit";
     const say = (text) => {
       said.textContent = text;
@@ -425,67 +490,60 @@ export function createSettingsView({ prefs, repo, onClose }) {
     bodies.secret.replaceChildren(form);
   }
 
-  // Where settings open (ADR 0008). Choosing beside
-  // asks the browser straight from the change, as both browsers require.
-  function drawPanels() {
-    const place = prefs.panelPlace() === "beside" ? "beside" : "inside";
-    const hint = element(
-      "p",
-      "settings-hint",
-      "Beside the sidebar, settings sit over the edge of the page and your note keeps its full width. On browser pages, such as a new tab, they open inside the sidebar. Glacier never reads, saves or sends anything from the pages you visit.",
+  // Help and shortcuts: where Settings opens (ADR 0008), the Shortcuts
+  // panel, Keyboard shortcuts, Help and Glacier's version. Turning on Next
+  // to the sidebar asks the browser straight from the click, as both
+  // browsers require.
+  function drawHelp() {
+    const nextTo = toggle(LABELS.nextToSidebar, LABELS.nextToSidebarHint, prefs.panelPlace() === "beside", (on, box) => {
+      prefs.choosePanelPlace(on ? "beside" : "inside").then((got) => {
+        box.checked = got === "beside";
+      });
+    });
+    const shortcuts = toggle(LABELS.shortcutsPanel, LABELS.shortcutsPanelHint, prefs.shortcutsPanel().on, (on) =>
+      prefs.saveShortcutsPanel({ on }),
     );
-    bodies.panels.replaceChildren(
-      choice(
-        "Settings open",
-        [
-          ["beside", "Beside the sidebar"],
-          ["inside", "Inside the sidebar"],
-        ],
-        place,
-        (value, select) => {
-          prefs.choosePanelPlace(value).then((got) => {
-            select.value = got === "beside" ? "beside" : "inside";
-          });
-        },
-      ),
-      hint,
-    );
+    const keys = actionRow(LABELS.keyboardShortcuts, "keyboard", "Every key and Markdown mark Glacier knows", () => repo.openShortcuts());
+    const help = actionRow(LABELS.help, "help", LABELS.helpHint, () => repo.openHelp());
+    const actions = element("div", "settings-actions");
+    actions.append(keys, help);
+    const version = element("p", "settings-hint", `Glacier ${prefs.version()}`);
+    bodies.help.replaceChildren(nextTo, shortcuts, actions, version);
   }
 
-  // Export and Restore (#13, #55), under Where your notes live. The Notebook does the
-  // files; this only picks them.
-  // One Export line: what it is on the left, its small line icon on the
-  // right, the whole line clickable, like a note row in the menu.
-  function backupRow(label, kind, hint, onClick) {
+  // One thing to do per line: what it is on the left, its pixel picture on
+  // the right, the whole line clickable, like a note row in the menu.
+  function actionRow(label, picture, hint, onClick) {
     const row = element("button", "backup-row");
     row.type = "button";
     row.title = hint;
-    const icon = element("span", "backup-icon");
-    icon.innerHTML =
-      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" ' +
-      `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[kind]}</svg>`;
+    const icon = element("img", "backup-icon");
+    icon.src = `../art/icon-${picture}.svg`;
+    icon.alt = "";
     row.append(element("span", "", label), icon);
     row.addEventListener("click", () => onClick(row));
     return row;
   }
 
-  async function backupControls() {
+  // Back up and restore (#13, #55): the Notebook does the files; this only
+  // picks them.
+  async function drawBackup() {
     const courses = await repo.courses();
     const courseList = element("div", "backup-collections");
     courseList.setAttribute("aria-label", "Collections to download");
     for (const course of courses) {
       courseList.append(
-        backupRow(course, "download", `Download the collection '${course}'`, (row) =>
+        actionRow(course, "download", `Download the collection '${course}'`, (row) =>
           askFormat(row, (format) => repo.exportCourse(course, format)),
         ),
       );
     }
 
-    const exportAll = backupRow("Everything", "download", "Download every note, archived ones too, as a zip of Markdown files", () =>
+    const exportAll = actionRow(LABELS.downloadAll, "download", "Every note, archived ones too, as a zip of Markdown files", () =>
       repo.exportAll(),
     );
 
-    const exportArchive = backupRow("The archive", "download", "Download only the archived notes as a zip", () =>
+    const exportArchive = actionRow(LABELS.downloadArchive, "archive", "Only the archived notes, as a zip", () =>
       repo.exportArchive(),
     );
 
@@ -499,31 +557,33 @@ export function createSettingsView({ prefs, repo, onClose }) {
       await repo.restore(new Uint8Array(await file.arrayBuffer()));
       picker.value = "";
     });
-    const restore = backupRow(
-      "Restore from a backup file",
-      "unarchive",
-      "Bring back notes from an exported zip. Notes you already have are never overwritten",
+    const restore = actionRow(
+      LABELS.restore,
+      "folder",
+      "Bring back notes from a zip Glacier made. Notes you already have are never overwritten",
       () => picker.click(),
     );
 
-    const collections = courses.length > 0 ? [element("p", "backup-label", "Collections"), courseList] : [];
-    return [element("h2", "settings-subheading", "Export"), exportAll, exportArchive, ...collections, restore, picker];
+    const collections = courses.length > 0 ? [element("p", "backup-label", LABELS.collections), courseList] : [];
+    bodies.backup.replaceChildren(exportAll, exportArchive, ...collections, restore, picker);
   }
 
-  // Where your notes live (#14, #94, #95, #97, ADR 0011): one radio per
+  // Where your notes are saved (#14, #94, #95, #97, ADR 0011): one radio per
   // place, each with its pixel icon. Google Drive shows its sign-in under it
   // (or "Not set up yet" beside it), a folder its Choose a folder button (or
   // "Only in Chrome and Edge"), GitHub the repo and token form. Switching
-  // asks first in one line, then combines. The sync status and Export sit
-  // below. The repo name and token stay in this browser's
+  // asks first in one line, then combines. The sync status sits below.
+  // The repo name and token stay in this browser's
   // extension storage, never in the Notebook (ADR 0003).
   async function drawNotesHome({ picked, repo: typedRepo, error, ask } = {}) {
     const saved = await repo.connection();
+    known.home = saved.home;
+    showValues();
     const shown = picked ?? saved.home;
 
     const choices = element("div", "home-list");
     choices.setAttribute("role", "radiogroup");
-    choices.setAttribute("aria-label", "Where your notes live");
+    choices.setAttribute("aria-label", "Where your notes are saved");
     for (const home of notesHomeChoices({ googleReady: googleReady(GOOGLE_CONFIG), folderReady: folderReady(globalThis) })) {
       const label = element("label", "home-choice");
       label.title = home.hint;
@@ -540,7 +600,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
       const icon = element("img", "home-icon");
       icon.src = `../art/icon-${home.icon}.svg`;
       icon.alt = "";
-      label.append(radio, icon, element("span", "", home.name));
+      label.append(radio, icon, element("span", "", homeLabel(home.id)));
       if (home.note) label.append(element("span", "home-note", home.note));
       choices.append(label);
     }
@@ -555,7 +615,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
     const icon = notesHomeIcon(saved.home);
     const connected = status.state !== "off" && !ask && shown === saved.home;
     const sync = connected ? [homeStatusLine({ status, syncNow: repo.syncNow, notice: repo.notice, icon })] : [];
-    bodies["notes-home"].replaceChildren(choices, ...sync, ...place, ...(await backupControls()));
+    bodies.saving.replaceChildren(choices, ...sync, ...place);
   }
 
   // The one line asked before switching, with Switch and Keep.
@@ -708,7 +768,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
     const items = shown.steps.map(({ text }) => element("li", "", text));
     list.append(...items);
     screen.append(element("h2", "settings-subheading", shown.heading), list);
-    bodies["notes-home"].replaceChildren(screen);
+    bodies.saving.replaceChildren(screen);
 
     const showStep = (progress) => {
       shown = nextSwitchStep(shown, progress);
@@ -748,22 +808,27 @@ export function createSettingsView({ prefs, repo, onClose }) {
       return !el.hidden;
     },
 
-    // Draw every section and show them, folded open at `section` if given,
-    // with `picked` shown chosen under Where your notes live.
+    // Draw every part and show them, with the part `section` open if given
+    // (else all closed, each with its value) and `picked` shown chosen
+    // under Where your notes are saved.
     open(section, picked) {
       drawPapers();
-      drawWriting();
+      drawFont();
+      drawPages();
       drawTabs();
-      drawShortcutsSetting();
-      drawPanels();
+      drawHelp();
       drawSecret();
+      drawBackup();
+      const id = OLD_PART_NAMES[section] ?? section;
+      openPart = parts[id] ? id : null;
+      search.value = "";
+      showParts();
       el.hidden = false;
-      closeButton.focus();
+      search.focus();
       // A switch still running keeps its progress on screen.
       const repoDrawn = switchRunning ? Promise.resolve() : drawNotesHome({ picked: picked ?? undefined });
-      const target = section && el.querySelector(`[data-section="${section}"]`);
-      if (!target) return;
-      target.open = true;
+      if (!openPart) return;
+      const target = parts[openPart].section;
       repoDrawn.then(() => {
         el.scrollTop = target.offsetTop - header.offsetHeight;
         target.querySelector(".repo-input")?.focus();

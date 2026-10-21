@@ -68,6 +68,7 @@ const prefs = {
     }
     return panelPlace;
   },
+  version: () => api.runtime.getManifest().version,
 };
 
 // The first sync's steps arrive from the sidebar as it goes.
@@ -105,10 +106,13 @@ const repo = {
   },
   exportCourse: (course, format) => ask("exportCourse", course, format),
   exportAll: () => ask("exportAll"),
+  exportArchive: () => ask("exportArchive"),
   restore: (bytes) => ask("restore", toBase64(bytes)),
   notice: (text, ms) => ask("notice", text, ms),
   hasPasscode: async () => Boolean(await askValue("hasPasscode")),
   changePasscode: async (passcode, next) => (await askValue("changePasscode", passcode, next)) ?? { ok: false },
+  openShortcuts: () => ask("openShortcuts"),
+  openHelp: () => ask("openHelp"),
 };
 
 async function start() {

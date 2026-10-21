@@ -1735,17 +1735,39 @@ code {
   padding: 0;
   border: 1px solid var(--rule);
   border-radius: 50%;
-  overflow: hidden;
   background: var(--paper);
   cursor: pointer;
   box-shadow: 0 2px 10px var(--shadow);
 }
 
-.glacier-button img {
+.glacier-art {
   display: block;
   width: 100%;
   height: 100%;
+  border-radius: 50%;
   image-rendering: pixelated;
+}
+
+/* A small pixel gear on the button's top right edge, so it reads as
+   Settings (#124). It stays still; on hover its ring takes the accent. */
+.glacier-gear {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  width: 1.3rem;
+  height: 1.3rem;
+  padding: 1px;
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  background: var(--paper);
+  image-rendering: pixelated;
+}
+
+.glacier-button:hover .glacier-gear,
+.glacier-button:focus-visible .glacier-gear,
+.glacier-button[aria-expanded="true"] .glacier-gear {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .glacier-button:hover,
@@ -1829,14 +1851,108 @@ code {
   cursor: pointer;
 }
 
-.settings-section {
+/* The title row, then the search on top (#124). Both stay while the parts
+   scroll. */
+.settings-header {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+}
+
+.settings-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.settings-search {
+  width: 100%;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--field);
+  color: inherit;
+  font: inherit;
+}
+
+.settings-search:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.settings-no-match {
+  margin: 0;
+  padding: 0.9rem 0.75rem;
+  opacity: 0.75;
+}
+
+.settings-no-match[hidden],
+.settings-part[hidden],
+.settings-body[hidden],
+.settings-part-value[hidden] {
+  display: none;
+}
+
+/* The parts one under the other (#124): a closed part shows its pixel
+   picture, its name and its current value; one is open at a time. */
+.settings-part {
   border-bottom: 1px solid var(--rule);
 }
 
-.settings-section > summary {
+.settings-part-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
   padding: 0.5rem 0.75rem;
-  font-weight: 700;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
   cursor: pointer;
+}
+
+.settings-part-head::after {
+  content: "›";
+  margin-left: auto;
+  opacity: 0.55;
+  transition: transform 0.15s ease-out;
+}
+
+.settings-part.is-open .settings-part-head::after {
+  transform: rotate(90deg);
+}
+
+.settings-part-head:hover,
+.settings-part-head:focus-visible {
+  outline: none;
+  background: var(--tint);
+}
+
+.settings-part-icon {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  image-rendering: pixelated;
+}
+
+.settings-part-words {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.settings-part-name {
+  font-weight: 700;
+}
+
+.settings-part-value {
+  overflow: hidden;
+  font-size: 0.85rem;
+  opacity: 0.7;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .settings-body {
@@ -1844,6 +1960,108 @@ code {
   flex-direction: column;
   gap: 0.7rem;
   padding: 0 0.75rem 0.9rem;
+}
+
+.settings-papers,
+.settings-fonts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+/* A setting that is on or off: its words on the left, a switch on the
+   right. */
+.settings-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.settings-switch-words {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.settings-switch input {
+  flex: none;
+  position: relative;
+  width: 2.1rem;
+  height: 1.2rem;
+  margin: 0;
+  border: 1px solid var(--rule);
+  border-radius: 1rem;
+  background: var(--tint);
+  appearance: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease-out;
+}
+
+.settings-switch input::before {
+  content: "";
+  position: absolute;
+  top: 0.1rem;
+  left: 0.1rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 1px 2px var(--shadow);
+  transition: transform 0.15s ease-out;
+}
+
+.settings-switch input:checked {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.settings-switch input:checked::before {
+  transform: translateX(0.9rem);
+}
+
+.settings-switch input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* A sentence finished by one of its choices: "On a new tab, Glacier" then
+   "keeps your note open" or "starts a new note". */
+.settings-sentence {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.settings-sentence legend {
+  padding: 0 0 0.2rem;
+}
+
+.settings-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0.3rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.settings-option:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.settings-option input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.settings-actions {
+  display: flex;
+  flex-direction: column;
 }
 
 .settings-subheading {
@@ -2388,8 +2606,10 @@ html.beside .settings {
 }
 
 .backup-icon {
-  display: inline-flex;
-  opacity: 0.7;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  image-rendering: pixelated;
 }
 
 .backup-label {

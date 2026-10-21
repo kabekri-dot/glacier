@@ -60,10 +60,12 @@
     </p>
     <!-- Settings (#18): the round glacier button opens them, beside the
          sidebar or inside it (#21). The button, the settings header and the
-         toolbar share the glacier art (#19). settings-view.js draws settings
-         and the Shortcuts panel (#20, opened from ⋯). -->
+         toolbar share the glacier art (#19); a small pixel gear on its edge
+         says Settings (#124). settings-view.js draws settings and the
+         Shortcuts panel (#20, opened from ⋯). -->
     <button type="button" class="glacier-button" aria-label="Settings" title="Settings" aria-expanded="false" aria-controls="settings">
-      <img src="../icons/glacier.svg" alt="" />
+      <img class="glacier-art" src="../icons/glacier.svg" alt="" />
+      <img class="glacier-gear" src="../art/icon-gear.svg" alt="" />
     </button>
     <script type="module" src="panel.js"></script>
   </body>

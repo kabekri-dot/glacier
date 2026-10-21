@@ -56,15 +56,15 @@ const SYNC_ERRORS = {
   },
   // Only signing in can go wrong with Google Drive (#95).
   "google-drive": {
-    unauthorized: () => "Google Drive didn't let Glacier in. Sign in with Google again under Where your notes live.",
-    forbidden: () => "Google Drive didn't let Glacier in. Sign in with Google again under Where your notes live.",
+    unauthorized: () => "Google Drive didn't let Glacier in. Sign in with Google again under Where your notes are saved.",
+    forbidden: () => "Google Drive didn't let Glacier in. Sign in with Google again under Where your notes are saved.",
     offline: () => "Couldn't reach Google Drive. Check your connection and try again.",
     other: () => "Something went wrong talking to Google Drive. Please try again in a moment.",
   },
   // A folder on this computer (#97).
   folder: {
     unauthorized: () => FOLDER_NEEDS_OK,
-    "not-found": () => "Couldn't find your notes folder. Choose it again under Where your notes live.",
+    "not-found": () => "Couldn't find your notes folder. Choose it again under Where your notes are saved.",
     other: () => "Something went wrong writing to your notes folder. Please try again in a moment.",
   },
 };
@@ -96,7 +96,7 @@ export function alsoDeletedFrom(id) {
 
 // What the sync box says once a place that let Glacier in stops doing so.
 const SIGN_IN_LOST = {
-  github: "GitHub no longer accepts your token. It may have expired. Make a new one and paste it under Where your notes live.",
+  github: "GitHub no longer accepts your token. It may have expired. Make a new one and paste it under Where your notes are saved.",
   "google-drive": "Google asks you to sign in again. Your changes are kept in this browser until you do.",
   folder: FOLDER_NEEDS_OK,
 };
