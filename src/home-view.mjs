@@ -42,9 +42,14 @@ function courseCard(notebook, course) {
   return { course, text: `${done} of ${lessons.length} lessons done · next: ${next.title}`, progress: { done, of: lessons.length }, open: next.title };
 }
 
+function noteCount(count) {
+  if (count === 0) return "No notes yet";
+  return count === 1 ? "1 note" : `${count} notes`;
+}
+
 function collectionCard(listed, name) {
   const notes = listed.filter((note) => sameCollection(note.course, name));
-  const text = notes.length === 0 ? "No notes yet" : notes.length === 1 ? "1 note" : `${notes.length} notes`;
+  const text = noteCount(notes.length);
   return { name, text, open: notes[0]?.title ?? null };
 }
 
