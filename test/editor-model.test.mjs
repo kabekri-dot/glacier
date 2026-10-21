@@ -24,6 +24,7 @@ import {
   toggleFormat,
   toggleCheckbox,
   listNumbers,
+  unchangedEnds,
 } from "../src/editor-model.mjs";
 
 // The editor model is the second test seam: pure functions on one note's
@@ -819,4 +820,27 @@ test("clicking a numbered or checkbox marker puts the caret at the text start", 
 test("the lines outside code blocks are every line but a fenced block's", () => {
   const lines = ["# One", "```", "# not a heading", "```", "two", "```", "never closed"];
   assert.deepEqual(linesOutsideCode(lines), [0, 4]);
+});
+
+// Enter in a long note redraws only the blocks that changed (#120): the
+// paper keeps the drawn blocks at both ends whose drawing is the same.
+test("after Enter only the blocks between the unchanged start and end are redrawn", () => {
+  const before = ["a", "b", null, "d", "e"];
+  const after = ["a", "b", "c", null, "d", "e"];
+  assert.deepEqual(unchangedEnds(before, after), { head: 2, tail: 2 });
+});
+
+test("a block that is not kept, like the line being edited, is never reused", () => {
+  assert.deepEqual(unchangedEnds([null, "a"], [null, "a"]), { head: 0, tail: 1 });
+  assert.deepEqual(unchangedEnds([undefined], [undefined]), { head: 0, tail: 0 });
+});
+
+test("the kept start and end never overlap when lines repeat", () => {
+  assert.deepEqual(unchangedEnds(["x", "x"], ["x", "x", "x"]), { head: 2, tail: 0 });
+  assert.deepEqual(unchangedEnds(["x", "x", "x"], ["x"]), { head: 1, tail: 0 });
+  assert.deepEqual(unchangedEnds([], ["x"]), { head: 0, tail: 0 });
+});
+
+test("a block drawn differently, like a renumbered item, is redrawn", () => {
+  assert.deepEqual(unchangedEnds(["1", "2", "3"], ["1", "9", "3"]), { head: 1, tail: 1 });
 });

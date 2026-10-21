@@ -106,10 +106,10 @@ function drawLook() {
 }
 
 // A block that isn't a whole number of rows tall is padded down to the next
-// ruled line, so the text after it is still on the lines (#18).
-function fitRows() {
+// ruled line, so the text after it is still on the lines (#18). The paper
+// passes only the blocks it has just drawn (#120); otherwise every block.
+function fitRows(blocks = noteEl ? [...noteEl.children] : []) {
   if (!noteEl || !noteEl.querySelector(".block, .line-row, .md-code")) return;
-  const blocks = [...noteEl.children];
   for (const block of blocks) block.style.minHeight = "";
   const heights = blocks.map((block) => block.getBoundingClientRect().height);
   blocks.forEach((block, i) => {
@@ -188,7 +188,7 @@ async function start() {
     console.warn("Glacier: could not read whether the welcome was seen", error);
   }
   drawLook();
-  document.fonts?.addEventListener("loadingdone", fitRows);
+  document.fonts?.addEventListener("loadingdone", () => fitRows());
 
   // Keep the page read-only until the Notebook has loaded (issue #23). Making
   // it editable first lost text two ways: keystrokes typed before the load

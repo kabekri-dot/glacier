@@ -21,7 +21,7 @@
 //     onEdited()      after an edit drawn in place
 //     onTyped()       after a key typed into the note
 //     showNotice(text, ms)  a short message in the bottom corner
-//     fitRows()       keep the ruled rows in step with the text
+//     fitRows(blocks) keep the ruled rows in step with the text of these blocks
 //     afterDraw(locked)  after each draw; locked when the passcode card shows
 //   .render()                draw the paper from the session's lines and caret
 //   .moveTo(line, col)       put the caret there and draw
@@ -39,6 +39,7 @@ import {
   isFence,
   listNumbers,
   renderLineHtml,
+  unchangedEnds,
 } from "../src/editor-model.mjs";
 import { isSketchLine } from "../src/sketch-file.mjs";
 import { isShortcut } from "../src/keys.mjs";
@@ -263,12 +264,28 @@ export function createPaper({
   // as picked: the next Backspace removes it.
   let pickSketchOnRender = false;
 
-  // Build one rendered (non-focused) block.
+  // How a block is drawn, so a block drawn the same way can stay on the
+  // paper when the lines around it change (#120): its Markdown, Link colours,
+  // number or page label are all in the key. The line being edited has none,
+  // and a sketch is always drawn again.
+  function blockKey(range, focusLine) {
+    if (focusLine >= range.start && focusLine < range.end && !isSketchLine(editor.lines[focusLine])) return null;
+    const line = editor.lines[range.start];
+    if (isFence(line)) return `code:${editor.lines.slice(range.start, range.end).join("\n")}`;
+    if (pageBreakSet.has(range.start)) return `break:${pageOfLine(editor.lines, range.start)}`;
+    if (isSketchLine(line)) return `sketch:${line}`;
+    return `line:${renderLineHtml(line, linkExists, itemNumbers[range.start] ?? undefined)}`;
+  }
+
+  // Build one rendered (non-focused) block. A kept block moves down or up
+  // when lines are added or removed above it, so its clicks read its line
+  // from data-start when they happen.
   function renderedBlock(range) {
     const blockLines = editor.lines.slice(range.start, range.end);
     const el = document.createElement("div");
     el.className = "block";
     el.dataset.start = range.start;
+    const start = () => Number(el.dataset.start);
 
     if (isFence(blockLines[0])) {
       // A code block: show the code, fences hidden. Clicking drops the caret in
@@ -283,7 +300,7 @@ export function createPaper({
       pre.appendChild(code);
       el.appendChild(pre);
       el.dataset.code = "";
-      onPlainClick(el, () => moveTo(range.start, blockLines[0].length));
+      onPlainClick(el, () => moveTo(start(), blockLines[0].length));
       return el;
     }
 
@@ -292,7 +309,7 @@ export function createPaper({
     if (pageBreakSet.has(range.start)) {
       el.classList.add("page-break");
       el.textContent = `page ${pageOfLine(editor.lines, range.start) + 1}`;
-      onPlainClick(el, () => moveTo(range.start, line.length));
+      onPlainClick(el, () => moveTo(start(), line.length));
       return el;
     }
     // A sketch's embed line shows the drawing instead (#101). Its raw line
@@ -318,14 +335,14 @@ export function createPaper({
     onPlainClick(el, (event) => {
       // A click on a checkbox's box ticks it and saves; the caret stays put.
       if (event.target.closest?.(".md-check-box")) {
-        editor.toggleCheckbox(range.start);
+        editor.toggleCheckbox(start());
         render();
         return;
       }
       // The sidebar finds which drawn character the click landed on; the Editor
       // session decides what it means from the one shared line description (#33).
       const rendered = renderedOffsetAt(el, event.clientX, event.clientY);
-      const hit = editor.clickLine(range.start, rendered);
+      const hit = editor.clickLine(start(), rendered);
       // A plain click on a Link follows it instead of dropping the caret: it
       // opens the linked note, or creates and opens a note for a Missing Link
       // (#8).
@@ -374,6 +391,10 @@ export function createPaper({
   let pageBreakSet = new Set();
   // The number each numbered item is drawn with (#110).
   let itemNumbers = [];
+  // The key each drawn block was drawn with, and the paper's width when the
+  // rows were last fitted, so a redraw can keep what didn't change (#120).
+  const drawnKeys = new WeakMap();
+  let fittedWidth = null;
   function render() {
     // A locked secret note shows the passcode card instead (#109).
     if (showIfLocked()) {
@@ -394,9 +415,6 @@ export function createPaper({
     }
     const page = shownPageSpan();
     const turn = page ? pageView.turnFor(pageOfLine(editor.lines, page.start), pagesOf(editor.lines).length, noteEl) : null;
-    redrawing = true;
-    noteEl.replaceChildren();
-    redrawing = false;
     focusedEl = null;
     const { lines, focus } = editor.state;
     const ranges = blockRanges(lines).filter((range) => !page || (range.start >= page.start && range.start < page.end));
@@ -405,8 +423,29 @@ export function createPaper({
     // A new note's title follows its first line until the caret leaves it (#80).
     if (focus.line > 0) screen.leaveFirstLine();
 
-    for (const range of ranges) {
-      if (focus.line >= range.start && focus.line < range.end && !isSketchLine(lines[focus.line])) {
+    // Only the blocks between the unchanged start and end of the paper are
+    // drawn again (#120); a page turn or another note changes them all.
+    const keys = ranges.map((range) => blockKey(range, focus.line));
+    const shownEls = [...noteEl.children];
+    const { head, tail } = unchangedEnds(shownEls.map((el) => drawnKeys.get(el)), keys);
+    const after = shownEls[shownEls.length - tail] ?? null;
+    const fresh = [];
+    redrawing = true;
+    for (const el of shownEls.slice(head, shownEls.length - tail)) el.remove();
+    ranges.forEach((range, i) => {
+      if (i < head || i >= ranges.length - tail) {
+        const kept = shownEls[i < head ? i : shownEls.length - (ranges.length - i)];
+        if (!keys[i].startsWith("sketch:")) {
+          if (kept.dataset.start !== String(range.start)) kept.dataset.start = range.start;
+          return;
+        }
+        const sketch = renderedBlock(range);
+        drawnKeys.set(sketch, keys[i]);
+        kept.replaceWith(sketch);
+        fresh.push(sketch);
+        return;
+      }
+      if (keys[i] === null) {
         const built = focusedBlock(range);
         // The + button opens the command menu from the left of the current
         // line; the session drops the `/` and opens the menu (#32).
@@ -425,15 +464,23 @@ export function createPaper({
         const row = document.createElement("div");
         row.className = "line-row";
         row.append(plus, built.el);
-        noteEl.appendChild(row);
+        noteEl.insertBefore(row, after);
+        fresh.push(row);
         focused = built.el;
       } else {
-        noteEl.appendChild(renderedBlock(range));
+        const el = renderedBlock(range);
+        drawnKeys.set(el, keys[i]);
+        noteEl.insertBefore(el, after);
+        fresh.push(el);
       }
-    }
+    });
+    redrawing = false;
 
     pickSketchOnRender = false;
-    fitRows();
+    // A kept block keeps its padding, unless the paper's width changed.
+    const width = noteEl.clientWidth;
+    fitRows(width === fittedWidth ? fresh : undefined);
+    fittedWidth = width;
     // The caret on a sketch line sits in the drawing's area (#104).
     const sketchAt = isSketchLine(lines[focus.line]) ? noteEl.querySelector(`[data-start="${focus.line}"] .sketch-area`) : null;
     if (sketchAt && !settingsOpen()) sketchAt.focus();
