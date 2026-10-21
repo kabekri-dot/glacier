@@ -7,7 +7,7 @@ import { fewAtATime } from "./few-at-a-time.mjs";
 import { findLinks } from "./editor-model.mjs";
 import { zipFiles, unzipFiles } from "./zip.mjs";
 import { renameEmbeds, sketchFileName, sketchFilePath, sketchFromSvg, sketchInLine, sketchToSvg } from "./sketch-file.mjs";
-import { newPasscode, openPasscode, sealText, readSealed, openSealed } from "./secret.mjs";
+import { createSealedNotes } from "./sealed-notes.mjs";
 
 // Query parameters that only record where a click came from, never which
 // lesson it is, so they're dropped before matching a Source (CONTEXT.md).
@@ -373,89 +373,10 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
   const CONFLICT_TITLE = / \(conflict \d{4}-\d{2}-\d{2}\)( \d+)?$/;
   // How much text to show on each side of a match in a search snippet.
   const SNIPPET_SIDE = 30;
-  // Secret notes (#109, ADR 0012). The passcode's record `{ salt, check }` is
-  // kept in storage, never the passcode. While unlocked, the key (`current`,
-  // with its record), the keys of any older salts the same passcode opened,
-  // and the opened notes' `{ body, sketches }` by title live only in memory.
-  const PASSCODE = "secretPasscode";
-  let current = null;
-  const keys = new Map();
-  const unlocked = new Map();
-  // Encrypting is asynchronous: each change waits its turn here, so the last
-  // one typed is the one kept.
-  let writing = Promise.resolve();
-
-  // A note as the Notebook reads it. An unlocked secret note has its text
-  // and sketches; a locked one has neither, and says so.
-  function reveal(note) {
-    if (!note?.secret) return note;
-    const open = unlocked.get(note.title);
-    if (open) return { ...note, ...open };
-    return { ...note, body: "", locked: true };
-  }
-
-  function readable(title) {
-    return reveal(storage.getNote(title));
-  }
-
-  function readableNotes() {
-    return storage.allNotes().map(reveal);
-  }
-
-  // Keep a note's new text or sketches. A secret note keeps them in memory at
-  // once and is encrypted into storage just after.
-  function store(note) {
-    if (!note.secret) {
-      storage.putNote(note);
-      return note;
-    }
-    const { body, sketches, locked, ...rest } = note;
-    unlocked.set(note.title, { body, ...(sketches && { sketches }) });
-    storage.putNote({ ...rest, body: storage.getNote(note.title)?.body ?? "" });
-    seal(note.title);
-    return readable(note.title);
-  }
-
-  // Encrypt an unlocked secret note's text into storage, after the changes
-  // before it. The text and key are taken now, so a lock meanwhile loses nothing.
-  function seal(title) {
-    const open = unlocked.get(title);
-    const { key, record } = current;
-    writing = writing
-      .then(async () => {
-        const body = await sealText(key, record, JSON.stringify(open));
-        const stored = storage.getNote(title);
-        if (stored?.secret) storage.putNote({ ...stored, body });
-      })
-      .catch((error) => onSaveError(error));
-  }
-
-  // The passcode records found in secret notes, the latest edited first.
-  function secretRecords() {
-    return storage
-      .allNotes()
-      .filter((note) => note.secret)
-      .sort((a, b) => lastEdited(b).localeCompare(lastEdited(a)))
-      .map((note) => readSealed(note.body)?.record)
-      .filter(Boolean);
-  }
-
-  // Open the secret notes not opened yet with the keys held, after
-  // forgetting the ones that `changed` (pulled or restored) or went.
-  async function reopenSecrets(changed = []) {
-    for (const title of changed) unlocked.delete(title);
-    for (const title of [...unlocked.keys()]) {
-      if (!storage.getNote(title)?.secret) unlocked.delete(title);
-    }
-    if (!current) return;
-    for (const note of storage.allNotes()) {
-      if (!note.secret || unlocked.has(note.title)) continue;
-      const sealed = readSealed(note.body);
-      const key = sealed && keys.get(sealed.record.salt);
-      const text = key ? await openSealed(key, sealed) : null;
-      if (text !== null) unlocked.set(note.title, JSON.parse(text));
-    }
-  }
+  // Secret notes (#109, ADR 0012): every read and write of a note's text
+  // goes through them, so a locked note is never read or written into.
+  const sealed = createSealedNotes({ storage, onSaveError });
+  const { reveal, readable, readableNotes, store } = sealed;
 
   // The text around the earliest match of any word, cut to a short stretch on
   // each side, as pieces in order: `{ text, match }`, with `match` true for
@@ -515,7 +436,7 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
     Object.assign(note, { created: made, edited: made, body: "" });
     storage.putNote(note);
     if (course) storage.putMeta(LAST_COURSE, course);
-    if (secret && current) return store({ ...note, secret: true });
+    if (secret && sealed.isUnlocked()) return store({ ...note, secret: true });
     return note;
   }
 
@@ -1063,7 +984,7 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
       const before = readable(oldTitle);
       const stored = storage.getNote(oldTitle);
       storage.deleteNote(oldTitle);
-      unlocked.delete(oldTitle);
+      sealed.forget(oldTitle);
       storage.putNote({ ...stored, title });
       const renamed = before.locked ? readable(title) : store(withTitle(before, title));
       const recent = storage.getMeta(RECENT);
@@ -1081,9 +1002,9 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
       const stored = storage.getNote(title);
       if (!stored) return null;
       const recent = storage.getMeta(RECENT) ?? [];
-      const taken = { note: stored, open: unlocked.get(title), recentAt: recent.indexOf(title) };
+      const taken = { note: stored, open: sealed.opened(title), recentAt: recent.indexOf(title) };
       storage.deleteNote(title);
-      unlocked.delete(title);
+      sealed.forget(title);
       if (taken.recentAt !== -1) storage.putMeta(RECENT, recent.filter((t) => t !== title));
       return { notes: [taken], emptyCollections: [] };
     },
@@ -1099,10 +1020,7 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
       for (const { note, open, recentAt } of kept.notes) {
         if (titleTaken(note.title)) continue;
         storage.putNote(note);
-        if (open && current) {
-          unlocked.set(note.title, open);
-          seal(note.title);
-        }
+        sealed.putBack(note.title, open);
         if (recentAt !== -1) {
           const recent = (storage.getMeta(RECENT) ?? []).filter((t) => t !== note.title);
           recent.splice(recentAt, 0, note.title);
@@ -1256,111 +1174,18 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
       return sketchNumbers(storage.getNote(title) ?? {}).length > 0;
     },
 
-    // --- Secret notes (#109, ADR 0012) ---
-
-    // Whether a Glacier passcode exists: set here, or brought in with secret
-    // notes from the Notes Home or a backup. Then it is asked for, not set.
-    hasPasscode() {
-      return Boolean(storage.getMeta(PASSCODE)) || storage.allNotes().some((note) => note.secret);
-    },
-
-    isUnlocked() {
-      return current !== null;
-    },
-
-    isSecret(title) {
-      return Boolean(storage.getNote(title)?.secret);
-    },
-
-    // A secret note whose text can't be read now.
-    isLocked(title) {
-      return readable(title)?.locked === true;
-    },
-
-    // Set the Glacier passcode the first time; it unlocks at once. False when
-    // there already is one.
-    async setPasscode(passcode) {
-      if (this.hasPasscode()) return false;
-      const made = await newPasscode(passcode);
-      storage.putMeta(PASSCODE, made.record);
-      current = made;
-      keys.set(made.record.salt, made.key);
-      return true;
-    },
-
-    // Open the secret notes with the passcode. It is checked against the
-    // records in the secret notes, the latest first, then this browser's,
-    // so a passcode changed in another browser works once its notes are
-    // here. False, with nothing changed, when it is the wrong one.
-    async unlock(passcode) {
-      const records = [];
-      for (const record of [...secretRecords(), storage.getMeta(PASSCODE)]) {
-        if (record && !records.some((seen) => seen.salt === record.salt)) records.push(record);
-      }
-      const opened = new Map();
-      for (const record of records) {
-        const key = await openPasscode(passcode, record);
-        if (key) opened.set(record.salt, { key, record });
-      }
-      if (opened.size === 0) return false;
-      current = opened.values().next().value;
-      for (const [salt, { key }] of opened) keys.set(salt, key);
-      if (storage.getMeta(PASSCODE)?.salt !== current.record.salt) storage.putMeta(PASSCODE, current.record);
-      await reopenSecrets();
-      return true;
-    },
-
-    // Forget the key and every opened text: the secret notes are locked.
-    lock() {
-      current = null;
-      keys.clear();
-      unlocked.clear();
-    },
-
-    // Make a note secret: its text and sketches are encrypted together.
-    // Needs the passcode open; undefined otherwise.
-    async makeSecret(title) {
-      const note = storage.getNote(title);
-      if (!note || note.secret || !current) return undefined;
-      const { sketches, ...rest } = note;
-      const open = { body: note.body ?? "", ...(sketches && { sketches }) };
-      const body = await sealText(current.key, current.record, JSON.stringify(open));
-      // Typed into meanwhile: start again with the newer text.
-      if (storage.getNote(title) !== note) return this.makeSecret(title);
-      storage.putNote({ ...rest, secret: true, body });
-      unlocked.set(title, open);
-      return readable(title);
-    },
-
-    // Make an unlocked secret note a plain note again.
-    async makeNotSecret(title) {
-      const note = readable(title);
-      if (!note?.secret || note.locked) return undefined;
-      const { secret, ...plain } = note;
-      unlocked.delete(title);
-      storage.putNote(plain);
-      return plain;
-    },
-
-    // Change the passcode (#109): every secret note this passcode opens is
-    // encrypted again under the new one. There is no recovery, so the
-    // current passcode is needed. `locked` counts the secret notes it didn't
-    // open, which keep their old passcode.
-    async changePasscode(passcode, next) {
-      if (!(await this.unlock(passcode))) return { ok: false };
-      const made = await newPasscode(next);
-      storage.putMeta(PASSCODE, made.record);
-      current = made;
-      keys.set(made.record.salt, made.key);
-      for (const title of unlocked.keys()) seal(title);
-      await writing;
-      return { ok: true, locked: storage.allNotes().filter((note) => note.secret && !unlocked.has(note.title)).length };
-    },
-
-    // Waits until every change to a secret note is encrypted into storage.
-    settled() {
-      return writing;
-    },
+    // --- Secret notes (#109, ADR 0012), in src/sealed-notes.mjs ---
+    hasPasscode: sealed.hasPasscode,
+    isUnlocked: sealed.isUnlocked,
+    isSecret: sealed.isSecret,
+    isLocked: sealed.isLocked,
+    setPasscode: sealed.setPasscode,
+    unlock: sealed.unlock,
+    lock: sealed.lock,
+    makeSecret: sealed.makeSecret,
+    makeNotSecret: sealed.makeNotSecret,
+    changePasscode: sealed.changePasscode,
+    settled: sealed.settled,
 
     // Export (#13): the whole Notebook as a zip of note files, ready to open
     // as an Obsidian vault.
@@ -1447,7 +1272,7 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
       storage.putMeta(SYNCED, synced);
       storage.putMeta(LAST_SYNCED, new Date().toISOString());
       mergeCollectionCases();
-      await reopenSecrets();
+      await sealed.reopen();
       onProgress({ step: "ready", notes: notePaths.length });
       return { notes: notePaths.length };
     },
@@ -1492,14 +1317,14 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
     // nothing to sync.
     async sync(remote) {
       if (storage.getMeta(NOTES_HOME) === "browser") return { pulled: [], pushed: 0, conflicts: 0 };
-      await writing;
+      await sealed.settled();
       await remote.connect();
       const synced = { ...storage.getMeta(SYNCED) };
       const result = { pulled: [], pushed: 0, conflicts: 0 };
       await pull(remote, synced, result);
       await push(remote, synced, result);
       storage.putMeta(LAST_SYNCED, new Date().toISOString());
-      await reopenSecrets(result.pulled);
+      await sealed.reopen(result.pulled);
       return result;
     },
 
@@ -1547,7 +1372,7 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
         if (note && sketch) adoptSketch(note, where.n, sketch);
       }
       mergeCollectionCases();
-      await reopenSecrets();
+      await sealed.reopen();
       return result;
     },
   };
