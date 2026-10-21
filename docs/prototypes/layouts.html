@@ -1,0 +1,299 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Clickable prototype of the layouts (grilled with the user on 2026-10-22).
+     Chosen so far: Course (Course path and Index tabs merged). Decisions: docs/scope.md, "Next" item 3. -->
+<title>Glacier Layouts</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Shantell+Sans:wght@400;700&display=swap">
+<style>
+/* Layout: a layout picker beside one life-size Glacier sidebar; the sidebar shows the picked layout.
+   Single light look on purpose: Glacier's Glacier paper as it is in the extension. */
+:root {
+  color-scheme: light;
+  --desk: #dfe8f3;
+  --paper: #eef4fb;
+  --top: #dcebfb;
+  --rule: #c7dcf2;
+  --ink: #1b2a4a;
+  --soft: #5b6b88;
+  --faint: #9aabc4;
+  --accent: #3f78c4;
+  --card: #fbfdff;
+  --ui: "Montserrat", "Segoe UI", system-ui, sans-serif;
+  --hand: "Shantell Sans", "Comic Sans MS", cursive;
+}
+* { box-sizing: border-box; }
+body { background: var(--desk); color: var(--ink); font-family: var(--ui); padding-inline: 16px; padding-block: 24px; }
+.wrap { display: flex; gap: 32px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+.side { flex: 1 1 280px; max-width: 380px; min-width: 0; display: grid; gap: 14px; }
+h1 { font-size: 1.35rem; margin: 0; }
+.side p { margin: 0; line-height: 1.5; color: var(--soft); font-size: 0.92rem; }
+.picker { display: grid; gap: 6px; }
+.picker-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--soft); margin-top: 6px; }
+.chip { display: flex; gap: 10px; align-items: baseline; text-align: left; width: 100%; border: 1px solid var(--rule); background: var(--card); color: var(--ink); border-radius: 10px; padding: 8px 12px; font: inherit; font-size: 0.88rem; cursor: pointer; }
+.chip small { color: var(--soft); }
+.chip[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.about { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 12px 14px; display: grid; gap: 6px; }
+.about h2 { font-size: 1rem; margin: 0; }
+.about .good, .about .bad { font-size: 0.85rem; line-height: 1.45; margin: 0; }
+.about .good b { color: #2f7a4a; }
+.about .bad b { color: #a3483c; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.frame { position: relative; width: 380px; max-width: 100%; height: 700px; border-radius: 14px; overflow: hidden; background: var(--paper); box-shadow: 0 10px 30px rgba(27, 42, 74, 0.18); border: 1px solid var(--rule); display: flex; flex-direction: column; }
+.bar { display: flex; align-items: center; gap: 6px; padding: 10px 10px 6px; background: linear-gradient(var(--top), var(--paper)); flex: none; }
+.btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; min-width: 32px; justify-content: center; padding: 0 10px; border: 1px solid var(--rule); border-radius: 999px; background: var(--card); color: var(--ink); font: inherit; font-size: 0.82rem; cursor: pointer; }
+.btn.title { flex: 1; min-width: 0; justify-content: flex-start; font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.paper { flex: 1; min-height: 0; padding: 4px 20px 0 26px; background-image: repeating-linear-gradient(transparent 0 31px, var(--rule) 31px 32px); font-family: var(--hand); line-height: 32px; overflow: hidden; position: relative; }
+.paper h3 { margin: 0; font-size: 1.1rem; line-height: 32px; }
+.paper p { margin: 0; }
+.muted { color: var(--soft); font-size: 0.8rem; }
+.list { display: grid; gap: 2px; }
+.li { display: flex; gap: 8px; align-items: center; border: 0; background: none; text-align: left; font: inherit; font-size: 0.85rem; color: var(--ink); padding: 7px 10px; border-radius: 8px; cursor: pointer; }
+.li:hover, .li.on { background: rgba(63, 120, 196, 0.12); }
+.li small { color: var(--soft); margin-left: auto; }
+.lab { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); padding: 8px 10px 2px; }
+
+/* Drawer */
+.drawer { position: absolute; top: 0; bottom: 0; left: 0; width: 78%; background: var(--card); border-right: 1px solid var(--rule); box-shadow: 8px 0 24px rgba(27, 42, 74, 0.16); padding: 14px 8px; z-index: 5; transform: translateX(-100%); transition: transform 200ms ease-out; }
+.drawer.open { transform: none; }
+.edge { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 12px; height: 64px; border-radius: 0 8px 8px 0; background: var(--rule); border: 0; cursor: pointer; z-index: 4; }
+/* Course path */
+.path { display: flex; gap: 4px; align-items: center; padding: 2px 14px 8px; overflow-x: auto; flex: none; }
+.step { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--rule); background: var(--card); font: inherit; font-size: 0.75rem; cursor: pointer; color: var(--soft); }
+.step.done { background: var(--rule); color: var(--ink); }
+.step.on { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.path i { flex: none; width: 10px; height: 2px; background: var(--rule); }
+.lessons { display: flex; justify-content: space-between; padding: 8px 12px 12px; flex: none; }
+/* Breadcrumb */
+.crumbs { padding: 0 14px 6px; font-size: 0.8rem; color: var(--soft); flex: none; }
+.crumbs button { border: 0; background: none; color: var(--accent); font: inherit; cursor: pointer; padding: 0; }
+/* Home */
+.home { flex: 1; overflow: auto; padding: 8px 14px; display: grid; gap: 10px; align-content: start; }
+.cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.card { border: 1px solid var(--rule); background: var(--card); border-radius: 12px; padding: 12px; text-align: left; font: inherit; cursor: pointer; display: grid; gap: 4px; }
+.card b { font-size: 0.9rem; }
+.card small { color: var(--soft); font-size: 0.75rem; }
+/* Split */
+.split-top { height: 38%; overflow: auto; border-bottom: 2px solid var(--rule); background: var(--card); padding: 4px 6px; flex: none; }
+/* Index tabs */
+.idx { position: absolute; right: 0; top: 16px; display: grid; gap: 4px; z-index: 3; }
+.idx button { border: 1px solid var(--rule); border-right: 0; border-radius: 8px 0 0 8px; padding: 6px 8px; font: inherit; font-size: 0.7rem; cursor: pointer; writing-mode: vertical-rl; transform: rotate(180deg); max-height: 110px; overflow: hidden; color: var(--ink); }
+/* Icon rail */
+.railwrap { flex: 1; display: flex; min-height: 0; }
+.rail { width: 52px; flex: none; display: grid; align-content: start; gap: 6px; padding: 10px 6px; background: var(--card); border-right: 1px solid var(--rule); }
+.rail button { height: 40px; border-radius: 10px; border: 0; background: none; cursor: pointer; font-size: 1rem; color: var(--soft); }
+.rail button.on { background: rgba(63, 120, 196, 0.14); color: var(--accent); }
+.railpane { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+/* Bottom tabs */
+.bottom { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--rule); background: var(--card); flex: none; }
+.bottom button { border: 0; background: none; padding: 8px 0 10px; font: inherit; font-size: 0.7rem; color: var(--soft); cursor: pointer; display: grid; justify-items: center; gap: 2px; }
+.bottom button.on { color: var(--accent); font-weight: 700; }
+.bottom span { font-size: 1.05rem; }
+/* Note tabs */
+.ntabs { display: flex; gap: 2px; padding: 8px 8px 0; overflow-x: auto; flex: none; background: var(--top); }
+.ntab { flex: none; display: flex; gap: 6px; align-items: center; max-width: 130px; border: 1px solid var(--rule); border-bottom: 0; border-radius: 8px 8px 0 0; padding: 6px 8px; font: inherit; font-size: 0.75rem; background: var(--card); color: var(--soft); cursor: pointer; }
+.ntab span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ntab.on { background: var(--paper); color: var(--ink); font-weight: 600; }
+.ntab i { font-style: normal; color: var(--faint); }
+/* Course */
+.course-head { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; padding: 0 14px 8px; font-size: 0.8rem; flex: none; }
+.progress { grid-column: 1 / -1; height: 6px; border-radius: 999px; background: var(--rule); overflow: hidden; }
+.progress i { display: block; height: 100%; background: var(--accent); }
+.course-tabs button { writing-mode: horizontal-tb; transform: none; width: 30px; padding: 6px 0; text-align: center; font-weight: 600; }
+.course-tabs button.on { width: 40px; font-weight: 700; box-shadow: -2px 0 0 var(--accent) inset; }
+.lesson-page { position: absolute; left: 26px; bottom: 6px; font-family: var(--ui); font-size: 0.75rem; color: var(--accent); }
+.lessons .is-done { background: #e3f1e6; border-color: #9ccaa8; }
+.lessons { gap: 6px; }
+.course-ask { margin: 0 14px 8px; padding: 10px 12px; border: 1px dashed var(--accent); border-radius: 12px; display: grid; gap: 6px; font-size: 0.8rem; color: var(--soft); background: var(--card); flex: none; }
+.course-ask b { color: var(--ink); }
+.course-ask .btn { justify-self: start; }
+.notice { position: absolute; left: 12px; right: 12px; bottom: 60px; background: var(--ink); color: var(--paper); border-radius: 10px; padding: 9px 12px; font-size: 0.8rem; z-index: 9; }
+@media (prefers-reduced-motion: reduce) { .drawer { transition: none; } }
+</style>
+
+<div class="wrap">
+  <div class="side">
+    <h1>Two more layouts</h1>
+    <p>Zen is the layout Glacier has now. Here are nine others, each in the same sidebar with the same notes. Pick one, click around, and note which two you would actually use.</p>
+    <div class="picker" id="picker" role="group" aria-label="Layouts"></div>
+    <div class="about" id="about" aria-live="polite"></div>
+    <div class="picker" role="group" aria-label="Open a note">
+      <div class="picker-label">Try the Course layout with</div>
+      <button class="chip" type="button" data-open="Flexbox notes"><span>A lesson in Web Dev, which is a course</span></button>
+      <button class="chip" type="button" data-open="Colour basics"><span>A note in Design, which isn't a course yet</span></button>
+    </div>
+  </div>
+  <div class="frame" id="frame"></div>
+</div>
+
+<script>
+const NOTES = {
+  "Flexbox notes": ["# Flexbox basics", "justify-content moves items along the row.", "align-items moves them across it.", "", "# Gap", "Use gap instead of margins."],
+  "CSS Grid": ["# Grid", "Two directions at once.", "grid-template-columns sets the columns."],
+  "Week 2 summary": ["# Week 2", "Flexbox for rows, Grid for pages.", "Practice the flexbox froggy game."],
+  "Box model": ["# Box model", "Content, padding, border, margin."],
+  "Colour basics": ["# Colour", "Hue, saturation, lightness."],
+};
+const COLLECTIONS = { "Web Dev": ["Box model", "Flexbox notes", "CSS Grid", "Week 2 summary"], "Design": ["Colour basics"] };
+const LAYOUTS = [
+  { id: "course", name: "Course", group: "Merged: Course path + Index tabs", good: "Made for learning. A collection becomes a course and its notes become lessons: numbered tabs on the paper's edge, your progress on top, Done and Next lesson at the bottom, and each lesson's page one click away.", bad: "Only for collections you mark as a course; other notes look like Zen." },
+  { id: "zen", name: "Zen", group: "Now", good: "Only the paper, nothing in the way.", bad: "Everything else is one click away in a menu." },
+  { id: "drawer", name: "Drawer", group: "Focus on writing", good: "The notes list slides in from the left edge and away again. The paper keeps the whole width.", bad: "The list is hidden until you pull it out." },
+  { id: "path", name: "Course path", group: "Know where you are", good: "The notes of a collection as numbered steps, like lessons. Previous and Next lesson at the bottom.", bad: "Only helps for notes that are in a collection." },
+  { id: "crumbs", name: "Breadcrumb", group: "Know where you are", good: "A line over the paper says where you are: Web Dev › Flexbox notes. Each part is clickable.", bad: "Small; easy to overlook." },
+  { id: "home", name: "Home", group: "Know where you are", good: "A start screen with your collections and recent notes, like an app's home. Notes open from there.", bad: "One more step before writing." },
+  { id: "split", name: "Split", group: "Notebook in view", good: "The notes list always on top, the paper below.", bad: "The paper gets much smaller in a narrow sidebar." },
+  { id: "index", name: "Index tabs", group: "Notebook in view", good: "The collection's notes stick out of the paper's edge as tabs, like a real ring binder.", bad: "Only a few tabs fit; long titles are cut." },
+  { id: "rail", name: "Icon rail", group: "Notebook in view", good: "A narrow column of icons on the left: notes, search, collections, archive.", bad: "Takes width from the paper all the time." },
+  { id: "bottom", name: "Bottom tabs", group: "Familiar app style", good: "Notes, Search, New and Settings at the bottom, like a phone app.", bad: "Feels more like an app than a notebook." },
+  { id: "ntabs", name: "Note tabs", group: "Familiar app style", good: "Your open notes as tabs on top, like browser tabs. Switch with one click.", bad: "Tabs inside a sidebar next to browser tabs can be confusing." },
+];
+const state = { layout: "course", courses: new Set(["Web Dev"]), done: new Set(["Box model"]), note: "Flexbox notes", drawer: false, home: true, tab: "notes", open: ["Flexbox notes", "Week 2 summary", "CSS Grid"], rail: "notes" };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+
+function paper(extra = "") {
+  return `<div class="paper">${extra}${NOTES[state.note].map((l) => (l.startsWith("# ") ? `<h3>${esc(l)}</h3>` : `<p>${esc(l) || "&nbsp;"}</p>`)).join("")}</div>`;
+}
+function bar(left = `<button class="btn" type="button" data-say="Would open the notes list">☰ Notes</button>`) {
+  return `<div class="bar">${left}<button class="btn title" type="button">${esc(state.note)}</button><button class="btn" type="button" data-say="New note">+</button><button class="btn" type="button" data-say="The ⋯ menu">⋯</button></div>`;
+}
+function noteList(withCollections = true) {
+  const coll = withCollections ? Object.entries(COLLECTIONS).map(([c, list]) => `<div class="lab">${esc(c)}</div>` + list.map((t) => `<button class="li ${t === state.note ? "on" : ""}" type="button" data-note="${esc(t)}">${esc(t)}</button>`).join("")).join("") : "";
+  return `<div class="list"><div class="lab">Recent</div>${["Flexbox notes", "Week 2 summary", "CSS Grid"].map((t) => `<button class="li ${t === state.note ? "on" : ""}" type="button" data-note="${esc(t)}">${esc(t)}</button>`).join("")}${coll}</div>`;
+}
+function collectionOf(t) { return Object.keys(COLLECTIONS).find((c) => COLLECTIONS[c].includes(t)); }
+
+function draw() {
+  const f = $("frame");
+  const L = state.layout;
+  const coll = collectionOf(state.note);
+  const list = coll ? COLLECTIONS[coll] : [state.note];
+  const at = list.indexOf(state.note);
+  if (L === "zen") f.innerHTML = bar() + paper();
+  if (L === "course") {
+    if (!coll || !state.courses.has(coll)) {
+      const ask = coll
+        ? `<div class="course-ask"><b>${esc(coll)} isn't a course.</b><span>Make it one to see its notes as lessons, with your progress and Next lesson.</span><button class="btn" type="button" data-course="${esc(coll)}">Make ${esc(coll)} a course</button></div>`
+        : `<div class="course-ask"><span>This note isn't in a collection, so it shows like Zen.</span></div>`;
+      f.innerHTML = bar() + ask + paper();
+    } else {
+      const done = list.filter((t) => state.done.has(t)).length;
+      const colours = ["#f6d9a8", "#cfe6c4", "#cddff5", "#ecd0e6", "#f3c9c0"];
+      f.innerHTML = bar() +
+        `<div class="course-head"><span><b>${esc(coll)}</b> · Lesson ${at + 1} of ${list.length}</span><span class="muted">${done} done</span>
+          <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${list.length}" aria-valuenow="${done}"><i style="width:${(done / list.length) * 100}%"></i></div></div>` +
+        paper(`<div class="idx course-tabs">${list.map((t, i) => `<button type="button" data-note="${esc(t)}" title="${esc(t)}" class="${t === state.note ? "on" : ""}" style="background:${colours[i % colours.length]}">${state.done.has(t) ? "✓" : i + 1}</button>`).join("")}<button type="button" data-say="Would add a lesson at the end" title="New lesson" style="background:var(--card)">+</button></div>
+          <a class="lesson-page" href="#" data-say="Would open the lesson's page">Lesson page: developer.mozilla.org ↗</a>`) +
+        `<div class="lessons"><button class="btn" type="button" ${at > 0 ? `data-note="${esc(list[at - 1])}"` : "disabled"}>‹ Previous</button>
+          <button class="btn ${state.done.has(state.note) ? "is-done" : ""}" type="button" data-done="${esc(state.note)}">${state.done.has(state.note) ? "✓ Done" : "Mark as done"}</button>
+          <button class="btn" type="button" ${at < list.length - 1 ? `data-note="${esc(list[at + 1])}"` : "disabled"}>Next lesson ›</button></div>`;
+    }
+  }
+  if (L === "drawer") {
+    f.innerHTML = bar(`<button class="btn" type="button" data-act="drawer">☰</button>`) + paper() +
+      `<button class="edge" type="button" data-act="drawer" aria-label="Open the notes"></button><div class="drawer ${state.drawer ? "open" : ""}">${noteList()}</div>`;
+  }
+  if (L === "path") {
+    f.innerHTML = bar() + `<div class="path">${list.map((t, i) => `${i ? "<i></i>" : ""}<button class="step ${i < at ? "done" : ""} ${i === at ? "on" : ""}" type="button" data-note="${esc(t)}" title="${esc(t)}">${i + 1}</button>`).join("")}<span class="muted" style="margin-left:8px">${coll ? esc(coll) : "Not in a collection"}</span></div>` + paper() +
+      `<div class="lessons"><button class="btn" type="button" ${at > 0 ? `data-note="${esc(list[at - 1])}"` : "disabled"}>‹ Previous</button><button class="btn" type="button" ${at < list.length - 1 ? `data-note="${esc(list[at + 1])}"` : "disabled"}>Next lesson ›</button></div>`;
+  }
+  if (L === "crumbs") {
+    f.innerHTML = bar() + `<div class="crumbs"><button type="button" data-say="Would show all notes">Notes</button> › ${coll ? `<button type="button" data-say="Would show ${esc(coll)}">${esc(coll)}</button> › ` : ""}${esc(state.note)}</div>` + paper();
+  }
+  if (L === "home") {
+    if (state.home) {
+      f.innerHTML = `<div class="bar"><button class="btn title" type="button">Glacier</button><button class="btn" type="button" data-say="New note">+ New note</button></div>
+        <div class="home"><div class="lab" style="padding:0">Collections</div><div class="cards">${Object.entries(COLLECTIONS).map(([c, l]) => `<button class="card" type="button" data-note="${esc(l[0])}"><b>${esc(c)}</b><small>${l.length} notes</small></button>`).join("")}</div>
+        ${noteList(false)}</div>`;
+    } else {
+      f.innerHTML = bar(`<button class="btn" type="button" data-act="home">⌂ Home</button>`) + paper();
+    }
+  }
+  if (L === "split") f.innerHTML = bar(`<button class="btn" type="button" data-say="The list is always open above">☰</button>`) + `<div class="split-top">${noteList()}</div>` + paper();
+  if (L === "index") {
+    const colours = ["#f6d9a8", "#cfe6c4", "#cddff5", "#ecd0e6", "#f3c9c0"];
+    f.innerHTML = bar() + paper(`<div class="idx">${list.map((t, i) => `<button type="button" data-note="${esc(t)}" style="background:${colours[i % colours.length]};${t === state.note ? "font-weight:700;padding-right:12px" : ""}">${esc(t)}</button>`).join("")}</div>`);
+  }
+  if (L === "rail") {
+    const pane = state.rail === "notes" ? "" : `<div style="padding:8px;background:var(--card);border-bottom:1px solid var(--rule)">${state.rail === "search" ? `<input style="width:100%;font:inherit;padding:7px;border:1px solid var(--rule);border-radius:8px" placeholder="Search your notes" aria-label="Search">` : noteList()}</div>`;
+    f.innerHTML = `<div class="railwrap"><nav class="rail">${[["notes", "✎", "Write"], ["list", "☰", "Notes"], ["search", "⌕", "Search"], ["archive", "▤", "Archive"]].map(([id, ic, t]) => `<button type="button" class="${state.rail === id ? "on" : ""}" data-rail="${id}" title="${t}" aria-label="${t}">${ic}</button>`).join("")}</nav>
+      <div class="railpane">${bar("")}${pane}${paper()}</div></div>`;
+  }
+  if (L === "bottom") {
+    const body = state.tab === "notes" ? `<div class="home">${noteList()}</div>` : state.tab === "search" ? `<div class="home"><input style="font:inherit;padding:8px;border:1px solid var(--rule);border-radius:8px" placeholder="Search your notes" aria-label="Search"></div>` : paper();
+    f.innerHTML = `<div class="bar"><button class="btn title" type="button">${state.tab === "write" ? esc(state.note) : "Glacier"}</button><button class="btn" type="button">⋯</button></div>${body}
+      <nav class="bottom">${[["write", "✎", "Write"], ["notes", "☰", "Notes"], ["search", "⌕", "Search"], ["settings", "⚙", "Settings"]].map(([id, ic, t]) => `<button type="button" class="${state.tab === id ? "on" : ""}" data-tab="${id}"><span>${ic}</span>${t}</button>`).join("")}</nav>`;
+  }
+  if (L === "ntabs") {
+    f.innerHTML = `<div class="ntabs">${state.open.map((t) => `<button class="ntab ${t === state.note ? "on" : ""}" type="button" data-note="${esc(t)}"><span>${esc(t)}</span><i data-close="${esc(t)}" aria-label="Close">×</i></button>`).join("")}<button class="ntab" type="button" data-say="Would open the notes list to pick one">+</button></div>` + bar() + paper();
+  }
+}
+
+function drawPicker() {
+  let last = "";
+  $("picker").innerHTML = LAYOUTS.map((l) => {
+    const head = l.group !== last ? `<div class="picker-label">${l.group}</div>` : "";
+    last = l.group;
+    return `${head}<button class="chip" type="button" data-layout="${l.id}" aria-pressed="${l.id === state.layout}"><span>${l.name}</span></button>`;
+  }).join("");
+  const l = LAYOUTS.find((x) => x.id === state.layout);
+  $("about").innerHTML = `<h2>${l.name}</h2><p class="good"><b>Good:</b> ${l.good}</p><p class="bad"><b>Less good:</b> ${l.bad}</p>`;
+}
+
+$("picker").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-layout]");
+  if (!b) return;
+  Object.assign(state, { layout: b.dataset.layout, drawer: false, home: true, tab: b.dataset.layout === "bottom" ? "write" : "notes", rail: "notes" });
+  drawPicker();
+  draw();
+});
+$("frame").addEventListener("click", (e) => {
+  const close = e.target.closest("[data-close]");
+  if (close) {
+    state.open = state.open.filter((t) => t !== close.dataset.close);
+    if (!state.open.includes(state.note)) state.note = state.open[0] ?? "Flexbox notes";
+    if (!state.open.length) state.open = [state.note];
+    draw();
+    return;
+  }
+  const say = e.target.closest("[data-say]");
+  if (say) { e.preventDefault(); notice(say.dataset.say); return; }
+  const t = e.target.closest("[data-note],[data-act],[data-tab],[data-rail],[data-done],[data-course]");
+  if (!t) return;
+  if (t.dataset.done) {
+    const n = t.dataset.done;
+    if (state.done.has(n)) state.done.delete(n); else { state.done.add(n); notice(`Lesson done. ${collectionOf(n) ? "Next lesson is one click away." : ""}`); }
+  }
+  if (t.dataset.course) { state.courses.add(t.dataset.course); notice(`${t.dataset.course} is a course now. Its notes are its lessons, in this order.`); }
+  if (t.dataset.note) {
+    state.note = t.dataset.note;
+    state.drawer = false;
+    state.home = false;
+    if (state.layout === "bottom") state.tab = "write";
+    if (!state.open.includes(state.note)) state.open = [...state.open, state.note];
+  }
+  if (t.dataset.act === "drawer") state.drawer = !state.drawer;
+  if (t.dataset.act === "home") state.home = true;
+  if (t.dataset.tab) state.tab = t.dataset.tab === "settings" ? state.tab : t.dataset.tab;
+  if (t.dataset.rail) state.rail = t.dataset.rail;
+  draw();
+});
+document.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => {
+  state.note = b.dataset.open;
+  state.layout = "course";
+  drawPicker();
+  draw();
+}));
+let noticeTimer;
+function notice(text) {
+  clearTimeout(noticeTimer);
+  let box = document.querySelector(".notice");
+  if (!box) { box = document.createElement("div"); box.className = "notice"; box.setAttribute("role", "status"); $("frame").append(box); }
+  box.textContent = text;
+  noticeTimer = setTimeout(() => box.remove(), 3000);
+}
+drawPicker();
+draw();
+</script>

@@ -157,6 +157,13 @@ this order.
      on its top right edge, so it reads as Settings. Hover says "Settings";
      no spinning (pixel art stays still).
 3. **Two more layouts** next to Zen (picked from the list under Later).
+   Prototype: https://claude.ai/artifact/63je2UPGNeimnZ6pXJWZsV. The user
+   liked Course path, Home and Index tabs. Proposed: one "Course" layout
+   (Course path and Index tabs merged) and "Home". Course is explicitly
+   for learning: a collection is marked as a course, its notes are its
+   lessons (numbered tabs on the paper's edge, progress on top, Previous,
+   Mark as done and Next lesson at the bottom, the lesson's page one click
+   away). Course decided 2026-10-22 (#126); Home not grilled yet.
 4. **Hidden games.** A secret command (for example `/takebreak`) starts a
    small pixel game in the note, with highscores. Each Theme has its own game
    that matches it. (Pixel art stays still or slow; no flicker.)
