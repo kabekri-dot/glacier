@@ -69,7 +69,45 @@ Each of these gets a grilling with the user before it becomes a ticket, in
 this order.
 
 1. **Urgent: the top bar.** It is cluttered and hard to understand. Glacier
-   should be usable with no tutorial at all.
+   should be usable with no tutorial at all. Part of it: deleting a note
+   from the notes list opens that note and swaps the paper for the question.
+   The question should appear right where Delete was clicked, just Keep or
+   Delete, without opening anything.
+   Decided so far in the grilling:
+   - The notes list gets its own button on the left with a word: `☰ Notes`.
+   - The title is where the name is edited: hovering shows a small pixel-art
+     pen, and clicking the pen edits the title in place.
+   - In the notes list, a note can be renamed too, not only deleted.
+   - Clicking the title shows the note's headings; clicking one jumps
+     there. With none: "No headings yet. Start a line with # to make one."
+     The ≡ tab on the left goes (it wasn't found without being told).
+   - The sync dot is hidden while all is well. When something needs the
+     user, a short word shows in its place ("Offline", "Not synced");
+     clicking it says what happened and what to do.
+   - The pin leaves the bar and becomes a pixel-art pushpin in the top
+     right corner of the paper: faint when off, stuck in and bright when on.
+     One click pins or unpins. Feedback: the pin presses in (or pulls out)
+     in one short smooth motion, and a notice says "Pinned. This note stays
+     open when you change tabs." or "Unpinned. Glacier follows your tabs
+     again."
+   - `?` leaves the bar: "Keyboard shortcuts" goes into the `⋯` menu (and
+     Settings), and menu items show their shortcut next to them.
+   - No help button in the bar. "Help" is the last item in the `⋯` menu and
+     opens a short page of common questions (later on the website). Empty
+     places and first clicks explain themselves instead.
+   - `←` stays on the far left, only when there is a note to go back to;
+     hovering says "Back to <note title>". Click and hold goes (nobody finds
+     it); the earlier notes are under Recent in the notes list.
+   - `+` keeps its choice, made concrete: `Note for "<page title>"` (linked
+     to this page) and `Blank note`, each with a pixel-art icon (a globe, a
+     sheet of paper). The first is picked already, so `+` then Enter works.
+     With no website open, `+` makes a blank note at once.
+   - `⋯` menu in groups with thin lines between, each item with a pixel-art
+     icon: Rename, Move to collection…, Make secret, Download or print |
+     Archive, Delete | Keyboard shortcuts, Help. (Alternatives shown to the
+     user; to be confirmed.)
+   - "Extract to a new note" leaves the menu: it appears when text is
+     selected. Whether selecting text shows more options is still open.
 2. **Settings, more organized.** Keep the style; less at once.
 3. **Two more layouts** next to Zen (picked from the list under Later).
 4. **Hidden games.** A secret command (for example `/takebreak`) starts a
