@@ -11,6 +11,19 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Bad moments say what to do (#117)
+
+- [ ] Settings, Where your notes live, Restore from backup file, and pick a file that isn't a zip (a picture or a text file): a notice says "Couldn't read that file. Nothing was changed. Pick a zip made with Export." Your notes are all still there.
+- [ ] Block pop-ups for Glacier (Chrome: the icon at the right of the address bar, or Settings, Privacy, Site settings, Pop-ups), then Download a note as Print: a notice says the browser blocked the print window and to allow pop-ups, with Try again. Allow pop-ups, click Try again: the print window opens.
+- [ ] Force a full storage: open the sidebar's devtools, Application, Storage, tick Simulate custom storage quota and set it very small, then type in a note. A banner at the bottom says the browser's storage is full and your text is still here, with Copy note.
+- [ ] Click Copy note: "Copied." shows beside it. Paste somewhere: the whole note's text is there.
+- [ ] Undo the storage limit, then type again: the banner goes away by itself.
+- [ ] In a fresh browser profile (or after deleting every note), open the ▾ menu: it says "No notes yet. Just start writing on a page, or press + for a new note."
+- [ ] Copy a few lines in a note: the notice says "Copied 3 lines." with a full stop.
+- [ ] With GitHub as where your notes live, delete a note: the question says "It is also removed from your GitHub repo." With Google Drive it names Google Drive, with a folder "your notes folder", and with Only in this browser the sentence is left out.
+- [ ] Delete a Collection: the question puts its name in curly quotes, “Name”, like the notice after it, and names the same place as above.
+- [ ] In a sketch with shapes, pick it, press Backspace and click Keep: the sketch is still picked (its toolbar shows). Press Backspace again: the question asks again.
+
 ### Deleting says so and can be undone, and the sketch question (#116)
 
 - [ ] Delete a note from the ⋯ This note menu and click Delete: a notice says "Deleted “title”." with Undo. Click Undo within 6 seconds: the note opens again with its text, Collection, page and sketches.
@@ -447,7 +460,7 @@ Reload with ↻ first.
 - [ ] Click Download on a Collection: a small choice shows Markdown (.md), PDF and Print. Markdown saves a zip. PDF and Print open the print window with every note of the Collection, each on a new page. Do the same from a note row and from ⋯ This note: the same three choices.
 - [ ] Click Archive on a Collection: its notes leave the lists and "Archived 12 notes." shows with Undo. Undo puts them all back.
 - [ ] Open the Archive section: the notes sit under their Collection, and hovering that heading offers Unarchive. It brings back every note of that Collection.
-- [ ] Click Delete on a Collection: the question names the count, "Delete the collection 'Testing' and its 12 notes? They're also removed from your Notes repo." Keep (or Esc) leaves everything. Delete removes the notes and a notice offers Undo, which brings them all back. Without Undo, after the next sync they are gone from the Notes repo too.
+- [ ] Click Delete on a Collection: the question names the count and where your notes live, "Delete the collection “Testing” and its 12 notes? They're also removed from your GitHub repo." Keep (or Esc) leaves everything. Delete removes the notes and a notice offers Undo, which brings them all back. Without Undo, after the next sync they are gone from the Notes repo too.
 
 ### Enter after Ctrl+B, and Shift+Enter as a plain new line (#78)
 
@@ -733,7 +746,7 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 - [ ] Restore from that zip again: a message says no notes were added and all were already here, and nothing changed.
 - [ ] Change a note, then restore from the older zip: your note keeps your change, and the older text appears as a second note with "(imported" and the date in its title.
 - [ ] Restore from a zip in a fresh Glacier (or another browser): every note comes back with its text, Collection and website.
-- [ ] Restore from a file that isn't a zip: a message says it couldn't be read, and nothing changed.
+- [ ] Restore from a file that isn't a zip: a message says "Couldn't read that file. Nothing was changed. Pick a zip made with Export.", and nothing changed.
 
 ### A rename syncs as one commit
 
@@ -876,7 +889,7 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 ### Delete this note
 
 - [ ] Open a note and open the ⋯ This note menu after the title: "Delete" is there, and hovering shows "Remove this note for good".
-- [ ] Click it: the sidebar asks "Delete 'title'? It is also removed from your Notes repo." with Delete and Keep. No browser dialog shows.
+- [ ] Click it: the sidebar asks "Delete “title”? It is also removed from your GitHub repo." (or Google Drive, or your notes folder; nothing more with notes only in this browser) with Delete and Keep. No browser dialog shows.
 - [ ] Click Keep: the note comes back as it was. Do it again and press Esc: same result.
 - [ ] Click Delete: the sidebar shows the note of the tab you are on, or the empty paper for a new note if that page has none. A notice says "Deleted “title”." with Undo; Undo opens the note again as it was.
 - [ ] The deleted note is gone from the menu, recent notes and search, and the previous note button skips it.

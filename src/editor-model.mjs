@@ -618,7 +618,7 @@ export function markdownSlice(lines, from, to) {
 
 // The short confirmation shown after a copy.
 export function copiedMessage(count) {
-  return count === 1 ? "Copied 1 line" : `Copied ${count} lines`;
+  return count === 1 ? "Copied 1 line." : `Copied ${count} lines.`;
 }
 
 // The title of the Link a drawn position falls on, or null when the position

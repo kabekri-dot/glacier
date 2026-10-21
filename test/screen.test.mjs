@@ -30,13 +30,14 @@ function manualTimer() {
   };
 }
 
-function setup({ onSaveError = () => {}, notebook = createNotebook({ storage: memoryStorage() }), welcomeSeen = true } = {}) {
+function setup({ onSaveError = () => {}, onSaved = () => {}, notebook = createNotebook({ storage: memoryStorage() }), welcomeSeen = true } = {}) {
   const timer = manualTimer();
   const left = [];
   const seen = [];
   const screen = createScreen({
     notebook,
     onSaveError,
+    onSaved,
     beforeLeave: () => left.push(screen.note()?.title ?? null),
     welcomeSeen,
     onWelcomeSeen: () => seen.push(true),
@@ -627,6 +628,25 @@ test("a failing save reaches the save-error callback", () => {
   screen.edit("x");
   screen.flush();
   assert.deepEqual(errors, [boom]);
+});
+
+test("a save that works after a failing one reaches the saved callback, so the error can go", () => {
+  const heard = [];
+  const notebook = createNotebook({ storage: memoryStorage() });
+  const first = notebook.createNote({ title: "First" });
+  const saveBody = notebook.saveBody;
+  notebook.saveBody = () => {
+    throw new Error("disk full");
+  };
+  const { screen } = setup({ notebook, onSaveError: () => heard.push("error"), onSaved: () => heard.push("saved") });
+  screen.open(first);
+  screen.edit("x");
+  screen.flush();
+  notebook.saveBody = saveBody;
+  screen.edit("xy");
+  screen.flush();
+  assert.deepEqual(heard, ["error", "saved"]);
+  assert.equal(notebook.note("First").body, "xy");
 });
 
 // --- A new note's title follows its first line (#80) -----------------------
