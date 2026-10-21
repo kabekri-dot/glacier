@@ -121,7 +121,7 @@ export function createMenuView({ notebook, screen, el, button: menuButtonEl, not
     keep.focus();
   }
 
-  // The notice after a delete, like Archived. (#116): Undo puts back what
+  // The notice after a delete, like Archived (#116): Undo puts back what
   // went, and the note the delete closed opens again.
   function offerUndoDelete(text, kept) {
     notice(text, 6000, {
