@@ -17,8 +17,8 @@ which version.
   keyboard shortcut.
 - `sidebar/` — the Zen panel: `panel.html`, `panel.css` and `panel.js`, which
   wires the note, the top bar and settings together. The parts it draws with
-  live beside it: `menu-view.js` (the notes list behind ☰ Notes, its hover
-  icons and the questions before deleting), `pill-menus.js` (the headings
+  live beside it: `menu-view.js` (the notes list behind ☰ Notes, the ✎ and
+  ⋯ of its rows and the questions asked in a row), `pill-menus.js` (the headings
   under the title, + and ⋯), `title-edit.js` (renaming in place),
   `sync-box-view.js` (the sync word and its box),
   `note-details-view.js` (the Note details drawer from ⋯),

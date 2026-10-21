@@ -1442,11 +1442,6 @@ code {
   border-color: var(--accent);
 }
 
-.menu-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
 .menu-new {
   display: block;
   flex: 1;
@@ -1521,27 +1516,6 @@ code {
 /* The open note in Notes for this page. */
 .menu-item.is-current {
   color: var(--accent);
-}
-
-.menu-archive summary {
-  cursor: pointer;
-  padding: 0.2rem 0;
-  margin-top: 0.6rem;
-  font-size: 0.75rem;
-  color: var(--accent);
-}
-
-.menu-archive .menu-item {
-  padding-left: 1rem;
-}
-
-.menu-course summary {
-  cursor: pointer;
-  padding: 0.2rem 0;
-}
-
-.menu-course .menu-item {
-  padding-left: 1rem;
 }
 
 .menu-item {
@@ -1727,12 +1701,13 @@ code {
 }
 
 /* The confirmation after a copy (#7): bottom right, clear of the Backlinks
-   button and the glacier button. */
+   button and the glacier button, and above the notes list, whose actions
+   answer with a notice too (#123). */
 .copied {
   position: fixed;
   right: 3.6rem;
   bottom: 0.5rem;
-  z-index: 10;
+  z-index: 31;
   margin: 0;
   padding: 0.2rem 0.65rem;
   border: 1px solid var(--rule);
@@ -2114,7 +2089,7 @@ html.beside .settings {
   display: none;
 }
 
-/* Hover icons on note rows and Collection headings, and the Download choice (#71). */
+/* ✎ and ⋯ on note and folder rows (#71, #123), and the Download choice. */
 .menu-row {
   display: flex;
   align-items: center;
@@ -2132,60 +2107,210 @@ html.beside .settings {
 }
 
 .menu-row:hover .row-icons,
-.menu-row:focus-within .row-icons {
+.menu-row:focus-within .row-icons,
+.menu-row.is-held .row-icons {
   display: flex;
 }
 
-.icon-button {
+/* The notes list (#123): the search with ⤢ on top, folders that fold,
+   ✎ and ⋯ on each row, and the small menu under a row. */
+.menu.is-wide {
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.menu-top {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.menu-top .menu-search {
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-top-button,
+.row-button {
   display: inline-flex;
   align-items: center;
-  padding: 0.2rem;
+  justify-content: center;
+  flex: none;
+  min-width: 1.6rem;
+  height: 1.6rem;
+  padding: 0 0.25rem;
   border: 0;
-  border-radius: 4px;
+  border-radius: 5px;
   background: transparent;
   color: var(--ink);
+  font: inherit;
   cursor: pointer;
 }
 
-.icon-button:hover,
-.icon-button:focus-visible {
+.menu-top-button {
+  min-width: 2rem;
+  height: 2rem;
+  font-size: 1.05rem;
+}
+
+.menu-top-button:hover,
+.menu-top-button:focus-visible,
+.row-button:hover,
+.row-button:focus-visible,
+.row-button[aria-expanded="true"] {
   background: color-mix(in srgb, var(--accent) 15%, transparent);
+  outline: none;
 }
 
-.menu-course summary {
+.row-button-icon {
+  width: 0.85rem;
+  height: 0.85rem;
+  image-rendering: pixelated;
+}
+
+.menu-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0.6rem 0 0.2rem;
+}
+
+.menu-label-row .menu-heading {
+  margin: 0;
+}
+
+.menu-add-collection {
+  padding: 0.05rem 0.4rem;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.menu-add-collection:hover,
+.menu-add-collection:focus-visible {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  outline: none;
+}
+
+.menu-fold {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.4rem;
 }
 
-.collection-icons {
-  display: flex;
+.menu-fold-caret {
   flex: none;
-  gap: 0.1rem;
+  width: 0.7rem;
+  opacity: 0.6;
 }
 
-.menu-course summary .icon-button,
-.menu-course-heading .icon-button {
-  visibility: hidden;
+.menu-fold-icon {
+  flex: none;
+  width: 0.9rem;
+  height: 0.9rem;
+  image-rendering: pixelated;
 }
 
-.menu-course summary:hover .icon-button,
-.menu-course summary:focus-within .icon-button,
-.menu-course-heading:hover .icon-button,
-.menu-course-heading:focus-within .icon-button {
-  visibility: visible;
+.menu-fold-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.menu-course-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.2rem 0;
+.menu-fold-count {
+  flex: none;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+.menu-folder-body {
+  padding-left: 0.9rem;
+}
+
+/* An open Collection ends with a faint new note, like New page at the end
+   of the paper. */
+.menu-add-note {
   font-size: 0.85rem;
+  opacity: 0.55;
 }
 
-.menu-course .delete-question {
-  margin: 0.3rem 0;
+.menu-add-note:hover,
+.menu-add-note:focus {
+  opacity: 1;
+}
+
+.menu-new-named {
+  color: var(--accent);
+}
+
+/* Each note's second line in the expanded view. */
+.menu-note-under {
+  display: block;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--ink) 55%, transparent);
+}
+
+.row-menu {
+  display: flex;
+  flex-direction: column;
+  margin: 0.1rem 0 0.35rem 1rem;
+  padding: 0.25rem;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--paper);
+}
+
+.row-menu .bar-item.is-current {
+  color: var(--accent);
+}
+
+.menu-label {
+  margin: 0.15rem 0.45rem 0.25rem;
+  font-size: 0.75rem;
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+
+.menu-question {
+  margin: 0.2rem 0;
+}
+
+.menu-row-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0.2rem 0;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: var(--field);
+  color: var(--ink);
+  font: inherit;
+  outline: none;
+}
+
+.menu-row-input:focus {
+  border-color: var(--accent);
+}
+
+.menu-field-hint {
+  margin: 0 0 0.3rem;
+  font-size: 0.8rem;
+  color: var(--accent);
+}
+
+.menu-field-hint[hidden] {
+  display: none;
 }
 
 .format-choice {
@@ -2197,22 +2322,6 @@ html.beside .settings {
   border: 1px solid var(--rule);
   border-radius: 8px;
   background: var(--paper);
-}
-
-/* The Collections a page group can move to (#92): the Download choice's
-   look, with room for a new name. */
-.collection-choice {
-  min-width: 10rem;
-  max-height: 14rem;
-  overflow-y: auto;
-}
-
-/* A website's group under No collection (#92): globe and page title. */
-.page-group-name {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  min-width: 0;
 }
 
 /* The Collections to download, under Notes repo, Backup in settings. */
@@ -2549,23 +2658,6 @@ html[data-dark] .welcome-scene {
 .shortcuts-welcome:focus-visible {
   outline: none;
   text-decoration-style: solid;
-}
-
-.menu-new-collection-input {
-  width: 100%;
-  box-sizing: border-box;
-  margin: 0.3rem 0;
-  padding: 0.25rem 0.4rem;
-  border: 1px solid var(--rule);
-  border-radius: 5px;
-  background: var(--field);
-  color: var(--ink);
-  font: inherit;
-  outline: none;
-}
-
-.menu-new-collection-input:focus {
-  border-color: var(--accent);
 }
 
 /* Notes as pages (#108). With all pages shown, a page break is a quiet

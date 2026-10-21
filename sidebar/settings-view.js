@@ -44,11 +44,6 @@ export function menuButton(text, hint, onClick) {
 }
 
 const ICONS = {
-  download: '<path d="M12 4v10M8 10l4 4 4-4M5 19h14"/>',
-  archive: '<path d="M4 6h16v4H4zM6 10v9h12v-9M10 14h4"/>',
-  unarchive: '<path d="M4 6h16v4H4zM6 10v9h12v-9M12 17v-5M9 14l3-3 3 3"/>',
-  delete: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>',
-  move: '<path d="M4 6h6l2 2h8v11H4zM9 13.5h7M13 10.5l3 3-3 3"/>',
   website: '<circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c-3 3-3 13 0 16M12 4c3 3 3 13 0 16"/>',
   own: '<path d="M5 19l1-4L16 5l3 3L9 18zM14 7l3 3"/>',
 };
@@ -63,24 +58,6 @@ export function originIcon(origin) {
     '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" ' +
     `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[origin.kind]}</svg>`;
   return icon;
-}
-
-// A small line icon button (#71): Download, Archive, Unarchive or Delete.
-export function iconButton(kind, hint, onClick) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "icon-button";
-  button.title = hint;
-  button.setAttribute("aria-label", hint);
-  button.innerHTML =
-    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" ' +
-    `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[kind]}</svg>`;
-  button.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    onClick(button);
-  });
-  return button;
 }
 
 // The small choice right where a Download was clicked (#71, #74): Markdown,

@@ -1,57 +1,71 @@
-// What the ▾ Notebook and ⋯ This note menus list (#67), as plain data with
-// the hover texts. Pure, so it can be tested with node --test; the sidebar
-// only turns each part into elements and wires the clicks.
+// What the notes list (#12, #123) and ⋯ This note (#67, #121) list, as plain
+// data with the hover texts. Pure, so it can be tested with node --test; the
+// sidebar only turns each part into elements and wires the clicks.
 //
-// The ▾ menu is a list of parts:
+// The notes list is a list of parts:
 //   { kind: "heading", text, hint }       a small heading
-//   { kind: "notes", titles, current? }   note buttons, `current` the open one
-//   { kind: "newForPage", label, hint }   "+ New note for this page"
-//   { kind: "newCollection", label, hint } "+ New collection" under the Notebook heading
-//   { kind: "group", label, hint, open, archive, titles, course?, actions?, sections? }
-//                                  a foldable group; a Collection's has `course` and
-//                                  `actions` (its hover icons); the Archive has `sections`,
-//                                  one per Collection: { course, titles, actions }
+//   { kind: "notes", titles, current? }   note rows, `current` the open one
+//   { kind: "collectionsHeading", text, add } "Collections" with its "+ New"
+//   { kind: "folder", key, label, hint, icon, count, open, renamable, menu, parts, course?, archived?, page?, titles? }
+//                                  a foldable folder: a Collection (with `course`,
+//                                  `renamable` by ✎), "Not in a collection", a Page
+//                                  group (with `page`), the Archive or a Collection
+//                                  inside it (`archived`). `menu` is what its ⋯
+//                                  offers, or null; `parts` are drawn under it
+//                                  while it is `open`
+//   { kind: "newInCollection", label, hint, course } the faint row ending an open Collection
+//   { kind: "line" }                      the line before the Archive
 //   { kind: "empty", text }               a quiet line when nothing is listed
+//   { kind: "newNamed", label, title }    "New note “…”" when a search finds nothing
 //   { kind: "result", title, titleMark, snippet }           a search result
-//   { kind: "pair", notes: [{ title, label, actions }] }   a Conflict Copy and its original, with the row icons
+//   { kind: "pair", notes: [{ title, label }] }   a Conflict Copy and its original
 import { COLLECTIONS_HINT } from "./guidance.mjs";
 import { alsoDeletedFrom } from "./notes-home.mjs";
 import { normalizeSource } from "./notebook.mjs";
-import { PAGE_NOTE_HINT } from "./new-note-choices.mjs";
+import { shortDate } from "./note-details.mjs";
 
 const CONFLICT_SUFFIX = / \(conflict \d{4}-\d{2}-\d{2}\)( \d+)?$/;
 const ARCHIVE_HINT = "Notes you hid from your lists. Open one to bring it back";
 const SEVERAL_VERSIONS_HINT =
   "These notes were changed in two places before they synced, so Glacier kept every version. Open one, copy what you want to keep into the original, then delete or archive the others.";
 const PAGE_NOTES_HINT = "Every note for this page, the latest first";
+const NOT_IN_A_COLLECTION = "Not in a collection";
 
 function heading(text, hint = null) {
   return { kind: "heading", text, hint };
 }
 
-// The ▾ menu: search results while there is a query, else the notes for the
-// open note's page, recent notes and the Notebook.
-export function notebookMenu(notebook, query, openNote = null) {
-  return query.trim() ? searchResults(notebook, query) : browse(notebook, openNote);
+// The notes list: search results while there is a query, else the notes for
+// the open note's page, recent notes, the Collections and the Archive.
+// `opened` holds the keys of the folders opened by a click; the expanded
+// view (`wide`) opens every folder.
+export function notebookMenu(notebook, query, openNote = null, { opened = new Set(), wide = false } = {}) {
+  if (query.trim()) return searchResults(notebook, query);
+  return browse(notebook, openNote, (key) => wide || opened.has(key));
 }
 
-// Every note for the open note's page, newest first, and a way to add one.
+// Every note for the open note's page, newest first, once the page has more
+// than one.
 function notesForThisPage(notebook, openNote) {
   if (!openNote?.source) return [];
   const titles = notebook.notesForPage(openNote.source).map((note) => note.title);
-  return [
-    heading("Notes for this page", PAGE_NOTES_HINT),
-    { kind: "notes", titles, current: openNote.title },
-    { kind: "newForPage", label: "+ New note for this page", hint: PAGE_NOTE_HINT },
-  ];
+  if (titles.length < 2) return [];
+  return [heading("For this page", PAGE_NOTES_HINT), { kind: "notes", titles, current: openNote.title }];
 }
 
 // Each result has its title, with the match marked either in the title
-// (titleMark) or in a snippet of the text (snippet).
+// (titleMark) or in a snippet of the text (snippet). No match offers a note
+// with the words searched for as its title.
 function searchResults(notebook, query) {
   const results = notebook.search(query);
-  if (results.length === 0) return [{ kind: "empty", text: "No notes match" }];
   const needle = query.trim();
+  if (results.length === 0) {
+    const title = needle.replace(/^\/\//, "").trim();
+    return [
+      { kind: "empty", text: `No notes match “${needle}”.` },
+      ...(title ? [{ kind: "newNamed", label: `New note “${title}”`, title }] : []),
+    ];
+  }
   return results.map((result) => ({
     kind: "result",
     title: result.title,
@@ -66,51 +80,86 @@ function markIn(text, needle) {
   return { before: text.slice(0, at), match: text.slice(at, end), after: text.slice(end) };
 }
 
-// The notes for this page, recent notes, then the Notebook: Collections with
-// their notes, the notes without a Collection, and the folded Archive last.
-function browse(notebook, openNote) {
+function notesPart(titles) {
+  return titles.length > 0 ? [{ kind: "notes", titles }] : [];
+}
+
+// Several versions, the notes for this page and recent notes, then the
+// Collections, each a folder, the notes without one in their own folder, and
+// the Archive after a line. `isOpen(key)` says which folders are open.
+function browse(notebook, openNote, isOpen) {
   const parts = [...twoVersions(notebook), ...notesForThisPage(notebook, openNote)];
   const recent = notebook.recentNotes();
   if (recent.length > 0) {
     parts.push(heading("Recent"), { kind: "notes", titles: recent.map((note) => note.title) });
   }
   const outline = notebook.outline();
-  parts.push(heading("Notebook"));
+  parts.push({ kind: "collectionsHeading", text: "Collections", add: { label: "+ New", hint: "Make a new collection" } });
   if (outline.courses.length === 0) parts.push({ kind: "empty", text: COLLECTIONS_HINT });
-  parts.push({ kind: "newCollection", label: "+ New collection", hint: "Make an empty collection to fill later" });
-  if (outline.courses.length + outline.uncategorised.length === 0) {
+  for (const { course, titles } of outline.courses) parts.push(collectionFolder(course, titles, isOpen));
+  if (outline.uncategorised.length > 0) {
+    parts.push(folder({
+      key: "loose",
+      label: NOT_IN_A_COLLECTION,
+      hint: "Notes not in any collection",
+      count: outline.uncategorised.length,
+      parts: withPageGroups(notebook, outline.uncategorised, isOpen),
+    }, isOpen));
+  } else if (outline.courses.length === 0) {
     parts.push({ kind: "empty", text: "No notes yet. Just start writing on a page, or press + for a new note." });
   }
-  for (const { course, titles } of outline.courses) {
-    parts.push({ kind: "group", label: course, hint: "Notes in this collection", open: true, archive: false, titles, course, actions: collectionActions(course, titles.length) });
-  }
-  if (outline.uncategorised.length > 0) {
-    parts.push(heading("No collection", "Notes not in any collection"), ...withPageGroups(notebook, outline.uncategorised));
-  }
   const archived = notebook.archivedNotes();
-  if (archived.length > 0) {
-    const archivedOutline = notebook.archivedOutline();
-    parts.push({
-      kind: "group",
-      label: `Archive (${archived.length})`,
-      hint: ARCHIVE_HINT,
-      open: false,
-      archive: true,
-      titles: archived.map((note) => note.title),
-      sections: archivedOutline.courses.map(({ course, titles }) => ({
-        course,
-        titles,
-        actions: collectionActions(course, titles.length, true),
-      })),
-    });
-  }
+  if (archived.length > 0) parts.push({ kind: "line" }, archiveFolder(notebook, archived, isOpen));
   return parts;
 }
 
+function folder({ key, label, hint, icon = "folder", count, renamable = false, menu = null, parts, ...more }, isOpen) {
+  return { kind: "folder", key, label, hint, icon, count, open: isOpen(key), renamable, ...more, menu, parts };
+}
+
+function collectionFolder(course, titles, isOpen) {
+  return folder({
+    key: `collection:${course}`,
+    label: course,
+    hint: "Notes in this collection",
+    count: titles.length,
+    course,
+    renamable: true,
+    menu: collectionRowMenu(course, titles.length),
+    parts: [
+      ...notesPart(titles),
+      { kind: "newInCollection", label: `+ New note in ${course}`, hint: `Make a note in ${course}`, course },
+    ],
+  }, isOpen);
+}
+
+// The Archive: a folder for each Collection in it, then the notes without one.
+function archiveFolder(notebook, archived, isOpen) {
+  const { courses, uncategorised } = notebook.archivedOutline();
+  const inside = courses.map(({ course, titles }) => folder({
+    key: `archive:${course}`,
+    label: course,
+    hint: "Archived notes in this collection",
+    count: titles.length,
+    course,
+    archived: true,
+    menu: archivedCollectionMenu(course, titles.length),
+    parts: notesPart(titles),
+  }, isOpen));
+  return folder({
+    key: "archive",
+    label: "Archive",
+    hint: ARCHIVE_HINT,
+    icon: "archive",
+    count: archived.length,
+    parts: [...inside, ...notesPart(uncategorised)],
+  }, isOpen);
+}
+
 // The notes without a Collection (#92): a website with two or more of them is
-// its own group, named after the page, with its notes newest first; every
-// other note is a plain row. Groups and rows stand in one list sorted by name.
-function withPageGroups(notebook, titles) {
+// its own folder, named after the page, with its notes newest first; every
+// other note is a plain row. Folders and rows stand in one list sorted by name.
+function withPageGroups(notebook, titles, isOpen) {
   const byPage = new Map();
   for (const title of titles) {
     const source = notebook.note(title)?.source;
@@ -126,7 +175,7 @@ function withPageGroups(notebook, titles) {
     const notes = notebook.notesForPage(source).filter((note) => own.includes(note.title));
     const label = notes.find((note) => note.pageTitle)?.pageTitle ?? shortAddress(source);
     for (const title of own) grouped.add(title);
-    entries.push({ name: label, group: pageGroup(label, source, notes.map((note) => note.title)) });
+    entries.push({ name: label, group: pageGroup(label, source, notes.map((note) => note.title), isOpen) });
   }
   const parts = [];
   for (const entry of entries.filter((entry) => !grouped.has(entry.title)).sort((a, b) => a.name.localeCompare(b.name))) {
@@ -138,17 +187,18 @@ function withPageGroups(notebook, titles) {
   return parts;
 }
 
-function pageGroup(label, page, titles) {
-  return {
-    kind: "group",
+function pageGroup(label, page, titles, isOpen) {
+  return folder({
+    key: `page:${page}`,
     label,
     hint: "Notes for this website",
-    open: true,
-    archive: false,
+    icon: "globe",
+    count: titles.length,
     page,
     titles,
-    actions: [{ kind: "move", hint: `Move the notes for '${label}' to a collection` }],
-  };
+    menu: [{ kind: "move", label: "Move to collection…", icon: "folder", hint: `Move the notes for “${label}” to a collection` }],
+    parts: notesPart(titles),
+  }, isOpen);
 }
 
 // A page without a remembered title: its site and the last part of its path,
@@ -164,11 +214,11 @@ function shortAddress(source) {
   }
 }
 
-// Several versions (n), at the top of the ▾ menu only while there are any (#75):
+// Several versions (n), at the top of the notes list only while there are any (#75):
 // each original with its second version (Conflict Copy) under it. The
 // original is left out when it is gone.
 function versionRow(title) {
-  return { title, label: title, actions: rowActions(title) };
+  return { title, label: title };
 }
 
 function twoVersions(notebook) {
@@ -254,35 +304,85 @@ export function backButtonHint(title) {
   return `Back to ${title}`;
 }
 
-// The hover icons on a note row (#71): Download, Archive (Unarchive in the
-// Archive section) and Delete, each with a hover text naming the note.
-export function rowActions(title, archived = false) {
-  return [
-    { kind: "download", hint: `Download '${title}'` },
-    archived ? { kind: "unarchive", hint: `Unarchive '${title}'` } : { kind: "archive", hint: `Archive '${title}'` },
-    { kind: "delete", hint: `Delete '${title}'` },
-  ];
-}
-
 function noteCount(count) {
   return count === 1 ? "1 note" : `${count} notes`;
 }
 
-// The hover icons on a Collection heading (#74): Download, Archive (Unarchive
-// in the Archive section) and Delete, each naming the Collection and its notes.
-export function collectionActions(course, count, archived = false) {
-  if (count === 0) return [{ kind: "delete", hint: `Delete '${course}'` }];
-  const notes = noteCount(count);
-  const named = `'${course}', ${notes}`;
+// What ⋯ on a note's row offers (#123), in the small menu under the row:
+// Move to collection…, Download, Archive (Unarchive in the Archive) and Delete.
+export function noteRowMenu(title, archived = false) {
   return [
-    { kind: "download", hint: `Download '${course}', ${notes}` },
-    archived ? { kind: "unarchive", hint: `Unarchive ${named}` } : { kind: "archive", hint: `Archive ${named}` },
-    ...(archived ? [] : [{ kind: "delete", hint: `Delete ${named}` }]),
+    { kind: "move", label: "Move to collection…", icon: "folder", hint: `Put “${title}” in a collection` },
+    { kind: "download", label: "Download", icon: "download", hint: "Save this note as Markdown or PDF, or print it" },
+    archived
+      ? { kind: "unarchive", label: "Unarchive", icon: "archive", hint: "Put this note back in your lists" }
+      : { kind: "archive", label: "Archive", icon: "archive", hint: "Hide this note from your lists. You can bring it back any time" },
+    { kind: "delete", label: "Delete", icon: "trash", hint: "Remove this note for good" },
   ];
 }
 
-// The notice after archiving a whole Collection, and the question before
-// deleting one.
+// What ⋯ on a Collection's row offers (#123). An empty one only has a new
+// note in it and Delete collection.
+function collectionRowMenu(course, count) {
+  const newNote = { kind: "newNote", label: `New note in ${course}`, icon: "page", hint: `Make a note in ${course}` };
+  const remove = { kind: "delete", label: "Delete collection", icon: "trash", hint: `Delete “${course}”, keeping its notes or not` };
+  if (count === 0) return [newNote, remove];
+  return [
+    newNote,
+    { kind: "download", label: "Download all", icon: "download", hint: `Download the ${noteCount(count)} in “${course}” as one zip` },
+    { kind: "archive", label: "Archive all", icon: "archive", hint: `Archive the ${noteCount(count)} in “${course}”` },
+    remove,
+  ];
+}
+
+// A Collection inside the Archive: its notes downloaded or put back at once.
+function archivedCollectionMenu(course, count) {
+  return [
+    { kind: "download", label: "Download all", icon: "download", hint: `Download the ${noteCount(count)} in “${course}” as one zip` },
+    { kind: "unarchive", label: "Unarchive all", icon: "archive", hint: `Put the ${noteCount(count)} in “${course}” back in your lists` },
+  ];
+}
+
+// Move to collection… (#123): every Collection, the note's own marked, and
+// Not in a collection for a note that is in one. Without any Collection it
+// says how to make one.
+export function moveChoices(notebook, current) {
+  const courses = notebook.courses();
+  if (courses.length === 0) return { choices: [], empty: "No collections yet. Make one with + New next to Collections." };
+  const choices = courses.map((course) => ({ course, label: course, current: course === current }));
+  if (current) choices.push({ course: "", label: NOT_IN_A_COLLECTION, current: false });
+  return { choices, empty: null };
+}
+
+// The second line of a note in the expanded view (#123).
+export function editedLine(note, now = new Date()) {
+  const when = shortDate(note.edited ?? note.created, now);
+  const day = when === "Today" || when === "Yesterday" ? when.toLowerCase() : when;
+  return note.course ? `Edited ${day}, in ${note.course}` : `Edited ${day}`;
+}
+
+// The notices and the line under a field for a Collection's row (#123).
+export function madeCollectionNotice(course) {
+  return `Made the collection “${course}”. Move notes into it from their ⋯.`;
+}
+
+export function collectionTakenText(course) {
+  return `There is already a collection “${course}”.`;
+}
+
+export function renamedCollectionNotice(course) {
+  return `Renamed the collection to “${course}”.`;
+}
+
+export function deletedKeptNotesNotice(course, count) {
+  return `Deleted the collection “${course}”. Its ${noteCount(count)} ${count === 1 ? "is" : "are"} in ${NOT_IN_A_COLLECTION}.`;
+}
+
+export function movedNotice(title, course) {
+  return course ? `Moved “${title}” to ${course}.` : `Took “${title}” out of its collection.`;
+}
+
+// The notice after archiving a whole Collection.
 export function archivedNotice(count) {
   return count === 1 ? "Archived 1 note." : `Archived ${count} notes.`;
 }
@@ -305,11 +405,20 @@ export function deleteNoteQuestion(title, home) {
   return place ? `${question} It is also removed from ${place}.` : question;
 }
 
-export function deleteCollectionQuestion(course, count, home) {
-  if (count === 0) return `Delete the empty collection “${course}”?`;
+// A Collection's, right in its row (#123): its notes can stay, without a
+// Collection ("Delete, keep notes"), or go with it ("Delete all"). An empty
+// one only has Delete.
+export function deleteCollectionChoice(course, count, home) {
+  if (count === 0) {
+    return { text: `Delete the empty collection “${course}”?`, keepNotes: null, all: { label: "Delete", hint: "Delete the empty collection" } };
+  }
   const place = alsoDeletedFrom(home);
-  const question = `Delete the collection “${course}” and its ${noteCount(count)}?`;
-  return place ? `${question} They're also removed from ${place}.` : question;
+  const all = `Delete the collection and its ${noteCount(count)} for good.`;
+  return {
+    text: `Delete the collection “${course}”? Its ${noteCount(count)} can stay, without a collection.`,
+    keepNotes: { label: "Delete, keep notes", hint: `Delete the collection. Its notes go to ${NOT_IN_A_COLLECTION}` },
+    all: { label: "Delete all", hint: place ? `${all} They're also removed from ${place}.` : all },
+  };
 }
 
 // The small icon before a note's title (#81): a globe for a note that belongs

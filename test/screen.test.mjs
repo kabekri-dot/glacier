@@ -1174,3 +1174,50 @@ test("a clip doesn't go into a locked secret note", async () => {
   await notebook.unlock("pass");
   assert.equal(notebook.note("First").body, "Hidden words");
 });
+
+// The notes list (#123): a row's Delete, "+ New note in" a Collection, and
+// a Collection renamed or deleted under the open note.
+test("deleting a note from its row leaves the open note on screen, and undo brings it back", () => {
+  const { notebook, screen, first } = withNotes();
+  screen.open(first);
+  const { kept, view } = screen.delete("Second");
+  assert.deepEqual(view, { type: "backlinks", changed: true });
+  assert.equal(notebook.note("Second"), undefined);
+  assert.equal(screen.note().title, "First");
+  assert.deepEqual(screen.undoDelete(kept), { type: "backlinks", changed: true });
+  assert.equal(notebook.note("Second").title, "Second");
+  assert.equal(screen.note().title, "First");
+});
+
+test("deleting the open note from its row closes it like Delete in ⋯", () => {
+  const { notebook, screen, first } = withNotes();
+  screen.open(first);
+  assert.deepEqual(screen.delete("First").view, { type: "followPage", changed: true });
+  assert.equal(notebook.note("First"), undefined);
+});
+
+test("a new note in a Collection is made in it at the first character", () => {
+  const { notebook, screen } = withNotes();
+  assert.equal(screen.startFreshPage({ course: "TOP", editTitle: true }).type, "freshPage");
+  assert.equal(notebook.note("Idea"), undefined);
+  screen.edit("Idea");
+  assert.equal(notebook.note("Idea").course, "TOP");
+  assert.equal(notebook.note("Idea").source, undefined);
+});
+
+test("a new note in a Collection named in the title is made in it", () => {
+  const { notebook, screen } = withNotes();
+  screen.startFreshPage({ course: "TOP", editTitle: true });
+  screen.confirmTitle("Named");
+  assert.equal(notebook.note("Named").course, "TOP");
+});
+
+test("the open note shows its Collection's new name after a rename", () => {
+  const { notebook, screen, grid } = withNotes();
+  screen.open(grid);
+  notebook.renameCollection("TOP", "Odin");
+  const view = screen.refreshNote();
+  assert.equal(view.type, "note");
+  assert.equal(view.reload, false);
+  assert.equal(screen.note().course, "Odin");
+});

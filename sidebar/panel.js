@@ -326,7 +326,6 @@ async function start() {
     render: () => paper.render(),
     openNote,
     showSearchMatch: (query) => paper.showSearchMatch(query),
-    startNoteForPage,
     changed: () => autoSync.changed(),
     notice: showNotice,
     notesHome: async () => (await notesHomes.load()).home,

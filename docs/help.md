@@ -8,7 +8,11 @@ Just start writing on the paper. On a website, the note belongs to that page and
 
 ## Where are my notes?
 
-Click ☰ Notes at the top left. Type to search the titles, or start with // to search inside the notes. Ctrl K opens the list from anywhere in Glacier.
+Click ☰ Notes at the top left. Type to search the titles, or start with // to search inside the notes. Ctrl K opens the list from anywhere in Glacier. Below the search are your recent notes and your collections, each a folder you open with a click. ⤢ spreads the list over the whole sidebar.
+
+## How do I sort notes into collections?
+
+In ☰ Notes, click + New next to Collections, type a name and press Enter. Then hover a note, click its ⋯ and choose Move to collection…. Hover a collection to rename it with the pen, or use its ⋯ to start a note in it, download it, archive it or delete it. Deleting a collection can keep its notes: they go to Not in a collection.
 
 ## How do I rename a note?
 

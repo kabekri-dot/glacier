@@ -11,6 +11,27 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Top bar part 3: the notes list (#123)
+
+- [ ] Reload the extension first. Click ☰ Notes: the search box is on top with the caret in it, and ⤢ beside it. Type part of a title: the results replace the list. Type a word no note has: "No notes match “…”." and a "New note “…”" button. Click it: a fresh page with that title ready.
+- [ ] Clear the search. On a page with two or more notes, "For this page" comes first with the open note marked. On a page with one note there is no "For this page".
+- [ ] Recent shows at most 5 notes. Under it, "Collections" with a small "+ New", then each Collection folded with ▸, a folder and its number of notes. The notes without a Collection are in their own folder, "Not in a collection". Then a line and the Archive, folded, with its number.
+- [ ] Click a Collection: it opens with ▾ and ends with a faint "+ New note in …". Click again: it folds. Close and open the list: it is still open.
+- [ ] Click "+ New note in …": a fresh page with the title ready. Type a title and press Enter, then write: Note details shows that Collection. Leave it without typing: no note is made.
+- [ ] Hover a note row: ✎ and ⋯ show. Click ✎: the row turns into a field with the title. Change it and press Enter: renamed, the list shows the new title. Click ✎ again and press Esc: nothing changes. Try a title another note has, in other capitals: "That name is taken. Try …" and the field stays. Rename the open note this way: the title in the bar follows.
+- [ ] Click ⋯ on a note: a small menu opens under the row with Move to collection…, Download, Archive and Delete. Esc or a second click on ⋯ closes it. Click ⋯ on another row: the first one closes.
+- [ ] Move to collection…: the Collections show right there, the note's own marked, and "Not in a collection" when it is in one. Pick one: "Moved “…” to …" with Undo, and the note is under that Collection. Click Undo: it is back where it was. With no Collections it says to make one with + New.
+- [ ] Download asks Markdown, PDF or Print. Archive: the note goes to the Archive with Undo. In the Archive, ⋯ offers Unarchive.
+- [ ] Delete: the row asks "Delete “…” for good?" with Delete and Keep. Keep or Esc puts the row back. Delete: the note goes and the notice offers Undo. Do it on the open note too: the sidebar shows the note before.
+- [ ] Hover a Collection row: ✎ and ⋯. ✎ renames it right there (Enter saves, Esc cancels). The new name shows in Note details of its notes, and after a sync its notes sit in the new folder. A name another Collection has, in any capitals, says "There is already a collection “…”." and keeps the field.
+- [ ] A Collection's ⋯: New note in it, Download all (one zip, or PDF), Archive all (with Undo) and Delete collection. An empty Collection only has New note and Delete collection.
+- [ ] Delete collection asks in the row: "Delete the collection “…”? Its N notes can stay, without a collection." with "Delete, keep notes", "Delete all" and Keep. Delete, keep notes: the notes are in "Not in a collection" and Undo puts them back. Delete all: the Collection and its notes go, and Undo brings them back. Hover "Delete all": it names where else the notes are removed from.
+- [ ] Click "+ New" next to Collections: a name field right there. Type a name and press Enter: the Collection is made, already open, and "Made the collection “…”. Move notes into it from their ⋯." shows. Type a taken name in other capitals: it says so and the field stays. Esc cancels.
+- [ ] On a website with two notes and no Collection, open "Not in a collection": the page has its own folder with a globe. Its ⋯ has Move to collection…: pick one and both notes move.
+- [ ] Click ⤢: the list covers the whole sidebar, every folder open, and each note has a second line, "Edited today, in …". ⤡ makes it small again. × closes it, and so does Esc.
+- [ ] Use ↓ and ↑ in the list: they walk the notes and the folders shown. Enter on a folder opens it.
+- [ ] Break it: rename a Collection to an empty name (nothing happens), delete a Collection while one of its notes is open (the sidebar shows the note before, Undo opens it again), go offline and rename a Collection (it syncs once you are back).
+
 ### Top bar part 2: pushpin, Note details, pages and New page (#122)
 
 - [ ] Open a note: a faint pixel pushpin sits in the top right corner of the paper. There is no Collection line above the text: the text starts right under the bar.
@@ -703,12 +724,15 @@ Nothing should look or work differently. Reload with ↻ first, then run these g
 - [ ] Clicking ☰ Notes, or pressing Ctrl+K, opens the notes list with the search box ready.
 - [ ] Search finds words in titles and in the text, with the match highlighted. Clicking a result opens it and closes the menu.
 - [ ] Recent notes are listed, including notes made by hand.
-- [ ] The Notebook is listed: Collections with their notes, then "No collection" with the rest.
-- [ ] On a note with a page, the menu starts with "Notes for this page", newest first, and "+ New note for this page" under them.
+- [ ] Recent lists at most 5 notes. Then Collections, each a folder folded with its number of notes, "Not in a collection" with the rest, and the Archive after a line (#123).
+- [ ] On a page with two or more notes, the list starts with "For this page", newest first.
+- [ ] A note row shows ✎ and ⋯ on hover: rename in the row, and Move to collection…, Download, Archive and Delete under ⋯. A Collection row has ✎ and ⋯ too: New note in it, Download all, Archive all and Delete collection.
+- [ ] "+ New" next to Collections makes a Collection, and an open Collection ends with "+ New note in …".
+- [ ] ⤢ spreads the list over the whole sidebar with every folder open and when each note was edited; ⤡ makes it small, × closes it.
 - [ ] Esc closes the menu.
 - [ ] `←` appears after the note changed. Hovering shows "Back to" and the note's title. One click opens that note. Holding it or a right click opens nothing more.
 - [ ] `+` is always there. On a website it offers "Note for" the page's title, with "linked to this page" under it, picked already, and "Blank note". On a new tab or a settings page it makes a blank note at once, with no menu.
-- [ ] Hovering over each `+` choice, and "+ New note" in the list, shows a short explanation.
+- [ ] Hovering over each `+` choice shows a short explanation.
 - [ ] Each `+` choice opens a fresh page with the title ready to type. Enter makes the note, Esc goes back to the note from before and makes nothing.
 
 ### Saving

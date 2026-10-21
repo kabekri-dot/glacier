@@ -381,6 +381,52 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
       return name;
     },
 
+    // The listed Collection with this name in any capitals (#73), as the
+    // Notebook spells it, or undefined when there is none.
+    collectionNamed(name) {
+      const typed = (name ?? "").trim();
+      return this.courses().find((course) => sameCollection(course, typed));
+    },
+
+    // Rename a Collection from the notes list (#123): every note in it, the
+    // archived ones too, takes the new name, and their files move to the new
+    // folder on the next sync. A name another Collection has, in any
+    // capitals, is refused with that Collection's name ({ ok: false, taken }).
+    renameCollection(from, to) {
+      const name = (to ?? "").trim();
+      if (!name) return { ok: false };
+      const taken = this.collectionNamed(name);
+      if (taken && !sameCollection(taken, from)) return { ok: false, taken };
+      for (const note of storage.allNotes()) {
+        if (note.course && sameCollection(note.course, from)) storage.putNote({ ...note, course: name });
+      }
+      const empty = emptyCollections();
+      if (empty.some((course) => sameCollection(course, from))) {
+        storage.putMeta(EMPTY_COURSES, [...empty.filter((course) => !sameCollection(course, from)), name]);
+      }
+      const last = storage.getMeta(LAST_COURSE);
+      if (last && sameCollection(last, from)) storage.putMeta(LAST_COURSE, name);
+      return { ok: true, name };
+    },
+
+    // "Delete, keep notes" (#123): the Collection goes and its listed notes
+    // stay, without a Collection. Returns what putBackCollection needs.
+    deleteCollectionKeepNotes(course) {
+      storage.putMeta(EMPTY_COURSES, emptyCollections().filter((name) => !sameCollection(name, course)));
+      const titles = listed()
+        .filter((note) => note.course && sameCollection(note.course, course))
+        .map((note) => this.removeFromCourse(note.title).title)
+        .sort((a, b) => a.localeCompare(b));
+      return { course, titles };
+    },
+
+    // Undo "Delete, keep notes": the notes go back in the Collection, or
+    // the empty Collection is listed again.
+    putBackCollection({ course, titles }) {
+      if (titles.length === 0) this.newCollection(course);
+      for (const title of titles) this.moveToCourse(title, course);
+    },
+
     // Take a note out of its Collection (#82). The last used Collection stays.
     removeFromCourse(title) {
       const note = storage.getNote(title);

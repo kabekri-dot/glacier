@@ -37,10 +37,10 @@ test("a Course prints every note, each starting on a new page", () => {
   assert.match(html, /page-break-before/);
 });
 
-test("the Notebook menu offers a Download on each Collection heading", () => {
+test("the notes list offers Download all in each Collection's ⋯", () => {
   const parts = notebookMenu(notebookWith(), "");
-  const course = parts.find((part) => part.kind === "group");
-  assert.equal(course.actions[0].hint, "Download 'CSS', 2 notes");
+  const course = parts.find((part) => part.kind === "folder" && part.course === "CSS");
+  assert.equal(course.menu.find((item) => item.kind === "download").hint, "Download the 2 notes in “CSS” as one zip");
 });
 
 function noteWithSketchesAndBreak() {
