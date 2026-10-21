@@ -93,11 +93,11 @@ export function createMenuView({ notebook, screen, el, button: menuButtonEl, not
     refresh();
   }
 
-  async function deleteNote(title) {
+  function deleteNote(title) {
     close();
     const note = notebook.note(title);
     if (screen.note()?.title !== title) openNote(note, { byPage: isOpenedByPage(note) });
-    await askDeleteNote();
+    return askDeleteNote();
   }
 
   // Delete the open note (#57): a short question in the sidebar, not a browser
