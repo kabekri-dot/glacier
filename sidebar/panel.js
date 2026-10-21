@@ -29,14 +29,10 @@ import { createEditorSession } from "../src/editor-session.mjs";
 import { readTabSettings } from "../src/tab-settings.mjs";
 import { readShortcutsPanel } from "../src/shortcuts-panel.mjs";
 import { isShortcut } from "../src/keys.mjs";
-import { pagesOf, pageOfLine, pageBreaks, lineOfSearch } from "../src/pages.mjs";
-import { createPageView } from "./page-view.js";
 import { createContents } from "./contents-view.js";
 import { createTitleEdit } from "./title-edit.js";
 import { createFind } from "./find-view.js";
-import { createPaperSelection } from "./paper-selection.js";
-import { createFocusedLine } from "./focused-line.js";
-import { renderedOffsetAt, placeCaret } from "./paper-text.js";
+import { createPaper } from "./paper-view.js";
 import { readLook, lookStyle, wholeRows, applyLook } from "../src/look.mjs";
 import { readPanelPlace, createPanelPlacement } from "../src/panel-place.mjs";
 import { createBrowserPanels } from "../src/browser-panels.mjs";
@@ -48,17 +44,10 @@ import { createBackBox, createNewMenu, createNoteMenu } from "./pill-menus.js";
 import { createNoteMetaView } from "./note-meta-view.js";
 import { createSketchView } from "./sketch-view.js";
 import { createSecrets } from "./secret-view.js";
-import { pageCard, panelsCard, startPrompt, removeQuestion } from "./cards.js";
+import { pageCard, panelsCard, startPrompt } from "./cards.js";
 import { shortcutNotice } from "../src/shortcuts-panel.mjs";
 import { WELCOME_GREETING, WELCOME_LINES, WELCOME_TIP, welcomeShown, saveErrorText } from "../src/guidance.mjs";
 import { drawBesideFrames } from "./beside-frames.js";
-import {
-  blockRanges,
-  isFence,
-  isSketchLine,
-  listNumbers,
-  renderLineHtml,
-} from "../src/editor-model.mjs";
 
 // The empty-line hint and the menu that `/` and the + button open (#6). The
 // command logic (which commands, filtering, applying one) is tested in the
@@ -281,6 +270,31 @@ async function start() {
     onSaved: () => autoSync.changed(),
   });
 
+  // The paper (sidebar/paper-view.js): the open note drawn, its line being
+  // edited, selecting and copying, and notes as pages.
+  const paper = createPaper({
+    noteEl,
+    editor,
+    screen,
+    notebook,
+    sketchView,
+    pagesOn: () => look.pages,
+    settingsOpen: () => panels.settingsOpen(),
+    showIfLocked: () => secrets.showIfLocked(),
+    openLink,
+    hint: lineHint,
+    onEdited: () => contents.update(),
+    onTyped: () => {
+      if (!screen.welcome()) clearWelcome();
+    },
+    showNotice,
+    fitRows,
+    afterDraw: (locked) => {
+      contents.update();
+      if (!locked) findInNote.refresh();
+    },
+  });
+
   // The Sketch command in the + and / menu: a new, empty sketch as wide as
   // the text and a few rows high. The title stops following the first line,
   // so the new embed line keeps naming this note.
@@ -288,7 +302,7 @@ async function start() {
     const note = screen.note();
     if (!note) return null;
     screen.leaveFirstLine();
-    const width = Math.round((focusedEl ?? noteEl).clientWidth);
+    const width = Math.round((paper.focusedEl() ?? noteEl).clientWidth);
     return notebook.addSketch(note.title, { width, height: NEW_SKETCH_ROWS * lookDrawn.lineHeight })?.line ?? null;
   }
 
@@ -308,9 +322,9 @@ async function start() {
     button: pillMenuEl,
     noteEl,
     draw,
-    render,
+    render: () => paper.render(),
     openNote,
-    showSearchMatch,
+    showSearchMatch: (query) => paper.showSearchMatch(query),
     startNoteForPage,
     moveNote: () => noteMeta.pickCollection(),
     changed: () => autoSync.changed(),
@@ -340,13 +354,12 @@ async function start() {
           sketchView.unpick();
           findInNote.close();
           editor.load(view.note.body ?? "");
-          pageView.forget();
-          render();
+          paper.open();
           menuView.close();
         } else {
           // The text stays as typed; a fresh page that became a note loses its
           // hint and gets its + back.
-          if (focusedEl) focusedEl.dataset.placeholder = EMPTY_LINE_HINT;
+          if (paper.focusedEl()) paper.focusedEl().dataset.placeholder = EMPTY_LINE_HINT;
           noteEl.querySelector(".line-plus")?.removeAttribute("hidden");
         }
         updatePill();
@@ -356,12 +369,11 @@ async function start() {
       case "freshPage":
         findInNote.close();
         editor.load("");
-        pageView.forget();
         menuView.close();
         updatePill();
         updateBacklinks();
         noteMeta.update();
-        render();
+        paper.open();
         if (view.editTitle) titleEdit.start();
         break;
       case "startPrompt":
@@ -397,7 +409,7 @@ async function start() {
     notebook,
     screen,
     draw,
-    render,
+    render: () => paper.render(),
     openNote,
     openSource: (source) => browserPage.openSource(source),
     askDelete: () => menuView.askDeleteNote(),
@@ -444,11 +456,11 @@ async function start() {
     screen,
     noteEl,
     draw,
-    render,
+    render: () => paper.render(),
     showNotice,
     settingsOpen: () => panels.settingsOpen(),
     // A card is no page: the ‹ 1 of 3 › bar goes while it shows.
-    onCard: () => updatePageBar(),
+    onCard: () => paper.updatePageBar(),
     onChanged: () => autoSync.changed(),
   });
 
@@ -541,7 +553,7 @@ async function start() {
     box: document.querySelector(".note-menu"),
     screen,
     onAction: (kind) => {
-      if (kind === "extract") paperSelection.extract();
+      if (kind === "extract") paper.extract();
       else if (kind === "secret") secrets.makeSecret();
       else if (kind === "notSecret") secrets.makeNotSecret();
       else if (kind === "pin" || kind === "unpin") setPinned(kind === "pin");
@@ -722,7 +734,7 @@ async function start() {
       const pagesBefore = look.pages;
       look = readLook({ ...look, ...change });
       drawLook();
-      if (look.pages !== pagesBefore) redrawPages();
+      if (look.pages !== pagesBefore) paper.redrawPages();
       if (!keep) return;
       extensionStorage.set({ look }).catch((error) => {
         console.warn("Glacier: could not keep the chosen look", error);
@@ -843,7 +855,7 @@ async function start() {
   // about to place it there itself.
   function closeSettings({ redraw = true } = {}) {
     if (!panels.closeSettings()) return;
-    if (redraw && (screen.note() || screen.freshPage())) render();
+    if (redraw && (screen.note() || screen.freshPage())) paper.render();
   }
 
   // Writing again, or opening the menus, closes settings.
@@ -943,7 +955,7 @@ async function start() {
       const pagesBefore = look.pages;
       look = readLook(changes.look.newValue);
       drawLook();
-      if (look.pages !== pagesBefore) redrawPages();
+      if (look.pages !== pagesBefore) paper.redrawPages();
     }
     if (changes.tabSettings) {
       tabSettings = readTabSettings(changes.tabSettings.newValue);
@@ -966,7 +978,7 @@ async function start() {
     hintEl: renameHintEl,
     screen,
     draw,
-    render: () => render(),
+    render: () => paper.render(),
     askPasscode: (heading) => secrets.askPasscode(heading),
     beforeStart: () => menuView.close(),
   });
@@ -997,10 +1009,6 @@ async function start() {
     true,
   );
 
-  // Does a Link's target note already exist? A Link to a note that doesn't
-  // (a Missing Link) renders red (#8).
-  const linkExists = (title) => !notebook.isMissingLink(title);
-
   // Follow a `[[Title]]` Link: save any pending edits to the note we're leaving
   // first, then open the note the Link names in place. A Missing Link creates a
   // note with that title, without a page or Collection, and opens that (#8, #68).
@@ -1008,302 +1016,6 @@ async function start() {
     if (notebook.isMissingLink(title)) autoSync.changed();
     openNote(notebook.openLink(title));
   }
-
-  // Move the caret and redraw. The placement decision is the session's; this
-  // only draws the result. Moving the caret is clicking elsewhere, so it
-  // dismisses an open menu first; if that took out a `/` on its own line above
-  // the target, the target shifts up by one line (#28).
-  function moveTo(line, col) {
-    const removed = editor.dismissMenu();
-    if (removed !== -1 && removed < line) line -= 1;
-    editor.moveTo(line, col);
-    render();
-  }
-
-  // A click on the bare paper below the last line: the session adds empty lines
-  // down to the ruled row that was clicked and puts the caret there (#35). Clicks
-  // on a line itself are handled by that line, so only the paper itself counts.
-  noteEl.addEventListener("mousedown", (event) => {
-    if (event.target !== noteEl || !noteEl.lastElementChild) return;
-    // On a fresh page a click only puts the caret on the first line: adding
-    // lines down to the click would already make the note (#61).
-    if (screen.freshPage()) {
-      event.preventDefault();
-      render();
-      return;
-    }
-    if (!screen.note()) return;
-    const below = event.clientY - noteEl.lastElementChild.getBoundingClientRect().bottom;
-    if (below < 0) return;
-    event.preventDefault();
-    // Below a page that isn't the last, the caret goes to the page's end:
-    // new lines are only added after the note's last line.
-    const shown = shownPageSpan();
-    if (shown && shown.end < editor.lines.length) {
-      moveTo(shown.end - 1, editor.lines[shown.end - 1].length);
-      return;
-    }
-    const rowHeight = parseFloat(getComputedStyle(noteEl).lineHeight);
-    editor.dismissMenu();
-    editor.clickPaper(Math.floor(below / rowHeight));
-    render();
-  });
-
-  // The `/` command menu's list element while it is open, or null. All the menu
-  // decisions — when it opens, what it shows, the highlight, picking, dismissing
-  // and the + placement — live in the Editor session (#32); this element just
-  // draws editor.menu, floating over the page near the current line.
-  let menuEl = null;
-  // The focused line's editing surface, kept so the menu can be positioned
-  // against it after a re-render.
-  let focusedEl = null;
-
-  // Draw editor.menu (or remove the list when the session has closed it). The
-  // menu floats just under the focused line, which keeps the caret, so
-  // typing still filters and ↑/↓/Enter/Tab/Esc drive it.
-  function drawMenu() {
-    const state = editor.menu;
-    if (!state || !focusedEl) {
-      if (menuEl) {
-        menuEl.remove();
-        menuEl = null;
-      }
-      return;
-    }
-    if (!menuEl) {
-      menuEl = document.createElement("ul");
-      menuEl.className = "slash-menu";
-      document.body.appendChild(menuEl);
-    }
-    menuEl.replaceChildren();
-    state.commands.forEach((command, i) => {
-      const item = document.createElement("li");
-      item.className = i === state.selected ? "slash-item is-selected" : "slash-item";
-      const label = document.createElement("span");
-      label.className = "slash-label";
-      label.textContent = command.label;
-      // Each command shows the Markdown it inserts, so the syntax is learned by
-      // using it (ADR 0006).
-      const md = document.createElement("span");
-      md.className = "slash-md";
-      md.textContent = command.markdown ?? "";
-      item.append(label, md);
-      // Moving the mouse over a command selects it, so mouse and ↑/↓ share one
-      // highlight. (mousemove, not hover: a menu that opens under a resting
-      // pointer must not show a second highlight, which Firefox otherwise does.)
-      item.addEventListener("mousemove", () => {
-        if (!editor.menu || editor.menu.selected === i) return;
-        editor.menuSelect(i);
-        // A lightweight highlight move: don't rebuild the list (which would
-        // reset its scroll and fight the resting pointer), just move the class.
-        menuEl.querySelector(".is-selected")?.classList.remove("is-selected");
-        item.classList.add("is-selected");
-      });
-      // mousedown (not click) keeps the caret in the line as we apply.
-      item.addEventListener("mousedown", (event) => {
-        event.preventDefault();
-        editor.menuSelect(i);
-        editor.pickMenu();
-        render();
-      });
-      menuEl.appendChild(item);
-    });
-    const rect = focusedEl.getBoundingClientRect();
-    menuEl.style.left = `${rect.left}px`;
-    menuEl.style.top = `${rect.bottom}px`;
-    // Keep the highlighted command in view when ↑/↓ move past the visible part
-    // of the list. Scrolling only the menu itself never moves the page.
-    const item = menuEl.children[state.selected];
-    if (item) {
-      const top = item.offsetTop;
-      const bottom = top + item.offsetHeight;
-      if (top < menuEl.scrollTop) menuEl.scrollTop = top;
-      else if (bottom > menuEl.scrollTop + menuEl.clientHeight) {
-        menuEl.scrollTop = bottom - menuEl.clientHeight;
-      }
-    }
-  }
-
-  // Dismiss the menu without picking (the session removes an untouched + `/`),
-  // then redraw so the removal shows. Used by the terminal dismissals: Esc,
-  // clicking outside the line, and scrolling away from the menu (#28).
-  function dismissAndRedraw() {
-    if (redrawing || !editor.menu) return;
-    editor.dismissMenu();
-    render();
-  }
-
-  // A floating menu would drift away from its line, so scrolling closes it.
-  // Scrolling *inside* the menu (mouse wheel, or keeping the highlight in view)
-  // is just browsing the list, so only scrolling anything else closes it.
-  window.addEventListener(
-    "scroll",
-    (event) => {
-      if (menuEl && menuEl.contains(event.target)) return;
-      dismissAndRedraw();
-    },
-    true,
-  );
-
-  // A rendered block reacts to a plain click, not to the press, so a press
-  // that drags selects across lines instead (#7). While the `/` menu is open
-  // the press still acts at once and keeps the caret in its line: letting the
-  // line lose focus would dismiss the menu and redraw the note mid-click.
-  function onPlainClick(el, act) {
-    el.addEventListener("mousedown", (event) => {
-      if (!editor.menu) return;
-      event.preventDefault();
-      act(event);
-    });
-    el.addEventListener("click", (event) => {
-      if (window.getSelection().isCollapsed) act(event);
-    });
-  }
-
-  // Backspace on a picked sketch removes it, after Glacier's own question
-  // under the sketch when it has shapes (#104, #116). Ctrl Z brings it back;
-  // its data goes when the note is left.
-  function removeSketchLine() {
-    const line = editor.state.focus.line;
-    const embed = editor.lines[line];
-    const found = notebook.sketchForLine(embed);
-    if (!(found?.sketch.shapes.length > 0)) {
-      editor.removeSketchLine();
-      render();
-      return;
-    }
-    const { card, keep } = removeQuestion({
-      text: "Remove this sketch and its shapes?",
-      action: "Remove",
-      onAction: () => {
-        card.remove();
-        if (editor.lines[line] !== embed) return;
-        editor.moveTo(line, 0);
-        editor.removeSketchLine();
-        render();
-      },
-      onKeep: () => {
-        card.remove();
-        pickSketchOnRender = true;
-        render();
-      },
-    });
-    noteEl.querySelector(`.sketch-block[data-start="${line}"]`)?.after(card);
-    keep.focus();
-  }
-
-  // Esc in a sketch: the caret goes to the next line, or the one before.
-  function leaveSketch() {
-    if (!editor.moveDown("", 0)) editor.moveUp("", 0);
-    render();
-  }
-
-  // Set when Backspace has just landed the caret on a sketch, so it shows
-  // as picked: the next Backspace removes it.
-  let pickSketchOnRender = false;
-
-  // Build one rendered (non-focused) block.
-  function renderedBlock(range) {
-    const blockLines = editor.lines.slice(range.start, range.end);
-    const el = document.createElement("div");
-    el.className = "block";
-    el.dataset.start = range.start;
-
-    if (isFence(blockLines[0])) {
-      // A code block: show the code, fences hidden. Clicking drops the caret in
-      // just after the opening fence so the raw block opens for editing.
-      const closed =
-        blockLines.length > 1 && isFence(blockLines[blockLines.length - 1]);
-      const inner = blockLines.slice(1, closed ? -1 : undefined);
-      const pre = document.createElement("pre");
-      pre.className = "md-code";
-      const code = document.createElement("span");
-      code.textContent = inner.join("\n");
-      pre.appendChild(code);
-      el.appendChild(pre);
-      el.dataset.code = "";
-      onPlainClick(el, () => moveTo(range.start, blockLines[0].length));
-      return el;
-    }
-
-    const line = blockLines[0];
-    // With all pages shown, a page break is a quiet dotted line (#108).
-    if (pageBreakSet.has(range.start)) {
-      el.classList.add("page-break");
-      el.textContent = `page ${pageOfLine(editor.lines, range.start) + 1}`;
-      onPlainClick(el, () => moveTo(range.start, line.length));
-      return el;
-    }
-    // A sketch's embed line shows the drawing instead (#101). Its raw line
-    // only shows when the caret is moved onto it with the keys.
-    const sketch = sketchView.draw(line, {
-      selected: pickSketchOnRender && editor.state.focus.line === range.start,
-      onPick: () => editor.moveTo(range.start, 0),
-      onStep: (direction) => {
-        if (direction < 0 ? editor.moveUp("", 0) : editor.moveDown("", 0)) render();
-      },
-      onEnter: () => {
-        editor.enter("", 0, 0);
-        render();
-      },
-      onRemove: removeSketchLine,
-      onLeave: leaveSketch,
-    });
-    if (sketch) {
-      sketch.dataset.start = range.start;
-      return sketch;
-    }
-    el.innerHTML = renderLineHtml(line, linkExists, itemNumbers[range.start] ?? undefined);
-    onPlainClick(el, (event) => {
-      // A click on a checkbox's box ticks it and saves; the caret stays put.
-      if (event.target.closest?.(".md-check-box")) {
-        editor.toggleCheckbox(range.start);
-        render();
-        return;
-      }
-      // The sidebar finds which drawn character the click landed on; the Editor
-      // session decides what it means from the one shared line description (#33).
-      const rendered = renderedOffsetAt(el, event.clientX, event.clientY);
-      const hit = editor.clickLine(range.start, rendered);
-      // A plain click on a Link follows it instead of dropping the caret: it
-      // opens the linked note, or creates and opens a note for a Missing Link
-      // (#8).
-      if (hit.type === "link") {
-        openLink(hit.title);
-        return;
-      }
-      moveTo(hit.line, hit.col);
-    });
-    return el;
-  }
-
-
-  // --- The line being edited (#37): sidebar/focused-line.js ----------------
-  const focusedBlock = createFocusedLine({
-    editor,
-    render: () => render(),
-    drawMenu: () => drawMenu(),
-    dismissMenu: () => dismissAndRedraw(),
-    selectWholeNote: () => paperSelection.selectWholeNote(),
-    focusedEl: () => focusedEl,
-    hint: () => lineHint(),
-    onEdited: () => contents.update(),
-    onTyped: () => {
-      if (!screen.welcome()) clearWelcome();
-    },
-    pickSketch: (yes) => (pickSketchOnRender = yes),
-  });
-
-  // --- Selecting, copying and Extract (#7, #99): sidebar/paper-selection.js --
-  const paperSelection = createPaperSelection({
-    noteEl,
-    editor,
-    focusedEl: () => focusedEl,
-    dismissMenu: () => dismissAndRedraw(),
-    render: () => render(),
-    showNotice: (text, ms) => showNotice(text, ms),
-  });
-  const noteShown = paperSelection.noteShown;
 
   const copiedEl = document.querySelector(".copied");
   let copiedTimer = null;
@@ -1342,198 +1054,26 @@ async function start() {
     copiedTimer = setTimeout(() => (copiedEl.hidden = true), ms);
   }
 
-  // Rebuild the page from the current lines, with the focused block as the
-  // styled editing surface and every other block rendered. The caret is
-  // restored afterwards.
-  // Taking the old focused line out of the page fires its blur, which would
-  // dismiss a menu the + has just opened (the real click is lost, #88).
-  let redrawing = false;
-  // The page breaks of the note being drawn, so each block can ask (#108).
-  let pageBreakSet = new Set();
-  // The number each numbered item is drawn with (#110).
-  let itemNumbers = [];
-  function render() {
-    // A locked secret note shows the passcode card instead (#109).
-    if (secrets.showIfLocked()) {
-      contents.update();
-      updatePageBar();
-      return;
-    }
-    // Keep the session's focused-block span in step with the caret before we
-    // read it back to place the caret (#31).
-    editor.relayout();
-    // With notes as pages only the caret's page is drawn, and a page break
-    // never holds the caret (#108). A new page turns the old one over.
-    pageBreakSet = new Set(pageBreaks(editor.lines));
-    itemNumbers = listNumbers(editor.lines);
-    if (look.pages && pageBreakSet.has(editor.state.focus.line)) {
-      const page = pagesOf(editor.lines)[pageOfLine(editor.lines, editor.state.focus.line)];
-      editor.moveTo(page.start, 0);
-    }
-    const page = shownPageSpan();
-    const turn = page ? pageView.turnFor(pageOfLine(editor.lines, page.start), pagesOf(editor.lines).length, noteEl) : null;
-    redrawing = true;
-    noteEl.replaceChildren();
-    redrawing = false;
-    focusedEl = null;
-    const { lines, focus } = editor.state;
-    const ranges = blockRanges(lines).filter((range) => !page || (range.start >= page.start && range.start < page.end));
-    let focused = null;
-    sketchView.unpickExcept(isSketchLine(lines[focus.line]) ? lines[focus.line] : null);
-    // A new note's title follows its first line until the caret leaves it (#80).
-    if (focus.line > 0) screen.leaveFirstLine();
-
-    for (const range of ranges) {
-      if (focus.line >= range.start && focus.line < range.end && !isSketchLine(lines[focus.line])) {
-        const built = focusedBlock(range);
-        // The + button opens the command menu from the left of the current
-        // line; the session drops the `/` and opens the menu (#32).
-        const plus = document.createElement("button");
-        plus.type = "button";
-        plus.className = "line-plus";
-        plus.textContent = "+";
-        plus.setAttribute("aria-label", "Open the command menu");
-        // On a fresh page the + would already make the note, so it waits.
-        plus.hidden = Boolean(screen.freshPage());
-        plus.addEventListener("mousedown", (event) => {
-          event.preventDefault();
-          editor.openMenuFromPlus(built.start);
-          render();
-        });
-        const row = document.createElement("div");
-        row.className = "line-row";
-        row.append(plus, built.el);
-        noteEl.appendChild(row);
-        focused = built.el;
-      } else {
-        noteEl.appendChild(renderedBlock(range));
-      }
-    }
-
-    pickSketchOnRender = false;
-    fitRows();
-    // The caret on a sketch line sits in the drawing's area (#104).
-    const sketchAt = isSketchLine(lines[focus.line]) ? noteEl.querySelector(`[data-start="${focus.line}"] .sketch-area`) : null;
-    if (sketchAt && !panels.settingsOpen()) sketchAt.focus();
-    // With settings open the focus stays in them; closing puts it back here.
-    if (focused) {
-      focusedEl = focused;
-      if (!panels.settingsOpen()) {
-        focused.focus();
-        placeCaret(focused, editor.caretOffset());
-      }
-    }
-
-    // Draw the `/` menu against the fresh line (the + button opens it just
-    // before a render), or remove it when the session has closed it (#32).
-    drawMenu();
-    contents.update();
-    updatePageBar();
-    findInNote.refresh();
-    if (turn) {
-      if (focus.line === page.start) window.scrollTo(0, 0);
-      turn.play(noteEl);
-    }
-  }
-
-  // --- Notes as pages (#108) --------------------------------------------------
-  //
-  // Which lines are pages is src/pages.mjs; the session steps ↑ and ↓ over
-  // the breaks. This draws the caret's page, the ‹ 1 of 3 › bar and the
-  // pixel page turn (sidebar/page-view.js).
-  const pageView = createPageView({
-    onTurn: (step) => turnPage(step),
-    onNewPage: () => {
-      editor.dismissMenu();
-      editor.newPage();
-      render();
-    },
-    onDelete: () => {
-      editor.dismissMenu();
-      pageView.forget();
-      if (editor.deletePage()) render();
-    },
-  });
-  noteEl.after(pageView.bar);
-
-  // The line span of the page on screen, or null when all pages show.
-  function shownPageSpan() {
-    if (!look.pages) return null;
-    return pagesOf(editor.lines)[pageOfLine(editor.lines, editor.state.focus.line)];
-  }
-
-  // A note's lines are on the paper (a picked sketch holds the caret
-  // without a .line-row), not a card or the start prompt.
-  const pagesDrawn = () => look.pages && noteEl.querySelector(".line-row, [data-start]") !== null;
-
-  function updatePageBar() {
-    const shown = pagesDrawn() && !screen.freshPage();
-    document.documentElement.toggleAttribute("data-pages", Boolean(shown));
-    pageView.update(shown ? { index: pageOfLine(editor.lines, editor.state.focus.line), count: pagesOf(editor.lines).length } : null);
-  }
-
-  // ‹ and › and Ctrl PageUp / PageDown: the caret goes to the top of the
-  // page before or after, which draws that page.
-  function turnPage(step) {
-    if (!pagesDrawn()) return;
-    const pages = pagesOf(editor.lines);
-    const target = pages[pageOfLine(editor.lines, editor.state.focus.line) + step];
-    if (target) moveTo(target.start, 0);
-  }
-
-  // The setting switched: the caret's page, or every page, without a turn.
-  function redrawPages() {
-    if (!noteEl.querySelector(".line-row, [data-start]")) return;
-    pageView.forget();
-    render();
-  }
-
-  // A search inside notes opens on the page of the first match, without a
-  // turn (it is a new note opening, not a page turned).
-  function showSearchMatch(query) {
-    const line = lineOfSearch(editor.lines, query);
-    if (line === 0 || !noteShown()) return;
-    pageView.forget();
-    jumpToLine(line);
-  }
-
-  document.addEventListener("keydown", (event) => {
-    const isTurn = isShortcut(event, "PageUp") || isShortcut(event, "PageDown");
-    if (!isTurn || !pagesDrawn() || event.target.closest?.("input, textarea")) return;
-    event.preventDefault();
-    turnPage(event.key === "PageUp" ? -1 : 1);
-  });
-
   // --- The table of contents (#107): sidebar/contents-view.js ---------------
   const contents = createContents({
     noteEl,
     editor,
-    canOpen: noteShown,
+    canOpen: paper.noteShown,
     beforeOpen: () => closeOverlays(),
-    jumpToLine,
+    jumpToLine: (line) => paper.jumpToLine(line),
   });
-
-  // The caret at the start of a line, the paper scrolled so it sits near the
-  // top: a heading from the contents, a search match.
-  function jumpToLine(line) {
-    moveTo(line, 0);
-    const row = focusedEl?.closest(".line-row");
-    if (!row) return;
-    row.style.scrollMarginTop = "4rem";
-    row.scrollIntoView({ block: "start" });
-  }
 
   // --- Find in the open note (#111): sidebar/find-view.js --------------------
   const findInNote = createFind({
     el: document.querySelector(".find-box"),
     noteEl,
     editor,
-    focusedEl: () => focusedEl,
-    moveTo,
-    shownPageSpan,
-    canOpen: noteShown,
+    focusedEl: () => paper.focusedEl(),
+    moveTo: (line, col) => paper.moveTo(line, col),
+    shownPageSpan: () => paper.shownPageSpan(),
+    canOpen: paper.noteShown,
     beforeOpen: () => closeOverlays(),
-    render: () => render(),
+    render: () => paper.render(),
   });
 
   // --- Opening the page's note, and the way out of an empty panel (#3) -------
@@ -1581,13 +1121,13 @@ async function start() {
     noteMeta.update();
     noteEl.replaceChildren(startPrompt({ onNew: () => openingFlow.newNoteForPage() }));
     contents.update();
-    updatePageBar();
+    paper.updatePageBar();
   }
 
   function showPermissionCard() {
     noteEl.replaceChildren(pageCard({ onAllow: () => openingFlow.allow(), onDecline: () => openingFlow.decline() }));
     contents.update();
-    updatePageBar();
+    paper.updatePageBar();
   }
 
   // The welcome (#85, #90): a pixel-art scene, the greeting, three lines with
@@ -1615,7 +1155,7 @@ async function start() {
     start.addEventListener("click", () => {
       const view = screen.startWriting();
       clearWelcome();
-      if (view.type === "welcomeGone") focusedEl?.focus();
+      if (view.type === "welcomeGone") paper.focusedEl()?.focus();
       else draw(view);
     });
     const startRow = Object.assign(document.createElement("p"), { className: "welcome-start-row" });
