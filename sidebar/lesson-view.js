@@ -113,12 +113,9 @@ export function createLessonView({ els, notebook, screen, layout, draw, openNote
     const next = button("lesson-turn", view.next.label, view.next.hint, () => open(view.next.title));
     next.disabled = !view.next.title;
     row.append(previous, done, next);
-    const parts = [row];
-    if (view.pageLink) {
-      const link = button("lesson-page", view.pageLink.label, "Go to the lesson's page, in its tab if it is open", () => openSource(view.pageLink.source));
-      parts.unshift(link);
-    }
-    foot.replaceChildren(...parts);
+    if (!view.pageLink) return foot.replaceChildren(row);
+    const link = button("lesson-page", view.pageLink.label, "Go to the lesson's page, in its tab if it is open", () => openSource(view.pageLink.source));
+    foot.replaceChildren(link, row);
   }
 
   function update() {
