@@ -11,6 +11,19 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Enter is quick in a very long note (#120)
+
+- [ ] Paste a long text of about 3000 lines into a note (a transcript or a long article). Put the caret in the middle and press Enter a few times: each new line comes at once, as quick as typing a letter. To measure, open the sidebar's devtools, Performance, record while pressing Enter, and look at the keydown: under 100 ms.
+- [ ] After Enter, the paper looks as before: every line sits on the ruling, headings, lists, numbers and checkboxes look the same, and the caret is at the start of the new line.
+- [ ] Press Enter inside a numbered list: the items after it count on 1, 2, 3 without a gap.
+- [ ] With a sketch further down the note, press Enter above it: the sketch still shows and can be clicked and drawn in.
+- [ ] Press Enter a few lines above a page break with all pages shown: the break still says the right page number. With notes as pages, Enter still works and the ‹ 1 of 3 › bar is right.
+- [ ] After a few Enters, click a line further down: the caret lands on the line you clicked, not the one above it. Tick a checkbox further down: that box ticks.
+- [ ] Ctrl Z and Ctrl Y after Enter bring the line back and take it out again.
+- [ ] With Find open (Ctrl F) on a word that is further down, press Enter in the note: the marks stay on the matches.
+- [ ] Click a heading in the table of contents after a few Enters: the caret goes to that heading.
+- [ ] Make the sidebar wider or narrower, then press Enter: long lines that wrap still sit on the ruling.
+
 ### Empty notes go when you leave them (#119)
 
 - [ ] In a note, write [[Nothing here]] and click it. Press ← without writing: the link shows as missing again, and "Nothing here" is not in the menu.

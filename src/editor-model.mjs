@@ -65,6 +65,26 @@ export function blockRanges(lines) {
   return ranges;
 }
 
+// How many drawn blocks at the start (`head`) and at the end (`tail`) of the
+// paper stay as they are, given each block's key before and after a change:
+// a key says how the block is drawn, and null (the line being edited) is never
+// kept. Only the blocks in between are drawn again, so Enter in a long note
+// doesn't rebuild every line (#120). The two ends never overlap.
+export function unchangedEnds(before, after) {
+  const same = (a, b) => a != null && a === b;
+  const most = Math.min(before.length, after.length);
+  let head = 0;
+  while (head < most && same(before[head], after[head])) head += 1;
+  let tail = 0;
+  while (
+    tail < most - head &&
+    same(before[before.length - 1 - tail], after[after.length - 1 - tail])
+  ) {
+    tail += 1;
+  }
+  return { head, tail };
+}
+
 // The note split into blocks (raw text). A single-line block is that line; a
 // code block is its lines joined with `\n`, so it stays one editable unit.
 export function splitIntoBlocks(text) {
