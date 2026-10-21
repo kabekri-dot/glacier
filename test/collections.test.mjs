@@ -266,3 +266,87 @@ test("a note moved to a Collection in one browser moves in the other, without a 
   assert.equal(result.conflicts, 0);
   assert.deepEqual(firefox.notes().map((note) => [note.title, note.course]), [["Flexbox", "TOP"]]);
 });
+
+// The notes list's collection rows (#123): rename in the row, and Delete
+// that keeps the notes, without a Collection.
+test("renaming a Collection moves every note in it, archived ones too", async () => {
+  const { notebook } = await syncedWholeCollection();
+  notebook.archiveNote("Flexbox");
+  assert.deepEqual(notebook.renameCollection("TOP Foundations", "Odin"), { ok: true, name: "Odin" });
+  assert.equal(notebook.note("Box model").course, "Odin");
+  assert.equal(notebook.note("Flexbox").course, "Odin");
+  assert.deepEqual(notebook.courses(), ["Khan", "Odin"]);
+  assert.equal(notebook.note("Algebra").course, "Khan");
+});
+
+test("a renamed Collection's files move to its new folder on the next sync, as one commit", async () => {
+  const { notebook, remote } = await syncedWholeCollection();
+  const before = remote.commits().length;
+  notebook.renameCollection("Khan", "Khan Algebra");
+  await notebook.sync(remote);
+  const paths = (await remote.listFiles()).map((f) => f.path);
+  assert.ok(paths.includes("collections/Khan Algebra/Algebra.md"));
+  assert.ok(!paths.some((path) => path.startsWith("collections/Khan/")));
+  assert.equal(remote.commits().length, before + 1);
+});
+
+test("renaming a Collection to a name another one has, in any capitals, is refused", async () => {
+  const { notebook } = await syncedWholeCollection();
+  assert.deepEqual(notebook.renameCollection("Khan", "top foundations"), { ok: false, taken: "TOP Foundations" });
+  assert.equal(notebook.note("Algebra").course, "Khan");
+});
+
+test("a Collection can be renamed to its own name in other capitals", async () => {
+  const { notebook } = await syncedWholeCollection();
+  assert.deepEqual(notebook.renameCollection("Khan", "KHAN"), { ok: true, name: "KHAN" });
+  assert.equal(notebook.note("Algebra").course, "KHAN");
+});
+
+test("an empty Collection can be renamed, and an empty name changes nothing", () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  notebook.newCollection("Biology");
+  assert.deepEqual(notebook.renameCollection("Biology", "  "), { ok: false });
+  assert.deepEqual(notebook.renameCollection("Biology", "Chemistry"), { ok: true, name: "Chemistry" });
+  assert.deepEqual(notebook.courses(), ["Chemistry"]);
+});
+
+test("the last used Collection follows its rename", async () => {
+  const { notebook } = await syncedWholeCollection();
+  notebook.moveToCourse("Loose", "Khan");
+  notebook.renameCollection("Khan", "Khan Algebra");
+  assert.equal(notebook.lastCourse(), "Khan Algebra");
+});
+
+test("a Collection is found by its name in any capitals", async () => {
+  const { notebook } = await syncedWholeCollection();
+  notebook.newCollection("Biology");
+  assert.equal(notebook.collectionNamed("top FOUNDATIONS"), "TOP Foundations");
+  assert.equal(notebook.collectionNamed("biology"), "Biology");
+  assert.equal(notebook.collectionNamed("Chemistry"), undefined);
+});
+
+test("deleting a Collection but keeping its notes leaves them without a Collection", async () => {
+  const { notebook } = await syncedWholeCollection();
+  const kept = notebook.deleteCollectionKeepNotes("TOP Foundations");
+  assert.deepEqual(kept, { course: "TOP Foundations", titles: ["Box model", "Flexbox"] });
+  assert.deepEqual(notebook.courses(), ["Khan"]);
+  assert.equal(notebook.note("Box model").course, undefined);
+  assert.equal(notebook.note("Box model").body, "Boxes.");
+  assert.deepEqual(notebook.outline().uncategorised, ["Box model", "Flexbox", "Loose"]);
+});
+
+test("undo after deleting a Collection but keeping its notes puts them back in it", async () => {
+  const { notebook } = await syncedWholeCollection();
+  notebook.putBackCollection(notebook.deleteCollectionKeepNotes("TOP Foundations"));
+  assert.deepEqual(notebook.outline().courses.map((c) => c.course), ["Khan", "TOP Foundations"]);
+  assert.equal(notebook.note("Flexbox").course, "TOP Foundations");
+});
+
+test("an empty Collection deleted with its notes kept comes back empty on undo", () => {
+  const notebook = createNotebook({ storage: memoryStorage() });
+  notebook.newCollection("Biology");
+  const kept = notebook.deleteCollectionKeepNotes("Biology");
+  assert.deepEqual(notebook.courses(), []);
+  notebook.putBackCollection(kept);
+  assert.deepEqual(notebook.courses(), ["Biology"]);
+});

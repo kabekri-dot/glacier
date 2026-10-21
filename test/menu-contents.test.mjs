@@ -3,10 +3,9 @@ import assert from "node:assert/strict";
 
 import { createNotebook } from "../src/notebook.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
-import { PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
-import { notebookMenu, deletedNotice, deleteNoteQuestion, deletedCollectionNotice, noteMenu, deleteCollectionQuestion, archivedNotice, secondVersionBar, rowActions, noteOrigin, pillTitle, secretMark, backButtonHint, HELP_URL, pushpin } from "../src/menu-contents.mjs";
+import { notebookMenu, deletedNotice, deleteNoteQuestion, deletedCollectionNotice, noteMenu, archivedNotice, secondVersionBar, noteOrigin, pillTitle, secretMark, backButtonHint, HELP_URL, pushpin, noteRowMenu, moveChoices, madeCollectionNotice, collectionTakenText, renamedCollectionNotice, deletedKeptNotesNotice, movedNotice, deleteCollectionChoice, editedLine } from "../src/menu-contents.mjs";
 
-// What the ▾ Notebook and ⋯ This note menus list (#67), as plain data the
+// What the notes list and ⋯ list (#67, #121, #123), as plain data the
 // sidebar only has to draw.
 
 const SEVERAL = "These notes were changed in two places before they synced, so Glacier kept every version. Open one, copy what you want to keep into the original, then delete or archive the others.";
@@ -47,12 +46,18 @@ test("a search that matches the text gives a snippet around the match", () => {
     { text: " the border of a box.", match: false },
   ]);
 });
-
-test("a search with no match says so", () => {
-  assert.deepEqual(notebookMenu(notebookWith(), "zebra"), [{ kind: "empty", text: "No notes match" }]);
+test("a search with no match says so and offers a new note with that title", () => {
+  assert.deepEqual(notebookMenu(notebookWith(), " zebra "), [
+    { kind: "empty", text: "No notes match “zebra”." },
+    { kind: "newNamed", label: "New note “zebra”", title: "zebra" },
+  ]);
 });
 
-test("without a search the menu starts with the recent notes", () => {
+test("a search inside notes with no match offers a note named after the words", () => {
+  assert.deepEqual(notebookMenu(notebookWith(), "// zebra stripes").at(-1), { kind: "newNamed", label: "New note “zebra stripes”", title: "zebra stripes" });
+});
+
+test("without a search the list starts with the recent notes", () => {
   const notebook = notebookWith();
   notebook.markOpened("Margins");
   notebook.markOpened("Flexbox");
@@ -63,60 +68,60 @@ test("without a search the menu starts with the recent notes", () => {
   ]);
 });
 
-test("the Notebook lists Collections with their notes, then the notes without a Collection", () => {
-  const menu = notebookMenu(notebookWith(), "");
-  assert.deepEqual(menu, [
-    { kind: "heading", text: "Notebook", hint: null },
-    { kind: "newCollection", label: "+ New collection", hint: "Make an empty collection to fill later" },
-    { kind: "group", label: "TOP Foundations", hint: "Notes in this collection", open: true, archive: false, titles: ["Box model", "Flexbox"], course: "TOP Foundations", actions: [
-      { kind: "download", hint: "Download 'TOP Foundations', 2 notes" },
-      { kind: "archive", hint: "Archive 'TOP Foundations', 2 notes" },
-      { kind: "delete", hint: "Delete 'TOP Foundations', 2 notes" },
-    ] },
-    { kind: "heading", text: "No collection", hint: "Notes not in any collection" },
-    { kind: "notes", titles: ["Loose page", "Margins"] },
-  ]);
+test("Recent lists at most 5 notes", () => {
+  const notebook = notebookWith();
+  for (const title of ["A", "B", "C", "D", "E", "F"]) {
+    notebook.createNote({ title });
+    notebook.markOpened(title);
+  }
+  assert.deepEqual(notebookMenu(notebook, "")[1].titles, ["F", "E", "D", "C", "B"]);
 });
 
-// Several notes per page (#68): the ▾ menu starts with the notes for the open
-// note's page.
-function threeNotesForOnePage() {
-  const notebook = notebookWith();
-  const page = "https://odin.example/flex";
-  notebook.createNote({ title: "Flex questions", source: page, created: "2026-10-01T09:00:00.000Z" });
-  notebook.createNote({ title: "Flex tricks", source: `${page}#gap`, created: "2026-10-02T09:00:00.000Z" });
-  notebook.saveBody("Flex questions", "Why does it shrink?");
-  return notebook;
+// The Collections part (#123): each Collection a folder, folded at first,
+// with its number of notes; the notes without one in their own folder.
+function folders(parts) {
+  return parts.filter((part) => part.kind === "folder");
 }
 
-test("Notes for this page comes first, newest first, with New note for this page under them", () => {
-  const notebook = threeNotesForOnePage();
-  const menu = notebookMenu(notebook, "", notebook.note("Flex tricks"));
-  assert.deepEqual(menu.slice(0, 3), [
-    { kind: "heading", text: "Notes for this page", hint: "Every note for this page, the latest first" },
-    { kind: "notes", titles: ["Flex questions", "Flex tricks", "Flexbox"], current: "Flex tricks" },
-    { kind: "newForPage", label: "+ New note for this page", hint: PAGE_NOTE_HINT },
+test("Collections has a heading with + New, then each Collection folded with its number of notes", () => {
+  const menu = notebookMenu(notebookWith(), "");
+  assert.deepEqual(menu[0], { kind: "collectionsHeading", text: "Collections", add: { label: "+ New", hint: "Make a new collection" } });
+  assert.deepEqual(folders(menu).map((f) => [f.label, f.count, f.open]), [
+    ["TOP Foundations", 2, false],
+    ["Not in a collection", 2, false],
   ]);
-  assert.equal(menu[3].text, "Notebook");
 });
 
-test("a note without a page gets no Notes for this page section", () => {
-  const notebook = threeNotesForOnePage();
-  assert.equal(notebookMenu(notebook, "", notebook.note("Margins"))[0].text, "Notebook");
-  assert.equal(notebookMenu(notebook, "")[0].text, "Notebook");
+test("a Collection's folder holds its notes and ends with + New note in it", () => {
+  const [top] = folders(notebookMenu(notebookWith(), ""));
+  assert.equal(top.course, "TOP Foundations");
+  assert.equal(top.renamable, true);
+  assert.equal(top.icon, "folder");
+  assert.deepEqual(top.parts, [
+    { kind: "notes", titles: ["Box model", "Flexbox"] },
+    { kind: "newInCollection", label: "+ New note in TOP Foundations", hint: "Make a note in TOP Foundations", course: "TOP Foundations" },
+  ]);
 });
 
-test("a search hides the Notes for this page section", () => {
-  const notebook = threeNotesForOnePage();
-  assert.deepEqual(notebookMenu(notebook, "zebra", notebook.note("Flexbox")), [{ kind: "empty", text: "No notes match" }]);
+test("a folder opened by a click stays open, the others folded", () => {
+  const notebook = notebookWith();
+  const menu = notebookMenu(notebook, "", null, { opened: new Set([folders(notebookMenu(notebook, ""))[0].key]) });
+  assert.deepEqual(folders(menu).map((f) => f.open), [true, false]);
 });
 
-test("an empty Notebook says there are no notes yet", () => {
+test("the notes without a Collection have their own folder, without a rename or ⋯", () => {
+  const loose = folders(notebookMenu(notebookWith(), "")).at(-1);
+  assert.equal(loose.label, "Not in a collection");
+  assert.equal(loose.renamable, false);
+  assert.equal(loose.menu, null);
+  assert.deepEqual(loose.parts, [{ kind: "notes", titles: ["Loose page", "Margins"] }]);
+});
+
+test("an empty Notebook says there are no notes yet and how to make a Collection", () => {
   const menu = notebookMenu(createNotebook({ storage: memoryStorage() }), "");
   assert.deepEqual(menu, [
-    { kind: "heading", text: "Notebook", hint: null },
-    { kind: "empty", text: "Collections hold notes that belong together. Make one with + New collection." },
-    { kind: "newCollection", label: "+ New collection", hint: "Make an empty collection to fill later" },
+    { kind: "collectionsHeading", text: "Collections", add: { label: "+ New", hint: "Make a new collection" } },
+    { kind: "empty", text: "Collections hold notes that belong together. Make one with + New." },
     { kind: "empty", text: "No notes yet. Just start writing on a page, or press + for a new note." },
   ]);
 });
@@ -128,55 +133,189 @@ test("the Collections hint goes away once there is a Collection", () => {
   assert.ok(!texts.some((text) => text.startsWith("Collections hold")));
 });
 
-test("archived notes are listed only under a folded Archive", () => {
+test("an empty Collection is a folder of 0 with only + New note in it", () => {
+  const notebook = notebookWith();
+  notebook.newCollection("Biology");
+  const biology = folders(notebookMenu(notebook, "")).find((f) => f.course === "Biology");
+  assert.equal(biology.count, 0);
+  assert.deepEqual(biology.parts.map((part) => part.kind), ["newInCollection"]);
+});
+
+test("archived notes are listed only in the Archive, folded after a line, with its number", () => {
   const notebook = notebookWith();
   notebook.markOpened("Margins");
   notebook.archiveNote("Margins");
   const menu = notebookMenu(notebook, "");
+  assert.deepEqual(menu.at(-2), { kind: "line" });
   const archive = menu.at(-1);
-  assert.deepEqual(archive, {
-    kind: "group",
-    label: "Archive (1)",
-    hint: "Notes you hid from your lists. Open one to bring it back",
-    open: false,
-    archive: true,
-    titles: ["Margins"],
-    sections: [],
-  });
-  const elsewhere = menu.slice(0, -1).flatMap((part) => part.titles ?? []);
+  assert.deepEqual([archive.kind, archive.label, archive.count, archive.open, archive.icon, archive.menu], ["folder", "Archive", 1, false, "archive", null]);
+  assert.deepEqual(archive.parts, [{ kind: "notes", titles: ["Margins"] }]);
+  const elsewhere = JSON.stringify(menu.slice(0, -1));
   assert.equal(elsewhere.includes("Margins"), false);
-  assert.deepEqual(notebookMenu(notebook, "outside"), [{ kind: "empty", text: "No notes match" }]);
+  assert.equal(notebookMenu(notebook, "outside")[0].kind, "empty");
 });
 
-test("Several versions tops the menu with each original and its second version", () => {
+test("without archived notes there is no Archive", () => {
+  assert.equal(notebookMenu(notebookWith(), "").some((part) => part.label === "Archive"), false);
+});
+
+test("a Collection in the Archive is its own folder there, offering Download all and Unarchive all", () => {
+  const notebook = notebookWith();
+  notebook.archiveCollection("TOP Foundations");
+  const [inside] = notebookMenu(notebook, "").at(-1).parts;
+  assert.equal(inside.label, "TOP Foundations");
+  assert.equal(inside.count, 2);
+  assert.deepEqual([inside.course, inside.archived, inside.renamable], ["TOP Foundations", true, false]);
+  assert.deepEqual(inside.parts, [{ kind: "notes", titles: ["Box model", "Flexbox"] }]);
+  assert.deepEqual(inside.menu.map((item) => item.label), ["Download all", "Unarchive all"]);
+});
+
+test("the expanded view opens every folder", () => {
+  const notebook = notebookWith();
+  notebook.archiveNote("Margins");
+  assert.ok(folders(notebookMenu(notebook, "", null, { wide: true })).every((f) => f.open));
+});
+
+// For this page (#123): only when the open note's page has more than one note.
+function threeNotesForOnePage() {
+  const notebook = notebookWith();
+  const page = "https://odin.example/flex";
+  notebook.createNote({ title: "Flex questions", source: page, created: "2026-10-01T09:00:00.000Z" });
+  notebook.createNote({ title: "Flex tricks", source: `${page}#gap`, created: "2026-10-02T09:00:00.000Z" });
+  notebook.saveBody("Flex questions", "Why does it shrink?");
+  return notebook;
+}
+
+test("For this page comes first, newest first, with the open note marked", () => {
+  const notebook = threeNotesForOnePage();
+  const menu = notebookMenu(notebook, "", notebook.note("Flex tricks"));
+  assert.deepEqual(menu.slice(0, 2), [
+    { kind: "heading", text: "For this page", hint: "Every note for this page, the latest first" },
+    { kind: "notes", titles: ["Flex questions", "Flex tricks", "Flexbox"], current: "Flex tricks" },
+  ]);
+});
+
+test("a page with only the open note, or a note without a page, has no For this page", () => {
+  const notebook = threeNotesForOnePage();
+  assert.equal(notebookMenu(notebook, "", notebook.note("Loose page"))[0].kind, "collectionsHeading");
+  assert.equal(notebookMenu(notebook, "", notebook.note("Margins"))[0].kind, "collectionsHeading");
+});
+
+test("a search hides For this page", () => {
+  const notebook = threeNotesForOnePage();
+  assert.equal(notebookMenu(notebook, "zebra", notebook.note("Flexbox"))[0].text, "No notes match “zebra”.");
+});
+
+test("Several versions tops the list with each original and its second version", () => {
   const notebook = notebookWith();
   notebook.createNote({ title: "Margins (conflict 2026-10-02)" });
   notebook.createNote({ title: "Gone (conflict 2026-10-02)" });
   assert.deepEqual(notebookMenu(notebook, "").slice(0, 3), [
     { kind: "heading", text: "Several versions (2)", hint: SEVERAL },
-    {
-      kind: "pair",
-      notes: [
-        { title: "Margins", label: "Margins", actions: rowActions("Margins") },
-        { title: "Margins (conflict 2026-10-02)", label: "Margins (conflict 2026-10-02)", actions: rowActions("Margins (conflict 2026-10-02)") },
-      ],
-    },
-    { kind: "pair", notes: [{ title: "Gone (conflict 2026-10-02)", label: "Gone (conflict 2026-10-02)", actions: rowActions("Gone (conflict 2026-10-02)") }] },
+    { kind: "pair", notes: [{ title: "Margins", label: "Margins" }, { title: "Margins (conflict 2026-10-02)", label: "Margins (conflict 2026-10-02)" }] },
+    { kind: "pair", notes: [{ title: "Gone (conflict 2026-10-02)", label: "Gone (conflict 2026-10-02)" }] },
   ]);
 });
 
-test("Several versions comes before the notes for this page", () => {
-  const notebook = notebookWith();
+test("Several versions comes before For this page", () => {
+  const notebook = threeNotesForOnePage();
   notebook.createNote({ title: "Margins (conflict 2026-10-02)" });
   const headings = notebookMenu(notebook, "", notebook.note("Flexbox"))
     .filter((part) => part.kind === "heading")
     .map((part) => part.text);
-  assert.deepEqual(headings.slice(0, 2), ["Several versions (1)", "Notes for this page"]);
+  assert.deepEqual(headings.slice(0, 2), ["Several versions (1)", "For this page"]);
 });
 
-test("without notes that have two versions the menu has no Several versions", () => {
+test("without notes that have two versions the list has no Several versions", () => {
   const texts = notebookMenu(notebookWith(), "").map((part) => part.text);
   assert.equal(texts.some((text) => text?.startsWith("Several versions")), false);
+});
+
+// The ⋯ on a row (#123), the small menu under it.
+test("a note's ⋯ offers Move to collection, Download, Archive and Delete", () => {
+  assert.deepEqual(noteRowMenu("Grid").map((item) => [item.kind, item.label, item.icon]), [
+    ["move", "Move to collection…", "folder"],
+    ["download", "Download", "download"],
+    ["archive", "Archive", "archive"],
+    ["delete", "Delete", "trash"],
+  ]);
+  assert.ok(noteRowMenu("Grid").every((item) => item.hint));
+});
+
+test("an archived note's ⋯ offers Unarchive", () => {
+  assert.deepEqual(noteRowMenu("Grid", true).map((item) => item.label), ["Move to collection…", "Download", "Unarchive", "Delete"]);
+});
+
+test("a Collection's ⋯ offers a new note in it, Download all, Archive all and Delete collection", () => {
+  const [top] = folders(notebookMenu(notebookWith(), ""));
+  assert.deepEqual(top.menu.map((item) => [item.kind, item.label]), [
+    ["newNote", "New note in TOP Foundations"],
+    ["download", "Download all"],
+    ["archive", "Archive all"],
+    ["delete", "Delete collection"],
+  ]);
+  assert.equal(top.menu[1].hint, "Download the 2 notes in “TOP Foundations” as one zip");
+});
+
+test("an empty Collection's ⋯ only offers a new note in it and Delete collection", () => {
+  const notebook = notebookWith();
+  notebook.newCollection("Biology");
+  const biology = folders(notebookMenu(notebook, "")).find((f) => f.course === "Biology");
+  assert.deepEqual(biology.menu.map((item) => item.kind), ["newNote", "delete"]);
+});
+
+test("Move to collection lists every Collection, the note's own marked, and Not in a collection", () => {
+  const notebook = notebookWith();
+  notebook.newCollection("Biology");
+  assert.deepEqual(moveChoices(notebook, "TOP Foundations"), {
+    choices: [
+      { course: "Biology", label: "Biology", current: false },
+      { course: "TOP Foundations", label: "TOP Foundations", current: true },
+      { course: "", label: "Not in a collection", current: false },
+    ],
+    empty: null,
+  });
+});
+
+test("a note in no Collection is not offered Not in a collection, and without Collections it says how to make one", () => {
+  const notebook = notebookWith();
+  assert.deepEqual(moveChoices(notebook, undefined).choices.map((choice) => choice.label), ["TOP Foundations"]);
+  const bare = createNotebook({ storage: memoryStorage() });
+  assert.deepEqual(moveChoices(bare, undefined), { choices: [], empty: "No collections yet. Make one with + New next to Collections." });
+});
+
+test("the questions and notices of a Collection's row say what happens", () => {
+  assert.equal(madeCollectionNotice("Biology"), "Made the collection “Biology”. Move notes into it from their ⋯.");
+  assert.equal(collectionTakenText("Biology"), "There is already a collection “Biology”.");
+  assert.equal(renamedCollectionNotice("Odin"), "Renamed the collection to “Odin”.");
+  assert.equal(deletedKeptNotesNotice("Odin", 3), "Deleted the collection “Odin”. Its 3 notes are in Not in a collection.");
+  assert.equal(movedNotice("Grid", "Odin"), "Moved “Grid” to Odin.");
+  assert.equal(movedNotice("Grid", ""), "Took “Grid” out of its collection.");
+});
+
+test("deleting a Collection asks whether its notes stay, naming the Notes Home on Delete all", () => {
+  assert.deepEqual(deleteCollectionChoice("Testing", 12, "github"), {
+    text: "Delete the collection “Testing”? Its 12 notes can stay, without a collection.",
+    keepNotes: { label: "Delete, keep notes", hint: "Delete the collection. Its notes go to Not in a collection" },
+    all: { label: "Delete all", hint: "Delete the collection and its 12 notes for good. They're also removed from your GitHub repo." },
+  });
+  assert.equal(deleteCollectionChoice("Testing", 1, null).all.hint, "Delete the collection and its 1 note for good.");
+});
+
+test("deleting an empty Collection asks a plain question", () => {
+  assert.deepEqual(deleteCollectionChoice("Biology", 0, "github"), {
+    text: "Delete the empty collection “Biology”?",
+    keepNotes: null,
+    all: { label: "Delete", hint: "Delete the empty collection" },
+  });
+});
+
+// The expanded view (#123): each note's second line.
+test("in the expanded view a note says when it was edited and in which Collection", () => {
+  const now = new Date("2026-10-21T15:00:00");
+  assert.equal(editedLine({ edited: "2026-10-21T09:00:00", course: "Odin" }, now), "Edited today, in Odin");
+  assert.equal(editedLine({ edited: "2026-10-20T09:00:00" }, now), "Edited yesterday");
+  assert.equal(editedLine({ created: "2026-10-02T09:00:00", course: "Khan" }, now), "Edited 2 October, in Khan");
 });
 
 test("no note open means no This note menu", () => {
@@ -221,60 +360,27 @@ test("an ordinary note or no note has no second version bar", () => {
   assert.equal(secondVersionBar(notebook, null), null);
 });
 
-test("a Collection in the Archive offers Unarchive for all its notes", () => {
-  const notebook = notebookWith();
-  notebook.archiveCollection("TOP Foundations");
-  const archive = notebookMenu(notebook, "").at(-1);
-  assert.deepEqual(archive.sections, [
-    {
-      course: "TOP Foundations",
-      titles: ["Box model", "Flexbox"],
-      actions: [
-        { kind: "download", hint: "Download 'TOP Foundations', 2 notes" },
-        { kind: "unarchive", hint: "Unarchive 'TOP Foundations', 2 notes" },
-      ],
-    },
-  ]);
-});
-
-test("the delete question names the Collection, the count and where the notes live", () => {
-  assert.equal(
-    deleteCollectionQuestion("Testing", 12, "github"),
-    "Delete the collection “Testing” and its 12 notes? They're also removed from your GitHub repo.",
-  );
-  assert.equal(archivedNotice(12), "Archived 12 notes.");
-});
-
 test("the delete questions name the real Notes Home", () => {
   assert.equal(deleteNoteQuestion("Flexbox", "github"), "Delete “Flexbox” for good? It is also removed from your GitHub repo.");
   assert.equal(deleteNoteQuestion("Flexbox", "google-drive"), "Delete “Flexbox” for good? It is also removed from Google Drive.");
   assert.equal(deleteNoteQuestion("Flexbox", "folder"), "Delete “Flexbox” for good? It is also removed from your notes folder.");
   assert.equal(
-    deleteCollectionQuestion("Testing", 1, "google-drive"),
-    "Delete the collection “Testing” and its 1 note? They're also removed from Google Drive.",
+    deleteCollectionChoice("Testing", 1, "google-drive").all.hint,
+    "Delete the collection and its 1 note for good. They're also removed from Google Drive.",
   );
+  assert.equal(archivedNotice(12), "Archived 12 notes.");
 });
 
 test("with notes only in this browser the delete questions name no other place", () => {
   assert.equal(deleteNoteQuestion("Flexbox", "browser"), "Delete “Flexbox” for good?");
   assert.equal(deleteNoteQuestion("Flexbox", null), "Delete “Flexbox” for good?");
-  assert.equal(deleteCollectionQuestion("Testing", 12, "browser"), "Delete the collection “Testing” and its 12 notes?");
+  assert.equal(deleteCollectionChoice("Testing", 12, "browser").all.hint, "Delete the collection and its 12 notes for good.");
 });
 
 test("a note with a page is from a website and one without is your own", () => {
   const notebook = notebookWith();
   assert.deepEqual(noteOrigin(notebook, "Flexbox"), { kind: "website", hint: "From a website" });
   assert.deepEqual(noteOrigin(notebook, "Margins"), { kind: "own", hint: "Your own note" });
-});
-
-test("the Notebook part offers + New collection, and an empty Collection only Delete", () => {
-  const notebook = notebookWith();
-  notebook.newCollection("Biology");
-  const parts = notebookMenu(notebook, "");
-  assert.equal(parts.find((part) => part.kind === "newCollection").label, "+ New collection");
-  const group = parts.find((part) => part.kind === "group" && part.course === "Biology");
-  assert.deepEqual(group.actions.map((action) => action.kind), ["delete"]);
-  assert.equal(deleteCollectionQuestion("Biology", 0, "github"), "Delete the empty collection “Biology”?");
 });
 
 test("with no note open the pill says Glacier quietly and cannot be renamed", () => {
@@ -296,11 +402,12 @@ test("the pill of a fresh page offers to name the note", () => {
 });
 
 // Page groups (#92): a website with several notes outside any Collection is
-// its own group under "No collection", named after the page, until you move it.
+
+// Page groups (#92): a website with several notes outside any Collection is
+// its own folder in "Not in a collection", named after the page, until you
+// move it.
 function noCollectionPart(parts) {
-  const at = parts.findIndex((part) => part.kind === "heading" && part.text === "No collection");
-  const end = parts.findIndex((part, index) => index > at && part.kind === "group" && part.archive);
-  return parts.slice(at + 1, end === -1 ? undefined : end);
+  return parts.find((part) => part.kind === "folder" && part.label === "Not in a collection").parts;
 }
 
 function pageWithTwoNotes() {
@@ -309,18 +416,22 @@ function pageWithTwoNotes() {
   return notebook;
 }
 
-test("a website with two notes outside a Collection is its own group, named after the page", () => {
+test("a website with two notes outside a Collection is its own folder, named after the page", () => {
   const notebook = pageWithTwoNotes();
   assert.deepEqual(noCollectionPart(notebookMenu(notebook, "")), [
     {
-      kind: "group",
+      kind: "folder",
+      key: "page:https://example.com/loose",
       label: "Loose page, a guide",
       hint: "Notes for this website",
-      open: true,
-      archive: false,
+      icon: "globe",
+      count: 2,
+      open: false,
+      renamable: false,
       page: "https://example.com/loose",
       titles: ["Loose page", "Margin collapse"],
-      actions: [{ kind: "move", hint: "Move the notes for 'Loose page, a guide' to a collection" }],
+      menu: [{ kind: "move", label: "Move to collection…", icon: "folder", hint: "Move the notes for “Loose page, a guide” to a collection" }],
+      parts: [{ kind: "notes", titles: ["Loose page", "Margin collapse"] }],
     },
     { kind: "notes", titles: ["Margins"] },
   ]);
@@ -334,7 +445,7 @@ test("a website with one note stays a plain row", () => {
 test("a page group without a remembered page title is named after its short address", () => {
   const notebook = notebookWith();
   notebook.createNote({ title: "Second loose", source: "https://example.com/loose#part" });
-  const group = noCollectionPart(notebookMenu(notebook, "")).find((part) => part.kind === "group");
+  const group = noCollectionPart(notebookMenu(notebook, "")).find((part) => part.kind === "folder");
   assert.equal(group.label, "example.com/loose");
 });
 
@@ -344,7 +455,7 @@ test("page groups and plain rows stand in one list sorted by name", () => {
   notebook.createNote({ title: "Zebra" });
   const parts = noCollectionPart(notebookMenu(notebook, ""));
   assert.deepEqual(
-    parts.map((part) => (part.kind === "group" ? `group ${part.label}` : part.titles.join(", "))),
+    parts.map((part) => (part.kind === "folder" ? `group ${part.label}` : part.titles.join(", "))),
     ["Aside", "group Loose page, a guide", "Margins, Zebra"],
   );
 });
@@ -352,8 +463,8 @@ test("page groups and plain rows stand in one list sorted by name", () => {
 test("a website's notes inside a Collection stay a plain list there", () => {
   const notebook = notebookWith();
   notebook.createNote({ title: "Flex again", course: "TOP Foundations", source: "https://odin.example/flex" });
-  const collection = notebookMenu(notebook, "").find((part) => part.kind === "group" && part.course === "TOP Foundations");
-  assert.deepEqual(collection.titles, ["Box model", "Flex again", "Flexbox"]);
+  const collection = notebookMenu(notebook, "").find((part) => part.kind === "folder" && part.course === "TOP Foundations");
+  assert.deepEqual(collection.parts[0].titles, ["Box model", "Flex again", "Flexbox"]);
 });
 
 test("archived notes don't count for a page group", () => {

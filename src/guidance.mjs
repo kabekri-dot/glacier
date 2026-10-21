@@ -11,7 +11,7 @@ export const WELCOME_LINES = [
 export const WELCOME_GREETING = "Welcome to Glacier";
 export const WELCOME_TIP = "Tip: open any website and just start writing.";
 
-export const COLLECTIONS_HINT = "Collections hold notes that belong together. Make one with + New collection.";
+export const COLLECTIONS_HINT = "Collections hold notes that belong together. Make one with + New.";
 
 // The banner after a save to this browser's copy failed (#25, #117): what
 // happened, that the text is still on screen, and its one fix (Copy note).

@@ -31,7 +31,8 @@ export function createNoteSession({ notebook, onSaveError, onSaved, onCreate, on
   // True while a note that was named from its first line is still being
   // written on that line: its title follows what is typed (#80).
   let following = false;
-  // The fresh page on screen: { title, source }, `source` only for a page.
+  // The fresh page on screen: { title, source, course }, `source` only for a
+  // page, `course` only for "+ New note in" a Collection (#123).
   let draft = null;
 
   const scheduler = createSaveScheduler({
@@ -54,10 +55,10 @@ export function createNoteSession({ notebook, onSaveError, onSaved, onCreate, on
   // joins a Collection only when you put it there (#92): the one exception is
   // a new note for a page whose other notes you already put in one.
   function createFromDraft(title, { named = true } = {}) {
-    const { source, title: pageTitle } = draft;
+    const { source, title: pageTitle, course: chosen } = draft;
     draft = null;
     const siblings = source ? notebook.notesForPage(source) : [];
-    const course = siblings.find((note) => note.course)?.course;
+    const course = chosen ?? siblings.find((note) => note.course)?.course;
     const note = notebook.createNote({ title, source, pageTitle, course });
     openTitle = note.title;
     following = !named;
@@ -87,11 +88,11 @@ export function createNoteSession({ notebook, onSaveError, onSaved, onCreate, on
       following = false;
       openTitle = note.title;
     },
-    openDraft({ title = "", source }) {
+    openDraft({ title = "", source, course }) {
       flush();
       openTitle = null;
       following = false;
-      draft = { title, source };
+      draft = { title, source, course };
     },
     // The title typed in the pill, confirmed with Enter. An empty title is
     // refused (null), so the pill can ask for one.

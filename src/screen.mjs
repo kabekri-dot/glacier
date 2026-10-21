@@ -118,13 +118,14 @@ export function createScreen({ notebook, onSaveError, onSaved, beforeLeave = () 
   }
 
   // A fresh page with a `source` becomes a note for that page; without one it
-  // becomes a blank note. `editTitle` asks for the title in the pill to be
-  // edited at once.
-  function startFreshPage({ title = "", source, editTitle = false }) {
+  // becomes a blank note. A `course` puts the note in that Collection ("+ New
+  // note in", #123). `editTitle` asks for the title in the pill to be edited
+  // at once.
+  function startFreshPage({ title = "", source, course, editTitle = false }) {
     rememberNoteBefore();
     beforeLeave();
     dropEmptySketches();
-    session.openDraft({ title, source });
+    session.openDraft({ title, source, course });
     note = null;
     openedByPage = false;
     freshPage = { title, source };
@@ -405,11 +406,14 @@ export function createScreen({ notebook, onSaveError, onSaved, beforeLeave = () 
       return { type: "note", note, reload: false, changed: true };
     },
 
-    // Delete the open note. Returns what was taken, for Undo (#116).
-    delete() {
+    // Delete the open note, or another one by its `title` from the notes
+    // list (#123), which leaves the open note as it is. Returns what was
+    // taken, for Undo (#116).
+    delete(title = note?.title) {
       session.flush();
-      closedByDelete = note.title;
-      const kept = notebook.deleteNote(note.title);
+      const kept = notebook.deleteNote(title);
+      if (title !== note?.title) return { kept, view: { type: "backlinks", changed: true } };
+      closedByDelete = title;
       return { kept, view: leaveRemovedNote() };
     },
 
@@ -438,6 +442,15 @@ export function createScreen({ notebook, onSaveError, onSaved, beforeLeave = () 
         return { ...showNote(reopened, { byPage: isOpenedByPage(reopened) }), changed: true };
       }
       return { type: "backlinks", changed: true };
+    },
+
+    // The open note read again after the notes list changed it, such as its
+    // Collection's new name (#123), without reloading the paper.
+    refreshNote() {
+      if (!note) return { type: "backlinks", changed: true };
+      session.flush();
+      note = notebook.note(note.title) ?? note;
+      return { type: "note", note, reload: false, changed: true };
     },
 
     // The note on screen again, as stored (Keep after the delete question).
