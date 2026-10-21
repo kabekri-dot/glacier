@@ -119,6 +119,20 @@ this order.
      Settings has the same switch ("Show New page at the end of notes").
      From two pages on, the line under the bar shows ‹ 1 of 2 › and
      + New page, and the button at the end goes. New page is always in `/`.
+   - `☰ Notes`: search field focused on open (results replace the list; no
+     match offers a note with that name), Recent (at most 5), Collections
+     folded with counts, Not in a collection, Archive folded at the bottom.
+     ⤢ expands the list over the whole sidebar (all open, each note with
+     "Edited …, in <collection>"); ⤡ makes it small, × or Esc closes.
+   - A note's row on hover: ✎ rename in place, ⋯ opens a small menu under
+     it: Move to collection… (collections shown right there), Download,
+     Archive/Unarchive, Delete (Keep or Delete in place).
+   - A collection's row on hover: ✎ rename in place, ⋯: New note in it,
+     Download all (one zip), Archive all, Delete collection (in place:
+     Keep, "Delete, keep notes", "Delete all").
+   - "+ New" next to the Collections heading opens a name field there;
+     Enter makes the collection, already open. An open collection ends with
+     a faint "+ New note in <collection>".
    - "Extract to a new note" leaves the menu: it appears when text is
      selected. Whether selecting text shows more options is still open.
 2. **Settings, more organized.** Keep the style; less at once.

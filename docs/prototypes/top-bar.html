@@ -1,0 +1,789 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Clickable prototype of the new top bar (grilled with the user on 2026-10-21).
+     Open it in a browser. It is a sketch for the look and the flow; the
+     decisions are in docs/scope.md under "Next". -->
+<title>Glacier Top Bar</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Shantell+Sans:wght@400;700&display=swap">
+<style>
+/* Layout: a short explanation beside one life-size Glacier sidebar; the sidebar is the thing being tested.
+   Single light look on purpose: it shows Glacier's Glacier paper as it is in the extension. */
+:root {
+  color-scheme: light;
+  --desk: #dfe8f3;
+  --paper: #eef4fb;
+  --top: #dcebfb;
+  --rule: #c7dcf2;
+  --ink: #1b2a4a;
+  --soft: #5b6b88;
+  --faint: #9aabc4;
+  --accent: #3f78c4;
+  --danger: #b4443a;
+  --card: #fbfdff;
+  --ui: "Montserrat", "Segoe UI", system-ui, sans-serif;
+  --hand: "Shantell Sans", "Comic Sans MS", cursive;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--desk); color: var(--ink); font-family: var(--ui); padding-inline: 16px; padding-block: 24px; }
+.wrap { display: flex; gap: 32px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+.side { flex: 1 1 280px; max-width: 380px; min-width: 0; display: grid; gap: 16px; }
+h1 { font-size: 1.35rem; margin: 0; text-wrap: balance; }
+.side p { margin: 0; line-height: 1.5; color: var(--soft); font-size: 0.92rem; }
+.picker { display: grid; gap: 6px; }
+.picker-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--soft); margin-top: 6px; }
+.chip { display: flex; gap: 10px; align-items: baseline; text-align: left; width: 100%; border: 1px solid var(--rule); background: var(--card); color: var(--ink); border-radius: 10px; padding: 8px 12px; font: inherit; font-size: 0.88rem; cursor: pointer; }
+.chip b { min-width: 3.4em; color: var(--accent); }
+.chip[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.chip:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.about { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 12px 14px; display: grid; gap: 6px; }
+.about h2 { font-size: 1rem; margin: 0; }
+.about .tag { font-size: 0.75rem; color: var(--accent); font-weight: 700; }
+.tries { font-size: 0.85rem; color: var(--soft); line-height: 1.5; margin: 0; padding-left: 1.1em; }
+
+/* The sidebar */
+.frame { position: relative; width: 380px; max-width: 100%; height: 680px; border-radius: 14px; overflow: hidden; background: var(--paper); box-shadow: 0 10px 30px rgba(27, 42, 74, 0.18); border: 1px solid var(--rule); }
+.bar { position: absolute; inset: 0 0 auto 0; display: flex; align-items: center; gap: 6px; padding: 10px 10px 8px; background: linear-gradient(var(--top), rgba(220, 235, 251, 0)); z-index: 5; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; min-width: 34px; padding: 0 10px; border: 1px solid var(--rule); border-radius: 999px; background: var(--card); color: var(--ink); font: inherit; font-size: 0.85rem; cursor: pointer; box-shadow: 0 1px 3px rgba(27, 42, 74, 0.08); }
+.btn:hover { border-color: var(--accent); }
+.btn .px { width: 14px; height: 14px; }
+.title { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; }
+.title-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 0; background: none; font: inherit; font-weight: 600; font-size: 0.95rem; color: var(--ink); padding: 6px 4px; border-radius: 8px; cursor: pointer; }
+.title-text:hover { background: rgba(63, 120, 196, 0.08); }
+.pen { opacity: 0; border: 0; background: none; padding: 4px; cursor: pointer; color: var(--accent); transition: opacity 120ms; }
+.title:hover .pen, .pen:focus-visible { opacity: 1; }
+.title input { flex: 1; min-width: 0; font: inherit; font-weight: 600; font-size: 0.95rem; color: var(--ink); border: 1px solid var(--accent); border-radius: 8px; padding: 5px 6px; background: var(--card); }
+.badge { font-size: 0.75rem; color: var(--soft); }
+
+.strip { position: absolute; top: 54px; left: 0; right: 0; padding: 4px 16px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.8rem; color: var(--faint); z-index: 4; min-height: 30px; }
+.fact { display: inline-flex; align-items: center; gap: 5px; border: 1px dashed transparent; background: none; color: var(--soft); font: inherit; font-size: 0.8rem; padding: 3px 6px; border-radius: 8px; cursor: pointer; }
+.fact:hover { border-color: var(--rule); background: var(--card); color: var(--ink); }
+.fact .px { width: 12px; height: 12px; }
+.strip .tools { margin-left: auto; display: flex; gap: 2px; }
+.icon-btn { border: 0; background: none; padding: 5px; border-radius: 6px; color: var(--soft); cursor: pointer; }
+.icon-btn:hover { background: var(--card); color: var(--ink); }
+.icon-btn .px { width: 14px; height: 14px; display: block; }
+
+.paper { position: absolute; inset: 88px 0 0 0; padding: 0 22px 0 30px; background-image: repeating-linear-gradient(transparent 0 31px, var(--rule) 31px 32px); font-family: var(--hand); font-size: 1rem; line-height: 32px; overflow: hidden; }
+.paper h3 { font-size: 1.15rem; margin: 0; line-height: 32px; font-weight: 700; }
+.paper p { margin: 0; }
+.paper .flash { background: rgba(63, 120, 196, 0.18); border-radius: 4px; transition: background 600ms; }
+.pushpin { position: absolute; top: 94px; right: 14px; border: 0; background: none; padding: 4px; cursor: pointer; color: var(--faint); z-index: 4; transition: transform 160ms ease-out, color 160ms; }
+.pushpin .px { width: 22px; height: 22px; display: block; }
+.pushpin:hover { color: var(--soft); }
+.pushpin.on { color: var(--danger); transform: translateY(3px) scale(0.92); filter: drop-shadow(1px 2px 0 rgba(27, 42, 74, 0.25)); }
+
+.art { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; background: linear-gradient(transparent, #cfe0f3 70%); }
+
+/* Popovers, drawer, sheet */
+.pop { position: absolute; z-index: 10; background: var(--card); border: 1px solid var(--rule); border-radius: 12px; box-shadow: 0 8px 24px rgba(27, 42, 74, 0.16); padding: 6px; font-size: 0.88rem; min-width: 220px; max-width: calc(100% - 20px); }
+.pop.more { right: 10px; top: 50px; width: 290px; }
+.pop.notes { left: 10px; top: 50px; width: 280px; }
+.pop.heads { left: 70px; top: 50px; width: 250px; }
+.pop.plus { right: 50px; top: 50px; width: 260px; }
+.item { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; color: var(--ink); font: inherit; text-align: left; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.item:hover, .item.hot { background: rgba(63, 120, 196, 0.1); }
+.item .px { width: 14px; height: 14px; flex: none; color: var(--accent); }
+.item .hint { display: block; font-size: 0.75rem; color: var(--soft); }
+.item .key { margin-left: auto; font-size: 0.72rem; color: var(--faint); }
+.item.danger, .item.danger .px { color: var(--danger); }
+.sep { height: 1px; background: var(--rule); margin: 5px 6px; }
+.head { padding: 8px 10px 6px; display: grid; gap: 4px; }
+.head strong { font-size: 0.95rem; }
+.facts { display: flex; flex-wrap: wrap; gap: 4px; }
+.meta { font-size: 0.75rem; color: var(--soft); padding: 0 6px; }
+.row-icons { display: grid; grid-template-columns: repeat(var(--n, 3), 1fr); gap: 4px; padding: 4px; }
+.big { display: grid; justify-items: center; gap: 4px; border: 1px solid transparent; background: none; color: var(--ink); font: inherit; font-size: 0.75rem; padding: 10px 4px 8px; border-radius: 10px; cursor: pointer; }
+.big:hover { background: rgba(63, 120, 196, 0.1); }
+.big .px { width: 22px; height: 22px; color: var(--accent); }
+.ask { padding: 8px 10px; display: grid; gap: 8px; }
+.ask-row { display: flex; gap: 8px; }
+.ask-row button { flex: 1; border-radius: 8px; padding: 7px; font: inherit; cursor: pointer; border: 1px solid var(--rule); background: var(--card); color: var(--ink); }
+.ask-row .go { background: var(--danger); border-color: var(--danger); color: #fff; }
+.search { width: 100%; font: inherit; font-size: 0.88rem; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 8px; margin-bottom: 4px; background: var(--paper); color: var(--ink); }
+.list-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); padding: 6px 10px 2px; }
+.note-row { display: flex; align-items: center; border-radius: 8px; }
+.note-row:hover { background: rgba(63, 120, 196, 0.08); }
+.note-row .item { flex: 1; }
+.note-row .icon-btn { opacity: 0; }
+.note-row:hover .icon-btn, .note-row .icon-btn:focus-visible { opacity: 1; }
+.pages { margin-left: auto; display: flex; align-items: center; gap: 4px; color: var(--soft); font-variant-numeric: tabular-nums; }
+.pages .icon-btn:disabled { opacity: 0.35; cursor: default; }
+.fact.link { color: var(--accent); }
+.slash-hint { display: block; border: 0; background: none; padding: 0; font: inherit; color: var(--faint); cursor: pointer; line-height: 32px; }
+.slash-hint:hover { color: var(--soft); }
+.endwrap { position: relative; margin-top: 32px; }
+.endwrap .endpage { margin-top: 0; }
+.endhide { position: absolute; top: 50%; right: 8px; transform: translateY(-50%); border: 0; background: none; color: var(--faint); font-size: 1rem; line-height: 1; padding: 4px 6px; border-radius: 6px; cursor: pointer; opacity: 0; transition: opacity 120ms; }
+.endwrap:hover .endhide, .endhide:focus-visible { opacity: 1; }
+.endhide:hover { color: var(--ink); background: var(--card); }
+.switch { display: flex; gap: 10px; align-items: center; font-size: 0.9rem; cursor: pointer; }
+.switch input { width: 18px; height: 18px; accent-color: var(--accent); }
+.endpage { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 32px; height: 40px; border: 1.5px dashed var(--rule); border-radius: 10px; background: rgba(251, 253, 255, 0.5); color: var(--faint); font-family: var(--ui); font-size: 0.85rem; cursor: pointer; transition: color 120ms, border-color 120ms; }
+.endpage:hover { color: var(--accent); border-color: var(--accent); }
+.endpage .px { width: 14px; height: 14px; }
+.page-label { color: var(--faint); font-family: var(--ui); font-size: 0.8rem; }
+.pop.slash { left: 20px; top: 150px; width: 260px; }
+.notes-top { display: flex; gap: 4px; align-items: center; }
+.notes-top .search { margin-bottom: 0; flex: 1; min-width: 0; }
+.pop.notes { max-height: calc(100% - 70px); overflow: auto; }
+.pop.notes.wide { left: 0; right: 0; top: 0; bottom: 0; width: auto; max-width: none; max-height: none; border-radius: 0; padding: 12px 10px; animation: slideInLeft 180ms ease-out; }
+@keyframes slideInLeft { from { transform: translateX(-100%); } }
+.fold .caret { width: 10px; color: var(--soft); }
+.indent { padding-left: 14px; }
+.note-row.held .icon-btn { opacity: 1; }
+.note-row > .px { width: 14px; height: 14px; flex: none; margin-left: 10px; color: var(--accent); }
+.row-menu { margin: 2px 0 6px 24px; border-left: 2px solid var(--rule); padding-left: 4px; }
+.label-row { display: flex; align-items: center; justify-content: space-between; padding-right: 6px; }
+.add-coll { border: 1px solid var(--rule); background: var(--card); color: var(--accent); font: inherit; font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; cursor: pointer; }
+.add-coll:hover { border-color: var(--accent); }
+.item.add-note { color: var(--faint); font-size: 0.82rem; }
+.item.add-note:hover { color: var(--accent); }
+.stats { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin: 0; padding: 6px 10px; font-size: 0.8rem; }
+.stats dt { color: var(--soft); }
+.stats dd { margin: 0; font-variant-numeric: tabular-nums; }
+.empty { padding: 10px; color: var(--soft); font-size: 0.85rem; line-height: 1.45; }
+
+.veil { position: absolute; inset: 0; background: rgba(27, 42, 74, 0.22); z-index: 9; }
+.drawer { position: absolute; z-index: 10; top: 0; bottom: 0; right: 0; width: 86%; background: var(--card); border-left: 1px solid var(--rule); box-shadow: -8px 0 24px rgba(27, 42, 74, 0.16); padding: 14px 10px; overflow: auto; animation: slideIn 180ms ease-out; }
+.sheet { position: absolute; z-index: 10; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--rule); border-radius: 16px 16px 0 0; box-shadow: 0 -8px 24px rgba(27, 42, 74, 0.16); padding: 8px 10px 14px; animation: slideUp 180ms ease-out; }
+.handle { width: 40px; height: 4px; border-radius: 4px; background: var(--rule); margin: 2px auto 8px; }
+@keyframes slideIn { from { transform: translateX(100%); } }
+@keyframes slideUp { from { transform: translateY(100%); } }
+
+.notice { position: absolute; left: 12px; bottom: 16px; z-index: 12; max-width: calc(100% - 24px); background: var(--ink); color: var(--paper); border-radius: 10px; padding: 9px 12px; font-size: 0.82rem; display: flex; gap: 12px; align-items: center; box-shadow: 0 6px 18px rgba(27, 42, 74, 0.3); }
+.notice button { border: 0; background: none; color: #9cc3f5; font: inherit; font-weight: 700; cursor: pointer; padding: 0; }
+
+.px { shape-rendering: crispEdges; }
+@media (prefers-reduced-motion: reduce) { .drawer, .sheet { animation: none; } .pushpin, .pen { transition: none; } }
+@media (max-width: 440px) { .frame { height: 620px; } }
+</style>
+
+<div class="wrap">
+  <div class="side">
+    <h1>Glacier top bar</h1>
+    <p>A clickable sketch of the new bar. Everything in it works a little; nothing is really saved.</p>
+    <div class="about">
+      <span class="tag">The chosen mix</span>
+      <h2>Quick actions, and details beside the note</h2>
+      <p><b>⋯</b> drops down with the quick actions. <b>Note details</b> slides a panel over the paper with everything about the note: its collection, secret, page and the notes that link to it.</p>
+    </div>
+    <div class="about">
+      <span class="tag">A piece of Settings</span>
+      <label class="switch"><input type="checkbox" id="endSetting" checked> <span>Show "New page" at the end of notes</span></label>
+      <button class="chip" type="button" id="resetPages"><span>Start again with one page</span></button>
+    </div>
+    <ul class="tries">
+      <li>Click the title to see the headings. Hover it for the pen.</li>
+      <li>Click the pushpin on the paper.</li>
+      <li>Open ☰ Notes: type to search, open a collection, hover a note to rename or delete it.</li>
+      <li>In ☰ Notes, ⤢ expands the list over the whole sidebar.</li>
+      <li>In ⋯, try Delete, then Note details.</li>
+      <li>In Note details, change the collection and Secret.</li>
+      <li>At the end of the paper: New page, or × to hide it.</li>
+      <li>From two pages on, the pages and + New page sit under the bar.</li>
+    </ul>
+  </div>
+
+  <div class="frame" id="frame">
+    <div class="bar">
+      <button class="btn" id="back" type="button" title="Back to Week 2 summary" aria-label="Back to Week 2 summary">←</button>
+      <button class="btn" id="notesBtn" type="button"><span data-icon="list"></span>Notes</button>
+      <div class="title" id="titleBox"></div>
+      <button class="btn" id="plusBtn" type="button" aria-label="New note">+</button>
+      <button class="btn" id="moreBtn" type="button" aria-label="More for this note">⋯</button>
+    </div>
+    <div class="strip" id="strip"></div>
+    <button class="pushpin" id="pin" type="button" aria-label="Pin this note" aria-pressed="false"><span data-icon="pin"></span></button>
+    <div class="paper" id="paper"></div>
+    <div class="art"></div>
+    <div id="layer"></div>
+    <div id="noticeBox"></div>
+  </div>
+</div>
+
+<script>
+// Pixel-art icons: 8 by 8, one string per row, # is a filled pixel.
+const ICONS = {
+  pen: ["......##", ".....###", "....###.", "...###..", "..###...", ".###....", "##......", "#......."],
+  list: ["........", "########", "........", "########", "........", "########", "........", "........"],
+  folder: ["........", "###.....", "#..#####", "#......#", "#......#", "#......#", "########", "........"],
+  lock: ["..####..", ".#....#.", ".#....#.", "########", "#......#", "#..##..#", "#......#", "########"],
+  open: ["..####..", ".#....#.", ".#......", "########", "#......#", "#..##..#", "#......#", "########"],
+  globe: ["..####..", ".#.##.#.", "#..##..#", "########", "#..##..#", "#..##..#", ".#.##.#.", "..####.."],
+  down: ["...##...", "...##...", "...##...", ".######.", "..####..", "...##...", "#......#", "########"],
+  archive: ["########", "#......#", "########", "#......#", "#.####.#", "#......#", "#......#", "########"],
+  trash: ["..####..", "########", "#......#", "#.#..#.#", "#.#..#.#", "#.#..#.#", "#......#", ".######."],
+  keys: ["........", "########", "#.#.#.##", "##.#.#.#", "#.####.#", "########", "........", "........"],
+  help: ["..####..", ".#....#.", "......#.", ".....#..", "....#...", "....#...", "........", "....#..."],
+  sheet: ["#####...", "#...##..", "#....##.", "#.....##", "#......#", "#.####.#", "#......#", "########"],
+  pin: ["..####..", ".######.", "..####..", "..####..", "########", "...##...", "...##...", "...#...."],
+  info: ["..####..", ".#.##.#.", "#......#", "#..##..#", "#..##..#", "#..##..#", ".#....#.", "..####.."],
+  link: ["........", "..##....", ".#..#...", ".#..#.#.", "..#.#..#", "...#..#.", ".....##.", "........"],
+};
+function icon(name) {
+  const rows = ICONS[name];
+  let rects = "";
+  rows.forEach((row, y) => [...row].forEach((c, x) => { if (c === "#") rects += `<rect x="${x}" y="${y}" width="1" height="1"/>`; }));
+  return `<svg class="px" viewBox="0 0 8 8" fill="currentColor" aria-hidden="true">${rects}</svg>`;
+}
+function fillIcons(root) { root.querySelectorAll("[data-icon]").forEach((el) => { el.outerHTML = icon(el.dataset.icon); }); }
+
+const COLLECTIONS = ["Web Dev", "Design", "No collection"];
+const HEADINGS = ["Introduction", "Flexbox basics", "Week 2 summary"];
+const state = {
+  title: "Flexbox notes", pages: 1, page: 1, hideEnd: false, collection: "Web Dev", secret: false, pinned: false,
+  editing: false, open: null, sub: null, asking: false, filter: "",
+  recent: ["Flexbox notes", "Week 2 summary", "CSS Grid", "Reading list", "Colour basics", "Box model"],
+  library: {
+    "Web Dev": ["Flexbox notes", "CSS Grid", "Week 2 summary", "Box model", "Selectors"],
+    "Design": ["Colour basics", "Type scale"],
+    "": ["Reading list"],
+  },
+  archived: ["Week 1 draft", "Old to do list", "Ideas from March"],
+  openColl: new Set(), query: "", wide: false,
+  rowMenu: null, rowMove: null, collEdit: null, collAsk: null, collNew: false,
+  rowAsk: null, rowEdit: null,
+};
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+// Title: click shows headings, the pen renames in place.
+function drawTitle() {
+  const box = $("titleBox");
+  if (state.editing) {
+    box.innerHTML = `<input id="titleInput" value="${esc(state.title)}" aria-label="Note title">`;
+    const input = $("titleInput");
+    input.focus();
+    input.select();
+    const done = (save) => {
+      if (!state.editing) return;
+      state.editing = false;
+      const next = input.value.trim();
+      if (save && next && next !== state.title) {
+        renameEverywhere(state.title, next);
+        notice(`Renamed to "${next}".`);
+      }
+      drawTitle();
+    };
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") done(true); if (e.key === "Escape") done(false); });
+    input.addEventListener("blur", () => done(true));
+    return;
+  }
+  box.innerHTML = `<button class="title-text" id="titleText" type="button" aria-haspopup="true" title="Show the headings">${esc(state.title)}</button>
+    ${state.secret ? `<span class="badge" title="Secret">${icon("lock")}</span>` : ""}
+    <button class="pen" id="pen" type="button" aria-label="Rename this note" title="Rename">${icon("pen")}</button>`;
+}
+$("titleBox").addEventListener("click", (e) => {
+  if (e.target.closest("#pen")) { closeAll(); startRename(); }
+  else if (e.target.closest("#titleText")) toggle("heads");
+});
+function startRename() { state.editing = true; drawTitle(); }
+
+// The line under the bar: only the pages, and only when there is more than
+// one, unless "New page" is chosen to stay in it.
+function drawStrip() {
+  const showPages = state.pages > 1;
+  const showNew = showPages;
+  const pages = showPages
+    ? `<span class="pages">
+        <button class="icon-btn" type="button" data-act="prevPage" aria-label="Page before" ${state.page === 1 ? "disabled" : ""}>‹</button>
+        <span>${state.page} of ${state.pages}</span>
+        <button class="icon-btn" type="button" data-act="nextPage" aria-label="Next page" ${state.page === state.pages ? "disabled" : ""}>›</button>
+        ${showNew ? `<button class="fact link" type="button" data-act="newPage2">+ New page</button>` : ""}
+      </span>`
+    : "";
+  $("strip").innerHTML = pages;
+  const top = pages ? 88 : 56;
+  $("paper").style.top = `${top}px`;
+  $("pin").style.top = `${top + 6}px`;
+}
+
+// Paper
+function drawPaper() {
+  // From the second page on, + New page sits under the bar instead.
+  const end = state.hideEnd || state.pages > 1 ? "" : `<div class="endwrap">
+      <button class="endpage" type="button" data-act="newPage2">${icon("sheet")}New page</button>
+      <button class="endhide" type="button" data-act="hideEnd" aria-label="Hide this button" title="Hide this button">×</button>
+    </div>`;
+  const slash = `<button class="slash-hint" type="button" data-act="slash">+ Type / for commands</button>`;
+  if (state.page > 1) {
+    $("paper").innerHTML = `<p class="page-label">page ${state.page}</p>${slash}${state.page === state.pages ? end : ""}`;
+    return;
+  }
+  $("paper").innerHTML = `
+    <h3 data-h="Introduction"># Introduction</h3>
+    <p>Flexbox lays things out in one direction.</p>
+    <p>The parent gets display: flex.</p>
+    <p></p>
+    <h3 data-h="Flexbox basics"># Flexbox basics</h3>
+    <p>justify-content moves items along the row.</p>
+    <p>align-items moves them across it.</p>
+    <p>See [[CSS Grid]] for two directions.</p>
+    <p></p>
+    <h3 data-h="Week 2 summary"># Week 2 summary</h3>
+    <p>Use gap instead of margins.</p>
+    <p>flex: 1 shares the space left over.</p>
+    ${slash}${state.pages === 1 ? end : ""}`;
+}
+
+function slashContent() {
+  const rows = [["Heading", "# at the start of a line"], ["List", "- at the start of a line"], ["Checkbox", "[ ] at the start of a line"], ["Sketch", "Draw with the mouse"]];
+  return `<div class="list-label">Commands</div>` +
+    rows.map(([a, h]) => `<button class="item" type="button" data-act="noop"><span>${a}<span class="hint">${h}</span></span></button>`).join("") +
+    `<button class="item hot" type="button" data-act="newPage2">${icon("sheet")}<span>New page<span class="hint">Start a fresh page in this note</span></span></button>`;
+}
+
+// Pushpin
+$("pin").addEventListener("click", () => {
+  state.pinned = !state.pinned;
+  const pin = $("pin");
+  pin.classList.toggle("on", state.pinned);
+  pin.setAttribute("aria-pressed", String(state.pinned));
+  pin.setAttribute("aria-label", state.pinned ? "Unpin this note" : "Pin this note");
+  notice(state.pinned ? "Pinned. This note stays open when you change tabs." : "Unpinned. Glacier follows your tabs again.");
+});
+
+// Menus
+function closeAll() {
+  Object.assign(state, { open: null, sub: null, asking: false, query: "", rowAsk: null, rowEdit: null, rowMenu: null, rowMove: null, collEdit: null, collAsk: null, collNew: false });
+  drawLayer();
+}
+function toggle(name) {
+  const was = state.open === name;
+  closeAll();
+  if (!was) { state.open = name; drawLayer(); }
+}
+$("notesBtn").addEventListener("click", () => toggle("notes"));
+$("plusBtn").addEventListener("click", () => toggle("plus"));
+$("moreBtn").addEventListener("click", () => toggle("more"));
+$("back").addEventListener("click", () => notice("Back to Week 2 summary. (In the sketch nothing changes.)"));
+
+function item(act, ic, label, extra = "", cls = "") {
+  return `<button class="item ${cls}" type="button" data-act="${act}">${icon(ic)}<span>${label}${extra}</span></button>`;
+}
+const SEP = `<div class="sep"></div>`;
+const ITEMS = {
+  rename: () => item("rename", "pen", "Rename"),
+  move: () => item("move", "folder", "Move to collection…"),
+  secret: () => item("secret", "lock", state.secret ? "Make not secret" : "Make secret"),
+  download: () => item("download", "down", "Download or print"),
+  archive: () => item("archive", "archive", "Archive"),
+  delete: () => item("askDelete", "trash", "Delete", "", "danger"),
+  keys: () => item("keys", "keys", "Keyboard shortcuts"),
+  help: () => item("help", "help", "Help"),
+};
+
+function deleteAsk() {
+  return `<div class="ask"><span>Delete "${esc(state.title)}" for good?</span>
+    <div class="ask-row"><button type="button" data-act="keep">Keep</button><button type="button" class="go" data-act="doDelete">Delete</button></div></div>`;
+}
+const del = () => (state.asking ? deleteAsk() : ITEMS.delete());
+function bigRow(list) {
+  return `<div class="row-icons" style="--n:${list.length}">${list.map(([act, ic, label]) =>
+    `<button class="big" type="button" data-act="${act}">${icon(ic)}${label}</button>`).join("")}</div>`;
+}
+
+// Note details: everything about the note, in the drawer over the paper.
+function details() {
+  const linked = ["Week 2 summary", "Reading list"];
+  return `<div class="head"><span class="list-label" style="padding:0">Note details</span><strong>${esc(state.title)}</strong></div>
+    <div class="list-label">Collection</div>${item("move", "folder", esc(state.collection), `<span class="hint">Click to change</span>`)}
+    <div class="list-label">Secret</div>${item("secret", state.secret ? "lock" : "open", state.secret ? "On" : "Off",
+      `<span class="hint">${state.secret ? "Locked with your passcode. Click to make it plain." : "Anyone using this browser can read it. Click to lock it."}</span>`)}
+    <div class="list-label">Page</div>${item("page", "globe", "Flexbox – MDN", `<span class="hint">developer.mozilla.org</span>`)}
+    <div class="list-label">Linked from</div>${linked.map((t) => item("openLinked", "link", esc(t))).join("")}
+    ${SEP}<dl class="stats"><dt>Words</dt><dd>340</dd><dt>Created</dt><dd>21 October</dd><dt>Edited</dt><dd>Today</dd></dl>
+    <div style="padding:8px 4px 0"><button class="btn" type="button" data-act="close" style="width:100%">Done</button></div>`;
+}
+function subMenu() {
+  if (state.sub === "move") {
+    return `<div class="list-label">Move to collection</div>` + COLLECTIONS.map((c) =>
+      `<button class="item ${c === state.collection ? "hot" : ""}" type="button" data-act="pick" data-value="${esc(c)}">${icon("folder")}<span>${esc(c)}</span></button>`).join("");
+  }
+  if (state.sub === "keys") {
+    const rows = [["Bold", "Ctrl B"], ["Find in note", "Ctrl F"], ["Search notes", "Ctrl K"], ["Undo", "Ctrl Z"], ["Open Glacier", "Alt Shift G"]];
+    return `<div class="list-label">Keyboard shortcuts</div>` + rows.map(([a, k]) => `<div class="item">${a}<span class="key">${k}</span></div>`).join("");
+  }
+  return "";
+}
+
+function moreContent() {
+  if (state.sub) return subMenu();
+  return bigRow([["rename", "pen", "Rename"], ["download", "down", "Download"], ["archive", "archive", "Archive"]]) +
+    SEP + del() + SEP + item("details", "info", "Note details", `<span class="hint">Collection, secret, page, links</span>`) +
+    ITEMS.keys() + ITEMS.help();
+}
+
+// The notes list. Every title appears once in `library` (by collection, ""
+// for none) or in `archived`; `recent` repeats the latest opened ones.
+const EDITED = { "Flexbox notes": "today", "Week 2 summary": "yesterday", "CSS Grid": "2 days ago", "Reading list": "last week" };
+function collectionOf(t) { return Object.keys(state.library).find((c) => state.library[c].includes(t)) ?? ""; }
+function allTitles() { return [...Object.values(state.library).flat(), ...state.archived]; }
+function renameEverywhere(from, to) {
+  const swap = (list) => list.map((t) => (t === from ? to : t));
+  state.recent = swap(state.recent);
+  state.archived = swap(state.archived);
+  for (const c of Object.keys(state.library)) state.library[c] = swap(state.library[c]);
+  if (state.title === from) { state.title = to; drawTitle(); }
+}
+function removeEverywhere(t) {
+  const drop = (list) => list.filter((x) => x !== t);
+  state.recent = drop(state.recent);
+  state.archived = drop(state.archived);
+  for (const c of Object.keys(state.library)) state.library[c] = drop(state.library[c]);
+}
+
+function noteRow(t) {
+  const at = esc(t);
+  if (state.rowAsk === t) {
+    return `<div class="ask"><span>Delete "${at}" for good?</span><div class="ask-row"><button type="button" data-act="rowKeep">Keep</button><button type="button" class="go" data-act="rowDelete" data-t="${at}">Delete</button></div></div>`;
+  }
+  if (state.rowEdit === t) {
+    return `<div class="note-row"><input class="search" id="rowInput" data-t="${at}" value="${at}" aria-label="New name" style="margin:4px"></div>`;
+  }
+  const where = collectionOf(t);
+  const hint = state.wide ? `<span class="hint">Edited ${EDITED[t] ?? "21 October"}${where ? `, in ${esc(where)}` : ""}</span>` : "";
+  const key = `n:${t}`;
+  return `<div class="note-row ${state.rowMenu === key ? "held" : ""}"><button class="item" type="button" data-act="openNote" data-t="${at}">${icon("sheet")}<span>${at}${hint}</span></button>
+    <button class="icon-btn" type="button" data-act="rowRename" data-t="${at}" aria-label="Rename ${at}" title="Rename">${icon("pen")}</button>
+    <button class="icon-btn" type="button" data-act="rowMenu" data-t="${esc(key)}" aria-label="More for ${at}" title="More" aria-expanded="${state.rowMenu === key}">⋯</button></div>` +
+    (state.rowMenu === key ? noteRowMenu(t) : "");
+}
+
+// The small menu under a note's row: everything else for that note.
+function noteRowMenu(t) {
+  const at = esc(t);
+  if (state.rowMove === t) {
+    const here = collectionOf(t);
+    return `<div class="row-menu"><div class="list-label">Move "${at}" to</div>` +
+      [...Object.keys(state.library).filter((c) => c), ""].map((c) =>
+        `<button class="item ${c === here ? "hot" : ""}" type="button" data-act="rowMoveTo" data-t="${at}" data-value="${esc(c)}">${icon("folder")}<span>${c ? esc(c) : "No collection"}</span></button>`).join("") + `</div>`;
+  }
+  return `<div class="row-menu">
+    <button class="item" type="button" data-act="rowMove" data-t="${at}">${icon("folder")}<span>Move to collection…</span></button>
+    <button class="item" type="button" data-act="rowDownload" data-t="${at}">${icon("down")}<span>Download</span></button>
+    <button class="item" type="button" data-act="rowArchive" data-t="${at}">${icon("archive")}<span>${state.archived.includes(t) ? "Unarchive" : "Archive"}</span></button>
+    <button class="item danger" type="button" data-act="rowAsk" data-t="${at}">${icon("trash")}<span>Delete</span></button></div>`;
+}
+
+function folder(key, label, titles) {
+  const open = state.wide || state.openColl.has(key);
+  const named = key !== "" && key !== "\u0000archive";
+  const ak = esc(key);
+  const menuKey = `c:${key}`;
+  let head;
+  if (state.collEdit === key) {
+    head = `<div class="note-row"><input class="search" id="collInput" data-t="${ak}" value="${ak}" aria-label="New name for the collection" style="margin:4px"></div>`;
+  } else if (state.collAsk === key) {
+    head = `<div class="ask"><span>Delete the collection "${ak}"? Its ${titles.length} notes can stay, without a collection.</span>
+      <div class="ask-row"><button type="button" data-act="collKeep">Keep</button></div>
+      <div class="ask-row"><button type="button" data-act="collDeleteOnly" data-t="${ak}">Delete, keep notes</button><button type="button" class="go" data-act="collDeleteAll" data-t="${ak}">Delete all</button></div></div>`;
+  } else {
+    head = `<div class="note-row ${state.rowMenu === menuKey ? "held" : ""}"><button class="item fold" type="button" data-act="fold" data-t="${ak}" aria-expanded="${open}">
+      <span class="caret">${open ? "▾" : "▸"}</span>${icon(key === "\u0000archive" ? "archive" : "folder")}<span>${esc(label)}</span><span class="key">${titles.length}</span></button>` +
+      (named ? `<button class="icon-btn" type="button" data-act="collRename" data-t="${ak}" aria-label="Rename ${ak}" title="Rename">${icon("pen")}</button>
+      <button class="icon-btn" type="button" data-act="rowMenu" data-t="${esc(menuKey)}" aria-label="More for ${ak}" title="More" aria-expanded="${state.rowMenu === menuKey}">⋯</button>` : "") + `</div>`;
+    if (state.rowMenu === menuKey) {
+      head += `<div class="row-menu">
+        <button class="item" type="button" data-act="collNewNote" data-t="${ak}">${icon("sheet")}<span>New note in ${ak}</span></button>
+        <button class="item" type="button" data-act="collDownload" data-t="${ak}">${icon("down")}<span>Download all ${titles.length} notes</span></button>
+        <button class="item" type="button" data-act="collArchive" data-t="${ak}">${icon("archive")}<span>Archive all ${titles.length} notes</span></button>
+        <button class="item danger" type="button" data-act="collAsk" data-t="${ak}">${icon("trash")}<span>Delete collection</span></button></div>`;
+    }
+  }
+  // An open collection ends with a faint New note, like New page at the end of the paper.
+  const add = named ? `<button class="item add-note" type="button" data-act="collNewNote" data-t="${ak}">+ New note in ${ak}</button>` : "";
+  return head + (open ? `<div class="indent">${titles.map(noteRow).join("")}${add || (titles.length ? "" : `<div class="empty">Nothing here yet.</div>`)}</div>` : "");
+}
+
+function notesContent() {
+  const top = `<div class="notes-top">
+      <input class="search" id="noteSearch" placeholder="Search your notes…" aria-label="Search your notes" value="${esc(state.query)}">
+      <button class="icon-btn" type="button" data-act="wide" aria-label="${state.wide ? "Make the list small again" : "Expand the view"}" title="${state.wide ? "Make the list small again" : "Expand the view"}">${state.wide ? "⤡" : "⤢"}</button>
+      ${state.wide ? `<button class="icon-btn" type="button" data-act="close" aria-label="Close the notes" title="Close">×</button>` : ""}
+    </div>`;
+  const q = state.query.trim().toLowerCase();
+  if (q) {
+    const found = allTitles().filter((t) => t.toLowerCase().includes(q));
+    return top + (found.length
+      ? `<div class="list-label">${found.length === 1 ? "1 note" : `${found.length} notes`}</div>${found.map(noteRow).join("")}`
+      : `<div class="empty">No notes match "${esc(state.query.trim())}".</div>${item("newBlank", "sheet", `New note "${esc(state.query.trim())}"`)}`);
+  }
+  const named = Object.keys(state.library).filter((c) => c);
+  const loose = state.library[""];
+  return top +
+    `<div class="list-label">Recent</div>${state.recent.slice(0, 5).map(noteRow).join("")}` +
+    `<div class="label-row"><span class="list-label">Collections</span>
+      <button class="add-coll" type="button" data-act="newCollection" title="Make a new collection">+ New</button></div>` +
+    (state.collNew ? `<div class="note-row">${icon("folder")}<input class="search" id="collInput" data-t="" placeholder="Name the collection, then Enter" aria-label="Name of the new collection" style="margin:4px"></div>` : "") +
+    named.map((c) => folder(c, c, state.library[c])).join("") +
+    (loose.length ? folder("", "Not in a collection", loose) : "") +
+    SEP + folder("\u0000archive", "Archive", state.archived);
+}
+
+function headsContent() {
+  return `<div class="list-label">In this note</div>` + HEADINGS.map((h) => `<button class="item" type="button" data-act="jump" data-value="${esc(h)}"><span>${esc(h)}</span></button>`).join("");
+}
+function plusContent() {
+  return `<button class="item hot" type="button" data-act="newPage">${icon("globe")}<span>Note for "Flexbox – MDN"<span class="hint">linked to this page</span></span></button>` +
+    `<button class="item" type="button" data-act="newBlank">${icon("sheet")}<span>Blank note</span></button>`;
+}
+
+function drawLayer() {
+  const layer = $("layer");
+  const o = state.open;
+  if (!o) { layer.innerHTML = ""; return; }
+  if (o === "details") {
+    const inner = state.sub ? `${item("back", "list", "Back to the details")}${SEP}${subMenu()}` : details();
+    layer.innerHTML = `<div class="veil" data-act="close"></div><div class="drawer" role="dialog" aria-label="Note details">${inner}</div>`;
+  } else {
+    const content = { more: moreContent, notes: notesContent, heads: headsContent, plus: plusContent, slash: slashContent }[o]();
+    const wide = o === "notes" && state.wide;
+    layer.innerHTML = `${wide ? `<div class="veil" data-act="close"></div>` : ""}<div class="pop ${o}${wide ? " wide" : ""}" role="menu">${content}</div>`;
+  }
+  const rowInput = $("rowInput");
+  if (rowInput) {
+    rowInput.focus();
+    rowInput.select();
+    rowInput.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { state.rowEdit = null; drawLayer(); }
+      if (e.key !== "Enter") return;
+      const next = rowInput.value.trim();
+      if (next && next !== rowInput.dataset.t) {
+        renameEverywhere(rowInput.dataset.t, next);
+        notice(`Renamed to "${next}".`);
+      }
+      state.rowEdit = null;
+      drawLayer();
+    });
+    return;
+  }
+  // Naming a new collection, or renaming one.
+  const collInput = $("collInput");
+  if (collInput) {
+    collInput.focus();
+    collInput.select();
+    collInput.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { state.collNew = false; state.collEdit = null; drawLayer(); return; }
+      if (e.key !== "Enter") return;
+      const name = collInput.value.trim();
+      const from = collInput.dataset.t;
+      if (name && state.library[name] && name !== from) { notice(`There is already a collection "${name}".`); return; }
+      if (name && !from) {
+        state.library = { ...Object.fromEntries(Object.entries(state.library).filter(([c]) => c)), [name]: [], "": state.library[""] };
+        state.openColl.add(name);
+        notice(`Made the collection "${name}". Move notes into it from their ⋯.`);
+      } else if (name && name !== from) {
+        state.library = Object.fromEntries(Object.entries(state.library).map(([c, list]) => [c === from ? name : c, list]));
+        if (state.collection === from) { state.collection = name; }
+        notice(`Renamed to "${name}".`);
+      }
+      state.collNew = false;
+      state.collEdit = null;
+      drawLayer();
+    });
+    return;
+  }
+  const search = $("noteSearch");
+  if (search) {
+    search.focus();
+    search.setSelectionRange(search.value.length, search.value.length);
+    search.addEventListener("input", () => { state.query = search.value; drawLayer(); });
+  }
+}
+
+// One handler for every action in the sidebar.
+$("frame").addEventListener("click", (e) => {
+  const el = e.target.closest("[data-act]");
+  if (!el) {
+    if (!e.target.closest(".pop, .drawer, .sheet, .bar")) closeAll();
+    return;
+  }
+  e.stopPropagation();
+  const act = el.dataset.act;
+  switch (act) {
+    case "close": closeAll(); break;
+    case "rename": closeAll(); startRename(); break;
+    case "move": if (state.open !== "details") state.open = "more"; state.sub = "move"; drawLayer(); break;
+    case "back": state.sub = null; drawLayer(); break;
+    case "details": state.open = "details"; state.sub = null; state.asking = false; drawLayer(); break;
+    case "openLinked": closeAll(); notice(`Would open "${el.textContent.trim()}".`); break;
+    case "pick":
+      state.collection = el.dataset.value;
+      if (state.open === "details") { state.sub = null; drawLayer(); } else closeAll();
+      drawStrip();
+      notice(state.collection === "No collection" ? "Taken out of its collection." : `Moved to ${state.collection}.`);
+      break;
+    case "secret":
+      state.secret = !state.secret;
+      notice(state.secret ? "Secret. The text is locked with your passcode." : "Not secret any more. Anyone using this browser can read it.");
+      drawTitle(); drawStrip(); drawLayer();
+      break;
+    case "page": notice("Would open the page this note belongs to."); break;
+    case "slash": toggle("slash"); break;
+    case "hideEnd":
+      setEndButton(false);
+      notice("Hidden. Type / and pick New page to add a page.", { label: "Show again", act: "showEnd" }, 7000);
+      break;
+    case "showEnd": setEndButton(true); notice("New page shows at the end of notes again."); break;
+    case "newPage2":
+      closeAll();
+      state.pages += 1;
+      state.page = state.pages;
+      drawStrip(); drawPaper();
+      notice(`Page ${state.page} added.`, true);
+      break;
+    case "prevPage": state.page = Math.max(1, state.page - 1); drawStrip(); drawPaper(); break;
+    case "nextPage": state.page = Math.min(state.pages, state.page + 1); drawStrip(); drawPaper(); break;
+    case "download": closeAll(); notice("Would offer Markdown, PDF or Print."); break;
+    case "archive": closeAll(); notice(`Archived "${state.title}".`, true); break;
+    case "askDelete":
+      state.open = "more";
+      state.asking = true;
+      drawLayer();
+      break;
+    case "keep": closeAll(); break;
+    case "doDelete": closeAll(); notice(`Deleted "${state.title}".`, true); break;
+    case "keys": state.sub = "keys"; if (!state.open) state.open = "more"; drawLayer(); break;
+    case "help": closeAll(); notice("Would open a short page of common questions."); break;
+    case "openNote": closeAll(); notice(`Would open "${el.dataset.t}".`); break;
+    case "rowRename": state.rowEdit = el.dataset.t; state.rowAsk = null; drawLayer(); break;
+    case "rowAsk": state.rowAsk = el.dataset.t; state.rowEdit = null; drawLayer(); break;
+    case "rowKeep": state.rowAsk = null; drawLayer(); break;
+    case "rowDelete":
+      removeEverywhere(el.dataset.t);
+      state.rowAsk = null;
+      drawLayer();
+      notice(`Deleted "${el.dataset.t}".`, true);
+      break;
+    case "fold": {
+      const key = el.dataset.t;
+      if (state.openColl.has(key)) state.openColl.delete(key); else state.openColl.add(key);
+      drawLayer();
+      break;
+    }
+    case "wide": state.wide = !state.wide; drawLayer(); break;
+    case "newCollection": state.collNew = true; state.rowMenu = null; drawLayer(); break;
+    case "rowMenu": state.rowMenu = state.rowMenu === el.dataset.t ? null : el.dataset.t; state.rowMove = null; drawLayer(); break;
+    case "rowMove": state.rowMove = el.dataset.t; drawLayer(); break;
+    case "rowMoveTo": {
+      const t = el.dataset.t;
+      const to = el.dataset.value;
+      for (const c of Object.keys(state.library)) state.library[c] = state.library[c].filter((x) => x !== t);
+      state.library[to].push(t);
+      state.rowMenu = null; state.rowMove = null;
+      drawLayer();
+      notice(to ? `Moved "${t}" to ${to}.` : `Took "${t}" out of its collection.`);
+      break;
+    }
+    case "rowDownload": state.rowMenu = null; drawLayer(); notice(`Would download "${el.dataset.t}".`); break;
+    case "rowArchive": {
+      const t = el.dataset.t;
+      if (state.archived.includes(t)) {
+        state.archived = state.archived.filter((x) => x !== t);
+        state.library[""].push(t);
+        notice(`Put "${t}" back.`);
+      } else {
+        for (const c of Object.keys(state.library)) state.library[c] = state.library[c].filter((x) => x !== t);
+        state.archived.push(t);
+        notice(`Archived "${t}".`, true);
+      }
+      state.rowMenu = null;
+      drawLayer();
+      break;
+    }
+    case "collRename": state.collEdit = el.dataset.t; state.rowMenu = null; drawLayer(); break;
+    case "collAsk": state.collAsk = el.dataset.t; state.rowMenu = null; drawLayer(); break;
+    case "collKeep": state.collAsk = null; drawLayer(); break;
+    case "collNewNote": {
+      const c = el.dataset.t;
+      let name = "Untitled";
+      for (let n = 2; allTitles().includes(name); n += 1) name = `Untitled ${n}`;
+      state.library[c].push(name);
+      state.recent.unshift(name);
+      closeAll();
+      notice(`New note in ${c}. Its first line becomes the title.`);
+      break;
+    }
+    case "collDownload": state.rowMenu = null; drawLayer(); notice(`Would download the notes in "${el.dataset.t}" as one zip file.`); break;
+    case "collArchive": {
+      const c = el.dataset.t;
+      state.archived.push(...state.library[c]);
+      state.library[c] = [];
+      state.rowMenu = null;
+      drawLayer();
+      notice(`Archived the notes in "${c}".`, true);
+      break;
+    }
+    case "collDeleteOnly": {
+      const c = el.dataset.t;
+      state.library[""].push(...state.library[c]);
+      delete state.library[c];
+      state.collAsk = null;
+      drawLayer();
+      notice(`Deleted the collection "${c}". Its notes are under Not in a collection.`, true);
+      break;
+    }
+    case "collDeleteAll": {
+      const c = el.dataset.t;
+      const n = state.library[c].length;
+      state.recent = state.recent.filter((t) => !state.library[c].includes(t));
+      delete state.library[c];
+      state.collAsk = null;
+      drawLayer();
+      notice(`Deleted "${c}" and its ${n} notes.`, true);
+      break;
+    }
+    case "jump": {
+      closeAll();
+      const h = $("paper").querySelector(`[data-h="${el.dataset.value}"]`);
+      if (h) { h.classList.add("flash"); setTimeout(() => h.classList.remove("flash"), 900); }
+      break;
+    }
+    case "newPage": closeAll(); notice(`New note for "Flexbox – MDN".`); break;
+    case "newBlank": closeAll(); notice("New blank note."); break;
+    case "undo": notice("Put back."); break;
+    default: break;
+  }
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && state.open) closeAll(); });
+
+let noticeTimer;
+// A short message in the corner. `action` is true for Undo, or { label, act }.
+function notice(text, action = false, ms = 4000) {
+  clearTimeout(noticeTimer);
+  const { label, act } = action === true ? { label: "Undo", act: "undo" } : action || {};
+  $("noticeBox").innerHTML = `<div class="notice" role="status"><span>${esc(text)}</span>${label ? `<button type="button" data-act="${act}">${label}</button>` : ""}</div>`;
+  noticeTimer = setTimeout(() => { $("noticeBox").innerHTML = ""; }, ms);
+}
+
+// "New page" at the end of the paper can be hidden; Settings has the same switch.
+function setEndButton(shown) {
+  state.hideEnd = !shown;
+  $("endSetting").checked = shown;
+  drawPaper();
+}
+$("endSetting").addEventListener("change", (e) => {
+  setEndButton(e.target.checked);
+  notice(e.target.checked ? "New page shows at the end of notes again." : "Hidden. Type / and pick New page to add a page.");
+});
+$("resetPages").addEventListener("click", () => {
+  state.pages = 1;
+  state.page = 1;
+  closeAll();
+  drawStrip();
+  drawPaper();
+});
+
+function drawAll() {
+  drawTitle();
+  drawStrip();
+  drawLayer();
+}
+fillIcons(document);
+drawPaper();
+drawAll();
+</script>
