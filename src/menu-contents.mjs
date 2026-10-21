@@ -96,7 +96,7 @@ function browse(notebook, openNote, isOpen) {
   const outline = notebook.outline();
   parts.push({ kind: "collectionsHeading", text: "Collections", add: { label: "+ New", hint: "Make a new collection" } });
   if (outline.courses.length === 0) parts.push({ kind: "empty", text: COLLECTIONS_HINT });
-  for (const { course, titles } of outline.courses) parts.push(collectionFolder(course, titles, isOpen));
+  for (const { course, titles } of outline.courses) parts.push(collectionFolder(notebook, course, titles, isOpen));
   if (outline.uncategorised.length > 0) {
     parts.push(folder({
       key: "loose",
@@ -117,7 +117,7 @@ function folder({ key, label, hint, icon = "folder", count, renamable = false, m
   return { kind: "folder", key, label, hint, icon, count, open: isOpen(key), renamable, ...more, menu, parts };
 }
 
-function collectionFolder(course, titles, isOpen) {
+function collectionFolder(notebook, course, titles, isOpen) {
   return folder({
     key: `collection:${course}`,
     label: course,
@@ -125,7 +125,7 @@ function collectionFolder(course, titles, isOpen) {
     count: titles.length,
     course,
     renamable: true,
-    menu: collectionRowMenu(course, titles.length),
+    menu: collectionRowMenu(course, titles.length, notebook.isCourse(course)),
     parts: [
       ...notesPart(titles),
       { kind: "newInCollection", label: `+ New note in ${course}`, hint: `Make a note in ${course}`, course },
@@ -322,13 +322,17 @@ export function noteRowMenu(title, archived = false) {
 }
 
 // What ⋯ on a Collection's row offers (#123). An empty one only has a new
-// note in it and Delete collection.
-function collectionRowMenu(course, count) {
+// note in it and Delete collection. One with notes can be made a course, or
+// stop being one (#126).
+function collectionRowMenu(course, count, isCourse) {
   const newNote = { kind: "newNote", label: `New note in ${course}`, icon: "page", hint: `Make a note in ${course}` };
   const remove = { kind: "delete", label: "Delete collection", icon: "trash", hint: `Delete “${course}”, keeping its notes or not` };
   if (count === 0) return [newNote, remove];
   return [
     newNote,
+    isCourse
+      ? { kind: "notCourse", label: "Not a course any more", icon: "notebooks", hint: `Its notes stay in “${course}”, without lesson numbers or progress` }
+      : { kind: "course", label: "Make it a course", icon: "notebooks", hint: `See the notes of “${course}” as lessons, with your progress and Next lesson` },
     { kind: "download", label: "Download all", icon: "download", hint: `Download the ${noteCount(count)} in “${course}” as one zip` },
     { kind: "archive", label: "Archive all", icon: "archive", hint: `Archive the ${noteCount(count)} in “${course}”` },
     remove,

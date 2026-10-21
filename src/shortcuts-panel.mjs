@@ -23,6 +23,7 @@ export const HANDLED_KEYS = [
   ["Drag on empty paper", "In a sketch, with the select tool, draws a dashed box and picks every shape inside it"],
   ["Up and down", "Move between lines, and on to the empty lines below the note. With notes as pages, on to the page before or after"],
   ["Ctrl PageUp and Ctrl PageDown", "With notes as pages, turn to the page before or after"],
+  ["Alt PageUp and Alt PageDown", "In the Course layout, open the lesson before or after"],
   ["Arrow keys", "In a sketch, move the picked shapes a little. With Shift, a bit more"],
   ["Ctrl B", "Bold the selection. Press again to remove it"],
   ["Ctrl I", "Italic the selection. Press again to remove it"],

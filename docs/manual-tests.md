@@ -11,6 +11,23 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Course layout: collections as courses, lessons with tabs (#126)
+
+- [ ] Reload the extension first. Settings, How your notes look: under Text size, "Layout" with Zen (Only the paper and your note.) and Course (For learning. A collection you mark as a course shows its notes as lessons.). Zen is picked. Closed, the part's line is as before; pick Course and it ends in ", Course layout".
+- [ ] In Zen, open a note in a collection: nothing new shows, the paper looks as before.
+- [ ] Pick Course. Open a note in no collection: it looks as in Zen. Open a note in a collection with three notes: a dashed card under the top bar says "<name> isn't a course." with "Make it one to see its notes as lessons, with your progress and Next lesson." and the button "Make <name> a course". The text starts below the card.
+- [ ] Click the button: "<name> is a course now. Its notes are its lessons, in this order." with Undo. Under the top bar: "<name> · Lesson 2 of 3" (or its place), "0 done" on the right and an empty thin bar. The oldest note is lesson 1.
+- [ ] On the paper's right edge: tabs 1, 2, 3 and a last +. The open lesson's tab sticks out further. Hover a tab: "Lesson 1: <title>". Click tab 3: that lesson opens and its tab sticks out.
+- [ ] At the bottom, above the glacier button: "‹ Previous", "Mark as done" and "Next lesson ›". On lesson 1 Previous is faint and does nothing; on the last one Next lesson is. Click Next lesson and Previous: they open the lesson after and before.
+- [ ] Click Mark as done: it turns into a pressed "✓ Done", the tab shows ✓ instead of its number, "1 done" shows and the bar fills a third. A notice says "Lesson done. Next lesson is one click away." Click ✓ Done again: it is "Mark as done" again and the count goes back. Mark every lesson done: "Every lesson of <name> is done."
+- [ ] Press Alt PageDown and Alt PageUp on the paper: the next and the previous lesson open. They are listed in the Shortcuts panel, under Keys.
+- [ ] Click + after the last tab: a note "Lesson 4" opens as lesson 4 of 4, with its title ready to rename. Type a name and press Enter.
+- [ ] A lesson with a page (a note for a website) shows "Lesson page: <site> ↗" over the bottom row. Click it: the page's tab comes to the front, or opens.
+- [ ] Open ☰ Notes: the course lists its notes in lesson order. Its ⋯ says "Not a course any more". Click it: "<name> isn't a course any more. Its notes stay in it." with Undo; the tabs and the bottom row go and the card is back. Click Undo: the lessons come back with their numbers and ✓. On a collection that isn't one, ⋯ says "Make it a course". An empty collection offers neither.
+- [ ] Move a lesson to another collection with its ⋯: in that collection it is no lesson. Move a note into the course: it is its last lesson.
+- [ ] Connect a Notes Home, make a course and mark a lesson done, sync. Open the note file (GitHub, Drive or the folder): its frontmatter has `lesson: 2` and `done: true`. Open the Notes Home in a second browser: the same course, places and ✓.
+- [ ] Break it: make the sidebar as narrow as it goes (the three bottom buttons wrap, nothing overlaps the text); make a course of 25 notes (the tabs scroll); open the welcome again from the Shortcuts panel (nothing of the course shows over it); turn on Split long notes into pages in a long lesson (the ‹ 1 of 3 › bar and the pushpin don't hide under the tabs); try a dark paper (Aurora) and Chalkboard.
+
 ### Settings part 2: icon rail and preview inside the sidebar (#125)
 
 - [ ] Turn off "Next to the sidebar" (Help and shortcuts) or open Settings on a new tab, so Settings cover the paper. "Search settings" is on top with the caret in it. Below it, on the left, a narrow column of seven pixel pictures with short names: Look, Pages, Tabs, Saving, Backup, Secret, Help. Look is marked, and on the right "How your notes look" is the heading with its settings.
@@ -51,7 +68,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 - [ ] Download asks Markdown, PDF or Print. Archive: the note goes to the Archive with Undo. In the Archive, ⋯ offers Unarchive.
 - [ ] Delete: the row asks "Delete “…” for good?" with Delete and Keep. Keep or Esc puts the row back. Delete: the note goes and the notice offers Undo. Do it on the open note too: the sidebar shows the note before.
 - [ ] Hover a Collection row: ✎ and ⋯. ✎ renames it right there (Enter saves, Esc cancels). The new name shows in Note details of its notes, and after a sync its notes sit in the new folder. A name another Collection has, in any capitals, says "There is already a collection “…”." and keeps the field.
-- [ ] A Collection's ⋯: New note in it, Download all (one zip, or PDF), Archive all (with Undo) and Delete collection. An empty Collection only has New note and Delete collection.
+- [ ] A Collection's ⋯: New note in it, Make it a course (Not a course any more on a course, #126), Download all (one zip, or PDF), Archive all (with Undo) and Delete collection. An empty Collection only has New note and Delete collection.
 - [ ] Delete collection asks in the row: "Delete the collection “…”? Its N notes can stay, without a collection." with "Delete, keep notes", "Delete all" and Keep. Delete, keep notes: the notes are in "Not in a collection" and Undo puts them back. Delete all: the Collection and its notes go, and Undo brings them back. Hover "Delete all": it names where else the notes are removed from.
 - [ ] Click "+ New" next to Collections: a name field right there. Type a name and press Enter: the Collection is made, already open, and "Made the collection “…”. Move notes into it from their ⋯." shows. Type a taken name in other capitals: it says so and the field stays. Esc cancels.
 - [ ] On a website with two notes and no Collection, open "Not in a collection": the page has its own folder with a globe. Its ⋯ has Move to collection…: pick one and both notes move.
@@ -959,6 +976,7 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 - [ ] Drag the text size slider: the note grows and shrinks while you drag, and the line spacing grows with it. It goes from 85 % to 150 %.
 - [ ] Turn the network off (devtools, Offline) and reload the sidebar: every font still shows. In devtools, Network, the fonts come from the extension itself.
 - [ ] Clicking in the note while settings are open closes them and puts the cursor where you clicked. Ctrl+K and the pill menu also close them.
+- [ ] Under How your notes look, Layout: Zen shows only the paper; Course shows a course's notes as lessons, with the course and progress on top, tabs on the right edge and Previous, Mark as done and Next lesson at the bottom (#126). A collection becomes a course from its ⋯ in ☰ Notes or from the card over one of its notes.
 
 ### When you change tabs settings
 

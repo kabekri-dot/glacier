@@ -4,6 +4,7 @@
 // can be tested with node --test; sidebar/settings-view.js draws it, with the
 // words from LABELS so the search finds what is on screen.
 import { PAPERS, FONT_OVERRIDES, lookStyle } from "./look.mjs";
+import { LAYOUTS } from "./course-view.mjs";
 
 export const LABELS = {
   search: "Search settings",
@@ -11,6 +12,7 @@ export const LABELS = {
   font: "Font",
   themeFont: "The paper's own font",
   textSize: "Text size",
+  layout: "Layout",
   pages: "Split long notes into pages",
   pagesHint: "Turn them like a notebook",
   newPage: "Show the New page button",
@@ -56,7 +58,7 @@ export const SETTINGS_PARTS = [
     name: "How your notes look",
     short: "Look",
     icon: "palette",
-    labels: [LABELS.paper, ...PAPERS.map((paper) => paper.name), LABELS.font, LABELS.themeFont, ...FONT_OVERRIDES.slice(1), LABELS.textSize],
+    labels: [LABELS.paper, ...PAPERS.map((paper) => paper.name), LABELS.font, LABELS.themeFont, ...FONT_OVERRIDES.slice(1), LABELS.textSize, LABELS.layout, ...LAYOUTS.flatMap((layout) => [layout.name, layout.hint])],
   },
   {
     id: "pages",
@@ -105,7 +107,8 @@ export const SETTINGS_PARTS = [
 // The one line a closed part shows. `state` is { look, tabSettings, home,
 // hasPasscode }.
 const VALUES = {
-  look: ({ look }) => `${look.paper} paper, ${look.font === "Theme default" ? "its own font" : look.font}, text ${look.textSize} %`,
+  look: ({ look }) =>
+    `${look.paper} paper, ${look.font === "Theme default" ? "its own font" : look.font}, text ${look.textSize} %${look.layout === "course" ? ", Course layout" : ""}`,
   pages: ({ look }) => (look.pages ? "Long notes split into pages" : "Each note on one long page"),
   tabs: ({ tabSettings }) => (tabSettings.keepUserOpenedNotes ? "Keeps your note open" : "Opens the note for each website"),
   saving: ({ home }) => homeLabel(home),

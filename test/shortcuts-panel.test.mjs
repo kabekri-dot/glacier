@@ -106,3 +106,7 @@ test("the welcome mentions the shortcut only when it is not set", () => {
   assert.match(notice.text, /no shortcut/i);
   assert.equal(notice.fix.url, CHROME_SHORTCUTS_URL);
 });
+
+test("the keys for the lesson before and after are in the panel", () => {
+  assert.ok(HANDLED_KEYS.some(([keys]) => keys === "Alt PageUp and Alt PageDown"));
+});

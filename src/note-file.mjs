@@ -19,6 +19,9 @@ import { renameEmbeds, sketchFileName, sketchFilePath, sketchToSvg } from "./ske
 //
 // A secret note (#109, ADR 0012) also has `secret: true`, and its body is one
 // encrypted block, in the file as in the browser.
+//
+// A lesson of a course (#126) has `lesson: <number>`, its place in the
+// course, and once finished `done: true`.
 
 // Characters Windows, macOS or Obsidian refuse in a file or folder name.
 const UNSAFE_IN_NAMES = /[\\/:*?"<>|]/g;
@@ -72,6 +75,8 @@ function fileFor(note, stem) {
       text += `${key}: ${yamlValue(fields[key])}\n`;
     }
   }
+  if (note.lesson) text += `lesson: ${note.lesson}\n`;
+  if (note.done) text += "done: true\n";
   if (note.secret) text += "secret: true\n";
   text += "---\n" + (note.body ?? "");
   return { path: `${note.archived ? ARCHIVE_FOLDER : ""}${folderFor(note)}/${stem}.md`, text };
@@ -124,6 +129,8 @@ export function noteFromFile(path, text) {
   if (fields.source && fields.pageTitle) note.pageTitle = fields.pageTitle;
   note.created = fields.created || new Date().toISOString();
   if (fields.edited) note.edited = fields.edited;
+  if (/^[1-9]\d*$/.test(fields.lesson ?? "")) note.lesson = Number(fields.lesson);
+  if (note.lesson && fields.done === "true") note.done = true;
   if (fields.secret === "true") note.secret = true;
   note.body = body;
   if (archived) note.archived = true;
@@ -181,7 +188,7 @@ export function sameCollection(a, b) {
 export function sameNote(a, b, { ignoreArchived = false } = {}) {
   return (
     sameCollection(a.course, b.course) &&
-    ["source", "body"].every((key) => (a[key] ?? "") === (b[key] ?? "")) &&
+    ["source", "body", "lesson", "done"].every((key) => (a[key] ?? "") === (b[key] ?? "")) &&
     (ignoreArchived || Boolean(a.archived) === Boolean(b.archived))
   );
 }

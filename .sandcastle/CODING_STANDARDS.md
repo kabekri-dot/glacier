@@ -24,8 +24,8 @@ Glacier's rules come from its ADRs (`docs/adr/`) and glossary (`CONTEXT.md`). Th
 
 ## Domain language and data
 
-- Use the glossary's words exactly: Note (with an optional page and Collection; no Lesson Note or Concept Note, ADR 0010), Collection (never Course in visible text, docs or new names, #73; the stored field `note.course` and the older core actions named after it, such as `moveToCourse`, keep the old word so stored notes need no change, ADR 0010), Source, Link, Missing Link, Backlink, Sketch, Theme, Font Override, Notes Repo, Sync, Conflict Copy, Export. Don't use the synonyms it lists as "avoid".
-- Note files are Obsidian-compatible: filename = title, YAML frontmatter (`collection`, `source`, `pageTitle`, `created`, `edited`), `collections/<Collection>/` or `notes/`, titles unique across the whole Notebook (ADR 0005, ADR 0010).
+- Use the glossary's words exactly: Note (with an optional page and Collection; no Lesson Note or Concept Note, ADR 0010), Collection (never Course for a Collection in general in visible text, docs or new names, #73; since #126 a Course is a Collection marked for learning and a Lesson is a note in one; the stored field `note.course` and the older core actions named after it, such as `moveToCourse`, keep the old word so stored notes need no change, ADR 0010), Source, Link, Missing Link, Backlink, Sketch, Theme, Font Override, Notes Repo, Sync, Conflict Copy, Export. Don't use the synonyms it lists as "avoid".
+- Note files are Obsidian-compatible: filename = title, YAML frontmatter (`collection`, `source`, `pageTitle`, `created`, `edited`, and `lesson` and `done` for a Lesson, #126), `collections/<Collection>/` or `notes/`, titles unique across the whole Notebook (ADR 0005, ADR 0010).
 - A sync conflict creates a Conflict Copy and never overwrites (ADR 0004).
 - The GitHub token stays in the browser's extension storage and is **never** written into notes, files, logs or commits (ADR 0003).
 - The optional host permission is only requested after a click, and the extension never reads, stores or sends page content (ADR 0008).

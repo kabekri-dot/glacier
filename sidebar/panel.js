@@ -29,7 +29,7 @@ import { createBrowserPage } from "../src/browser-page.mjs";
 import { createEditorSession } from "../src/editor-session.mjs";
 import { readTabSettings } from "../src/tab-settings.mjs";
 import { readShortcutsPanel } from "../src/shortcuts-panel.mjs";
-import { isShortcut } from "../src/keys.mjs";
+import { isShortcut, lessonStep } from "../src/keys.mjs";
 import { createTitleEdit } from "./title-edit.js";
 import { createFind } from "./find-view.js";
 import { createPaper } from "./paper-view.js";
@@ -43,6 +43,7 @@ import { createSyncBoxView } from "./sync-box-view.js";
 import { createHeadingsMenu, createNewMenu, createNoteMenu } from "./pill-menus.js";
 import { createSecondVersionView } from "./second-version-view.js";
 import { createNoteDetailsView } from "./note-details-view.js";
+import { createLessonView } from "./lesson-view.js";
 import { createSketchView } from "./sketch-view.js";
 import { createSecrets } from "./secret-view.js";
 import { pageCard, panelsCard, startPrompt } from "./cards.js";
@@ -330,6 +331,7 @@ async function start() {
     notice: showNotice,
     notesHome: async () => (await notesHomes.load()).home,
     downloads,
+    makeCourse: (course) => lessonView.makeCourse(course),
     beforeOpen: () => {
       closeSettings({ redraw: false });
       closeOverlays();
@@ -395,6 +397,7 @@ async function start() {
         updateBacklinks();
         break;
     }
+    lessonView.update();
   }
 
   // --- The bar above a second version (#70): sidebar/second-version-view.js
@@ -614,6 +617,37 @@ async function start() {
     },
   });
 
+  // The Course layout (#126): sidebar/lesson-view.js. + after the last tab
+  // makes the next lesson and opens it with its title ready to rename.
+  const lessonView = createLessonView({
+    els: {
+      head: document.querySelector(".course-head"),
+      ask: document.querySelector(".course-ask"),
+      tabs: document.querySelector(".lesson-tabs"),
+      foot: document.querySelector(".lesson-foot"),
+    },
+    notebook,
+    screen,
+    layout: () => look.layout,
+    draw,
+    openNote,
+    newLesson: (course) => {
+      closeOverlays();
+      screen.flush();
+      openNote(notebook.newLesson(course));
+      autoSync.changed();
+      titleEdit.start();
+    },
+    openSource: (source) => browserPage.openSource(source),
+    notice: showNotice,
+  });
+
+  // Alt PageDown and Alt PageUp: the next and the previous lesson.
+  document.addEventListener("keydown", (event) => {
+    const step = lessonStep(event);
+    if (step && lessonView.step(step)) event.preventDefault();
+  });
+
   // Only one of the notes list, the headings, the ⋯ menu, the + menu, the
   // sync box, Note details and the Shortcuts panel is open at a time (#83).
   function closeOverlays({ keepShortcuts = false } = {}) {
@@ -796,6 +830,7 @@ async function start() {
       drawLook();
       if (look.pages !== before.pages) paper.redrawPages();
       else if (look.newPageAtEnd !== before.newPageAtEnd) paper.updatePageBar();
+      if (look.layout !== before.layout) lessonView.update();
       if (!keep) return;
       extensionStorage.set({ look }).catch((error) => {
         console.warn("Glacier: could not keep the chosen look", error);
@@ -1024,6 +1059,7 @@ async function start() {
       drawLook();
       if (look.pages !== before.pages) paper.redrawPages();
       else if (look.newPageAtEnd !== before.newPageAtEnd) paper.updatePageBar();
+      if (look.layout !== before.layout) lessonView.update();
     }
     if (changes.tabSettings) {
       tabSettings = readTabSettings(changes.tabSettings.newValue);

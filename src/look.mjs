@@ -204,7 +204,9 @@ export function readLook(saved) {
   const pages = saved?.pages === true;
   // "Show New page at the end of notes" (#122): on until hidden.
   const newPageAtEnd = saved?.newPageAtEnd !== false;
-  return { paper, font, textSize, pages, newPageAtEnd };
+  // The layout (#126): Zen, or Course for learning.
+  const layout = saved?.layout === "course" ? "course" : "zen";
+  return { paper, font, textSize, pages, newPageAtEnd, layout };
 }
 
 // Everything the panel needs to draw a look. The row height is whole pixels

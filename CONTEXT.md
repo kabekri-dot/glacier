@@ -10,7 +10,15 @@ _Avoid_: Lesson Note, Concept Note (two kinds of note, merged into one, ADR 0010
 
 **Collection**:
 A named group of notes chosen by hand, e.g. "The Odin Project – Foundations", "Khan – Algebra 1" or "Book: Clean Code". Not derived from a website. Its name ignores capital letters: "Testing Test" and "Testing test" are the same Collection.
-_Avoid_: Course (its old name, which only fit learning paths), Folder, category, website
+_Avoid_: Course for a Collection in general (that was its old name, #73; a Course is now a Collection marked for learning), Folder, category, website
+
+**Course**:
+A Collection marked for learning, from its ⋯ in the notes list or the card over one of its notes in the Course layout (#126). Its notes are its Lessons. Nothing is kept apart from the notes: a Collection is a Course while one of its notes has a lesson number. "Not a course any more" takes the numbers and progress away and leaves the notes in the Collection.
+_Avoid_: Class, track, path, curriculum
+
+**Lesson**:
+A note in a Course. Its place is `lesson: <number>` in its frontmatter; making a Course numbers its notes by when they were made, oldest first, and a new note in it gets the next number. A finished one also has `done: true`. Moving it out of the Course takes both away. In the Course layout it shows its Course, its place ("Lesson 2 of 4"), how many are done, a tab per Lesson on the paper's edge and Previous, Mark as done and Next lesson.
+_Avoid_: Lesson Note (the old kind of note, ADR 0010), step, chapter, unit
 
 **Page group**:
 The notes of one page that are in no Collection, shown together in the notes list (☰ Notes) as their own folder in "Not in a collection" once there are two or more, named after the page's title as it was when its first note was made (`pageTitle`). Not something you make or name: it goes away when its notes move to a Collection, all at once from the group's ⋯ or one by one. A note only joins a Collection when you put it there; the one exception is a new note for a page whose other notes you already put in one.

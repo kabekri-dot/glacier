@@ -13,13 +13,15 @@
 //   opens on the page of its match, #108), changed() (for Sync),
 //   notice(text, ms, action),
 //   notesHome() (the Notes Home's id, which the delete questions name), downloads
-//   (see downloads.js) and beforeOpen(), which closes whatever else is open.
+//   (see downloads.js), makeCourse(course) (the Course layout's, #126) and
+//   beforeOpen(), which closes whatever else is open.
 import {
   notebookMenu, noteRowMenu, moveChoices, editedLine, archivedNotice, deleteNoteQuestion, deleteCollectionChoice,
   deletedNotice, deletedCollectionNotice, deletedKeptNotesNotice, madeCollectionNotice, collectionTakenText,
   renamedCollectionNotice, movedNotice, noteOrigin, secretMark,
 } from "../src/menu-contents.mjs";
 import { isOpenedByPage } from "../src/page-open.mjs";
+import { notCourseNotice } from "../src/course-view.mjs";
 import { originIcon, askFormat } from "./settings-view.js";
 import { lockIcon } from "./secret-view.js";
 import { removeQuestion } from "./cards.js";
@@ -27,7 +29,7 @@ import { menuRow, pixelIcon } from "./pill-menus.js";
 
 const NOTICE_MS = 6000;
 
-export function createMenuView({ notebook, screen, el, button: menuButtonEl, noteEl, draw, render, openNote, showSearchMatch, changed, notice, notesHome, downloads, beforeOpen }) {
+export function createMenuView({ notebook, screen, el, button: menuButtonEl, noteEl, draw, render, openNote, showSearchMatch, changed, notice, notesHome, downloads, makeCourse, beforeOpen }) {
   // The search box and the list under it, while the list is open.
   let search = null;
   let body = null;
@@ -288,6 +290,27 @@ export function createMenuView({ notebook, screen, el, button: menuButtonEl, not
     changed();
     if (screen.note()) render();
     refresh();
+  }
+
+  // Make a Collection a course, or stop it being one (#126). Undo puts
+  // every lesson back with its number and progress.
+  function startCourse(course) {
+    makeCourse(course);
+    refresh();
+  }
+
+  function stopCourse(course) {
+    const kept = notebook.unmakeCourse(course);
+    draw(screen.refreshNote());
+    refresh();
+    notice(notCourseNotice(course), NOTICE_MS, {
+      label: "Undo",
+      run: () => {
+        notebook.putLessonsBack(kept);
+        draw(screen.refreshNote());
+        refresh();
+      },
+    });
   }
 
   // A new note in a Collection: a fresh page whose note is made in it (#123).
@@ -580,6 +603,8 @@ export function createMenuView({ notebook, screen, el, button: menuButtonEl, not
       const { course, archived, page, titles } = part;
       const run = {
         newNote: () => newNoteIn(course),
+        course: () => startCourse(course),
+        notCourse: () => stopCourse(course),
         download: (button) => askFormat(button, (format) => downloads.downloadCourse(course, format, { archived: Boolean(archived) })),
         archive: () => archiveCollection(course),
         unarchive: () => unarchiveCollection(course),

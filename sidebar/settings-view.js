@@ -23,6 +23,7 @@ import { GOOGLE_CONFIG } from "../src/google-config.mjs";
 import { HANDLED_KEYS, SHORTCUT_GROUPS, shortcutRows } from "../src/shortcuts-panel.mjs";
 import { PAPERS, paperGroups, FONT_OVERRIDES, TEXT_SIZE, fontPreview } from "../src/look.mjs";
 import { NO_RECOVERY } from "./secret-view.js";
+import { LAYOUTS } from "../src/course-view.mjs";
 import { SETTINGS_PARTS, LABELS, NO_SETTING_MATCHES, partValue, matchingParts, nextOpenPart, homeLabel, settingsLayout, FIRST_RAIL_PART, showsPreview, railMove, paperPreview } from "../src/settings-parts.mjs";
 
 // A labelled control row, for the settings.
@@ -367,7 +368,8 @@ export function createSettingsView({ prefs, repo, onClose, place = "beside" }) {
   // paper's swatch shows a corner of its panorama.
   const papersBox = element("div", "settings-papers");
   const fontBox = element("div", "settings-fonts");
-  bodies.look.append(papersBox, fontBox);
+  const layoutBox = element("div", "settings-layouts");
+  bodies.look.append(papersBox, fontBox, layoutBox);
 
   function drawPapers() {
     const groups = paperGroups().map(({ group, papers }) => {
@@ -459,6 +461,26 @@ export function createSettingsView({ prefs, repo, onClose, place = "beside" }) {
     box.addEventListener("change", () => onChange(box.checked, box));
     label.append(words, box);
     return label;
+  }
+
+  // The layout (#126): Zen, or Course for learning, each with its line.
+  function drawLayout() {
+    const group = element("fieldset", "settings-sentence");
+    group.append(element("legend", "form-label", LABELS.layout));
+    for (const layout of LAYOUTS) {
+      const label = element("label", "settings-option");
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = "layout";
+      radio.value = layout.id;
+      radio.checked = layout.id === prefs.look().layout;
+      radio.addEventListener("change", () => prefs.saveLook({ layout: layout.id }));
+      const words = element("span", "settings-switch-words");
+      words.append(element("span", "", layout.name), element("span", "settings-hint", layout.hint));
+      label.append(radio, words);
+      group.append(label);
+    }
+    layoutBox.replaceChildren(group);
   }
 
   // Notes as pages (#108) and the New page at the end of a note of one
@@ -900,6 +922,7 @@ export function createSettingsView({ prefs, repo, onClose, place = "beside" }) {
     open(section, picked) {
       drawPapers();
       drawFont();
+      drawLayout();
       drawPages();
       drawTabs();
       drawHelp();
