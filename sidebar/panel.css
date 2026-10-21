@@ -2754,10 +2754,10 @@ html[data-pages] .note-meta {
   color: var(--accent);
 }
 
-/* The pixel page turn: a still copy of the old page folds up from the
-   bottom right corner and over to the left in eight frames drawn in big
-   pixels (sidebar/page-view.js sets each frame's outline), its back throwing
-   a hard pixel shadow. It sits under the pill and the note's header line. */
+/* The page turn: a still copy of the old page curls up from the bottom
+   right corner and over to the left (sidebar/page-view.js draws each
+   moment), its back casting a soft shadow on the page below. It sits under
+   the pill and the note's header line. */
 .page-turn {
   position: fixed;
   inset: 0;
@@ -2783,13 +2783,13 @@ html[data-pages] .note-meta {
 .page-turn-curl {
   position: absolute;
   inset: 0;
-  filter: drop-shadow(4px 4px 0 var(--shadow));
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
 .page-turn-back {
-  position: absolute;
-  inset: 0;
-  background: color-mix(in srgb, var(--paper) 85%, var(--ink));
+  filter: drop-shadow(-4px 3px 7px var(--shadow));
 }
 
 @media (prefers-reduced-motion: reduce) {

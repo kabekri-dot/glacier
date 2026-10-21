@@ -1,36 +1,56 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { turnFrames } from "../src/page-turn.mjs";
+import { curlAt, easeTurn } from "../src/page-turn.mjs";
 
-// The pixel page turn (#108): each frame is two outlines in big pixels, the
-// part of the page still lying flat and the folded back of its corner.
+// The page turn: the bottom right corner of the page curls up and over to
+// the left. At each moment the turn is the part of the page still lying flat
+// (sheet) and the folded back of the corner (back), mirrored across the fold.
 
-const frames = turnFrames(400, 600, { count: 8, pixel: 8 });
+const W = 400;
+const H = 600;
 
-test("a page turn has the asked number of frames, from whole to gone", () => {
-  assert.equal(frames.length, 8);
-  const xs = (points) => points.map(([x]) => x);
-  assert.deepEqual([Math.min(...xs(frames[0].sheet)), Math.max(...xs(frames[0].sheet))], [0, 400]);
-  assert.deepEqual(frames.at(-1).sheet, []);
+const area = (points) =>
+  Math.abs(points.reduce((sum, [x, y], i) => {
+    const [nx, ny] = points[(i + 1) % points.length];
+    return sum + x * ny - nx * y;
+  }, 0)) / 2;
+
+test("before the turn the whole page lies flat and nothing is folded", () => {
+  const { sheet, back } = curlAt(W, H, 0);
+  assert.equal(area(sheet), W * H);
+  assert.deepEqual(back, []);
 });
 
-test("every edge of the turning page steps like pixel art: across or down, never slanted", () => {
-  for (const { sheet, back } of frames) {
-    for (const outline of [sheet, back]) {
-      outline.forEach(([x, y], i) => {
-        const [nx, ny] = outline[(i + 1) % outline.length];
-        assert.ok(x === nx || y === ny, `slanted edge ${x},${y} to ${nx},${ny}`);
-      });
-    }
+test("at the end of the turn nothing of the page is left", () => {
+  const { sheet, back } = curlAt(W, H, 1);
+  assert.deepEqual(sheet, []);
+  assert.deepEqual(back, []);
+});
+
+test("the folded back is exactly the part that left the flat page", () => {
+  for (const t of [0.1, 0.3, 0.5, 0.7]) {
+    const { sheet, back } = curlAt(W, H, t);
+    assert.ok(Math.abs(area(sheet) + area(back) - W * H) < 0.01, `at ${t}`);
   }
 });
 
-test("the folded back sits on the turned corner's side of the fold, and grows", () => {
-  const area = (points) =>
-    Math.abs(points.reduce((sum, [x, y], i) => {
-      const [nx, ny] = points[(i + 1) % points.length];
-      return sum + x * ny - nx * y;
-    }, 0)) / 2;
-  assert.ok(area(frames[1].back) > 0);
-  assert.ok(area(frames[1].sheet) > area(frames[4].sheet));
+test("the folded back lies over the flat side of the fold", () => {
+  const { back, fold } = curlAt(W, H, 0.4);
+  const { at, toward } = fold;
+  for (const [x, y] of back) {
+    assert.ok((x - at[0]) * toward[0] + (y - at[1]) * toward[1] <= 0.01);
+  }
+});
+
+test("the flat page gets smaller all through the turn", () => {
+  const sizes = [0, 0.2, 0.4, 0.6, 0.8, 1].map((t) => area(curlAt(W, H, t).sheet));
+  sizes.slice(1).forEach((size, i) => assert.ok(size < sizes[i], `step ${i}`));
+});
+
+test("the turn starts and ends gently", () => {
+  assert.equal(easeTurn(0), 0);
+  assert.equal(easeTurn(1), 1);
+  assert.equal(easeTurn(0.5), 0.5);
+  assert.ok(easeTurn(0.1) < 0.1);
+  assert.ok(easeTurn(0.9) > 0.9);
 });

@@ -1,7 +1,7 @@
 // Notes as pages (#108): the ‹ 1 of 3 › bar at the top of the paper, on
 // the right of the note's header line, with a small delete, and the
-// pixel-art page turn. Which lines make a page is src/pages.mjs; this
-// only draws.
+// page turn, a corner curling over. Which lines make a page is
+// src/pages.mjs; this only draws.
 //
 //   createPageView({ onTurn, onNewPage, onDelete })
 //                                          onTurn(-1 or 1) for ‹ and ›;
@@ -14,16 +14,34 @@
 //                                          null
 //   .forget()                              the next page drawn turns nothing
 
-import { turnFrames } from "../src/page-turn.mjs";
+import { curlAt, easeTurn } from "../src/page-turn.mjs";
 
-// The turn: fourteen frames, 70 ms each (about a second, to enjoy it), in
-// pixels of 8 px.
-const FRAME_MS = 70;
-const TURN = { count: 14, pixel: 8 };
+// The turn takes a second, gently in and out, to enjoy it.
+const TURN_MS = 1000;
+const SVG = "http://www.w3.org/2000/svg";
 
 // An outline of points as a clip-path; nothing shows for an empty one.
-function clip(points) {
-  return points.length ? `polygon(${points.map(([x, y]) => `${x}px ${y}px`).join(", ")})` : "polygon(0 0, 0 0, 0 0)";
+function clip(outline) {
+  return outline.length ? `polygon(${outline.map(([x, y]) => `${x}px ${y}px`).join(", ")})` : "polygon(0 0, 0 0, 0 0)";
+}
+
+// An outline of points as an SVG points list.
+function points(outline) {
+  return outline.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+}
+
+function svgElement(tag, attributes = {}) {
+  const el = document.createElementNS(SVG, tag);
+  for (const [name, value] of Object.entries(attributes)) el.setAttribute(name, value);
+  return el;
+}
+
+// A gradient stop; the colour is a style so the paper's CSS colours apply.
+function stop(offset, color, opacity = 1) {
+  const el = svgElement("stop", { offset });
+  el.style.stopColor = color;
+  el.style.stopOpacity = opacity;
+  return el;
 }
 
 function element(tag, className, text) {
@@ -108,37 +126,68 @@ export function createPageView({ onTurn, onNewPage, onDelete }) {
   let shownCount = 0;
   let playing = null;
 
-  // The page folds up from the bottom right corner and over to the left in
-  // eight frames drawn in big pixels (src/page-turn.mjs), its back casting a
-  // hard pixel shadow (panel.css). Turning back runs the frames the other
-  // way: the page before comes down over the one that was there.
+  // The bottom right corner curls up and over to the left (src/page-turn.mjs),
+  // drawn smoothly on every screen frame: the flat part is a clip-path on a
+  // still copy of the page, the folded back an SVG shape in the paper's own
+  // colours, shaded at the crease, with a soft shadow on the page below, and
+  // the flat page darkens a little toward the fold. Turning back plays it the
+  // other way: the page before comes down over the one that was there.
   function play(old, forward, noteEl) {
     const turn = element("div", "page-turn");
     turn.setAttribute("aria-hidden", "true");
-    const curl = element("div", "page-turn-curl");
-    const back = element("div", "page-turn-back");
-    curl.append(back);
     const moving = sheet("page-turn-sheet", forward ? old : stillCopy(noteEl));
+    const curl = svgElement("svg", { class: "page-turn-curl" });
+    const defs = svgElement("defs");
+    const shadeFill = svgElement("linearGradient", { id: "page-turn-shade", gradientUnits: "userSpaceOnUse" });
+    shadeFill.append(stop(0, "var(--ink)", 0.2), stop(1, "var(--ink)", 0));
+    const backFill = svgElement("linearGradient", { id: "page-turn-back", gradientUnits: "userSpaceOnUse" });
+    backFill.append(
+      stop(0, "color-mix(in srgb, var(--paper) 78%, var(--ink))"),
+      stop(0.18, "color-mix(in srgb, var(--paper) 60%, white)"),
+      stop(0.7, "var(--paper)"),
+      stop(1, "color-mix(in srgb, var(--paper) 88%, var(--ink))"),
+    );
+    defs.append(shadeFill, backFill);
+    const shade = svgElement("polygon", { fill: "url(#page-turn-shade)" });
+    const back = svgElement("polygon", { class: "page-turn-back", fill: "url(#page-turn-back)" });
+    curl.append(defs, shade, back);
     if (forward) turn.append(moving, curl);
     else turn.append(sheet("page-turn-under", old), moving, curl);
-    const frames = turnFrames(window.innerWidth, window.innerHeight, TURN);
-    if (!forward) frames.reverse();
-    let at = 0;
-    const show = () => {
-      moving.style.clipPath = clip(frames[at].sheet);
-      back.style.clipPath = clip(frames[at].back);
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    curl.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    const line = (el, [x1, y1], [x2, y2]) => {
+      for (const [name, value] of Object.entries({ x1, y1, x2, y2 })) el.setAttribute(name, value.toFixed(1));
     };
+    const show = (t) => {
+      const { sheet: flat, back: folded, fold } = curlAt(width, height, easeTurn(forward ? t : 1 - t));
+      moving.style.clipPath = clip(flat);
+      shade.setAttribute("points", points(flat));
+      back.setAttribute("points", points(folded));
+      if (!fold) return;
+      const { at, toward } = fold;
+      // The crease's shadow on the flat page reaches 60 px; the back is
+      // lit from the crease out to its far edge.
+      const reach = Math.hypot(width, height) * 0.25;
+      line(shadeFill, at, [at[0] - toward[0] * 60, at[1] - toward[1] * 60]);
+      line(backFill, at, [at[0] - toward[0] * reach, at[1] - toward[1] * reach]);
+    };
+    let frame;
     const done = () => {
-      clearInterval(timer);
+      cancelAnimationFrame(frame);
       turn.remove();
       if (playing === done) playing = null;
     };
-    const timer = setInterval(() => {
-      at += 1;
-      if (at < frames.length) show();
-      else done();
-    }, FRAME_MS);
-    show();
+    const start = performance.now();
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / TURN_MS);
+      if (t < 1) {
+        show(t);
+        frame = requestAnimationFrame(step);
+      } else done();
+    };
+    show(0);
+    frame = requestAnimationFrame(step);
     playing = done;
     document.body.append(turn);
   }
