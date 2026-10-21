@@ -45,7 +45,7 @@ import { createBackBox, createNewMenu, createNoteMenu } from "./pill-menus.js";
 import { createNoteMetaView } from "./note-meta-view.js";
 import { createSketchView } from "./sketch-view.js";
 import { createSecrets } from "./secret-view.js";
-import { pageCard, panelsCard, startPrompt } from "./cards.js";
+import { pageCard, panelsCard, startPrompt, removeQuestion } from "./cards.js";
 import { shortcutNotice } from "../src/shortcuts-panel.mjs";
 import { WELCOME_GREETING, WELCOME_LINES, WELCOME_TIP, welcomeShown } from "../src/guidance.mjs";
 import { drawBesideFrames } from "./beside-frames.js";
@@ -1185,13 +1185,36 @@ async function start() {
     });
   }
 
-  // Backspace on a picked sketch removes it, after a question when it has
-  // shapes (#104). Its data goes when the note is left.
+  // Backspace on a picked sketch removes it, after Glacier's own question
+  // under the sketch when it has shapes (#104, #116). Ctrl Z brings it back;
+  // its data goes when the note is left.
   function removeSketchLine() {
-    const found = notebook.sketchForLine(editor.lines[editor.state.focus.line]);
-    if (found?.sketch.shapes.length > 0 && !window.confirm("Remove this sketch and its shapes?")) return;
-    editor.removeSketchLine();
-    render();
+    const line = editor.state.focus.line;
+    const embed = editor.lines[line];
+    const found = notebook.sketchForLine(embed);
+    if (!(found?.sketch.shapes.length > 0)) {
+      editor.removeSketchLine();
+      render();
+      return;
+    }
+    const { card, keep } = removeQuestion({
+      text: "Remove this sketch and its shapes?",
+      action: "Remove",
+      onAction: () => {
+        card.remove();
+        if (editor.lines[line] !== embed) return;
+        editor.moveTo(line, 0);
+        editor.removeSketchLine();
+        render();
+      },
+      onKeep: () => {
+        card.remove();
+        pickSketchOnRender = true;
+        render();
+      },
+    });
+    noteEl.querySelector(`.sketch-block[data-start="${line}"]`)?.after(card);
+    keep.focus();
   }
 
   // Esc in a sketch: the caret goes to the next line, or the one before.

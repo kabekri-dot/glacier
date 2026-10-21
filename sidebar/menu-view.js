@@ -12,11 +12,12 @@
 //   opens on the page of its match, #108), startNoteForPage(), moveNote()
 //   (the ⋯ "Move to collection…"), changed() (for Sync), notice(text, ms, action), downloads
 //   (see downloads.js) and beforeOpen(), which closes whatever else is open.
-import { notebookMenu, rowActions, archivedNotice, deleteCollectionQuestion, noteOrigin, secretMark } from "../src/menu-contents.mjs";
+import { notebookMenu, rowActions, archivedNotice, deleteCollectionQuestion, deletedNotice, deletedCollectionNotice, noteOrigin, secretMark } from "../src/menu-contents.mjs";
 import { isOpenedByPage } from "../src/page-open.mjs";
 import { NEW_NOTE_HINT } from "../src/new-note-choices.mjs";
 import { menuButton, iconButton, originIcon, askFormat } from "./settings-view.js";
 import { lockIcon } from "./secret-view.js";
+import { removeQuestion } from "./cards.js";
 
 export function createMenuView({ notebook, screen, el, button: menuButtonEl, noteEl, draw, render, openNote, showSearchMatch, startNoteForPage, moveNote, changed, notice, downloads, beforeOpen }) {
   // The search box and the list under it, while the menu is open.
@@ -99,62 +100,37 @@ export function createMenuView({ notebook, screen, el, button: menuButtonEl, not
   }
 
   // Delete the open note (#57): a short question in the sidebar, not a browser
-  // dialog. Keep or Esc puts the note back as it was. Delete removes it, and
-  // the Opening flow decides what the sidebar shows next.
+  // dialog. Keep or Esc puts the note back as it was. Delete removes it, the
+  // Opening flow decides what the sidebar shows next, and a notice offers
+  // Undo (#116).
   function askDeleteNote() {
     const doomed = screen.note();
     screen.flush();
     noteEl.replaceChildren();
-
-    const card = document.createElement("div");
-    card.className = "perm-card delete-question";
-
-    const question = document.createElement("p");
-    question.textContent = `Delete “${doomed.title}”? It is also removed from your Notes repo.`;
-    card.appendChild(question);
-
-    const buttons = document.createElement("div");
-    buttons.className = "perm-buttons";
-    const confirm = cardButton("Delete", () => {
-      document.removeEventListener("keydown", onKey, true);
-      draw(screen.delete());
+    const { card, keep } = removeQuestion({
+      text: `Delete “${doomed.title}”? It is also removed from your Notes repo.`,
+      action: "Delete",
+      onAction: () => {
+        const { kept, view } = screen.delete();
+        draw(view);
+        offerUndoDelete(deletedNotice(doomed.title), kept);
+      },
+      onKeep: () => draw(screen.reopen()),
     });
-    const keep = keepButton(keepNote);
-
-    function keepNote() {
-      document.removeEventListener("keydown", onKey, true);
-      draw(screen.reopen());
-    }
-    function onKey(event) {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopPropagation();
-      keepNote();
-    }
-    document.addEventListener("keydown", onKey, true);
-
-    buttons.append(confirm, keep);
-    card.appendChild(buttons);
     noteEl.appendChild(card);
     keep.focus();
   }
 
-  function cardButton(label, onClick) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "card-button";
-    button.textContent = label;
-    button.addEventListener("click", onClick);
-    return button;
-  }
-
-  function keepButton(onClick) {
-    const keep = document.createElement("button");
-    keep.type = "button";
-    keep.className = "perm-cancel";
-    keep.textContent = "Keep";
-    keep.addEventListener("click", onClick);
-    return keep;
+  // The notice after a delete, like Archived (#116): Undo puts back what
+  // went, and the note the delete closed opens again.
+  function offerUndoDelete(text, kept) {
+    notice(text, 6000, {
+      label: "Undo",
+      run: () => {
+        draw(screen.undoDelete(kept));
+        refresh();
+      },
+    });
   }
 
   // --- Collection and Page group actions -----------------------------------
@@ -176,40 +152,23 @@ export function createMenuView({ notebook, screen, el, button: menuButtonEl, not
   }
 
   // Delete a whole Collection (#74): the question replaces the group's notes
-  // right in the menu, with Delete and Keep. Esc is Keep.
+  // right in the menu, with Delete and Keep. Esc is Keep. A notice offers
+  // Undo (#116).
   function askDeleteCollection(course, group) {
     group.querySelector(".delete-question")?.remove();
     const count = notebook.outline().courses.find((entry) => entry.course === course)?.titles.length ?? 0;
-    const card = document.createElement("div");
-    card.className = "perm-card delete-question";
-    const question = document.createElement("p");
-    question.textContent = deleteCollectionQuestion(course, count);
-    const buttons = document.createElement("div");
-    buttons.className = "perm-buttons";
-    const confirm = cardButton("Delete", () => {
-      stop();
-      const openTitle = screen.note()?.title;
-      const gone = notebook.outline().courses.find((entry) => entry.course === course)?.titles ?? [];
-      screen.flush();
-      notebook.deleteCollection(course);
-      changed();
-      if (openTitle && gone.includes(openTitle)) draw(screen.pulled(gone));
-      refresh();
+    const { card, keep } = removeQuestion({
+      text: deleteCollectionQuestion(course, count),
+      action: "Delete",
+      onAction: () => {
+        card.remove();
+        const { kept, view } = screen.deleteCollection(course);
+        draw(view);
+        refresh();
+        offerUndoDelete(deletedCollectionNotice(course, kept.notes.length), kept);
+      },
+      onKeep: () => card.remove(),
     });
-    const keep = keepButton(() => stop());
-    function stop() {
-      document.removeEventListener("keydown", onKey, true);
-      card.remove();
-    }
-    function onKey(event) {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopPropagation();
-      stop();
-    }
-    document.addEventListener("keydown", onKey, true);
-    buttons.append(confirm, keep);
-    card.append(question, buttons);
     group.querySelector("summary").after(card);
     keep.focus();
   }

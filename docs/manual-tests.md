@@ -11,6 +11,19 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Deleting says so and can be undone, and the sketch question (#116)
+
+- [ ] Delete a note from the ⋯ This note menu and click Delete: a notice says "Deleted “title”." with Undo. Click Undo within 6 seconds: the note opens again with its text, Collection, page and sketches.
+- [ ] Do the same with a secret note while unlocked: after Undo it is still secret and readable. Lock it: it asks for the passcode again.
+- [ ] Delete a note, Undo, then sync: the note is still there, and still in the Notes repo.
+- [ ] Delete a note, wait for the sync, then Undo from the notice in time: after the next sync its file is back in the Notes repo.
+- [ ] Delete a Collection of three notes from the ▾ menu: a notice says "Deleted the collection “Name” and its 3 notes." with Undo. Undo brings the Collection and all three notes back. If one of them was open, it opens again.
+- [ ] Delete an empty Collection and Undo: it is listed again.
+- [ ] Wait for the notice to go without clicking Undo: the note or Collection stays deleted.
+- [ ] In a sketch with shapes, pick it and press Backspace: a card under the sketch asks "Remove this sketch and its shapes?" with Remove and Keep. No browser dialog shows.
+- [ ] Click Keep, or press Esc: the sketch stays, picked. Press Backspace again and click Remove: the sketch goes. Press Ctrl Z: the sketch and its shapes come back.
+- [ ] Backspace on an empty sketch removes it at once, without the question.
+
 ### Sketch: the tool stays chosen, and several shapes at once (#114)
 
 - [ ] In a picked sketch, choose Rectangle and draw three boxes in a row without choosing it again. The tool stays chosen, and no new box is picked.
@@ -161,7 +174,7 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 - [ ] Open a note that starts with a sketch: the caret is on the first line and you see the drawing, not the text between double square brackets.
 - [ ] Draw a shape, then click on the text below or press the arrow key down: the grey area, toolbar and dashed frame go and the sketch looks like a drawing on the paper.
 - [ ] Press the arrow keys up and down through a note with a sketch: the caret steps over the sketch like over one block. Press Enter on a sketch: an empty line appears after it.
-- [ ] Put the caret at the start of the line after a sketch and press Backspace: the sketch is picked. Press Backspace again: it is removed, after a question when it has shapes. Say no to the question: it stays.
+- [ ] Put the caret at the start of the line after a sketch and press Backspace: the sketch is picked. Press Backspace again: it is removed, after Glacier's own question under the sketch when it has shapes. Keep or Esc: it stays. Ctrl Z after Remove brings it back.
 - [ ] Press Esc in a picked sketch, or open another note: the sketch is no longer picked.
 - [ ] Insert an empty sketch with `/sketch`: it shows a faint dashed outline and the words Click to draw in the middle. Draw a shape: the outline and words go.
 - [ ] Insert an empty sketch, leave it empty and open another note, then come back: the sketch is gone from the note.
@@ -271,7 +284,7 @@ Nothing should look or work differently. Check each in Chrome and Firefox:
 
 - [ ] ▾ menu: search titles, then `//` and a word inside a note. Collections and page groups fold open and shut. Hover a note row and a Collection heading: the icons show.
 - [ ] ▾ menu: click Delete on a Collection, then Keep, then Esc on the question. Click "+ New collection", type a name, press Enter.
-- [ ] ⋯ menu: Move to collection…, Download as a file, Archive (then Undo) and Delete (then Keep) each still work. On an archived note it says Unarchive.
+- [ ] ⋯ menu: Move to collection…, Download as a file, Archive (then Undo) and Delete (then Keep, and then Delete and Undo) each still work. On an archived note it says Unarchive.
 - [ ] Download as .md, PDF and Print for a note (row icon and ⋯), for a Collection, and for a Collection inside the Archive section.
 - [ ] On a website with two notes and no Collection, hover the page group under No collection, click the move icon and pick a Collection: both notes move.
 - [ ] ←, + and the sync dot each open their box, Esc closes it, and opening one closes the one that was open.
@@ -434,7 +447,7 @@ Reload with ↻ first.
 - [ ] Click Download on a Collection: a small choice shows Markdown (.md), PDF and Print. Markdown saves a zip. PDF and Print open the print window with every note of the Collection, each on a new page. Do the same from a note row and from ⋯ This note: the same three choices.
 - [ ] Click Archive on a Collection: its notes leave the lists and "Archived 12 notes." shows with Undo. Undo puts them all back.
 - [ ] Open the Archive section: the notes sit under their Collection, and hovering that heading offers Unarchive. It brings back every note of that Collection.
-- [ ] Click Delete on a Collection: the question names the count, "Delete the collection 'Testing' and its 12 notes? They're also removed from your Notes repo." Keep (or Esc) leaves everything. Delete removes the notes, and after the next sync they are gone from the Notes repo too.
+- [ ] Click Delete on a Collection: the question names the count, "Delete the collection 'Testing' and its 12 notes? They're also removed from your Notes repo." Keep (or Esc) leaves everything. Delete removes the notes and a notice offers Undo, which brings them all back. Without Undo, after the next sync they are gone from the Notes repo too.
 
 ### Enter after Ctrl+B, and Shift+Enter as a plain new line (#78)
 
@@ -865,7 +878,7 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 - [ ] Open a note and open the ⋯ This note menu after the title: "Delete" is there, and hovering shows "Remove this note for good".
 - [ ] Click it: the sidebar asks "Delete 'title'? It is also removed from your Notes repo." with Delete and Keep. No browser dialog shows.
 - [ ] Click Keep: the note comes back as it was. Do it again and press Esc: same result.
-- [ ] Click Delete: the sidebar shows the note of the tab you are on, or the empty paper for a new note if that page has none.
+- [ ] Click Delete: the sidebar shows the note of the tab you are on, or the empty paper for a new note if that page has none. A notice says "Deleted “title”." with Undo; Undo opens the note again as it was.
 - [ ] The deleted note is gone from the menu, recent notes and search, and the previous note button skips it.
 - [ ] Another note that linked to it now shows that link as a Missing Link.
 - [ ] After a sync, the note's file is gone from the Notes repo on GitHub, and it does not come back after another sync.

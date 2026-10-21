@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createNotebook } from "../src/notebook.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { PAGE_NOTE_HINT } from "../src/new-note-choices.mjs";
-import { notebookMenu, noteMenu, pinButton, pageNoteCount, deleteCollectionQuestion, archivedNotice, secondVersionBar, rowActions, noteOrigin, lastNotesBox, pillTitle, secretMark } from "../src/menu-contents.mjs";
+import { notebookMenu, deletedNotice, deletedCollectionNotice, noteMenu, pinButton, pageNoteCount, deleteCollectionQuestion, archivedNotice, secondVersionBar, rowActions, noteOrigin, lastNotesBox, pillTitle, secretMark } from "../src/menu-contents.mjs";
 
 // What the ▾ Notebook and ⋯ This note menus list (#67), as plain data the
 // sidebar only has to draw.
@@ -423,4 +423,11 @@ test("a secret note's title has the lock before it, a plain one none", async () 
   await notebook.makeSecret("Margins");
   assert.deepEqual(secretMark(notebook, "Margins"), { hint: "Secret note" });
   assert.equal(secretMark(notebook, "Flexbox"), null);
+});
+
+test("the notice after a delete names what went", () => {
+  assert.equal(deletedNotice("Box model"), "Deleted “Box model”.");
+  assert.equal(deletedCollectionNotice("Testing", 3), "Deleted the collection “Testing” and its 3 notes.");
+  assert.equal(deletedCollectionNotice("Testing", 1), "Deleted the collection “Testing” and its 1 note.");
+  assert.equal(deletedCollectionNotice("Biology", 0), "Deleted the empty collection “Biology”.");
 });

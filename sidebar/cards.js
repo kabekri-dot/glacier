@@ -22,6 +22,32 @@ function cardButton(className, text, onClick) {
   return button;
 }
 
+// Glacier's one question before something goes (#57, #74, #116): the
+// question, the action word and Keep. Esc is Keep. `onAction` or `onKeep`
+// runs once, after the card has stopped listening. Returns the card and its
+// Keep button, to focus once the card is on the paper.
+export function removeQuestion({ text, action, onAction, onKeep }) {
+  const card = document.createElement("div");
+  card.className = "perm-card delete-question";
+  const buttons = document.createElement("div");
+  buttons.className = "perm-buttons";
+  const answer = (then) => () => {
+    document.removeEventListener("keydown", onKey, true);
+    then();
+  };
+  const keep = cardButton("perm-cancel", "Keep", answer(onKeep));
+  function onKey(event) {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    event.stopPropagation();
+    answer(onKeep)();
+  }
+  document.addEventListener("keydown", onKey, true);
+  buttons.append(cardButton("card-button", action, answer(onAction)), keep);
+  card.append(paragraph(null, text), buttons);
+  return { card, keep };
+}
+
 // A heading, why, the never line, what happens next, Allow and Not now.
 function permissionCard({ heading, why, next, notNow, onAllow, onNotNow }) {
   const card = document.createElement("div");

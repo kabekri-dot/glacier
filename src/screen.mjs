@@ -55,6 +55,8 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, we
   let retitled = null;
   // The title of the note an archive just closed, for Undo (#87).
   let closedByArchive = null;
+  // The title of the note a delete just closed, for Undo (#116).
+  let closedByDelete = null;
   const history = createNoteHistory();
   const session = createNoteSession({
     notebook,
@@ -376,10 +378,39 @@ export function createScreen({ notebook, onSaveError, beforeLeave = () => {}, we
       return { type: "note", note, reload: false, changed: true };
     },
 
+    // Delete the open note. Returns what was taken, for Undo (#116).
     delete() {
       session.flush();
-      notebook.deleteNote(note.title);
-      return leaveRemovedNote();
+      closedByDelete = note.title;
+      const kept = notebook.deleteNote(note.title);
+      return { kept, view: leaveRemovedNote() };
+    },
+
+    // Delete a Collection and its notes. The open note, if it is one of them,
+    // is closed like any deleted note. Returns what was taken, for Undo.
+    deleteCollection(course) {
+      session.flush();
+      const openTitle = note?.title;
+      const kept = notebook.deleteCollection(course);
+      closedByDelete = null;
+      if (openTitle && kept.notes.some((taken) => taken.note.title === openTitle)) {
+        closedByDelete = openTitle;
+        return { kept, view: leaveRemovedNote() };
+      }
+      return { kept, view: { type: "backlinks", changed: true } };
+    },
+
+    // Undo a delete: the notes come back, and the note the delete closed
+    // opens again.
+    undoDelete(kept) {
+      session.flush();
+      const back = notebook.undoDelete(kept);
+      const reopened = back.includes(closedByDelete) ? notebook.note(closedByDelete) : undefined;
+      closedByDelete = null;
+      if (reopened) {
+        return { ...showNote(reopened, { byPage: isOpenedByPage(reopened) }), changed: true };
+      }
+      return { type: "backlinks", changed: true };
     },
 
     // The note on screen again, as stored (Keep after the delete question).

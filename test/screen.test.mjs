@@ -417,9 +417,44 @@ test("deleting leaves no note on screen and asks the page what to show", () => {
   const { notebook, screen, first } = withNotes();
   screen.open(first);
   screen.edit("unsaved");
-  assert.deepEqual(screen.delete(), { type: "followPage", changed: true });
+  assert.deepEqual(screen.delete().view, { type: "followPage", changed: true });
   assert.equal(screen.note(), null);
   assert.equal(notebook.note("First"), undefined);
+});
+
+test("undo after deleting the open note opens it again, as it was", () => {
+  const { notebook, screen, first, grid } = withNotes();
+  screen.open(first);
+  screen.open(grid);
+  screen.edit("Grid words");
+  const { kept } = screen.delete();
+  const view = screen.undoDelete(kept);
+  assert.equal(view.type, "note");
+  assert.equal(view.changed, true);
+  assert.equal(screen.note().title, "Grid");
+  assert.equal(notebook.note("Grid").body, "Grid words");
+  assert.equal(notebook.note("Grid").course, "TOP");
+});
+
+test("deleting a Collection closes its open note, and undo opens it again", () => {
+  const { notebook, screen, grid } = withNotes();
+  screen.open(grid);
+  const { kept, view } = screen.deleteCollection("TOP");
+  assert.deepEqual(view, { type: "followPage", changed: true });
+  assert.equal(notebook.note("Grid"), undefined);
+  screen.undoDelete(kept);
+  assert.equal(screen.note().title, "Grid");
+  assert.deepEqual(notebook.outline().courses, [{ course: "TOP", titles: ["Grid"] }]);
+});
+
+test("deleting a Collection leaves another open note on screen, and undo too", () => {
+  const { notebook, screen, first } = withNotes();
+  screen.open(first);
+  const { kept, view } = screen.deleteCollection("TOP");
+  assert.deepEqual(view, { type: "backlinks", changed: true });
+  assert.deepEqual(screen.undoDelete(kept), { type: "backlinks", changed: true });
+  assert.equal(screen.note().title, "First");
+  assert.equal(notebook.note("Grid").course, "TOP");
 });
 
 test("archiving the open note shows the note you were on before", () => {
@@ -439,7 +474,7 @@ test("deleting the open note shows the note you were on before", () => {
   const { notebook, screen, first, grid } = withNotes();
   screen.open(first);
   screen.open(grid);
-  const view = screen.delete();
+  const { view } = screen.delete();
   assert.equal(view.note.title, "First");
   assert.equal(view.changed, true);
   assert.equal(notebook.note("Grid"), undefined);
@@ -449,7 +484,7 @@ test("after a delete the note before is skipped if it was archived", () => {
   const { notebook, screen, first, second, grid } = withNotes();
   for (const note of [first, second, grid]) screen.open(note);
   notebook.archiveNote("Second");
-  assert.equal(screen.delete().note.title, "First");
+  assert.equal(screen.delete().view.note.title, "First");
 });
 
 test("a note with nothing before it still asks the page after archiving", () => {
