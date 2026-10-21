@@ -80,3 +80,86 @@ test("deleting a note that does not exist changes nothing", async () => {
   notebook.deleteNote("Nothing here");
   assert.equal(notebook.notes().length, 1);
 });
+
+// Undo after a delete (#116): the note comes back exactly as it was.
+
+test("undo after a delete gives back the same note, with its Collection, page and sketches", async () => {
+  const notebook = await syncedBrowser(memoryRemote(filesOf(margins, boxModel)));
+  const { n } = notebook.addSketch("Box model", { width: 300 });
+  notebook.saveSketch("Box model", n, { width: 300, height: 100, shapes: [{ kind: "circle", x: 1, y: 2, w: 30, h: 30 }] });
+  const before = notebook.note("Box model");
+  const kept = notebook.deleteNote("Box model");
+  assert.deepEqual(notebook.undoDelete(kept), ["Box model"]);
+  assert.deepEqual(notebook.note("Box model"), before);
+  assert.deepEqual(notebook.outline().courses, [{ course: "TOP Foundations", titles: ["Box model"] }]);
+});
+
+test("undo after a delete puts the note back in the recent notes", async () => {
+  const notebook = await syncedBrowser(memoryRemote(filesOf(margins, boxModel)));
+  notebook.markOpened("Margins");
+  notebook.markOpened("Box model");
+  notebook.undoDelete(notebook.deleteNote("Margins"));
+  assert.deepEqual(notebook.recentNotes().map((note) => note.title), ["Box model", "Margins"]);
+});
+
+test("undo after deleting a secret note gives it back secret and still readable", async () => {
+  const notebook = await syncedBrowser(memoryRemote(filesOf(margins, boxModel)));
+  await notebook.setPasscode("open sesame");
+  await notebook.makeSecret("Margins");
+  await notebook.settled();
+  notebook.undoDelete(notebook.deleteNote("Margins"));
+  await notebook.settled();
+  assert.equal(notebook.isSecret("Margins"), true);
+  assert.equal(notebook.note("Margins").body, margins.body);
+  notebook.lock();
+  assert.equal(notebook.note("Margins").body, "");
+  assert.equal(await notebook.unlock("open sesame"), true);
+  assert.equal(notebook.note("Margins").body, margins.body);
+});
+
+test("an undone delete is not removed from the Notes Home by the next sync", async () => {
+  const remote = memoryRemote(filesOf(margins, boxModel));
+  const notebook = await syncedBrowser(remote);
+  notebook.undoDelete(notebook.deleteNote("Margins"));
+  await notebook.sync(remote);
+  assert.equal(remote.files()[noteToFile(margins).path], noteToFile(margins).text);
+  assert.equal(notebook.note("Margins").body, margins.body);
+});
+
+test("a delete undone after a sync comes back to the Notes Home on the next one", async () => {
+  const remote = memoryRemote(filesOf(margins, boxModel));
+  const notebook = await syncedBrowser(remote);
+  const kept = notebook.deleteNote("Margins");
+  await notebook.sync(remote);
+  notebook.undoDelete(kept);
+  await notebook.sync(remote);
+  assert.equal(remote.files()[noteToFile(margins).path], noteToFile(margins).text);
+  await notebook.sync(remote);
+  assert.equal(notebook.note("Margins").body, margins.body);
+});
+
+test("undo after deleting a Collection gives back the Collection and every note in it", async () => {
+  const lists = { ...boxModel, title: "Lists", body: "Bullets." };
+  const notebook = await syncedBrowser(memoryRemote(filesOf(margins, boxModel, lists)));
+  const kept = notebook.deleteCollection("TOP Foundations");
+  assert.deepEqual(notebook.outline().courses, []);
+  assert.deepEqual(notebook.undoDelete(kept).sort(), ["Box model", "Lists"]);
+  assert.deepEqual(notebook.outline().courses, [{ course: "TOP Foundations", titles: ["Box model", "Lists"] }]);
+  assert.equal(notebook.note("Lists").body, "Bullets.");
+});
+
+test("undo after deleting an empty Collection lists it again", async () => {
+  const notebook = await syncedBrowser(memoryRemote(filesOf(margins)));
+  notebook.newCollection("Biology");
+  notebook.undoDelete(notebook.deleteCollection("Biology"));
+  assert.ok(notebook.courses().includes("Biology"));
+});
+
+test("undo does not overwrite a new note that took the deleted title", async () => {
+  const notebook = await syncedBrowser(memoryRemote(filesOf(margins)));
+  const kept = notebook.deleteNote("Margins");
+  notebook.createNote({ title: "Margins" });
+  notebook.saveBody("Margins", "A new one.");
+  assert.deepEqual(notebook.undoDelete(kept), []);
+  assert.equal(notebook.note("Margins").body, "A new one.");
+});

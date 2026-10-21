@@ -278,6 +278,16 @@ export function archivedNotice(count) {
   return count === 1 ? "Archived 1 note." : `Archived ${count} notes.`;
 }
 
+// The notices after a delete, each with an Undo (#116).
+export function deletedNotice(title) {
+  return `Deleted “${title}”.`;
+}
+
+export function deletedCollectionNotice(course, count) {
+  if (count === 0) return `Deleted the empty collection “${course}”.`;
+  return `Deleted the collection “${course}” and its ${noteCount(count)}.`;
+}
+
 export function deleteCollectionQuestion(course, count) {
   if (count === 0) return `Delete the empty collection '${course}'?`;
   return `Delete the collection '${course}' and its ${noteCount(count)}? They're also removed from your Notes repo.`;

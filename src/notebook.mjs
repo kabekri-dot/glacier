@@ -1150,13 +1150,42 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
 
     // Delete a note for good (#57). Links to it stay in other notes' text and
     // become Missing Links. Its file leaves the Notes Repo on the next sync,
-    // which sees a synced file that no note has any more.
+    // which sees a synced file that no note has any more. Returns what was
+    // taken, for undoDelete; null when there was no such note.
     deleteNote(title) {
-      if (!storage.getNote(title)) return;
+      const stored = storage.getNote(title);
+      if (!stored) return null;
+      const recent = storage.getMeta(RECENT) ?? [];
+      const taken = { note: stored, open: unlocked.get(title), recentAt: recent.indexOf(title) };
       storage.deleteNote(title);
       unlocked.delete(title);
-      const recent = storage.getMeta(RECENT);
-      if (recent) storage.putMeta(RECENT, recent.filter((t) => t !== title));
+      if (taken.recentAt !== -1) storage.putMeta(RECENT, recent.filter((t) => t !== title));
+      return { notes: [taken], emptyCollections: [] };
+    },
+
+    // Undo a delete (#116): put back each note exactly as it was stored, open
+    // again if it was open and the passcode still is, at its place in the
+    // recent notes. A note whose title was taken since is not put back.
+    // Returns the titles put back. The next sync sends their files again.
+    undoDelete(kept) {
+      if (!kept) return [];
+      storage.putMeta(EMPTY_COURSES, [...emptyCollections(), ...kept.emptyCollections]);
+      const back = [];
+      for (const { note, open, recentAt } of kept.notes) {
+        if (titleTaken(note.title)) continue;
+        storage.putNote(note);
+        if (open && current) {
+          unlocked.set(note.title, open);
+          seal(note.title);
+        }
+        if (recentAt !== -1) {
+          const recent = (storage.getMeta(RECENT) ?? []).filter((t) => t !== note.title);
+          recent.splice(recentAt, 0, note.title);
+          storage.putMeta(RECENT, recent.slice(0, RECENT_KEPT));
+        }
+        back.push(note.title);
+      }
+      return back;
     },
 
     // Archive (#58): hide a note from the lists, search, recent notes and the
@@ -1195,11 +1224,14 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
 
     // Delete a Collection and the notes in it for good (#74). The archived
     // notes of the same name are not in the Collection's list, so they stay.
+    // Returns what was taken, for undoDelete.
     deleteCollection(course) {
-      storage.putMeta(EMPTY_COURSES, emptyCollections().filter((name) => !sameCollection(name, course)));
-      listed()
+      const empty = emptyCollections();
+      storage.putMeta(EMPTY_COURSES, empty.filter((name) => !sameCollection(name, course)));
+      const notes = listed()
         .filter((note) => sameCollection(note.course, course))
-        .forEach((note) => this.deleteNote(note.title));
+        .flatMap((note) => this.deleteNote(note.title).notes);
+      return { notes, emptyCollections: empty.filter((name) => sameCollection(name, course)) };
     },
 
     // The Archive as the menu lists it: by Collection, then the notes without one.
