@@ -28,6 +28,10 @@ _Avoid_: Canvas, diagram, whiteboard, image
 A line `%%page%%` that splits a note into pages, each as long as its text, shown one at a time when "Notes as pages" is on (#108). The note stays one file. Not to be confused with a note's page, its Source.
 _Avoid_: Section, sheet, chapter
 
+**Paper**:
+Where the open note is drawn and written on: ruled lines, the line being edited shown as its Markdown, every other line in its finished look, sketches between them. With "Notes as pages" on, it shows one page at a time.
+_Avoid_: Editor (that is the code that decides what typing does), canvas, page (a note's page is its Source)
+
 **Notebook**:
 All of one person's Notes and Collections together.
 _Avoid_: Vault, workspace, library
