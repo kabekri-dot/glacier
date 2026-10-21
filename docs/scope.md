@@ -167,6 +167,10 @@ this order.
 4. **Hidden games.** A secret command (for example `/takebreak`) starts a
    small pixel game in the note, with highscores. Each Theme has its own game
    that matches it. (Pixel art stays still or slow; no flicker.)
+   Decided so far:
+   - Highscores are your own: a top 5 per game with the date, synced with
+     the notes. A shared leaderboard needs a server; maybe later with the
+     website.
 5. **Support Glacier.** Pay once, weekly or monthly, like "buy me a coffee";
    maybe it unlocks two extra Themes, but it doesn't have to.
 6. **Codes for influencers.** A small creator gets a code that unlocks two
