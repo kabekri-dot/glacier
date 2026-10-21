@@ -115,3 +115,39 @@ export function switchQuestion(id) {
 export function chosenNotesHome(saved, { repo, token }) {
   return saved ?? (repo && token ? "github" : "browser");
 }
+
+// Switching's progress (#94): the steps the screen shows while the notes
+// move, each "done", "now" or "" for still to come. nextSwitchStep takes
+// what the Notebook reports, `{ step }`, with `done` and `total` while it
+// downloads, and returns the steps to show next.
+const SWITCH_STEPS = ["connecting", "downloading", "linking", "ready"];
+
+export function switchSteps(id) {
+  const text = {
+    connecting: `Connecting to ${notesHomeName(id)}`,
+    downloading: "Downloading notes",
+    linking: "Combining notes",
+    ready: "Ready",
+  };
+  return {
+    heading: `Moving to ${notesHomeName(id)}`,
+    steps: SWITCH_STEPS.map((step) => ({ step, text: text[step], state: "" })),
+  };
+}
+
+export function nextSwitchStep(shown, progress) {
+  const at = SWITCH_STEPS.indexOf(progress.step);
+  const steps = shown.steps.map((each, i) => {
+    const state = i < at || progress.step === "ready" ? "done" : i === at ? "now" : "";
+    if (each.step === "downloading" && progress.step === "downloading") {
+      return { ...each, state, text: `Downloading ${progress.done} of ${progress.total} notes` };
+    }
+    return { ...each, state };
+  });
+  return { ...shown, steps };
+}
+
+export function switchDoneText(id, { repo = "", notes }) {
+  const count = notes === 1 ? "1 note" : `${notes} notes`;
+  return `Your notes are here. Brought in ${count} from ${notesHomeName(id, { repo })}.`;
+}

@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createNotebook, noteToFile } from "../src/notebook.mjs";
 import { memoryStorage } from "../src/memory-storage.mjs";
 import { memoryRemote } from "../src/memory-remote.mjs";
-import { NOTES_HOMES, notesHomeName, notesHomeIcon, alsoDeletedFrom, signInLostText, switchQuestion, chosenNotesHome, notesHomeChoices, googleReady, folderReady, syncErrorMessage } from "../src/notes-home.mjs";
+import { NOTES_HOMES, notesHomeName, notesHomeIcon, alsoDeletedFrom, signInLostText, switchSteps, nextSwitchStep, switchDoneText, switchQuestion, chosenNotesHome, notesHomeChoices, googleReady, folderReady, syncErrorMessage } from "../src/notes-home.mjs";
 import { createAutoSync, syncBox, syncDotText, syncStatusText, needsFolderOk } from "../src/auto-sync.mjs";
 import { GOOGLE_CONFIG } from "../src/google-config.mjs";
 
@@ -241,4 +241,30 @@ test("a sign-in that stops working is explained in the place's own words", () =>
   assert.match(signInLostText("github"), /^GitHub no longer accepts your token\./);
   assert.match(signInLostText("google-drive"), /^Google asks you to sign in again\./);
   assert.equal(signInLostText("folder"), "Chrome needs your OK to write to your notes folder again.");
+});
+
+// The steps a switch shows while it runs (#94): each step is done, now, or
+// still to come.
+const states = (shown) => shown.steps.map(({ text, state }) => `${state || "-"} ${text}`);
+
+test("a switch starts with its steps named and none of them done", () => {
+  const shown = switchSteps("google-drive");
+  assert.equal(shown.heading, "Moving to Google Drive");
+  assert.deepEqual(states(shown), ["- Connecting to Google Drive", "- Downloading notes", "- Combining notes", "- Ready"]);
+});
+
+test("each step marks the ones before it done, and downloading counts the notes", () => {
+  let shown = switchSteps("folder");
+  shown = nextSwitchStep(shown, { step: "connecting" });
+  shown = nextSwitchStep(shown, { step: "downloading", done: 2, total: 5 });
+  assert.deepEqual(states(shown), ["done Connecting to your notes folder", "now Downloading 2 of 5 notes", "- Combining notes", "- Ready"]);
+  shown = nextSwitchStep(shown, { step: "linking" });
+  assert.deepEqual(states(shown), ["done Connecting to your notes folder", "done Downloading 2 of 5 notes", "now Combining notes", "- Ready"]);
+  shown = nextSwitchStep(shown, { step: "ready", notes: 5 });
+  assert.deepEqual(states(shown).map((line) => line.split(" ")[0]), ["done", "done", "done", "done"]);
+});
+
+test("a finished switch says how many notes came from where", () => {
+  assert.equal(switchDoneText("github", { repo: "mito/notes", notes: 1 }), "Your notes are here. Brought in 1 note from mito/notes.");
+  assert.equal(switchDoneText("folder", { notes: 4 }), "Your notes are here. Brought in 4 notes from your notes folder.");
 });

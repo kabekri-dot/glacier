@@ -16,7 +16,7 @@
 //   hasPasscode() and changePasscode(passcode, next) -> { ok, locked } (#109)
 import { syncStatusText, syncResultText, syncBox, JUST_SYNCED } from "../src/auto-sync.mjs";
 import { notesRepoName } from "../src/notebook.mjs";
-import { notesHomeChoices, notesHomeName, notesHomeIcon, switchQuestion, googleReady, folderReady } from "../src/notes-home.mjs";
+import { notesHomeChoices, notesHomeIcon, switchSteps, nextSwitchStep, switchDoneText, switchQuestion, googleReady, folderReady } from "../src/notes-home.mjs";
 import { GOOGLE_CONFIG } from "../src/google-config.mjs";
 import { HANDLED_KEYS, SHORTCUT_GROUPS, shortcutRows } from "../src/shortcuts-panel.mjs";
 import { PAPERS, paperGroups, FONT_OVERRIDES, TEXT_SIZE, fontPreview } from "../src/look.mjs";
@@ -716,29 +716,18 @@ export function createSettingsView({ prefs, repo, onClose }) {
     }
     const screen = element("div", "perm-card");
     const list = element("ol", "sync-steps");
-    const steps = {};
-    for (const [step, text] of [
-      ["connecting", `Connecting to ${notesHomeName(place)}`],
-      ["downloading", "Downloading notes"],
-      ["linking", "Combining notes"],
-      ["ready", "Ready"],
-    ]) {
-      steps[step] = element("li", "", text);
-      list.append(steps[step]);
-    }
-    screen.append(element("h2", "settings-subheading", `Moving to ${notesHomeName(place)}`), list);
+    let shown = switchSteps(place);
+    const items = shown.steps.map(({ text }) => element("li", "", text));
+    list.append(...items);
+    screen.append(element("h2", "settings-subheading", shown.heading), list);
     bodies["notes-home"].replaceChildren(screen);
 
-    const order = Object.keys(steps);
     const showStep = (progress) => {
-      const at = order.indexOf(progress.step);
-      order.forEach((step, i) => {
-        steps[step].className = i < at ? "sync-step-done" : i === at ? "sync-step-now" : "";
+      shown = nextSwitchStep(shown, progress);
+      shown.steps.forEach(({ text, state }, i) => {
+        items[i].textContent = text;
+        items[i].className = state && `sync-step-${state}`;
       });
-      if (progress.step === "downloading") {
-        steps.downloading.textContent = `Downloading ${progress.done} of ${progress.total} notes`;
-      }
-      if (progress.step === "ready") steps.ready.className = "sync-step-done";
     };
 
     switchRunning = true;
@@ -753,9 +742,7 @@ export function createSettingsView({ prefs, repo, onClose }) {
       return;
     }
 
-    const notes = result.notes === 1 ? "1 note" : `${result.notes} notes`;
-    const from = notesHomeName(place, { repo: repoName });
-    const done = element("p", "settings-text", `Your notes are here. Brought in ${notes} from ${from}.`);
+    const done = element("p", "settings-text", switchDoneText(place, { repo: repoName, notes: result.notes }));
     const ok = element("button", "card-button", "Start writing");
     ok.type = "button";
     ok.addEventListener("click", () => {
