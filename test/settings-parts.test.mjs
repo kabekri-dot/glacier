@@ -178,6 +178,11 @@ test("the look's line names the Course layout once it is chosen (#126)", () => {
   assert.equal(partValue("look", state({ look: readLook({ layout: "course" }) })), "Glacier paper, its own font, text 100 %, Course layout");
 });
 
+test("the look's line names the Home layout once it is chosen (#127)", () => {
+  assert.equal(partValue("look", state({ look: readLook({ layout: "home" }) })), "Glacier paper, its own font, text 100 %, Home layout");
+  assert.deepEqual(matchingParts("start screen"), ["look"]);
+});
+
 test("searching for course or layout finds How your notes look", () => {
   assert.deepEqual(matchingParts("course"), ["look"]);
   assert.deepEqual(matchingParts("layout"), ["look"]);

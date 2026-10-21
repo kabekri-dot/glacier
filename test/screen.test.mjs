@@ -95,6 +95,16 @@ test("the start prompt and the permission card show no note", () => {
   assert.equal(screen.freshPage(), null);
 });
 
+test("Home shows no note and keeps what was typed (#127)", () => {
+  const { notebook, screen, first } = withNotes();
+  screen.open(first);
+  screen.edit("Typed just now");
+  assert.deepEqual(screen.show({ type: "home" }), { type: "home" });
+  assert.equal(screen.note(), null);
+  assert.equal(screen.freshPage(), null);
+  assert.equal(notebook.note("First").body, "Typed just now");
+});
+
 // --- A fresh page (#61) ----------------------------------------------------
 
 test("a fresh page for a website makes no note until you type", () => {

@@ -204,8 +204,8 @@ export function readLook(saved) {
   const pages = saved?.pages === true;
   // "Show New page at the end of notes" (#122): on until hidden.
   const newPageAtEnd = saved?.newPageAtEnd !== false;
-  // The layout (#126): Zen, or Course for learning.
-  const layout = saved?.layout === "course" ? "course" : "zen";
+  // The layout (#126, #127): Zen, Course for learning, or Home.
+  const layout = ["course", "home"].includes(saved?.layout) ? saved.layout : "zen";
   return { paper, font, textSize, pages, newPageAtEnd, layout };
 }
 

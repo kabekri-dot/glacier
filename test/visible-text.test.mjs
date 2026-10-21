@@ -81,11 +81,11 @@ test("manifest.json descriptions have no em or en dashes", () => {
 // user, so names like "courses" or a class like "course-list" in the code
 // don't count. Since #126 a Course is a Collection marked for learning: the
 // Course layout's own texts (src/course-view.mjs) and the few phrases that
-// mark or unmark one elsewhere may say it.
+// mark or unmark one elsewhere may say it, and Home lists "Your courses" (#127).
 const STRINGS = /"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`/g;
 const COURSE_WORD = /(?<![-.\w$])courses?(?![-\w])/i;
 const COURSE_LAYOUT_FILE = "src/course-view.mjs";
-const COURSE_PHRASES = /Make it a course|Not a course any more|Course layout/g;
+const COURSE_PHRASES = /Make it a course|Not a course any more|Course layout|[Yy]our courses/g;
 
 for (const file of jsFiles.filter((name) => name !== COURSE_LAYOUT_FILE)) {
   test(`${file} shows no Course in its strings`, () => {

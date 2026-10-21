@@ -306,3 +306,65 @@ test("without the permission the + menu takes the page as a website with no know
   const { flow } = setup();
   assert.deepEqual(await flow.website(), { url: null, title: null });
 });
+
+// The Home layout (#127): Home shows where the empty page would.
+function setupHome(options) {
+  const shown = [];
+  const state = { permission: options.permission ?? true, tab: options.tab ?? null };
+  const flow = createOpeningFlow({
+    page: {
+      currentPage: () => Promise.resolve(state.tab),
+      hasPermission: () => Promise.resolve(state.permission),
+      requestPermission: () => Promise.resolve(true),
+      onPageChange: () => {},
+    },
+    getOpenNote: () => ({ current: null, openedByPage: false }),
+    noteForPage: (url) => (options.pages ?? []).find((n) => n.source === url) ?? null,
+    getLastNote: () => options.lastNote ?? null,
+    show: (view) => shown.push(view),
+    home: () => true,
+  });
+  return { flow, shown, state };
+}
+
+test("in Home a page without a note shows Home instead of a fresh page", async () => {
+  const { flow, shown } = setupHome({ tab: { url: "https://new.test/x", title: "New" } });
+  await flow.start();
+  assert.deepEqual(shown, [{ type: "home" }]);
+});
+
+test("in Home a new tab with nothing open shows Home", async () => {
+  const { flow, shown } = setupHome({ tab: { url: "chrome://newtab/" } });
+  await flow.pageChanged();
+  assert.deepEqual(shown, [{ type: "home" }]);
+});
+
+test("in Home a page with a note still opens that note", async () => {
+  const { flow, shown } = setupHome({ tab: { url: noteA.source, title: "Page A" }, pages: [noteA] });
+  await flow.start();
+  assert.deepEqual(shown, [{ type: "open", note: noteA }]);
+});
+
+test("in Home the sidebar opens on Home before the page may be read", async () => {
+  const { flow, shown } = setupHome({ permission: false });
+  await flow.start();
+  assert.deepEqual(shown, [{ type: "home" }]);
+});
+
+test("in Home New note for this page still shows a fresh page", async () => {
+  const { flow, shown } = setupHome({ tab: { url: "https://new.test/x", title: "New" } });
+  await flow.newNoteForPage();
+  assert.deepEqual(shown, [{ type: "pageDraft", page: { url: "https://new.test/x", title: "New" }, editTitle: true }]);
+});
+
+test("in Home Allow on the card of New note for this page shows a fresh page", async () => {
+  const { flow, shown } = setupHome({ permission: false, tab: { url: "https://new.test/x", title: "New" } });
+  await flow.allow();
+  assert.deepEqual(shown, [{ type: "pageDraft", page: { url: "https://new.test/x", title: "New" } }]);
+});
+
+test("in Home a new tab shows Home, not the note you were last on", async () => {
+  const { flow, shown } = setupHome({ tab: { url: "chrome://newtab/" }, lastNote: noteA });
+  await flow.start();
+  assert.deepEqual(shown, [{ type: "home" }]);
+});

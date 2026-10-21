@@ -25,8 +25,8 @@ function webDev() {
 
 const viewOf = (notebook, title, layout = "course") => courseView(notebook, notebook.note(title), layout);
 
-test("the layouts are Zen and Course, each with a one line hint", () => {
-  assert.deepEqual(LAYOUTS.map((layout) => layout.name), ["Zen", "Course"]);
+test("the layouts are Zen, Course and Home, each with a one line hint", () => {
+  assert.deepEqual(LAYOUTS.map((layout) => layout.name), ["Zen", "Course", "Home"]);
   assert.equal(LAYOUTS[1].hint, "For learning. A collection you mark as a course shows its notes as lessons.");
   assert.ok(LAYOUTS.every((layout) => layout.hint && !layout.hint.includes("\n")));
 });

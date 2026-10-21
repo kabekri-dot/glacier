@@ -18,6 +18,10 @@ In ☰ Notes, click + New next to Collections, type a name and press Enter. Then
 
 In Settings, How your notes look, pick the Course layout. Put the notes of a course in one collection, then open its ⋯ in ☰ Notes and choose Make it a course, or click the button on the card over one of its notes. Its notes become lessons, numbered by when you made them. The course and how many lessons are done show on top, a tab for each lesson sits on the right edge, and Previous, Mark as done and Next lesson wait at the bottom. + after the last tab makes a new lesson. Alt PageDown and Alt PageUp open the next and the previous lesson. Not a course any more, in the same ⋯, takes the numbers away and keeps the notes.
 
+## What is the Home layout?
+
+In Settings, How your notes look, pick Home. Wherever the empty page would show (a page with no note yet, a new tab, after the last note you were on is deleted), Glacier shows Home instead: a big card to continue the note you edited last, a card for each course with how many lessons are done and the next one, your other collections with + New to make one, and the notes you opened lately. A page that has a note still opens it. ⌂ at the top left opens Home from any note. To write a note for a page from Home, use + and New note for this page.
+
 ## How do I rename a note?
 
 Hover the title at the top and click the small pen after it, or open ⋯ and choose Rename. Type the new name and press Enter. Links to the note change with it.
