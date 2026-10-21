@@ -9,6 +9,7 @@
 //   noteEl            the paper, where the question before deleting the open note shows
 //   draw(view)        draws what a Screen action returned
 //   render()          redraws the open note with the caret in it
+//   redrawEmpty()     redraws the paper when no note is on it (Home, #127)
 //   openNote(note, options), showSearchMatch(query) (a search inside notes
 //   opens on the page of its match, #108), changed() (for Sync),
 //   notice(text, ms, action),
@@ -29,7 +30,7 @@ import { menuRow, pixelIcon } from "./pill-menus.js";
 
 const NOTICE_MS = 6000;
 
-export function createMenuView({ notebook, screen, el, button: menuButtonEl, noteEl, draw, render, openNote, showSearchMatch, changed, notice, notesHome, downloads, makeCourse, beforeOpen }) {
+export function createMenuView({ notebook, screen, el, button: menuButtonEl, noteEl, draw, render, openNote, showSearchMatch, changed, notice, notesHome, downloads, makeCourse, beforeOpen, redrawEmpty = () => {} }) {
   // The search box and the list under it, while the list is open.
   let search = null;
   let body = null;
@@ -824,6 +825,7 @@ export function createMenuView({ notebook, screen, el, button: menuButtonEl, not
     if (!isOpen()) return;
     close();
     if (screen.note() || screen.freshPage()) render();
+    else redrawEmpty();
   }
 
   return {
@@ -836,6 +838,13 @@ export function createMenuView({ notebook, screen, el, button: menuButtonEl, not
     // Scroll back to the top, where Several versions is listed.
     scrollToTop() {
       if (body) body.scrollTop = 0;
+    },
+
+    // "+ New" on Home (#127): the list opens with the name field of its own
+    // "+ New" under Collections.
+    newCollection() {
+      open();
+      body.querySelector(".menu-add-collection")?.click();
     },
 
     act,

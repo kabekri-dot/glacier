@@ -44,6 +44,7 @@ import { createHeadingsMenu, createNewMenu, createNoteMenu } from "./pill-menus.
 import { createSecondVersionView } from "./second-version-view.js";
 import { createNoteDetailsView } from "./note-details-view.js";
 import { createLessonView } from "./lesson-view.js";
+import { createHomeView } from "./home-view.js";
 import { createSketchView } from "./sketch-view.js";
 import { createSecrets } from "./secret-view.js";
 import { pageCard, panelsCard, startPrompt } from "./cards.js";
@@ -76,6 +77,7 @@ const renameHintEl = document.querySelector(".rename-hint");
 const backlinksButtonEl = document.querySelector(".backlinks-button");
 const backlinksListEl = document.querySelector(".backlinks-list");
 const backEl = document.querySelector(".pill-back");
+const homeButtonEl = document.querySelector(".pill-home");
 const newButtonEl = document.querySelector(".pill-new");
 const menuPanelEl = document.querySelector(".menu");
 const glacierButtonEl = document.querySelector(".glacier-button");
@@ -249,6 +251,7 @@ async function start() {
     onPulled: (titles) => {
       menuView.close();
       draw(screen.pulled(titles));
+      if (homeShown) homeView.draw();
     },
   });
   const editor = createEditorSession({
@@ -332,6 +335,9 @@ async function start() {
     notesHome: async () => (await notesHomes.load()).home,
     downloads,
     makeCourse: (course) => lessonView.makeCourse(course),
+    redrawEmpty: () => {
+      if (homeShown) homeView.draw();
+    },
     beforeOpen: () => {
       closeSettings({ redraw: false });
       closeOverlays();
@@ -343,11 +349,17 @@ async function start() {
     draw(screen.open(note, options));
   }
 
+  // Whether Home is on the paper (#127): it takes the place of the empty
+  // page in the Home layout, or opens from ⌂.
+  let homeShown = false;
+  const SCREEN_VIEWS = new Set(["note", "freshPage", "startPrompt", "permissionCard", "followPage", "home"]);
+
   // Draw what a Screen action returned (see src/screen.mjs for the views).
   function draw(view) {
     if (!view) return;
     if (view.changed) autoSync.changed();
     if (!screen.welcome()) clearWelcome();
+    if (SCREEN_VIEWS.has(view.type)) homeShown = view.type === "home";
     switch (view.type) {
       case "note":
         if (view.reload) {
@@ -380,6 +392,9 @@ async function start() {
       case "startPrompt":
         showStartPrompt();
         break;
+      case "home":
+        showHome();
+        break;
       case "permissionCard":
         showPermissionCard();
         break;
@@ -395,6 +410,7 @@ async function start() {
         break;
       case "backlinks":
         updateBacklinks();
+        if (homeShown) homeView.draw();
         break;
     }
     lessonView.update();
@@ -470,7 +486,7 @@ async function start() {
     headingsMenu.close();
     const note = screen.note();
     const freshPage = screen.freshPage();
-    const title = pillTitle({ note, freshPage });
+    const title = pillTitle({ note, freshPage, home: homeShown });
     pillTitleEl.textContent = title.text;
     pillTitleEl.classList.toggle("is-draft", title.draft);
     pillTitleEl.classList.toggle("is-quiet", !title.renamable);
@@ -490,7 +506,8 @@ async function start() {
     noteMenu.update();
     updatePushpin();
     const previous = screen.previous();
-    backEl.hidden = previous === null || !tabSettings.showPreviousButton;
+    backEl.hidden = previous === null || !tabSettings.showPreviousButton || homeShown;
+    homeButtonEl.hidden = look.layout !== "home" || homeShown;
     if (previous !== null) {
       backEl.title = backButtonHint(previous);
       backEl.setAttribute("aria-label", backButtonHint(previous));
@@ -501,6 +518,12 @@ async function start() {
   backEl.addEventListener("click", () => {
     closeOverlays();
     draw(screen.back());
+  });
+
+  // ⌂ opens Home (#127).
+  homeButtonEl.addEventListener("click", () => {
+    closeOverlays();
+    draw(screen.show({ type: "home" }));
   });
 
   // ☰ Notes opens and closes the notes list.
@@ -830,7 +853,7 @@ async function start() {
       drawLook();
       if (look.pages !== before.pages) paper.redrawPages();
       else if (look.newPageAtEnd !== before.newPageAtEnd) paper.updatePageBar();
-      if (look.layout !== before.layout) lessonView.update();
+      if (look.layout !== before.layout) layoutChanged();
       if (!keep) return;
       extensionStorage.set({ look }).catch((error) => {
         console.warn("Glacier: could not keep the chosen look", error);
@@ -1059,7 +1082,7 @@ async function start() {
       drawLook();
       if (look.pages !== before.pages) paper.redrawPages();
       else if (look.newPageAtEnd !== before.newPageAtEnd) paper.updatePageBar();
-      if (look.layout !== before.layout) lessonView.update();
+      if (look.layout !== before.layout) layoutChanged();
     }
     if (changes.tabSettings) {
       tabSettings = readTabSettings(changes.tabSettings.newValue);
@@ -1181,6 +1204,7 @@ async function start() {
     getLastNote: () => notebook.recentNotes(1)[0] ?? null,
     show: (view) => draw(screen.show(view)),
     getTabSettings: () => tabSettings,
+    home: () => look.layout === "home",
   });
 
   // --- A fresh page for a new note (#61) -------------------------------------
@@ -1211,6 +1235,33 @@ async function start() {
     secondVersion.update();
     noteEl.replaceChildren(startPrompt({ onNew: () => openingFlow.newNoteForPage() }));
     paper.updatePageBar();
+  }
+
+  // Home (#127): sidebar/home-view.js draws it on the paper.
+  const homeView = createHomeView({
+    noteEl,
+    notebook,
+    openNote,
+    startWriting: () => draw(screen.startFreshPage({})),
+    newNoteIn: (course) => draw(screen.startFreshPage({ course, editTitle: true })),
+    newCollection: () => menuView.newCollection(),
+  });
+
+  function showHome() {
+    findInNote.close();
+    updatePill();
+    secondVersion.update();
+    updateBacklinks();
+    homeView.draw();
+    paper.updatePageBar();
+  }
+
+  // A new layout: with no note on the paper, the Opening flow decides again,
+  // so Home takes the empty page's place, or gives it back.
+  function layoutChanged() {
+    lessonView.update();
+    updatePill();
+    if (!screen.note()) openingFlow.start();
   }
 
   function showPermissionCard() {

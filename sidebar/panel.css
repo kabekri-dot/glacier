@@ -3797,3 +3797,162 @@ html[data-course="lesson"] .pushpin {
     transition: none;
   }
 }
+
+/* The Home layout (#127): a start screen on the paper where the empty page
+   would be. A big card to continue the note edited last, its first line on
+   a strip of ruled paper; a card per course with its progress; the other
+   collections as small cards with + New; the notes opened lately. */
+.home {
+  display: grid;
+  gap: 1rem;
+  padding-bottom: 4rem;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.home-continue,
+.home-card,
+.home-recent {
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.home-continue {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.75rem 0.9rem;
+  border-color: var(--accent);
+  border-radius: 14px;
+  box-shadow: 0 2px 8px var(--shadow);
+}
+
+.home-label {
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.home-continue-title {
+  font-size: 1.1rem;
+  overflow-wrap: anywhere;
+}
+
+.home-where {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.home-first-line {
+  margin-top: 0.3rem;
+  padding: 0 0.1rem;
+  line-height: 1.5rem;
+  background-image: repeating-linear-gradient(transparent 0 calc(1.5rem - 1px), var(--rule) calc(1.5rem - 1px) 1.5rem);
+  opacity: 0.8;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.home-section {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.home-heading {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  opacity: 0.75;
+}
+
+.home-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+  gap: 0.5rem;
+}
+
+.home-card {
+  display: grid;
+  align-content: start;
+  gap: 0.2rem;
+  min-width: 0;
+  padding: 0.6rem 0.7rem;
+  border-radius: 12px;
+}
+
+.home-card strong,
+.home-card small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-card small,
+.home-recent small {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.home-course .course-progress {
+  margin-top: 0.2rem;
+}
+
+.home-new {
+  border-style: dashed;
+  color: var(--accent);
+}
+
+.home-recent {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.3rem 0.5rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+}
+
+.home-recent-title,
+.home-recent small {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.home-recent small {
+  flex: none;
+  max-width: 45%;
+}
+
+.home-continue:hover,
+.home-continue:focus-visible,
+.home-card:hover,
+.home-card:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.home-continue:hover,
+.home-continue:focus-visible {
+  box-shadow: 0 0 0 1px var(--accent), 0 2px 8px var(--shadow);
+}
+
+.home-recent:hover,
+.home-recent:focus-visible {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  outline: none;
+}
+
+.home-empty {
+  display: grid;
+  justify-items: start;
+  gap: 0.3rem;
+}
+
+.home-empty p {
+  margin: 0;
+  opacity: 0.7;
+}

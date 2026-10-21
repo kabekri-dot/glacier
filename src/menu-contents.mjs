@@ -441,7 +441,9 @@ export function secretMark(notebook, title) {
 // The title in the top bar (#83, #121). A click on an open note's title shows
 // its headings, and the pen beside it renames. With no note open it is a
 // quiet "Glacier" that does nothing; a fresh page offers to name its note.
-export function pillTitle({ note, freshPage }) {
+// On Home (#127) it says "⌂ Home".
+export function pillTitle({ note, freshPage, home = false }) {
+  if (home) return { text: "⌂ Home", hint: "Where you left off, your courses and your collections", renamable: false, draft: false };
   if (note) return { text: note.title, hint: `${note.title}\nClick to see its headings`, renamable: true, draft: false };
   if (freshPage) return { text: freshPage.title || "Title", hint: "Click to name this note", renamable: true, draft: true };
   return { text: "Glacier", hint: "", renamable: false, draft: false };

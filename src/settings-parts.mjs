@@ -104,11 +104,14 @@ export const SETTINGS_PARTS = [
   },
 ];
 
+// The layout in the look's line; Zen, as before, says nothing.
+const LAYOUT_WORDS = { course: ", Course layout", home: ", Home layout" };
+
 // The one line a closed part shows. `state` is { look, tabSettings, home,
 // hasPasscode }.
 const VALUES = {
   look: ({ look }) =>
-    `${look.paper} paper, ${look.font === "Theme default" ? "its own font" : look.font}, text ${look.textSize} %${look.layout === "course" ? ", Course layout" : ""}`,
+    `${look.paper} paper, ${look.font === "Theme default" ? "its own font" : look.font}, text ${look.textSize} %${LAYOUT_WORDS[look.layout] ?? ""}`,
   pages: ({ look }) => (look.pages ? "Long notes split into pages" : "Each note on one long page"),
   tabs: ({ tabSettings }) => (tabSettings.keepUserOpenedNotes ? "Keeps your note open" : "Opens the note for each website"),
   saving: ({ home }) => homeLabel(home),

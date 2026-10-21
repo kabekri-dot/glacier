@@ -18,9 +18,10 @@ test("Glacier is the paper until another one is chosen", () => {
   assert.deepEqual(readLook(undefined), { paper: "Glacier", font: "Theme default", textSize: 100, pages: false, newPageAtEnd: true, layout: "zen" });
 });
 
-test("the layout is Zen until Course is chosen, and an unknown one goes back to Zen", () => {
+test("the layout is Zen until Course or Home is chosen, and an unknown one goes back to Zen", () => {
   assert.equal(readLook({ paper: "Forest" }).layout, "zen");
   assert.equal(readLook({ layout: "course" }).layout, "course");
+  assert.equal(readLook({ layout: "home" }).layout, "home");
   assert.equal(readLook({ layout: "tabs" }).layout, "zen");
 });
 

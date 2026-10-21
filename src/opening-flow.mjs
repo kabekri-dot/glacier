@@ -28,6 +28,11 @@
 // old rule (notes the user opened themselves stay put when the page changes),
 // `onNonWebsite` is "keep" or "newNoteForm" (a blank fresh page) for a page
 // that isn't a website.
+//
+// `home()` is true in the Home layout (#127): wherever following the page
+// would show a fresh page, and on the start prompt, it shows
+// { type: "home" } instead. A fresh page asked for by hand stays one, and a
+// new tab shows Home rather than the note last opened (#88).
 import { decidePageOpen } from "./page-open.mjs";
 
 export function createOpeningFlow({
@@ -37,6 +42,7 @@ export function createOpeningFlow({
   getLastNote = () => null,
   show,
   getTabSettings = () => ({}),
+  home = () => false,
 }) {
   // Only http and https pages are websites; anything else (chrome://,
   // file://, a new tab) counts as no page.
@@ -50,7 +56,9 @@ export function createOpeningFlow({
   // since, so the sidebar ends on the latest page, never the tab you left.
   let latestRead = 0;
 
-  async function followCurrentPage() {
+  // `byHand` after Allow on the card of "New note for this page", which
+  // asked for a fresh page rather than Home.
+  async function followCurrentPage({ byHand = false } = {}) {
     const read = (latestRead += 1);
     const website = await readWebsite();
     if (read !== latestRead) return;
@@ -61,17 +69,20 @@ export function createOpeningFlow({
       pinned,
       page: website,
       noteForPage,
-      lastNote: getLastNote(),
+      // Home has the note you were last on as its first card.
+      lastNote: home() ? null : getLastNote(),
       ...getTabSettings(),
     });
-    if (decision.type !== "keep") show(decision);
+    if (decision.type === "keep") return;
+    const fresh = decision.type === "pageDraft" || decision.type === "blankDraft";
+    show(fresh && !byHand && home() ? { type: "home" } : decision);
   }
 
   return {
     // The sidebar opened: follow the page if allowed, else the start prompt.
     async start() {
       if (await page.hasPermission()) await followCurrentPage();
-      else show({ type: "startPrompt" });
+      else show({ type: home() ? "home" : "startPrompt" });
     },
 
     // "New note for this page" (#68): always a fresh page for the website,
@@ -92,7 +103,7 @@ export function createOpeningFlow({
     // because both browsers require it to follow a click.
     async allow() {
       const granted = await page.requestPermission();
-      if (granted) await followCurrentPage();
+      if (granted) await followCurrentPage({ byHand: true });
       else show({ type: "blankDraft" });
     },
 

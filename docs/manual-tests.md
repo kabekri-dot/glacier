@@ -11,6 +11,19 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Home layout: continue, your courses, collections, recent (#127)
+
+- [ ] Reload the extension first. Settings, How your notes look, Layout: a third choice, Home (A start screen with where you left off, your courses and your collections.). Pick it while the empty page shows: the part's line ends in ", Home layout" and Home takes the empty page's place at once; pick Zen again and the empty page is back.
+- [ ] Pick Home. On the top bar of a note, ⌂ sits at the far left, after ← when ← shows. Click it: Home opens and the bar shows only ⌂ Home, ☰ Notes and +.
+- [ ] Go to a website with no note: Home shows, not the empty page. Go to a website with a note: that note opens, as before. Click ⌂, then open a new tab: Home stays. Close and open the sidebar on a new tab: Home shows, not the note you were last on (that one is on the Continue card).
+- [ ] The first card says "Continue where you left off" with the note you edited last, its collection and "edited today", and its first line of text on a strip of ruled paper. Click it: that note opens. An archived note never shows there.
+- [ ] Make a course (Course layout from #126, or ⋯ on a collection in ☰ Notes) and mark one lesson done. Home shows "Your courses" with a card "1 of 3 lessons done · next: <title>" and a bar a third full. Click it: the first lesson not done opens. Mark every lesson done: the card opens the last lesson. With no course, "Your courses" doesn't show.
+- [ ] "Collections" lists the collections that aren't courses, each with "2 notes" (or "1 note", or "No notes yet"). Click one: its note edited last opens; an empty one starts a note in it with the title ready to type. Click "+ New": ☰ Notes opens with the name field of its own + New; type a name and press Enter, then close the list: the new collection is on Home.
+- [ ] "Recent" lists the five notes opened last, without the one on the Continue card, each with its collection on the right. Click one: it opens.
+- [ ] Make the note on the Continue card secret and lock it (wait 10 minutes, or close and open the sidebar): the card shows its title with the lock, and no first line. Click it: the passcode card shows.
+- [ ] Delete the open note when ← has nothing to go back to: Home shows. Undo in the notice brings the note back.
+- [ ] Break it: an empty Notebook (a fresh browser profile) shows "No notes yet." with Start writing; click it and a blank note opens with the caret on the paper. Press Esc on that empty page: Home is back. Make the sidebar as narrow as it goes (the collection cards wrap, long titles end in …). Try a dark paper (Aurora) and Chalkboard.
+
 ### Course layout: collections as courses, lessons with tabs (#126)
 
 - [ ] Reload the extension first. Settings, How your notes look: under Text size, "Layout" with Zen (Only the paper and your note.) and Course (For learning. A collection you mark as a course shows its notes as lessons.). Zen is picked. Closed, the part's line is as before; pick Course and it ends in ", Course layout".
@@ -498,7 +511,7 @@ Nothing should look or work differently. Check each in Chrome and Firefox:
 - [ ] Search with `//` for a word that sits in a heading, a quote or a code block: the snippet shows plain words, no `##`, `>` or backticks, and a link shows its title.
 - [ ] Restore from a backup file: the message starts with "Restored", for example "Restored 2 notes, 1 kept as a copy next to yours."
 - [ ] Give a note a very long title: the pill ends it with "…", and hovering it shows the whole title.
-- [ ] Open a browser page (new tab or settings), close and reopen Glacier: the last note you were on opens, not the empty page. On a website with no note you still get its empty page.
+- [ ] Open a browser page (new tab or settings), close and reopen Glacier: the last note you were on opens, not the empty page. On a website with no note you still get its empty page. In the Home layout both show Home instead (#127).
 
 ### Quotes, code block rows, Archived label, Undo reopen, focus ring, sideways scroll (#87)
 
@@ -976,6 +989,7 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 - [ ] Drag the text size slider: the note grows and shrinks while you drag, and the line spacing grows with it. It goes from 85 % to 150 %.
 - [ ] Turn the network off (devtools, Offline) and reload the sidebar: every font still shows. In devtools, Network, the fonts come from the extension itself.
 - [ ] Clicking in the note while settings are open closes them and puts the cursor where you clicked. Ctrl+K and the pill menu also close them.
+- [ ] Under How your notes look, Layout: Home shows a start screen (continue where you left off, your courses, collections, recent) wherever the empty page would, and ⌂ in the top bar opens it (#127).
 - [ ] Under How your notes look, Layout: Zen shows only the paper; Course shows a course's notes as lessons, with the course and progress on top, tabs on the right edge and Previous, Mark as done and Next lesson at the bottom (#126). A collection becomes a course from its ⋯ in ☰ Notes or from the card over one of its notes.
 
 ### When you change tabs settings

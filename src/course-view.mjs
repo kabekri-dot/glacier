@@ -8,6 +8,7 @@ import { sourceLabel } from "./notebook.mjs";
 export const LAYOUTS = [
   { id: "zen", name: "Zen", hint: "Only the paper and your note." },
   { id: "course", name: "Course", hint: "For learning. A collection you mark as a course shows its notes as lessons." },
+  { id: "home", name: "Home", hint: "A start screen with where you left off, your courses and your collections." },
 ];
 
 // Null when the note looks as in Zen: in Zen, with no note or an archived
