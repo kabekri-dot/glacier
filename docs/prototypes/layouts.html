@@ -2,7 +2,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- Clickable prototype of the layouts (grilled with the user on 2026-10-22).
-     Chosen so far: Course (Course path and Index tabs merged). Decisions: docs/scope.md, "Next" item 3. -->
+     Chosen: Course (Course path and Index tabs merged) and Home. Decisions: docs/scope.md, "Next" item 3. -->
 <title>Glacier Layouts</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Shantell+Sans:wght@400;700&display=swap">
 <style>
@@ -96,6 +96,15 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ntab span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .ntab.on { background: var(--paper); color: var(--ink); font-weight: 600; }
 .ntab i { font-style: normal; color: var(--faint); }
+/* Home */
+.continue { display: grid; gap: 3px; text-align: left; border: 1px solid var(--accent); background: var(--card); border-radius: 14px; padding: 12px 14px; font: inherit; cursor: pointer; color: var(--ink); background-image: repeating-linear-gradient(transparent 0 23px, var(--rule) 23px 24px); }
+.continue small { color: var(--accent); font-weight: 700; font-size: 0.72rem; letter-spacing: 0.04em; }
+.continue b { font-size: 1.05rem; }
+.continue span { color: var(--soft); font-size: 0.75rem; }
+.continue em { font-style: normal; font-family: var(--hand); font-size: 0.85rem; color: var(--soft); }
+.course-card { grid-template-columns: 1fr; }
+.course-card .progress { display: block; height: 6px; border-radius: 999px; background: var(--rule); overflow: hidden; }
+.course-card .progress i { display: block; height: 100%; background: var(--accent); }
 /* Course */
 .course-head { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; padding: 0 14px 8px; font-size: 0.8rem; flex: none; }
 .progress { grid-column: 1 / -1; height: 6px; border-radius: 999px; background: var(--rule); overflow: hidden; }
@@ -138,6 +147,7 @@ const NOTES = {
 const COLLECTIONS = { "Web Dev": ["Box model", "Flexbox notes", "CSS Grid", "Week 2 summary"], "Design": ["Colour basics"] };
 const LAYOUTS = [
   { id: "course", name: "Course", group: "Merged: Course path + Index tabs", good: "Made for learning. A collection becomes a course and its notes become lessons: numbered tabs on the paper's edge, your progress on top, Done and Next lesson at the bottom, and each lesson's page one click away.", bad: "Only for collections you mark as a course; other notes look like Zen." },
+  { id: "home2", name: "Home", group: "Proposed: Home", good: "A start screen that is useful at a glance: continue where you left off, your courses with their progress, then collections and recent notes. ⌂ Home in the top bar brings you back.", bad: "One more screen between opening Glacier and writing, unless you click Continue." },
   { id: "zen", name: "Zen", group: "Now", good: "Only the paper, nothing in the way.", bad: "Everything else is one click away in a menu." },
   { id: "drawer", name: "Drawer", group: "Focus on writing", good: "The notes list slides in from the left edge and away again. The paper keeps the whole width.", bad: "The list is hidden until you pull it out." },
   { id: "path", name: "Course path", group: "Know where you are", good: "The notes of a collection as numbered steps, like lessons. Previous and Next lesson at the bottom.", bad: "Only helps for notes that are in a collection." },
@@ -149,7 +159,7 @@ const LAYOUTS = [
   { id: "bottom", name: "Bottom tabs", group: "Familiar app style", good: "Notes, Search, New and Settings at the bottom, like a phone app.", bad: "Feels more like an app than a notebook." },
   { id: "ntabs", name: "Note tabs", group: "Familiar app style", good: "Your open notes as tabs on top, like browser tabs. Switch with one click.", bad: "Tabs inside a sidebar next to browser tabs can be confusing." },
 ];
-const state = { layout: "course", courses: new Set(["Web Dev"]), done: new Set(["Box model"]), note: "Flexbox notes", drawer: false, home: true, tab: "notes", open: ["Flexbox notes", "Week 2 summary", "CSS Grid"], rail: "notes" };
+const state = { layout: "home2", lastNote: "Flexbox notes", courses: new Set(["Web Dev"]), done: new Set(["Box model"]), note: "Flexbox notes", drawer: false, home: true, tab: "notes", open: ["Flexbox notes", "Week 2 summary", "CSS Grid"], rail: "notes" };
 const $ = (id) => document.getElementById(id);
 const esc = (s) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
@@ -211,6 +221,30 @@ function draw() {
       f.innerHTML = bar(`<button class="btn" type="button" data-act="home">⌂ Home</button>`) + paper();
     }
   }
+  if (L === "home2") {
+    if (state.home) {
+      const last = state.lastNote ?? "Flexbox notes";
+      const lastColl = collectionOf(last);
+      const courses = [...state.courses].map((c) => {
+        const ls = COLLECTIONS[c];
+        const d = ls.filter((t) => state.done.has(t)).length;
+        const next = ls.find((t) => !state.done.has(t)) ?? ls[ls.length - 1];
+        return `<button class="card course-card" type="button" data-note="${esc(next)}"><b>${esc(c)}</b><small>${d} of ${ls.length} lessons done · next: ${esc(next)}</small><span class="progress"><i style="width:${(d / ls.length) * 100}%"></i></span></button>`;
+      }).join("");
+      const others = Object.keys(COLLECTIONS).filter((c) => !state.courses.has(c));
+      f.innerHTML = `<div class="bar"><button class="btn title" type="button">⌂ Home</button><button class="btn" type="button" data-say="Would open the notes list">☰ Notes</button><button class="btn" type="button" data-say="New note">+</button></div>
+        <div class="home">
+          <button class="continue" type="button" data-note="${esc(last)}"><small>Continue where you left off</small><b>${esc(last)}</b><span>${lastColl ? esc(lastColl) + " · " : ""}edited today</span><em>${esc(NOTES[last][1] ?? "")}</em></button>
+          ${courses ? `<div class="lab" style="padding:0">Your courses</div>${courses}` : ""}
+          <div class="lab" style="padding:0">Collections</div>
+          <div class="cards">${others.map((c) => `<button class="card" type="button" data-note="${esc(COLLECTIONS[c][0])}"><b>${esc(c)}</b><small>${COLLECTIONS[c].length} ${COLLECTIONS[c].length === 1 ? "note" : "notes"}</small></button>`).join("")}<button class="card" type="button" data-say="Would ask for the collection's name"><b>+ New</b><small>collection</small></button></div>
+          <div class="lab" style="padding:0">Recent</div>
+          <div class="list">${["Week 2 summary", "CSS Grid", "Colour basics"].map((t) => `<button class="li" type="button" data-note="${esc(t)}">${esc(t)}<small>${esc(collectionOf(t) ?? "")}</small></button>`).join("")}</div>
+        </div>`;
+    } else {
+      f.innerHTML = bar(`<button class="btn" type="button" data-act="home" title="Home">⌂</button>`) + paper();
+    }
+  }
   if (L === "split") f.innerHTML = bar(`<button class="btn" type="button" data-say="The list is always open above">☰</button>`) + `<div class="split-top">${noteList()}</div>` + paper();
   if (L === "index") {
     const colours = ["#f6d9a8", "#cfe6c4", "#cddff5", "#ecd0e6", "#f3c9c0"];
@@ -269,6 +303,7 @@ $("frame").addEventListener("click", (e) => {
   if (t.dataset.course) { state.courses.add(t.dataset.course); notice(`${t.dataset.course} is a course now. Its notes are its lessons, in this order.`); }
   if (t.dataset.note) {
     state.note = t.dataset.note;
+    state.lastNote = t.dataset.note;
     state.drawer = false;
     state.home = false;
     if (state.layout === "bottom") state.tab = "write";

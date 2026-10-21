@@ -163,7 +163,7 @@ this order.
    for learning: a collection is marked as a course, its notes are its
    lessons (numbered tabs on the paper's edge, progress on top, Previous,
    Mark as done and Next lesson at the bottom, the lesson's page one click
-   away). Course decided 2026-10-22 (#126); Home not grilled yet.
+   away). Course decided 2026-10-22 (#126); Home decided 2026-10-22 (#127): continue card, your courses with progress, collections, recent; shows where the empty page would, ⌂ in the bar.
 4. **Hidden games.** A secret command (for example `/takebreak`) starts a
    small pixel game in the note, with highscores. Each Theme has its own game
    that matches it. (Pixel art stays still or slow; no flicker.)
