@@ -2039,8 +2039,32 @@ code {
   overflow-wrap: anywhere;
 }
 
+/* The rail covers the whole paper, down to the round button, like the
+   prototype. The header and the rail stay put; only the picked part
+   scrolls. */
 .settings.is-rail {
-  overflow-x: hidden;
+  top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings.is-rail[hidden] {
+  display: none;
+}
+
+.settings.is-rail .settings-rail-wrap {
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.settings.is-rail .settings-rail {
+  overflow-y: auto;
+}
+
+.settings.is-rail .settings-parts {
+  overflow-y: auto;
 }
 
 .settings.is-rail .text-size-row input {
