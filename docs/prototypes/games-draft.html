@@ -372,85 +372,81 @@ GAMES.push((() => {
   };
 })());
 
-// Volcano: a rock rolls over the volcano's hills. Hold to press it down the
-// slopes for speed, let go on the way up to fly off the hilltop. Embers give
-// time before night.
+// Volcano: a small ship over the volcano shoots the stones it throws up, and
+// stays clear of the lava. Shooting a lava drop splashes it into three.
 GAMES.push((() => {
-  const c = theme({ sky: "#f2efed", far: "#dcd3cd", hill: "#8f8079", hill2: "#6f625d", lava: "#e0662a",
+  const c = theme({ sky: "#f2efed", sky2: "#e9dfd9", far: "#dcd3cd", cone: "#8f8079", cone2: "#7a6c66", lava: "#e0662a", glow: "#f2b33d",
     ink: "#2f2c2b", soft: "#6b625c", accent: "#d9581b", rule: "#dcd3cd", panel: "#faf8f6", highlight: "#f1e4dc" });
-  const ROCK = ["..RRRR..", ".RRRRDR.", "RRDRRRRR", "RRRRRRDR", "RDRRRRRR", "RRRRDRRR", ".RRRRRR.", "..RRRR.."];
-  const EMBER = [".Y.", "YFY", ".F."];
-  const pal = { R: "#5f5955", D: "#8d8682", Y: "#f2b33d", F: "#e0662a" };
-  const R = size(ROCK).w / 2, SX = 110, G = 1100;
-  const ground = (x) => H * 0.66 + Math.sin(x / 170) * 80 + Math.sin(x / 71 + 1.3) * 22;
-  const slope = (x) => (Math.cos(x / 170) * 80) / 170 + (Math.cos(x / 71 + 1.3) * 22) / 71;
+  const SHIP = ["....AA....", "...AWWA...", "...AWWA...", "..AAAAAA..", ".AAGAAGAA.", "AAAAAAAAAA", "AA.FF.FF.A", "...F...F.."];
+  const BIG = ["..SSSS..", ".SSSSDS.", "SSDSSSSS", "SSSSSSDS", "SDSSSSSS", ".SSSDSS.", "..SSSS.."];
+  const SMALL = [".SSS.", "SSDSS", "SSSSS", ".SDS."];
+  const LAVA = [".YY.", "YFFY", "FFFF", ".FF."];
+  const HEART = [".R.R.", "RRRRR", ".RRR.", "..R.."];
+  const pal = { A: "#4a5a7a", W: "#cfe3f5", G: "#f2b33d", F: "#e0662a", S: "#6f6964", D: "#8d8682", Y: "#f2b33d", R: "#d9581b" };
+  const VPX = 4; // ship, stones and lava are drawn a bit bigger
+  const sh = size(SHIP, VPX), big = size(BIG, VPX), small = size(SMALL, VPX), lv = size(LAVA, VPX);
   let st;
   return {
-    id: "volcano", title: "Rolling rock", paper: "Volcano", colors: c, swatch: "#f2efed",
-    icon: { rows: ROCK, pal },
-    how: ["Hold Space or the mouse on the way down for speed,", "let go on the way up to fly. Embers: 10 points and 2 seconds."],
-    init() { st = { x: 0, y: 0, vx: 240, vy: 0, air: false, time: 0, left: 45, embers: 0, list: [], next: 400, cam: 0, spin: 0 }; st.y = ground(0) - R; this.more(); },
-    more() { while (st.next < st.x + W * 2) { st.list.push({ x: st.next, y: ground(st.next) - R - rand(30, 140) }); st.next += rand(140, 260); } },
+    id: "volcano", title: "Stone blaster", paper: "Volcano", colors: c, swatch: "#f2efed",
+    icon: { rows: SHIP, pal },
+    how: ["← → or the mouse fly; hold Space or the mouse to shoot.", "Stones are points. Don't touch the lava, and don't shoot it: it splashes."],
+    init() { st = { x: W / 2 - sh.w / 2, time: 0, score: 0, lives: 3, shots: [], rocks: [], cool: 0, next: 0.8, hurt: 0, flicker: 0 }; },
     press() {},
-    update(dt) {
-      st.time += dt; st.left -= dt;
-      const hold = input.hold;
-      if (!st.air) {
-        // On the ground the rock follows the hill; its speed grows going down
-        // (more when held) and shrinks going up.
-        const s = slope(st.x);
-        st.vx += (G * s / (1 + s * s)) * (hold && s > 0 ? 2.2 : 1) * dt;
-        st.vx = Math.max(150, Math.min(650, st.vx));
-        const nx = st.x + st.vx * dt;
-        const vyFollow = (ground(nx) - ground(st.x)) / dt;
-        // Over a hilltop, not held: the hill falls away faster than the rock does, so it flies.
-        const vyBallistic = st.vy + G * dt;
-        if (!hold && vyFollow > vyBallistic && st.vy < 0) { st.air = true; }
-        else { st.vy = vyFollow; st.x = nx; st.y = ground(st.x) - R; }
-      }
-      if (st.air) {
-        st.vy += G * (hold ? 2.8 : 1) * dt;
-        st.x += st.vx * dt; st.y += st.vy * dt;
-        if (st.y >= ground(st.x) - R) {
-          // A landing along the slope keeps the speed; a hard one loses some.
-          const s = slope(st.x), along = st.vy / st.vx;
-          if (Math.abs(along - s) > 0.6) st.vx *= 0.8;
-          st.air = false; st.y = ground(st.x) - R; st.vy = st.vx * s;
-        }
-      }
-      st.spin += (st.vx * dt) / R;
-      const want = Math.min(0, st.y - H * 0.3);
-      st.cam += (want - st.cam) * Math.min(1, dt * 4);
-      for (const e of st.list) if (!e.got && Math.abs(e.x - st.x) < 20 && Math.abs(e.y - st.y) < 24) { e.got = true; st.embers += 1; st.left += 2; }
-      st.list = st.list.filter((e) => e.x > st.x - 200 && !e.got);
-      this.more();
-      return st.left <= 0 ? "Night falls" : null;
+    throwUp() {
+      // The volcano throws something up; it arcs over and falls on the ship's sky.
+      const lava = Math.random() < Math.min(0.45, 0.2 + st.time / 120);
+      const isBig = !lava && Math.random() < 0.45;
+      const art = lava ? LAVA : isBig ? BIG : SMALL;
+      st.rocks.push({ kind: lava ? "lava" : isBig ? "big" : "small", art, x: rand(20, W - 40), y: -30, vx: rand(-40, 40), vy: rand(70, 110) + st.time * 2.5, w: size(art, VPX).w, h: size(art, VPX).h });
     },
-    points() { return Math.floor(st.x / 40) + st.embers * 10; },
-    summary() { return `${Math.floor(st.x / 40)} m and ${st.embers} embers`; },
+    update(dt) {
+      st.time += dt;
+      const sp = 300, sy = H - 120;
+      if (input.pointerX !== null) st.x += Math.max(-sp * 1.4 * dt, Math.min(sp * 1.4 * dt, input.pointerX - sh.w / 2 - st.x));
+      if (input.left) st.x -= sp * dt; if (input.right) st.x += sp * dt;
+      st.x = Math.max(4, Math.min(W - sh.w - 4, st.x));
+      st.cool -= dt;
+      if (input.hold && st.cool <= 0) { st.shots.push({ x: st.x + sh.w / 2 - 2, y: sy - 6 }); st.cool = 0.22; }
+      for (const s of st.shots) s.y -= 520 * dt;
+      st.shots = st.shots.filter((s) => s.y > 50 && !s.used);
+      st.next -= dt;
+      if (st.next <= 0) { this.throwUp(); st.next = Math.max(0.35, 1.1 - st.time / 70); }
+      for (const r of st.rocks) { r.x += r.vx * dt; r.y += r.vy * dt; if (r.x < 4 || r.x + r.w > W - 4) r.vx *= -1; }
+      for (const s of st.shots) for (const r of st.rocks) {
+        if (r.gone || s.used || !hit({ x: s.x, y: s.y, w: 4, h: 10 }, r)) continue;
+        s.used = true;
+        if (r.kind === "lava") st.lastLava = true;
+        if (r.kind === "lava") {
+          r.gone = true;
+          for (const vx of [-90, 0, 90]) st.rocks.push({ kind: "lava", art: LAVA, x: r.x, y: r.y, vx, vy: r.vy * 0.9, w: lv.w, h: lv.h, splash: true });
+        } else if (r.kind === "big") {
+          r.gone = true; st.score += 10;
+          for (const vx of [-70, 70]) st.rocks.push({ kind: "small", art: SMALL, x: r.x + 6, y: r.y, vx, vy: r.vy, w: small.w, h: small.h });
+        } else { r.gone = true; st.score += 20; }
+      }
+      const me = { x: st.x + 4, y: sy + 4, w: sh.w - 8, h: sh.h - 6 };
+      for (const r of st.rocks) if (!r.gone && st.hurt <= 0 && hit(me, { x: r.x + 2, y: r.y + 2, w: r.w - 4, h: r.h - 4 })) { r.gone = true; st.lives -= 1; st.hurt = 1.2; }
+      st.hurt = Math.max(0, st.hurt - dt);
+      st.rocks = st.rocks.filter((r) => !r.gone && r.y < H);
+      return st.lives <= 0 ? "Shot down!" : null;
+    },
+    points() { return st.score; },
+    summary() { return `${Math.floor(st.time)} seconds in the air`; },
     draw() {
       ctx.fillStyle = c.sky; ctx.fillRect(0, 0, W, H);
-      ctx.save(); ctx.translate(0, -st.cam);
-      const fx = -((st.x * 0.2) % 400);
-      ctx.fillStyle = c.far; ctx.beginPath();
-      for (let k = -1; k < 3; k++) { const b = fx + k * 400; ctx.moveTo(b, H * 0.75); ctx.lineTo(b + 160, H * 0.32); ctx.lineTo(b + 220, H * 0.32); ctx.lineTo(b + 380, H * 0.75); }
-      ctx.fill();
-      ctx.fillStyle = c.lava; for (let k = -1; k < 3; k++) ctx.fillRect(fx + k * 400 + 166, H * 0.32, 48, 5);
-      ctx.fillStyle = c.hill; ctx.beginPath(); ctx.moveTo(0, H * 3);
-      for (let x = 0; x <= W; x += 4) ctx.lineTo(x, ground(st.x - SX + x));
-      ctx.lineTo(W, H * 3); ctx.fill();
-      ctx.fillStyle = c.hill2; for (let x = 0; x <= W; x += 4) ctx.fillRect(x, ground(st.x - SX + x), 4, 4);
-      for (const e of st.list) sprite(EMBER, e.x - st.x + SX - 4, e.y + Math.sin(st.time * 3 + e.x) * 3, pal);
-      let art = ROCK;
-      for (let i = 0; i < Math.floor(st.spin / (Math.PI / 2)) % 4; i++) art = art[0].split("").map((_, k) => art.map((row) => row[k]).reverse().join(""));
-      sprite(art, SX - R, st.y - R, pal);
-      ctx.restore();
-      const night = Math.max(0, Math.min(1, 1 - st.left / 12));
-      if (night > 0) { ctx.fillStyle = `rgba(47,44,43,${night * 0.4})`; ctx.fillRect(0, 0, W, H); }
-      chip(14, 14, null, `${Math.floor(st.x / 40)}`, "m", c);
-      chip(14, 50, { rows: EMBER, pal }, st.embers, "", c);
-      chip(W - 14, 14, null, this.points(), "points", c, true);
-      chip(W - 14, 50, null, `${Math.ceil(st.left)}`, "s left", c, true);
+      ctx.fillStyle = c.sky2; ctx.fillRect(0, H * 0.55, W, H * 0.45);
+      ctx.fillStyle = c.far; ctx.beginPath(); ctx.moveTo(-40, H); ctx.lineTo(W * 0.3, H * 0.62); ctx.lineTo(W * 0.7, H * 0.62); ctx.lineTo(W + 40, H); ctx.fill();
+      ctx.fillStyle = c.cone; ctx.beginPath(); ctx.moveTo(W * 0.05, H); ctx.lineTo(W * 0.4, H * 0.7); ctx.lineTo(W * 0.6, H * 0.7); ctx.lineTo(W * 0.95, H); ctx.fill();
+      ctx.fillStyle = c.lava; ctx.fillRect(W * 0.42, H * 0.7, W * 0.16, 6);
+      ctx.fillStyle = c.cone2; ctx.fillRect(W * 0.4, H * 0.7 + 6, W * 0.2, 4);
+      for (const s of st.shots) { ctx.fillStyle = c.glow; ctx.fillRect(s.x, s.y, 4, 10); }
+      for (const r of st.rocks) sprite(r.art, r.x, r.y, pal, VPX);
+      // After a hit the ship fades a little for a moment instead of flashing.
+      ctx.globalAlpha = st.hurt > 0 ? 0.5 : 1;
+      sprite(SHIP, st.x, H - 120, pal, VPX);
+      ctx.globalAlpha = 1;
+      chip(14, 14, null, this.points(), "points", c);
+      for (let i = 0; i < 3; i++) sprite(HEART, 16 + i * 20, 54, i < st.lives ? pal : { R: "#d6cdc6" });
     },
   };
 })());
