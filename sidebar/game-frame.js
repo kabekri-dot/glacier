@@ -163,13 +163,14 @@ export function createGameFrame({ canvas, notebook, views, onScoreKept = () => {
   }
 
   // The start, pause and end panels, in the game's paper colours.
-  function drawPanel({ icon, title, lines, top, footer }) {
+  function drawPanel({ icon, title, lines: given, top, footer }) {
     const c = view.colors;
     const { width, height } = frame;
     const middle = width / 2;
     const iconSize = icon ? spriteSize(view.icon.rows, 4) : null;
     const w = Math.min(304, width - 36);
-    const h = top ? 150 + top.length * 26 + 34 : 70 + lines.length * 22 + (iconSize ? iconSize.h + 8 : 0);
+    const lines = given.flatMap((line) => fitLine(line, w - 32));
+    const h = top ? 128 + lines.length * 22 + top.length * 26 + 34 : 70 + lines.length * 22 + (iconSize ? iconSize.h + 8 : 0);
     const x = (width - w) / 2;
     const y = Math.max(70, (height - h) / 2 - 40);
     pixelBox(x, y, w, h, c.panel, c.panelEdge, 4);
@@ -197,6 +198,23 @@ export function createGameFrame({ canvas, notebook, views, onScoreKept = () => {
       text(row.date, x + w - 28, rowTop + 16, 11, c.panelSoft, "right", 500);
     });
     text(footer, middle, y + h - 14, 11, c.panelSoft, "center", 500);
+  }
+
+  // A line too wide for the panel breaks between words, so no word runs over
+  // the frame on a narrow sidebar.
+  function fitLine(line, room) {
+    ctx.font = "600 13px Montserrat, system-ui, sans-serif";
+    const out = [];
+    let current = "";
+    for (const word of line.split(" ")) {
+      const next = current ? `${current} ${word}` : word;
+      if (current && ctx.measureText(next).width > room) {
+        out.push(current);
+        current = word;
+      } else current = next;
+    }
+    out.push(current);
+    return out;
   }
 
   // --- Keys and pointer --------------------------------------------------------
