@@ -46,6 +46,7 @@ import { createNoteDetailsView } from "./note-details-view.js";
 import { createLessonView } from "./lesson-view.js";
 import { createHomeView } from "./home-view.js";
 import { createSketchView } from "./sketch-view.js";
+import { createPenguinBreak } from "./penguin-view.js";
 import { createSecrets } from "./secret-view.js";
 import { pageCard, panelsCard, startPrompt } from "./cards.js";
 import { shortcutNotice } from "../src/shortcuts-panel.mjs";
@@ -298,6 +299,20 @@ async function start() {
     afterDraw: (locked) => {
       if (!locked) findInNote.refresh();
     },
+    onBreak: () => {
+      closeOverlays();
+      penguinBreak.open();
+    },
+  });
+
+  // The hidden game (#128): `/break` alone on a line and Enter. Each paper
+  // will get its own; until then every paper starts Penguin break. Esc puts
+  // the caret back where it was.
+  const penguinBreak = createPenguinBreak({
+    canvas: document.querySelector(".game"),
+    notebook,
+    onScoreKept: () => autoSync.changed(),
+    onClose: () => paper.render(),
   });
 
   // The Sketch command in the + and / menu: a new, empty sketch as wide as

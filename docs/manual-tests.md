@@ -11,6 +11,22 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### Hidden game: /break starts Penguin break, with your top 5 (#128)
+
+- [ ] Open a note, click an empty line, type `/break` and press Enter. A game covers the whole sidebar: a pixel penguin on the ice, a card "Penguin break" with how to play. No `/` menu showed while you typed.
+- [ ] Type `/` on an empty line: the menu has no break game. The Shortcuts panel and Help don't mention it either.
+- [ ] Press Space: the penguin slides and the world moves left, smooth and calm, nothing flashing. Press Space again: it jumps. Hold Space: it jumps higher and wider. ↑, a click and a tap jump too.
+- [ ] Watch the obstacles: single cracks of different widths, small and tall ice blocks, a crack then a block, two cracks close together. Fish float single or in an arc of three over a crack; now and then a golden one.
+- [ ] Top left shows metres with "m" and the fish caught under it; top right the points with the word "points". A fish adds 10, a golden fish 50.
+- [ ] Press P: "Paused" and everything stands still. P or Space goes on. Switch to another tab and back, or click another window: the game is paused.
+- [ ] Fall into a crack: "Splash!". Run into a block: "Bonk!". A round better than all before says "New best!". The card shows metres, fish, golden fish and points, then "Your top 5" with dates and your round in blue, and "Space: again · Esc: back to your note". Space starts a new round.
+- [ ] Slide past 250 m: the sky turns slowly to evening, and past 600 m to night; the score text turns light.
+- [ ] Press Esc at any time: the note is back with the caret on the line where you typed `/break`, which is empty again. Ctrl Z changes nothing.
+- [ ] Type `see /break` or `/breakfast` and press Enter: just a new line, no game.
+- [ ] With a Notes Home: play a round in Chrome and one in Firefox, sync both (Sync now) and finish another round in each: both show the same top 5, the best of both. The Notes Home has `games/highscores.json` and no new note or second version.
+- [ ] Download all notes: the zip has `games/highscores.json`. In a fresh profile, Restore notes from a download, then play a round: the top 5 holds the restored scores.
+- [ ] Break it: make the sidebar narrow and wide while playing; play offline, then go online and sync: the scores arrive.
+
 ### Home layout: continue, your courses, collections, recent (#127)
 
 - [ ] Reload the extension first. Settings, How your notes look, Layout: a third choice, Home (A start screen with where you left off, your courses and your collections.). Pick it while the empty page shows: the part's line ends in ", Home layout" and Home takes the empty page's place at once; pick Zen again and the empty page is back.
@@ -961,7 +977,7 @@ You need a private GitHub repo for your notes and a fine grained token for it (G
 - [ ] Open ⋯: "Download" is there. Open settings (the round glacier button), then Back up and restore: Download all notes, Download the archive, the Collections list and Restore notes from a download. Hovering each shows what it does.
 - [ ] Download, Markdown saves one `.md` file named after the note's title, with its text. A note with a sketch comes as a zip with its svg files.
 - [ ] Click a Collection under Collections: the zip has only that Collection's notes.
-- [ ] "Download all notes" downloads a zip of every note, as before.
+- [ ] "Download all notes" downloads a zip of every note, as before, with `games/highscores.json` once a hidden game was played (#128).
 - [ ] "Restore notes from a download" works as before (see section 2).
 
 ### Rename with the pen after the title

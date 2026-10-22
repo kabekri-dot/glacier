@@ -4,7 +4,7 @@
 // changed on both sides is never overwritten but kept as a Conflict Copy.
 // The remote is plugged in from outside (ADR 0003).
 //
-//   createNotesSync({ storage, sealed, uniqueTitle, mergeCollectionCases, numberTitleCases })
+//   createNotesSync({ storage, sealed, highscores, uniqueTitle, mergeCollectionCases, numberTitleCases })
 //   .firstSync(remote, onProgress)   .sync(remote)
 //   .switchNotesHome(place, remote, onProgress)   .notesHome()
 //   .lastSynced()   .conflictCopies()   .conflictCopyPairs()
@@ -13,7 +13,7 @@ import { fewAtATime } from "./few-at-a-time.mjs";
 import { isNoteFile, isNotebookFile, isSketchFile, nextSketchNumber, noteFiles, noteFromFile, noteToFile, sameNote, sketchEmbed } from "./note-file.mjs";
 import { sketchFilePath, sketchFromSvg, sketchToSvg } from "./sketch-file.mjs";
 
-export function createNotesSync({ storage, sealed, uniqueTitle, mergeCollectionCases, numberTitleCases }) {
+export function createNotesSync({ storage, sealed, highscores, uniqueTitle, mergeCollectionCases, numberTitleCases }) {
   // What each Notes Repo file held when this browser last synced it, keyed by
   // path: `{ title, version, text }`. Comparing a note's file with it tells
   // which side changed since (#15).
@@ -164,9 +164,11 @@ export function createNotesSync({ storage, sealed, uniqueTitle, mergeCollectionC
 
   // Pull what changed in the Notes Repo since this browser last synced it.
   // Changed files are all downloaded before any note changes, so a lost
-  // connection while pulling leaves the Notebook as it was.
+  // connection while pulling leaves the Notebook as it was. Returns every
+  // file listed there, for the highscores.
   async function pull(remote, synced, result) {
-    const listed = (await remote.listFiles()).filter(({ path }) => isNotebookFile(path));
+    const listing = await remote.listFiles();
+    const listed = listing.filter(({ path }) => isNotebookFile(path));
     const changed = [];
     const toRead = listed.filter(({ path, version }) => synced[path]?.version !== version);
     await fewAtATime(toRead, async ({ path }, at) => {
@@ -188,6 +190,7 @@ export function createNotesSync({ storage, sealed, uniqueTitle, mergeCollectionC
     storage.putMeta(SYNCED, { ...synced });
     mergeCollectionCases();
     numberClashes(synced);
+    return listing;
   }
 
   // Send every note whose file differs from what was last synced, and delete
@@ -302,6 +305,7 @@ export function createNotesSync({ storage, sealed, uniqueTitle, mergeCollectionC
       pullSketch(path, version, text, synced, { pulled: [], conflicts: 0 });
     }
     storage.putMeta(SYNCED, synced);
+    highscores.forgetSynced();
     storage.putMeta(LAST_SYNCED, new Date().toISOString());
     mergeCollectionCases();
     numberClashes(synced);
@@ -344,7 +348,8 @@ export function createNotesSync({ storage, sealed, uniqueTitle, mergeCollectionC
   }
 
   // Sync (#15): pull what changed in the Notes Repo since this browser
-  // last synced, then push what changed here as one commit (#17).
+  // last synced, then push what changed here as one commit (#17), then
+  // merge the top 5 of the hidden games with the Notes Home's (#128).
   // `pulled` lists the notes that came in, changed or went, so the screen
   // can redraw them. With the notes living only in this browser there is
   // nothing to sync.
@@ -354,8 +359,9 @@ export function createNotesSync({ storage, sealed, uniqueTitle, mergeCollectionC
     await remote.connect();
     const synced = { ...storage.getMeta(SYNCED) };
     const result = { pulled: [], pushed: 0, conflicts: 0 };
-    await pull(remote, synced, result);
+    const listing = await pull(remote, synced, result);
     await push(remote, synced, result);
+    await highscores.sync(remote, listing);
     storage.putMeta(LAST_SYNCED, new Date().toISOString());
     await sealed.reopen(result.pulled);
     return result;

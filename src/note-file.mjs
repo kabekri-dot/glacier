@@ -195,8 +195,8 @@ export function sameNote(a, b, { ignoreArchived = false } = {}) {
 
 // Note files for these notes, with their sketch files, zipped. Two titles
 // that only differ in characters a filename can't hold get a number, and their
-// frontmatter keeps the title.
-export function zipNotes(notes) {
+// frontmatter keeps the title. `extra` files (the games' top 5) go along.
+export function zipNotes(notes, extra = []) {
   const taken = new Set();
   const files = [];
   for (const note of notes) {
@@ -208,6 +208,7 @@ export function zipNotes(notes) {
     taken.add(fileFor(note, stem).path.toLowerCase());
     files.push(...noteFiles(note, stem).map(({ path, text }) => ({ path, text })));
   }
+  files.push(...extra);
   files.sort((a, b) => a.path.localeCompare(b.path));
   return zipFiles(files);
 }

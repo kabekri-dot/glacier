@@ -5,7 +5,7 @@
 // caret and draws the result.
 //
 //   createFocusedLine({ editor, render, drawMenu, dismissMenu, selectWholeNote,
-//                       focusedEl, hint, onTyped, pickSketch })
+//                       focusedEl, hint, onTyped, pickSketch, onBreak })
 //     editor            the Editor session
 //     render()          draw the paper again
 //     drawMenu()        draw the `/` menu for the session's menu state
@@ -15,6 +15,7 @@
 //     hint()            the quiet text on an empty line
 //     onTyped()         after a key typed into the line
 //     pickSketch(yes)   whether the next redraw shows a sketch as picked
+//     onBreak()         `/break` and Enter: start the hidden game (#128)
 //   returns build(range) -> { el, start }: the element for a block's line range
 import {
   editorTextToBody,
@@ -30,7 +31,7 @@ import { caretAtPoint, textOffset, selectionIn, placeSelection, placeCaret } fro
 // is kept free for search.
 const FORMAT_KEYS = { b: "bold", i: "italic", e: "code" };
 
-export function createFocusedLine({ editor, render, drawMenu, dismissMenu, selectWholeNote, focusedEl, hint, onTyped, pickSketch }) {
+export function createFocusedLine({ editor, render, drawMenu, dismissMenu, selectWholeNote, focusedEl, hint, onTyped, pickSketch, onBreak }) {
   // One part of the focused line: a faded mark, or text in its inline style
   // (#38) — bold, italic, code, a Link or a web link.
   function styledPart(part) {
@@ -234,6 +235,14 @@ export function createFocusedLine({ editor, render, drawMenu, dismissMenu, selec
       }
       const value = el.textContent;
       const selection = selectionIn(el);
+      // `/break` alone on its line starts the hidden game (#128), before the
+      // `/` menu could take the Enter.
+      if (event.key === "Enter" && !event.shiftKey && !event.isComposing && editor.startsBreak(value, selection.start)) {
+        event.preventDefault();
+        render();
+        onBreak();
+        return;
+      }
       // While the menu is open the session owns ↑/↓/Enter/Tab/Esc (#32); it
       // tells us what it did so we can redraw the menu or re-render the note.
       const action = editor.menuKey(event.key, {

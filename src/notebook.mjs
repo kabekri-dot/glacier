@@ -10,6 +10,8 @@ import { sketchFilePath, sketchFromSvg, sketchInLine } from "./sketch-file.mjs";
 import { createSealedNotes } from "./sealed-notes.mjs";
 import { createNotesSync } from "./notes-sync.mjs";
 import { createCourses } from "./courses.mjs";
+import { createHighscores } from "./highscores-sync.mjs";
+import { HIGHSCORES_PATH, readHighscores } from "./highscores.mjs";
 import { nextSketchNumber, noteFromFile, noteToFile, safeName, sameCollection, sameNote, sketchEmbed, sketchNumbers, withTitle, zipNotes } from "./note-file.mjs";
 
 // The note file format, as the Notebook has always offered it.
@@ -156,6 +158,8 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
   const { reveal, readable, readableNotes, store } = sealed;
   // Courses and their lessons (#126), in src/courses.mjs.
   const courses = createCourses({ storage });
+  // The hidden games' top 5 (#128), in src/highscores-sync.mjs.
+  const highscores = createHighscores({ storage });
 
   // The text around the earliest match of any word, cut to a short stretch on
   // each side, as pieces in order: `{ text, match }`, with `match` true for
@@ -334,7 +338,7 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
   mergeCollectionCases();
   numberTitleCases();
 
-  const notesSync = createNotesSync({ storage, sealed, uniqueTitle, mergeCollectionCases, numberTitleCases });
+  const notesSync = createNotesSync({ storage, sealed, highscores, uniqueTitle, mergeCollectionCases, numberTitleCases });
 
   return {
     // Every Note currently in the Notebook, archived ones too.
@@ -860,10 +864,16 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
     settled: sealed.settled,
 
     // Export (#13): the whole Notebook as a zip of note files, ready to open
-    // as an Obsidian vault.
+    // as an Obsidian vault, with the hidden games' top 5 (#128).
     exportZip() {
-      return zipNotes(storage.allNotes());
+      const scores = highscores.file();
+      return zipNotes(storage.allNotes(), scores ? [scores] : []);
     },
+
+    // The hidden games' top 5 (#128): a game's best five as `{ score, date }`,
+    // and a round's points kept, returning `{ top, best }`.
+    topScores: highscores.top,
+    keepScore: highscores.keep,
 
     // The same zip with only one Collection's notes; `archived` gives the
     // ones in the Archive instead, for its Download icon.
@@ -915,7 +925,8 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
     // doesn't have is added; one it has with the same text is left alone; one
     // whose text differs is never overwritten (ADR 0004): the imported version
     // is added next to it under a free title. A note's sketch files come
-    // back into it (#101). Other files (an `.obsidian` folder, pictures) are
+    // back into it (#101), and the games' top 5 merges with this browser's
+    // (#128). Other files (an `.obsidian` folder, pictures) are
     // skipped. A broken zip is refused before anything changes.
     async importZip(bytes) {
       const files = await unzipFiles(bytes);
@@ -940,6 +951,8 @@ export function createNotebook({ storage, onSaveError = () => {} }) {
           landed.set(path, copy.title);
         }
       }
+      const scores = files.find(({ path }) => path === HIGHSCORES_PATH);
+      if (scores) highscores.merge(readHighscores(scores.text));
       for (const { path, text } of files.filter(({ path }) => /\.svg$/i.test(path))) {
         const where = sketchFilePath(path);
         const note = where && storage.getNote(landed.get(where.notePath));

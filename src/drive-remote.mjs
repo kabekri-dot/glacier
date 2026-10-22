@@ -44,7 +44,9 @@ function quoted(text) {
 }
 
 function mimeTypeOf(path) {
-  return path.endsWith(".svg") ? "image/svg+xml" : "text/markdown";
+  if (path.endsWith(".svg")) return "image/svg+xml";
+  if (path.endsWith(".json")) return "application/json";
+  return "text/markdown";
 }
 
 export function driveRemote({ getToken, fetch = globalThis.fetch }) {

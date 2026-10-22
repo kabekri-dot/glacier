@@ -646,6 +646,26 @@ export function createEditorSession({
       notifyChange();
     },
 
+    // Enter on a line holding only `/break` starts the hidden game (#128).
+    // The `/break` goes again, along with the undo steps its typing left, so
+    // the note is exactly as it was. Returns false for any other line.
+    startsBreak(value, caret) {
+      const here = lineColFromOffset(value, caret);
+      if (inCodeBlock() || lines[here.line]?.trim() !== "/break") return false;
+      lines[here.line] = "";
+      focus = { line: here.line, col: 0 };
+      menu = null;
+      plusOrigin = null;
+      endTypingRun();
+      // Every step since the note last looked like this was typing `/break`.
+      const now = linesToText(lines);
+      const before = undoSteps.findLastIndex((saved) => linesToText(saved.lines) === now);
+      if (before !== -1) undoSteps.length = before;
+      relayout();
+      notifyChange();
+      return true;
+    },
+
     // Shift+Enter: a new line in the same note. Inside bold, italic or code
     // (#45) the marks are closed and reopened on the new line; elsewhere the
     // line is just split, with no list continuation (#78). Returns false in a
