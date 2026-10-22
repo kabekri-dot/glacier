@@ -188,6 +188,8 @@ this order.
    - Play-tested: faster, mixed obstacles (cracks, pixel-art ice blocks,
      both, double cracks), fish arcs and golden fish, hold to jump higher,
      the sky turns to evening and night, metres with their unit (#128).
+   - Play-tested 2026-10-22, all eleven approved (prototype docs/prototypes/games-draft.html):
+     #129 shared frame and score look, #130-#139 one ticket per game.
 5. **Support Glacier.** Pay once, weekly or monthly, like "buy me a coffee";
    maybe it unlocks two extra Themes, but it doesn't have to.
 6. **Codes for influencers.** A small creator gets a code that unlocks two
