@@ -11,16 +11,27 @@ Everything in Glacier that only a person can check, by clicking and typing in th
 
 ## 1. Still to test
 
+### One game per paper in a shared frame, with the new score look (#129)
+
+- [ ] On the Glacier paper, type `/break` on an empty line and press Enter: Penguin break starts as before, now with a panel in a stepped pixel frame in the paper's blues, the pixel penguin at its top, "Penguin break", how to play and "Space or a click to start."
+- [ ] Switch to another paper in Settings (try Chalkboard and Forest), then `/break`: Penguin break starts too, as their own games aren't built yet. Esc puts you back in the note on that paper.
+- [ ] The score sits in small pixel framed boxes in the paper's colours: "12 m" top left, a pixel fish with the fish caught under it, and "340 points" top right. They stay readable at night, past 600 m.
+- [ ] Press P: the "Paused" panel has the same pixel frame, with "P or Space to go on." P or Space goes on. Switching tab or window pauses too.
+- [ ] End a round: the panel says "Splash!", "Bonk!" or "New best!", the round in a few words ("123 m and 2 fish") and its points, then "Your top 5" with gold, silver and bronze pixel medals for places 1 to 3, numbers 4 and 5, the dates, and your new score on a highlighted row. A round that doesn't make the top 5 highlights nothing.
+- [ ] Get the same score twice: the newer one is the highlighted row, under the older one.
+- [ ] Space or a click after the end starts a fresh round straight away. Esc at any time goes back to your note with the caret where you typed `/break`.
+- [ ] Break it: make the sidebar narrow while a panel shows; the panel and boxes still fit and nothing is cut off.
+
 ### Hidden game: /break starts Penguin break, with your top 5 (#128)
 
-- [ ] Open a note, click an empty line, type `/break` and press Enter. A game covers the whole sidebar: a pixel penguin on the ice, a card "Penguin break" with how to play. No `/` menu showed while you typed.
+- [ ] Open a note, click an empty line, type `/break` and press Enter. A game covers the whole sidebar: a pixel penguin on the ice, a pixel framed panel "Penguin break" with how to play. No `/` menu showed while you typed.
 - [ ] Type `/` on an empty line: the menu has no break game. The Shortcuts panel and Help don't mention it either.
 - [ ] Press Space: the penguin slides and the world moves left, smooth and calm, nothing flashing. Press Space again: it jumps. Hold Space: it jumps higher and wider. ↑, a click and a tap jump too.
 - [ ] Watch the obstacles: single cracks of different widths, small and tall ice blocks, a crack then a block, two cracks close together. Fish float single or in an arc of three over a crack; now and then a golden one.
-- [ ] Top left shows metres with "m" and the fish caught under it; top right the points with the word "points". A fish adds 10, a golden fish 50.
+- [ ] Top left shows a small box with metres and "m" and one with a pixel fish and the fish caught under it; top right a box with the points and the word "points". A fish adds 10, a golden fish 50.
 - [ ] Press P: "Paused" and everything stands still. P or Space goes on. Switch to another tab and back, or click another window: the game is paused.
-- [ ] Fall into a crack: "Splash!". Run into a block: "Bonk!". A round better than all before says "New best!". The card shows metres, fish, golden fish and points, then "Your top 5" with dates and your round in blue, and "Space: again · Esc: back to your note". Space starts a new round.
-- [ ] Slide past 250 m: the sky turns slowly to evening, and past 600 m to night; the score text turns light.
+- [ ] Fall into a crack: "Splash!". Run into a block: "Bonk!". A round better than all before says "New best!". The panel shows metres, fish, golden fish and points, then "Your top 5" with medals for places 1 to 3, dates and your round highlighted, and "Space: again · Esc: back to your note". Space starts a new round.
+- [ ] Slide past 250 m: the sky turns slowly to evening, and past 600 m to night; the score boxes stay readable.
 - [ ] Press Esc at any time: the note is back with the caret on the line where you typed `/break`, which is empty again. Ctrl Z changes nothing.
 - [ ] Type `see /break` or `/breakfast` and press Enter: just a new line, no game.
 - [ ] With a Notes Home: play a round in Chrome and one in Firefox, sync both (Sync now) and finish another round in each: both show the same top 5, the best of both. The Notes Home has `games/highscores.json` and no new note or second version.

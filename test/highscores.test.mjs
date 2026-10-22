@@ -52,6 +52,12 @@ test("each game merges on its own", () => {
   assert.deepEqual(merged, { penguin: [at(20), at(10)], squirrel: [at(5)] });
 });
 
+test("keeping a score says where it went in the top 5, or that it didn't make it", () => {
+  assert.equal(keepScore([at(90), at(40)], 60, "2026-10-23").place, 1);
+  assert.equal(keepScore([at(90), at(40)], 40, "2026-10-23").place, 2);
+  assert.equal(keepScore([at(50), at(40), at(30), at(20), at(10)], 10, "2026-10-23").place, -1);
+});
+
 test("a broken highscores file counts as empty", () => {
   assert.deepEqual(readHighscores("not json"), {});
   assert.deepEqual(readHighscores('{"penguin": "nope", "squirrel": [{"score": "x"}]}'), { penguin: [], squirrel: [] });

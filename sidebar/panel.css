@@ -3957,7 +3957,7 @@ html[data-course="lesson"] .pushpin {
   opacity: 0.7;
 }
 
-/* The hidden game (#128): a canvas over the whole sidebar, above everything. */
+/* The hidden games (#128, #129): a canvas over the whole sidebar, above everything. */
 .game {
   position: fixed;
   inset: 0;

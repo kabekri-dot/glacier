@@ -13,11 +13,13 @@ function byScore(a, b) {
 }
 
 // The list with a new score on `date` (YYYY-MM-DD) in its place, cut to the
-// best five. `best` says it beat every score before it.
+// best five. `best` says it beat every score before it; `place` is where it
+// went in the top 5 (0 for first), or -1 when it didn't make it (#129).
 export function keepScore(list, score, date) {
   const best = list.every((entry) => score > entry.score);
-  const top = [...list, { score, date }].sort(byScore).slice(0, KEPT);
-  return { top, best };
+  const entry = { score, date };
+  const top = [...list, entry].sort(byScore).slice(0, KEPT);
+  return { top, best, place: top.indexOf(entry) };
 }
 
 // The best five of two lists. A score both already share (from an earlier

@@ -2,18 +2,19 @@
 // `/break` on an empty line. A penguin slides over the ice while the world
 // moves left; it jumps cracks and ice blocks and catches fish. This module is
 // the game itself, with no drawing: the world, a seeded random for the
-// obstacles, collisions and scoring. sidebar/penguin-view.js draws it on a
-// canvas and forwards the keys. Numbers and wording follow the prototype the
-// user played (docs/prototypes/penguin.html).
+// obstacles, collisions and scoring. It plugs into the shared frame
+// (src/game-frame.mjs, #129), which owns ready, pause and the end;
+// sidebar/penguin-view.js draws the world. Numbers and wording follow the
+// prototype the user played (docs/prototypes/penguin.html).
 //
-//   newGame({ width, height, random })   a game waiting for its first jump
+//   newGame({ width, height, random })   a fresh round on the ice
 //   press(game) / release(game)          Space, ↑, a click or a tap, and letting go
-//   togglePause(game) / pause(game)      P, and leaving the tab or window
-//   step(game, seconds)                  move the world on by that much time
+//   step(game, seconds)                  move the world on; returns what ended it
 //   resize(game, width, height)          the sidebar changed size
 //   metres(game) / points(game)          the score so far
+//   summary(game) / scoreBoxes(game)     the round in words, the boxes at the top
 //   skyAt(metres)                        the sky's colours at that distance
-//   resultLines(game, best)              what the end of a round says
+//   PENGUIN_BREAK                        all of it, for the frame
 
 // Pixel art, one string per row. K body, W white, E eye, O beak and feet,
 // F fish, G golden fish. Ice blocks: B edge, L face, H highlight, D a crack.
@@ -45,24 +46,10 @@ const GOLDEN_POINTS = 50;
 // The ice line sits at this share of the height.
 const GROUND = 0.68;
 
-// The same seed always gives the same numbers, so the obstacle mix can be
-// tested; the game itself is seeded from the clock.
-export function seededRandom(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-// Everything a fresh round starts with, at this size.
-function freshRound(width, height) {
+export function newGame({ width, height, random = Math.random }) {
   const ground = Math.round(height * GROUND);
   return {
-    mode: "ready",
+    random,
     width,
     height,
     ground,
@@ -85,41 +72,17 @@ function freshRound(width, height) {
   };
 }
 
-export function newGame({ width, height, random = Math.random }) {
-  return { ...freshRound(width, height), random };
-}
-
 const floorY = (game) => game.ground - PENGUIN_SIZE.h;
 const standing = (game) => game.y >= floorY(game) - 0.5 && game.vy === 0;
 
-// Space, ↑, a click or a tap: the first one starts, one after the end starts
-// again, one while paused goes on. Otherwise it jumps, from the ice only.
+// Space, ↑, a click or a tap: a jump, from the ice only.
 export function press(game) {
   game.holding = true;
-  if (game.mode === "over") {
-    Object.assign(game, freshRound(game.width, game.height), { mode: "play", holding: true });
-    return;
-  }
-  if (game.mode === "pause") {
-    game.mode = "play";
-    return;
-  }
-  if (game.mode === "ready") game.mode = "play";
   if (standing(game)) game.vy = -JUMP;
 }
 
 export function release(game) {
   game.holding = false;
-}
-
-export function togglePause(game) {
-  if (game.mode === "play") game.mode = "pause";
-  else if (game.mode === "pause") game.mode = "play";
-}
-
-export function pause(game) {
-  game.holding = false;
-  if (game.mode === "play") game.mode = "pause";
 }
 
 // The sidebar got wider or taller: the ice moves with it, and so does
@@ -197,9 +160,9 @@ export function fishY(game, fish) {
 }
 
 // Move the world on by `dt` seconds. Everything goes by time, not by frames,
-// so it moves the same at any frame rate.
+// so it moves the same at any frame rate. Returns what ended the round
+// ("Splash!" or "Bonk!"), or null while it goes on.
 export function step(game, dt) {
-  if (game.mode !== "play") return;
   game.time += dt;
   game.speed = Math.min(TOP_SPEED, START_SPEED + game.time * SPEED_UP);
   const move = game.speed * dt;
@@ -237,12 +200,13 @@ export function step(game, dt) {
       else game.fish += 1;
     }
   }
+  return null;
 }
 
 function end(game, how) {
-  game.mode = "over";
   game.how = how;
   game.holding = false;
+  return how;
 }
 
 export function metres(game) {
@@ -282,13 +246,31 @@ export function skyAt(m) {
   };
 }
 
-// The words on the cards over the game.
-export const READY_LINES = ["Penguin break", "Space or a click to jump.", "Hold it to jump higher and wider.", "P pauses, Esc goes back to your note."];
-export const PAUSED_LINES = ["Paused", "P or Space to go on.", "Esc goes back to your note."];
-export const AGAIN_LINE = "Space: again · Esc: back to your note";
-
-// The end of a round: what happened (or "New best!"), then the round in one line.
-export function resultLines(game, best) {
-  const golden = game.golden ? `, ${game.golden} golden` : "";
-  return [best ? "New best!" : game.how, `${metres(game)} m, ${game.fish} fish${golden}: ${points(game)} points`];
+// The round in a few words, for the end panel.
+export function summary(game) {
+  const golden = game.golden ? ` and ${game.golden} golden` : "";
+  return golden ? `${metres(game)} m, ${game.fish} fish${golden}` : `${metres(game)} m and ${game.fish} fish`;
 }
+
+// The small boxes at the top: metres and fish on the left, points on the right.
+export function scoreBoxes(game) {
+  return [
+    { value: `${metres(game)}`, word: "m" },
+    { icon: "fish", value: `${game.fish}` },
+    { value: `${points(game)}`, word: "points", right: true },
+  ];
+}
+
+export const PENGUIN_BREAK = {
+  id: "penguin",
+  title: "Penguin break",
+  how: ["Space or a click to jump, hold to jump higher.", "Fish are 10 points, golden ones 50."],
+  newGame,
+  press,
+  release,
+  step,
+  resize,
+  points,
+  summary,
+  scoreBoxes,
+};
