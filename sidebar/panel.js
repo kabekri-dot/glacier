@@ -46,7 +46,8 @@ import { createNoteDetailsView } from "./note-details-view.js";
 import { createLessonView } from "./lesson-view.js";
 import { createHomeView } from "./home-view.js";
 import { createSketchView } from "./sketch-view.js";
-import { createPenguinBreak } from "./penguin-view.js";
+import { createGameFrame } from "./game-frame.js";
+import { penguinView } from "./penguin-view.js";
 import { createSecrets } from "./secret-view.js";
 import { pageCard, panelsCard, startPrompt } from "./cards.js";
 import { shortcutNotice } from "../src/shortcuts-panel.mjs";
@@ -301,15 +302,16 @@ async function start() {
     },
     onBreak: () => {
       closeOverlays();
-      penguinBreak.open();
+      games.open(look.paper);
     },
   });
 
-  // The hidden game (#128): `/break` alone on a line and Enter. Each paper
-  // will get its own; until then every paper starts Penguin break. Esc puts
-  // the caret back where it was.
-  const penguinBreak = createPenguinBreak({
+  // The hidden games (#128, #129): `/break` alone on a line and Enter starts
+  // the game of the paper in use, or Penguin break while that paper's game
+  // isn't built. Esc puts the caret back where it was.
+  const games = createGameFrame({
     canvas: document.querySelector(".game"),
+    views: { penguin: penguinView },
     notebook,
     onScoreKept: () => autoSync.changed(),
     onClose: () => paper.render(),

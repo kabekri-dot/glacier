@@ -2,32 +2,29 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  PENGUIN_BREAK,
   newGame,
   press,
   release,
-  togglePause,
-  pause,
   step,
   spawn,
   metres,
   points,
+  summary,
+  scoreBoxes,
   skyAt,
-  seededRandom,
-  resultLines,
   PENGUIN_SIZE,
   PX_PER_M,
 } from "../src/penguin-game.mjs";
+import { seededRandom } from "../src/game-frame.mjs";
 
 // Penguin break (#128), the Glacier paper's hidden game: the world, its
-// obstacles, collisions and scoring, without any drawing.
+// obstacles, collisions and scoring, without any drawing. Ready, pause and
+// the end's panel are the shared frame's (#129, test/game-frame.test.mjs).
 
-// A game already sliding on the ice (the first press jumps too, so that
-// jump is taken back), with nothing coming for a long while.
+// A game sliding on the ice, with nothing coming for a long while.
 function sliding({ seed = 1 } = {}) {
   const game = newGame({ width: 380, height: 600, random: seededRandom(seed) });
-  press(game);
-  release(game);
-  game.vy = 0;
   game.next = 1e9;
   return game;
 }
@@ -37,13 +34,12 @@ function run(game, seconds) {
   for (let t = 0; t < seconds * 60; t += 1) step(game, 1 / 60);
 }
 
-test("the game waits for the first jump before it slides", () => {
-  const game = newGame({ width: 380, height: 600, random: seededRandom(1) });
-  run(game, 1);
-  assert.equal(game.mode, "ready");
-  assert.equal(metres(game), 0);
-  press(game);
-  assert.equal(game.mode, "play");
+test("Penguin break plugs into the frame as the penguin game", () => {
+  assert.equal(PENGUIN_BREAK.id, "penguin");
+  assert.equal(PENGUIN_BREAK.title, "Penguin break");
+  for (const name of ["newGame", "press", "release", "step", "resize", "points", "summary", "scoreBoxes"]) {
+    assert.equal(typeof PENGUIN_BREAK[name], "function", name);
+  }
 });
 
 test("the speed starts at 170 and rises by 4 every second, up to 360", () => {
@@ -93,7 +89,7 @@ test("a jump lands back on the ice", () => {
   run(game, 2);
   assert.equal(game.y, floor);
   assert.equal(game.vy, 0);
-  assert.equal(game.mode, "play");
+  assert.equal(game.how, "");
 });
 
 test("holding the jump goes higher", () => {
@@ -124,9 +120,9 @@ test("the penguin can't jump again in the air", () => {
 test("sliding onto a crack ends in Splash!", () => {
   const game = sliding();
   game.gaps.push({ x: game.x - 20, w: PENGUIN_SIZE.w + 60 });
-  run(game, 2);
-  assert.equal(game.mode, "over");
-  assert.equal(game.how, "Splash!");
+  let how = null;
+  for (let i = 0; i < 120 && !how; i += 1) how = step(game, 1 / 60);
+  assert.equal(how, "Splash!");
 });
 
 test("once in a crack the ice sliding past can't lift the penguin out", () => {
@@ -142,7 +138,6 @@ test("running into an ice block ends in Bonk!", () => {
   const game = sliding();
   game.blocks.push({ x: game.x + PENGUIN_SIZE.w + 10, w: 24, h: 21, tall: false });
   run(game, 1);
-  assert.equal(game.mode, "over");
   assert.equal(game.how, "Bonk!");
 });
 
@@ -153,39 +148,7 @@ test("jumping in time clears an ice block", () => {
   run(game, 1);
   release(game);
   run(game, 1);
-  assert.equal(game.mode, "play");
-});
-
-test("P pauses and the world stands still until it goes on", () => {
-  const game = sliding();
-  run(game, 1);
-  togglePause(game);
-  const dist = game.dist;
-  run(game, 1);
-  assert.equal(game.mode, "pause");
-  assert.equal(game.dist, dist);
-  togglePause(game);
-  assert.equal(game.mode, "play");
-});
-
-test("leaving the tab pauses, and Space goes on without jumping", () => {
-  const game = sliding();
-  pause(game);
-  assert.equal(game.mode, "pause");
-  press(game);
-  assert.equal(game.mode, "play");
-  assert.equal(game.vy, 0);
-});
-
-test("Space after the end starts a fresh round", () => {
-  const game = sliding();
-  game.gaps.push({ x: game.x - 20, w: 200 });
-  run(game, 2);
-  press(game);
-  assert.equal(game.mode, "play");
-  assert.equal(game.dist, 0);
-  assert.equal(game.fish, 0);
-  assert.deepEqual(game.gaps, []);
+  assert.equal(game.how, "");
 });
 
 test("the obstacles come in the same mix for the same seed", () => {
@@ -233,15 +196,23 @@ test("the sky blends slowly between its steps", () => {
   assert.notEqual(between, skyAt(250).sky);
 });
 
-test("the end says what happened, with metres, fish and points", () => {
+test("the round in a few words: metres and fish, and golden ones when caught", () => {
   const game = sliding();
   game.dist = 123 * PX_PER_M;
   game.fish = 2;
   game.golden = 1;
-  game.mode = "over";
-  game.how = "Bonk!";
-  assert.deepEqual(resultLines(game, false), ["Bonk!", "123 m, 2 fish, 1 golden: 193 points"]);
-  assert.deepEqual(resultLines(game, true), ["New best!", "123 m, 2 fish, 1 golden: 193 points"]);
+  assert.equal(summary(game), "123 m, 2 fish and 1 golden");
   game.golden = 0;
-  assert.deepEqual(resultLines(game, false), ["Bonk!", "123 m, 2 fish: 143 points"]);
+  assert.equal(summary(game), "123 m and 2 fish");
+});
+
+test("the score boxes show metres, fish and points", () => {
+  const game = sliding();
+  game.dist = 12 * PX_PER_M;
+  game.fish = 3;
+  assert.deepEqual(scoreBoxes(game), [
+    { value: "12", word: "m" },
+    { icon: "fish", value: "3" },
+    { value: "42", word: "points", right: true },
+  ]);
 });
