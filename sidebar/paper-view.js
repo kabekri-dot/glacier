@@ -7,7 +7,7 @@
 //
 //   createPaper({ noteEl, editor, screen, notebook, sketchView, pagesOn,
 //                 endHidden, onHideEnd, settingsOpen, showIfLocked, openLink,
-//                 hint, onTyped, showNotice, fitRows, afterDraw })
+//                 hint, onTyped, showNotice, fitRows, afterDraw, onBreak })
 //     noteEl          the paper element
 //     editor          the Editor session
 //     screen          the Screen (the open note, a fresh page)
@@ -24,6 +24,7 @@
 //     showNotice(text, ms)  a short message in the bottom corner
 //     fitRows(blocks) keep the ruled rows in step with the text of these blocks
 //     afterDraw(locked)  after each draw; locked when the passcode card shows
+//     onBreak()       `/break` and Enter on an empty line: the hidden game (#128)
 //   .render()                draw the paper from the session's lines and caret
 //   .moveTo(line, col)       put the caret there and draw
 //   .jumpToLine(line)        the caret at a line, scrolled near the top
@@ -69,6 +70,7 @@ export function createPaper({
   showNotice,
   fitRows,
   afterDraw,
+  onBreak,
 }) {
   // Does a Link's target note already exist? A Link to a note that doesn't
   // (a Missing Link) renders red (#8).
@@ -370,6 +372,7 @@ export function createPaper({
     hint,
     onTyped,
     pickSketch: (yes) => (pickSketchOnRender = yes),
+    onBreak,
   });
 
   // --- Selecting, copying and Extract (#7, #99): sidebar/paper-selection.js --
