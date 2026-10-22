@@ -1,0 +1,887 @@
+<title>Glacier Break Games</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap">
+<style>
+/* Layout: a game picker beside one life-size Glacier sidebar that plays the picked game.
+   Single light page look on purpose; each game paints its own paper's colours. */
+:root {
+  color-scheme: light;
+  --desk: #dfe8f3;
+  --ink: #1b2a4a;
+  --soft: #5b6b88;
+  --rule: #c7dcf2;
+  --accent: #3f78c4;
+  --card: #fbfdff;
+  --ui: "Montserrat", "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { background: var(--desk); color: var(--ink); font-family: var(--ui); padding-inline: 16px; padding-block: 24px; }
+.wrap { display: flex; gap: 32px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+.side { flex: 1 1 280px; max-width: 380px; min-width: 0; display: grid; gap: 12px; }
+h1 { font-size: 1.35rem; margin: 0; }
+.side p { margin: 0; line-height: 1.5; color: var(--soft); font-size: 0.92rem; }
+.picker { display: grid; gap: 6px; }
+.picker-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--soft); margin-top: 6px; }
+.chip { display: flex; gap: 10px; align-items: center; text-align: left; width: 100%; border: 1px solid var(--rule); background: var(--card); color: var(--ink); border-radius: 10px; padding: 8px 12px; font: inherit; font-size: 0.88rem; cursor: pointer; }
+.chip i { flex: none; width: 18px; height: 18px; border-radius: 5px; border: 1px solid rgba(0,0,0,0.15); }
+.chip small { color: var(--soft); margin-left: auto; }
+.chip[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.about { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 12px 14px; display: grid; gap: 6px; }
+.about h2 { font-size: 1rem; margin: 0; }
+kbd { font-family: var(--ui); font-size: 0.8rem; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; background: #fff; }
+.frame { position: relative; width: 380px; max-width: 100%; height: 680px; border-radius: 14px; overflow: hidden; box-shadow: 0 10px 30px rgba(27, 42, 74, 0.18); border: 1px solid var(--rule); background: #fff; }
+#game { display: block; width: 100%; height: 100%; touch-action: none; cursor: pointer; outline: none; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<div class="wrap">
+  <div class="side">
+    <h1>The other break games</h1>
+    <p>In Glacier, <kbd>/break</kbd> starts the game of the paper you write on. Pick a paper here and play. <kbd>P</kbd> pauses, <kbd>Esc</kbd> stops (in Glacier: back to your note).</p>
+    <div class="picker" id="picker" role="group" aria-label="Games"></div>
+    <div class="about" id="about" aria-live="polite"></div>
+  </div>
+  <div class="frame"><canvas id="game" tabindex="0" aria-label="The picked game"></canvas></div>
+</div>
+
+<script>
+// ----- Shared: canvas, pixel art, input, the loop, the score boxes and the top 5 -----
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+let W = 0, H = 0;
+function resize() {
+  const r = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(r.width * dpr);
+  canvas.height = Math.round(r.height * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  W = r.width; H = r.height;
+}
+const PX = 3;
+function sprite(rows, x, y, pal, px = PX, flip = false) {
+  const n = rows[0].length;
+  rows.forEach((row, j) => [...row].forEach((c, i) => {
+    if (c === "." || !pal[c]) return;
+    ctx.fillStyle = pal[c];
+    ctx.fillRect(Math.round(x + (flip ? n - 1 - i : i) * px), Math.round(y + j * px), px, px);
+  }));
+}
+const size = (rows, px = PX) => ({ w: rows[0].length * px, h: rows.length * px });
+function text(str, x, y, sz, color, align = "center", weight = 700) {
+  ctx.fillStyle = color;
+  ctx.font = `${weight} ${sz}px Montserrat, system-ui, sans-serif`;
+  ctx.textAlign = align;
+  ctx.fillText(str, x, y);
+}
+const rand = (a, b) => a + Math.random() * (b - a);
+const hit = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+// A box with stepped pixel corners, the frame for every score and panel.
+function pixelBox(x, y, w, h, fill, edge, step = 3) {
+  x = Math.round(x); y = Math.round(y);
+  ctx.fillStyle = edge;
+  ctx.fillRect(x + step, y, w - 2 * step, h);
+  ctx.fillRect(x, y + step, w, h - 2 * step);
+  ctx.fillStyle = fill;
+  ctx.fillRect(x + 2 * step, y + step, w - 4 * step, h - 2 * step);
+  ctx.fillRect(x + step, y + 2 * step, w - 2 * step, h - 4 * step);
+}
+// A small score box: a pixel icon, a value and its word.
+function chip(x, y, icon, value, word, c, alignRight = false) {
+  ctx.font = "700 16px Montserrat, system-ui, sans-serif";
+  const vw = ctx.measureText(String(value)).width;
+  ctx.font = "600 10px Montserrat, system-ui, sans-serif";
+  const ww = word ? ctx.measureText(word).width : 0;
+  const iw = icon ? size(icon.rows, 2).w + 8 : 0;
+  const w = Math.ceil(16 + iw + vw + (word ? ww + 6 : 0));
+  const left = alignRight ? x - w : x;
+  pixelBox(left, y, w, 30, c.chip, c.chipEdge);
+  if (icon) sprite(icon.rows, left + 9, y + 15 - size(icon.rows, 2).h / 2, icon.pal, 2);
+  text(String(value), left + 8 + iw, y + 21, 16, c.chipInk, "left");
+  if (word) text(word, left + 8 + iw + vw + 5, y + 20, 10, c.chipSoft, "left", 600);
+}
+const MEDAL = ["..MM..", ".MMMM.", "MMLMMM", "MMMMMM", ".MMMM.", "..MM.."];
+const MEDALS = ["#e2b33a", "#b9c2cc", "#c98a52"];
+
+const input = { hold: false, left: false, right: false, up: false, down: false, pointerX: null, pointerY: null, dir: null };
+const KEYS = { arrowleft: "left", arrowright: "right", arrowup: "up", arrowdown: "down", a: "left", d: "right", w: "up", s: "down" };
+
+function topKey(id) { return `glacier-break-top5-${id}`; }
+function readTop(id) { try { return JSON.parse(localStorage.getItem(topKey(id))) ?? []; } catch { return []; } }
+function keepScore(id, score) {
+  const list = [...readTop(id), { score, date: new Date().toISOString().slice(0, 10) }].sort((a, b) => b.score - a.score).slice(0, 5);
+  try { localStorage.setItem(topKey(id), JSON.stringify(list)); } catch { /* the list just won't stay */ }
+  return list;
+}
+
+// The start, pause and end panels, in the game's own colours.
+function panel(game, title, lines, top = null) {
+  const c = game.colors;
+  const w = Math.min(304, W - 36);
+  const h = top ? 150 + top.length * 26 + 34 : 112 + lines.length * 22 + (game.icon ? 40 : 0);
+  const x = (W - w) / 2, y = Math.max(70, (H - h) / 2 - 40);
+  pixelBox(x, y, w, h, c.panel, c.panelEdge, 4);
+  let yy = y + 26;
+  if (!top && game.icon) { const s = size(game.icon.rows, 4); sprite(game.icon.rows, W / 2 - s.w / 2, yy - 6, game.icon.pal, 4); yy += s.h + 8; }
+  text(title, W / 2, yy + 14, 21, c.panelAccent);
+  lines.forEach((l, i) => text(l, W / 2, yy + 42 + i * 22, 13, c.panelSoft, "center", 600));
+  if (top) {
+    const ty = yy + 42 + lines.length * 22 + 14;
+    text("Your top 5", W / 2, ty, 13, c.panelInk);
+    let marked = false;
+    top.forEach((t, i) => {
+      const ry = ty + 14 + i * 26;
+      const mine = !marked && t.score === run.final;
+      if (mine) { marked = true; ctx.fillStyle = c.highlight; ctx.fillRect(x + 18, ry, w - 36, 22); }
+      if (i < 3) sprite(MEDAL, x + 28, ry + 3, { M: MEDALS[i], L: "#ffffff" }, 3);
+      else text(`${i + 1}`, x + 37, ry + 16, 12, c.panelSoft);
+      text(`${t.score}`, x + 58, ry + 16, 14, c.panelInk, "left", mine ? 800 : 600);
+      text("points", x + 58 + ctx.measureText(`${t.score}`).width + 5, ry + 16, 10, c.panelSoft, "left", 500);
+      text(t.date, x + w - 28, ry + 16, 11, c.panelSoft, "right", 500);
+    });
+    text("Space: again   ·   Esc: back to your note", W / 2, y + h - 14, 11, c.panelSoft, "center", 500);
+  }
+}
+// The colours every game shares, made from its paper.
+function theme(p) {
+  return {
+    chip: p.chip ?? "rgba(255,255,255,0.85)", chipEdge: p.chipEdge ?? p.rule, chipInk: p.ink, chipSoft: p.soft,
+    panel: p.panel ?? "#ffffff", panelEdge: p.panelEdge ?? p.rule, panelInk: p.ink, panelSoft: p.soft, panelAccent: p.accent,
+    highlight: p.highlight ?? "rgba(0,0,0,0.06)", ...p,
+  };
+}
+
+// ----- The games -----
+const GAMES = [];
+
+// Forest: a squirrel runs and hops from branch to branch, collecting acorns.
+GAMES.push((() => {
+  const c = theme({ sky: "#eff4ea", far: "#d9e6cf", mid: "#c6dab8", trunk: "#a98a6a", bark: "#8a6a4a", leaf: "#7fa05a", leaf2: "#5d7f3a",
+    ink: "#1f3b2a", soft: "#5b6b55", accent: "#5d7f3a", rule: "#cfe0c4", panel: "#f8fbf4", highlight: "#e3eed8" });
+  const RUN1 = [
+    ".TTT............", "TTTTT.......BB..", "TTTTT......BBBB.", "TT.TT.....BBEBBN", "....TT...BBBBBB.",
+    ".....TTBBBBWWB..", "......BBBBBWWB..", "......BBBBBBB...", "......B..B..B...", ".....BB..B..BB..",
+  ];
+  const RUN2 = [
+    "..TTT...........", ".TTTTT......BB..", "TTTTTT.....BBBB.", "TT..TT....BBEBBN", "....TT...BBBBBB.",
+    ".....TTBBBBWWB..", "......BBBBBWWB..", "......BBBBBBB...", ".......BB.B.....", "......BB...BB...",
+  ];
+  const JUMP = [
+    "TTTT............", "TTTTT.......BB..", ".TTTTT.....BBBB.", "...TTT....BBEBBN", "....TTT..BBBBBB.",
+    ".....TTBBBBWWB..", "......BBBBBWWB..", "......BBBBBBB...", ".....BB.....BB..", "................",
+  ];
+  const ACORN = ["...C..", ".CCCC.", "CCCCCC", "NNNNNN", ".NNNN.", "..NN.."];
+  const pal = { T: "#c9844a", B: "#b0693a", W: "#f1dcc0", E: "#1f3b2a", N: "#c99a52", C: "#6b4a2c" };
+  const SQ_PX = 4; // the squirrel is drawn a bit bigger than the rest
+  const s = size(RUN1, SQ_PX), a = size(ACORN);
+  let st;
+  return {
+    id: "forest", title: "Squirrel jump", paper: "Forest", colors: c, swatch: "#eff4ea",
+    icon: { rows: ACORN, pal },
+    how: ["Space or a click to jump, hold to jump higher.", "Hop from branch to branch. Acorns are 10 points."],
+    init() {
+      st = { x: 60, y: 0, vy: 0, speed: 165, time: 0, dist: 0, acorns: 0, branches: [{ x: -20, y: H * 0.6, w: 440, leaves: 5 }], nuts: [], far: 0, mid: 0, anim: 0 };
+      st.y = st.branches[0].y - s.h;
+      this.spawnUntil(W + 400);
+    },
+    spawnUntil(limit) {
+      let last = st.branches[st.branches.length - 1];
+      while (last.x + last.w < limit) {
+        const gap = rand(50, 70 + Math.min(80, st.time * 2));
+        const y = Math.max(H * 0.32, Math.min(H * 0.78, last.y + rand(-90, 90)));
+        const b = { x: last.x + last.w + gap, y, w: rand(100, 200), leaves: Math.floor(rand(2, 5)) };
+        st.branches.push(b);
+        if (Math.random() < 0.75) st.nuts.push({ x: b.x + rand(10, b.w - 30), y: b.y - a.h - rand(6, 70) });
+        last = b;
+      }
+    },
+    on() { return st.branches.find((b) => st.x + s.w * 0.65 > b.x && st.x + s.w * 0.35 < b.x + b.w && Math.abs(st.y + s.h - b.y) < 1); },
+    press() { if (st.vy === 0 && this.on()) st.vy = -430; },
+    update(dt) {
+      st.time += dt; st.speed = Math.min(330, 165 + st.time * 4);
+      const move = st.speed * dt; st.dist += move; st.far += move * 0.15; st.mid += move * 0.35; st.anim += dt * st.speed / 60;
+      for (const o of [...st.branches, ...st.nuts]) o.x -= move;
+      st.branches = st.branches.filter((b) => b.x + b.w > -20); st.nuts = st.nuts.filter((n) => n.x > -20 && !n.got);
+      this.spawnUntil(W + 400);
+      const prev = st.y + s.h;
+      st.vy += (input.hold && st.vy < 0 ? 700 : 1500) * dt; st.y += st.vy * dt;
+      if (st.vy >= 0) {
+        const b = st.branches.find((b) => st.x + s.w * 0.65 > b.x && st.x + s.w * 0.35 < b.x + b.w && prev <= b.y + 1 && st.y + s.h >= b.y);
+        if (b) { st.y = b.y - s.h; st.vy = 0; }
+      }
+      if (st.vy === 0 && !this.on()) st.vy = 1;
+      for (const n of st.nuts) if (hit({ x: st.x, y: st.y, w: s.w, h: s.h }, { x: n.x, y: n.y, w: a.w, h: a.h })) { n.got = true; st.acorns += 1; }
+      return st.y > H ? "Down to the ground!" : null;
+    },
+    points() { return Math.floor(st.dist / 40) + st.acorns * 10; },
+    summary() { return `${Math.floor(st.dist / 40)} m and ${st.acorns} acorns`; },
+    draw() {
+      ctx.fillStyle = c.sky; ctx.fillRect(0, 0, W, H);
+      for (let x = -(st.far % 160); x < W + 160; x += 160) { ctx.fillStyle = c.far; ctx.fillRect(x + 50, 0, 30, H); }
+      for (let x = -(st.mid % 120); x < W + 120; x += 120) { ctx.fillStyle = c.mid; ctx.fillRect(x + 20, 0, 16, H); ctx.fillRect(x - 10, 120, 46, 26); }
+      for (const b of st.branches) {
+        ctx.fillStyle = c.bark; ctx.fillRect(b.x, b.y, b.w, 9);
+        ctx.fillStyle = c.trunk; ctx.fillRect(b.x, b.y + 9, b.w, 3);
+        for (let i = 0; i < b.leaves; i++) { const lx = b.x + 10 + (i * (b.w - 30)) / Math.max(1, b.leaves - 1); ctx.fillStyle = i % 2 ? c.leaf : c.leaf2; ctx.fillRect(lx, b.y - 9, 15, 9); ctx.fillRect(lx + 4, b.y - 13, 7, 4); }
+      }
+      for (const n of st.nuts) sprite(ACORN, n.x, n.y, pal);
+      // Running: two leg poses and a little hop each step; flying: the jump pose.
+      const air = st.vy !== 0;
+      const hop = air ? 0 : Math.abs(Math.sin(st.anim * 1.6)) * -4;
+      sprite(air ? JUMP : Math.floor(st.anim * 1.6 / Math.PI) % 2 ? RUN2 : RUN1, st.x, st.y + hop, pal, SQ_PX);
+      chip(14, 14, null, `${Math.floor(st.dist / 40)}`, "m", c);
+      chip(14, 50, { rows: ACORN, pal }, st.acorns, "", c);
+      chip(W - 14, 14, null, this.points(), "points", c, true);
+    },
+  };
+})());
+
+// Ocean: a little fish swims through calm water and avoids the jellyfish.
+GAMES.push((() => {
+  const c = theme({ water: "#d8edf3", deep: "#c5e1e9", deeper: "#b5d6e0", sand: "#ecdfbd", weed: "#6fb3a0", ray: "rgba(255,255,255,0.35)",
+    ink: "#1b2c4f", soft: "#4f6478", accent: "#17838a", rule: "#c5dfe8", panel: "#f6fbfc", highlight: "#dceff3" });
+  const FISH1 = ["O...OOO.", "OO.OOOOO", "OOOOOOEO", "OO.OOOOO", "O...OOO."];
+  const FISH2 = [".O..OOO.", "OO.OOOOO", "OOOOOOEO", "OO.OOOOO", ".O..OOO."];
+  const JELLY = [".JJJJ.", "JJJJJJ", "JLJJLJ", ".T.T.T", "T.T.T.", ".T.T.T"];
+  const SHRIMP = ["PPP..", "PPPP.", ".PPPP", "..P.P"];
+  const pal = { O: "#f08a3c", E: "#1b2c4f", J: "#c88ad8", L: "#e7c6f0", T: "#b27cc6", P: "#f2a3a3" };
+  const f = size(FISH1), j = size(JELLY), sh = size(SHRIMP);
+  let st;
+  return {
+    id: "ocean", title: "Little fish", paper: "Ocean", colors: c, swatch: "#edf6f8",
+    icon: { rows: SHRIMP, pal },
+    how: ["Hold Space or the mouse to swim up, let go to sink.", "Swim around the jellyfish. Shrimp are 10 points."],
+    init() { st = { x: 80, y: H * 0.45, vy: 0, speed: 115, time: 0, dist: 0, shrimp: 0, jellies: [], food: [], next: 260, wave: 0 }; },
+    press() {},
+    update(dt) {
+      st.time += dt; st.speed = Math.min(250, 115 + st.time * 2.5);
+      const move = st.speed * dt; st.dist += move; st.wave += dt;
+      // Gentle: slow to rise, slow to sink, never too fast.
+      st.vy += (input.hold ? -520 : 300) * dt; st.vy = Math.max(-170, Math.min(170, st.vy)); st.y += st.vy * dt;
+      const top = 80, bottom = H - 80 - f.h;
+      if (st.y < top) { st.y = top; st.vy = 0; } if (st.y > bottom) { st.y = bottom; st.vy = 0; }
+      for (const o of [...st.jellies, ...st.food]) o.x -= move;
+      for (const jl of st.jellies) jl.y = jl.base + Math.sin(st.wave * jl.sp + jl.ph) * jl.amp;
+      st.jellies = st.jellies.filter((o) => o.x > -40); st.food = st.food.filter((o) => o.x > -30 && !o.got);
+      st.next -= move;
+      if (st.next <= 0) {
+        st.jellies.push({ x: W + 20, base: rand(top + 30, bottom - 30), y: 0, amp: rand(12, 34), sp: rand(0.6, 1.2), ph: rand(0, 6) });
+        if (st.time > 45 && Math.random() < 0.3) st.jellies.push({ x: W + 140, base: rand(top + 30, bottom - 30), y: 0, amp: rand(12, 30), sp: rand(0.6, 1.2), ph: rand(0, 6) });
+        st.food.push({ x: W + rand(90, 200), y: rand(top + 10, bottom - 10) });
+        st.next = rand(260, 360) - Math.min(60, st.time);
+      }
+      const me = { x: st.x + 5, y: st.y + 4, w: f.w - 10, h: f.h - 8 };
+      for (const jl of st.jellies) if (hit(me, { x: jl.x + 4, y: jl.y + 3, w: j.w - 8, h: j.h - 9 })) return "Ouch, a jellyfish!";
+      for (const fd of st.food) if (hit({ x: st.x - 4, y: st.y - 6, w: f.w + 8, h: f.h + 12 }, { x: fd.x, y: fd.y, w: sh.w, h: sh.h })) { fd.got = true; st.shrimp += 1; }
+      return null;
+    },
+    points() { return Math.floor(st.dist / 40) + st.shrimp * 10; },
+    summary() { return `${Math.floor(st.dist / 40)} m and ${st.shrimp} shrimp`; },
+    draw() {
+      ctx.fillStyle = c.water; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = c.deep; ctx.fillRect(0, H * 0.45, W, H * 0.55);
+      ctx.fillStyle = c.deeper; ctx.fillRect(0, H * 0.72, W, H * 0.28);
+      ctx.fillStyle = c.ray; for (let i = 0; i < 3; i++) { const x = ((i * 160 - st.dist * 0.1) % (W + 160) + W + 160) % (W + 160) - 80; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 40, 0); ctx.lineTo(x + 110, H * 0.7); ctx.lineTo(x + 70, H * 0.7); ctx.fill(); }
+      ctx.fillStyle = c.sand; ctx.fillRect(0, H - 60, W, 60);
+      const off = (st.dist * 0.5) % 90;
+      ctx.fillStyle = c.weed; for (let x = -off; x < W + 90; x += 90) { const sway = Math.sin(st.wave + x) * 3; ctx.fillRect(x + 20 + sway, H - 100, 6, 40); ctx.fillRect(x + 30 - sway, H - 85, 6, 25); }
+      for (const fd of st.food) sprite(SHRIMP, fd.x, fd.y, pal);
+      for (const jl of st.jellies) sprite(JELLY, jl.x, jl.y, pal);
+      sprite(Math.floor(st.wave * 6) % 2 ? FISH2 : FISH1, st.x, st.y, pal);
+      chip(14, 14, null, `${Math.floor(st.dist / 40)}`, "m", c);
+      chip(14, 50, { rows: SHRIMP, pal }, st.shrimp, "", c);
+      chip(W - 14, 14, null, this.points(), "points", c, true);
+    },
+  };
+})());
+
+// Desert: a camel walks through the dunes, jumps cacti and ducks under birds.
+GAMES.push((() => {
+  const c = theme({ sky: "#f9f1e2", sun: "#f3d9a4", dune: "#f0dcb4", dune2: "#e7cc9c", ground: "#e2c28a",
+    ink: "#5a3a22", soft: "#7d6249", accent: "#c0603a", rule: "#ead8b8", panel: "#fdf8ef", highlight: "#f6e7cc" });
+  // A camel from the side: tail, hump, long neck and head. Drawn a bit bigger.
+  const CAMEL1 = [
+    "..............HH..", ".............HHHH.", ".............HHEHN", "..............HHH.", "..............HH..",
+    ".....HHH.....HH...", "....HHHHH...HH....", "...HHHHHHHHHHH....", ".THHHHHHHHHHHH....", "T.HHHHHHHHHHHH....",
+    "...HHHHHHHHHH.....", "...HH.HH..HH.HH...", "...HH.HH..HH.HH...", "...LL.LL..LL.LL...",
+  ];
+  const CAMEL2 = [
+    "..............HH..", ".............HHHH.", ".............HHEHN", "..............HHH.", "..............HH..",
+    ".....HHH.....HH...", "....HHHHH...HH....", "...HHHHHHHHHHH....", ".THHHHHHHHHHHH....", "T.HHHHHHHHHHHH....",
+    "...HHHHHHHHHH.....", "..HH...HH.HH..HH..", ".HH.....HHH....HH.", ".LL.....LL.....LL.",
+  ];
+  const JUMPC = [
+    "..............HH..", ".............HHHH.", ".............HHEHN", "..............HHH.", "..............HH..",
+    ".....HHH.....HH...", "....HHHHH...HH....", "...HHHHHHHHHHH....", ".THHHHHHHHHHHH....", "T.HHHHHHHHHHHH....",
+    "...HHHHHHHHHH.....", "...HHH....HHH.....", "....LL.....LL.....", "..................",
+  ];
+  const DUCK = [
+    "..................", "..................", "..................", "..................", "..................",
+    ".....HHH..........", "....HHHHH.........", "...HHHHHHHHHHHHHH.", ".THHHHHHHHHHHHHHEN", "T.HHHHHHHHHHHH.HH.",
+    "...HHHHHHHHHH.....", "...HH.HH..HH.HH...", "...HH.HH..HH.HH...", "...LL.LL..LL.LL...",
+  ];
+  const CACTUS = ["..G..", "G.G..", "G.G.G", "GGG.G", "..GGG", "..G..", "..G..", "..G.."];
+  const BIRD = ["K.....K", ".KK.KK.", "..KKK.."];
+  const DROP = [".W.", "WWW", "WWW", ".W."];
+  const pal = { H: "#c99a5c", L: "#8a6238", T: "#a87a44", E: "#3a2616", N: "#8a6238", G: "#6c8f4a", K: "#5a3a22", W: "#5aa7d8" };
+  const CPX = 4;
+  const cm = size(CAMEL1, CPX), cc = size(CACTUS), bd = size(BIRD), dr = size(DROP);
+  let st;
+  return {
+    id: "desert", title: "Camel walk", paper: "Desert", colors: c, swatch: "#f9f1e2",
+    icon: { rows: DROP, pal },
+    how: ["Space to jump over cacti, hold to jump higher.", "↓ to duck under the birds. Water drops are 10 points."],
+    init() { st = { x: 40, y: 0, vy: 0, speed: 170, time: 0, dist: 0, drops: 0, things: [], water: [], next: 300, ground: Math.round(H * 0.7), far: 0, anim: 0 }; st.y = st.ground - cm.h; },
+    press() { if (st.vy === 0 && st.y >= st.ground - cm.h - 0.5) st.vy = -460; },
+    update(dt) {
+      st.time += dt; st.speed = Math.min(360, 170 + st.time * 4);
+      const move = st.speed * dt; st.dist += move; st.far += move * 0.2; st.anim += dt;
+      for (const o of [...st.things, ...st.water]) o.x -= move;
+      st.things = st.things.filter((o) => o.x > -40); st.water = st.water.filter((o) => o.x > -20 && !o.got);
+      st.next -= move;
+      if (st.next <= 0) {
+        if (Math.random() < 0.65 || st.time < 6) st.things.push({ kind: "cactus", x: W + 20, y: st.ground - cc.h, w: cc.w, h: cc.h });
+        else st.things.push({ kind: "bird", x: W + 20, y: st.ground - cm.h + 2, w: bd.w, h: bd.h });
+        if (Math.random() < 0.6) st.water.push({ x: W + 120, y: st.ground - cm.h - rand(20, 80) });
+        st.next = rand(220, 380) - Math.min(90, st.time * 1.5);
+      }
+      st.vy += (input.hold && st.vy < 0 ? 700 : 1500) * dt; st.y += st.vy * dt;
+      if (st.y >= st.ground - cm.h) { st.y = st.ground - cm.h; st.vy = 0; }
+      const ducking = input.down && st.vy === 0;
+      // Standing, the head is up high; ducking, the top five rows are empty.
+      const me = ducking ? { x: st.x + 8, y: st.y + 5 * CPX, w: cm.w - 12, h: cm.h - 5 * CPX } : { x: st.x + 8, y: st.y + 2, w: cm.w - 12, h: cm.h - 2 };
+      for (const t of st.things) if (hit(me, { x: t.x + 3, y: t.y + 2, w: t.w - 6, h: t.h - 2 })) return t.kind === "bird" ? "Bumped a bird!" : "Ouch, a cactus!";
+      for (const d of st.water) if (hit(me, { x: d.x, y: d.y, w: dr.w, h: dr.h })) { d.got = true; st.drops += 1; }
+      return null;
+    },
+    points() { return Math.floor(st.dist / 40) + st.drops * 10; },
+    summary() { return `${Math.floor(st.dist / 40)} m and ${st.drops} drops`; },
+    draw() {
+      ctx.fillStyle = c.sky; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = c.sun; ctx.beginPath(); ctx.arc(W * 0.72, H * 0.26, 40, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = c.dune; for (let x = -(st.far % 240); x < W + 240; x += 240) { ctx.beginPath(); ctx.moveTo(x, st.ground); ctx.quadraticCurveTo(x + 120, st.ground - 110, x + 240, st.ground); ctx.fill(); }
+      ctx.fillStyle = c.ground; ctx.fillRect(0, st.ground, W, H - st.ground);
+      ctx.fillStyle = c.dune2; ctx.fillRect(0, st.ground, W, 4);
+      for (const d of st.water) sprite(DROP, d.x, d.y, pal);
+      for (const t of st.things) sprite(t.kind === "bird" ? BIRD : CACTUS, t.x, t.y + (t.kind === "bird" ? Math.sin(st.anim * 6) * 2 : 0), pal);
+      const pose = input.down && st.vy === 0 ? DUCK : st.vy !== 0 ? JUMPC : Math.floor(st.anim * 7) % 2 ? CAMEL2 : CAMEL1;
+      sprite(pose, st.x, st.y, pal, CPX);
+      chip(14, 14, null, `${Math.floor(st.dist / 40)}`, "m", c);
+      chip(14, 50, { rows: DROP, pal }, st.drops, "", c);
+      chip(W - 14, 14, null, this.points(), "points", c, true);
+    },
+  };
+})());
+
+// Volcano: a rock rolls over the volcano's hills. Hold to press it into the
+// valleys, let go to fly off the next hill. Embers give time before night.
+GAMES.push((() => {
+  const c = theme({ sky: "#f2efed", sky2: "#efd9cc", far: "#dcd3cd", hill: "#8f8079", hill2: "#7a6c66", lava: "#e0662a", glow: "#f2b33d",
+    ink: "#2f2c2b", soft: "#6b625c", accent: "#d9581b", rule: "#dcd3cd", panel: "#faf8f6", highlight: "#f1e4dc" });
+  const ROCK = ["..RRRR..", ".RRRRDR.", "RRDRRRRR", "RRRRRRDR", "RDRRRRRR", "RRRRDRRR", ".RRRRRR.", "..RRRR.."];
+  const EMBER = [".Y.", "YFY", ".F."];
+  const pal = { R: "#5f5955", D: "#7d7672", Y: "#f2b33d", F: "#e0662a" };
+  const r = size(ROCK).w / 2;
+  const ground = (x) => H * 0.62 + Math.sin(x / 160) * 70 + Math.sin(x / 67 + 1.3) * 26;
+  const slope = (x) => (Math.cos(x / 160) * 70) / 160 + (Math.cos(x / 67 + 1.3) * 26) / 67;
+  let st;
+  return {
+    id: "volcano", title: "Rolling rock", paper: "Volcano", colors: c, swatch: "#f2efed",
+    icon: { rows: ROCK, pal },
+    how: ["Hold Space or the mouse to press down into a valley,", "let go on the way up to fly. Embers are 10 points and 2 seconds."],
+    init() { st = { wx: 0, y: 0, vx: 230, vy: 0, time: 0, left: 45, embers: 0, list: [], next: 300, air: false, cam: 0, spin: 0 }; st.y = ground(0) - r; this.more(); },
+    more() { while (st.next < st.wx + W * 2) { const x = st.next; st.list.push({ x, y: ground(x) - rand(40, 160) }); st.next += rand(120, 240); } },
+    press() {},
+    update(dt) {
+      st.time += dt; st.left -= dt;
+      const heavy = input.hold;
+      st.vy += (heavy ? 2600 : 900) * dt;
+      st.wx += st.vx * dt; st.y += st.vy * dt;
+      const gy = ground(st.wx) - r;
+      if (st.y >= gy) {
+        // On the ground: keep only the speed along the slope.
+        const s = slope(st.wx), len = Math.hypot(1, s), tx = 1 / len, ty = s / len;
+        let along = st.vx * tx + st.vy * ty;
+        along = Math.max(140, along * (1 - 0.06 * dt));
+        st.vx = along * tx; st.vy = along * ty; st.y = gy; st.air = false;
+      } else st.air = true;
+      st.vx = Math.max(120, Math.min(700, st.vx));
+      st.spin += st.vx * dt / r;
+      st.cam += (Math.min(0, st.y - H * 0.35) - st.cam) * Math.min(1, dt * 4);
+      for (const e of st.list) if (!e.got && Math.abs(e.x - st.wx) < 18 && Math.abs(e.y - st.y) < 22) { e.got = true; st.embers += 1; st.left += 2; }
+      st.list = st.list.filter((e) => e.x > st.wx - 200 && !e.got);
+      this.more();
+      return st.left <= 0 ? "Night falls" : null;
+    },
+    points() { return Math.floor(st.wx / 40) + st.embers * 10; },
+    summary() { return `${Math.floor(st.wx / 40)} m and ${st.embers} embers`; },
+    draw() {
+      const night = Math.max(0, Math.min(1, 1 - st.left / 15));
+      ctx.fillStyle = night > 0 ? c.sky2 : c.sky; ctx.fillRect(0, 0, W, H);
+      const sx = 110;
+      ctx.save(); ctx.translate(0, -st.cam);
+      ctx.fillStyle = c.far; ctx.beginPath(); const fx = -(st.wx * 0.2) % 400;
+      for (let k = -1; k < 3; k++) { ctx.moveTo(fx + k * 400, H * 0.7); ctx.lineTo(fx + k * 400 + 160, H * 0.3); ctx.lineTo(fx + k * 400 + 220, H * 0.3); ctx.lineTo(fx + k * 400 + 380, H * 0.7); }
+      ctx.fill();
+      ctx.fillStyle = c.lava; for (let k = -1; k < 3; k++) ctx.fillRect(fx + k * 400 + 166, H * 0.3, 48, 5);
+      ctx.fillStyle = c.hill; ctx.beginPath(); ctx.moveTo(0, H + 400);
+      for (let x = 0; x <= W; x += 4) ctx.lineTo(x, ground(st.wx - sx + x));
+      ctx.lineTo(W, H + 400); ctx.fill();
+      ctx.fillStyle = c.hill2; for (let x = 0; x <= W; x += 4) ctx.fillRect(x, ground(st.wx - sx + x), 4, 4);
+      for (const e of st.list) sprite(EMBER, e.x - st.wx + sx - 4, e.y + Math.sin(st.time * 3 + e.x) * 3, pal);
+      // The rock turns as it rolls: four turned versions of the art.
+      const turns = Math.floor(st.spin / (Math.PI / 2)) % 4;
+      let art = ROCK;
+      for (let i = 0; i < turns; i++) art = art[0].split("").map((_, k) => art.map((row) => row[k]).reverse().join(""));
+      sprite(art, sx - r, st.y - r, pal);
+      ctx.restore();
+      if (night > 0) { ctx.fillStyle = `rgba(47,44,43,${night * 0.35})`; ctx.fillRect(0, 0, W, H); }
+      chip(14, 14, null, `${Math.floor(st.wx / 40)}`, "m", c);
+      chip(14, 50, { rows: EMBER, pal }, st.embers, "", c);
+      chip(W - 14, 14, null, this.points(), "points", c, true);
+      chip(W - 14, 50, null, `${Math.ceil(st.left)}`, "s left", c, true);
+    },
+  };
+})());
+
+// Aurora: glide a light under the northern lights, gather stars into constellations.
+GAMES.push((() => {
+  const c = theme({ sky: "#0f1830", sky2: "#151e35", ink: "#e4ecfa", soft: "#a9b7d0", accent: "#5fe0a0", rule: "#27344f",
+    chip: "rgba(21,30,53,0.8)", chipEdge: "#2f3f63", panel: "#151e35", panelEdge: "#2f3f63", highlight: "#1f2c4c" });
+  const STAR = ["..S..", ".SSS.", "SSWSS", ".SSS.", "..S.."];
+  const pal = { S: "#f4e58a", W: "#fffbe0" };
+  const SHAPES = [
+    [[0, 0], [40, -24], [86, -16], [120, 10]],
+    [[0, 0], [30, 30], [66, 20], [96, 44], [60, 70]],
+    [[0, 20], [36, 0], [72, 22], [108, 0]],
+    [[0, 0], [44, 8], [30, 48], [-10, 40]],
+  ];
+  let st;
+  return {
+    id: "aurora", title: "Northern light", paper: "Aurora", colors: c, swatch: "#151e35",
+    icon: { rows: STAR, pal },
+    how: ["Move the mouse or the arrow keys: the light glides after.", "Gather stars; a whole constellation is 50 more. Until dawn."],
+    init() { st = { x: 90, y: H / 2, vx: 0, vy: 0, tx: 90, ty: H / 2, time: 0, left: 75, stars: 0, done: 0, groups: [], clouds: [], next: 40, trail: [], slow: 0, rings: [] }; },
+    press() {},
+    update(dt) {
+      st.time += dt; st.left -= dt;
+      const drift = 55 * dt;
+      // Where the light wants to go; it glides there with a soft spring.
+      if (input.pointerX !== null) { st.tx = input.pointerX; st.ty = input.pointerY; }
+      const k = 200 * dt;
+      if (input.left) st.tx -= k; if (input.right) st.tx += k; if (input.up) st.ty -= k; if (input.down) st.ty += k;
+      st.tx = Math.max(20, Math.min(W - 20, st.tx)); st.ty = Math.max(90, Math.min(H - 30, st.ty));
+      const pull = st.slow > 0 ? 6 : 14;
+      st.vx += ((st.tx - st.x) * pull - st.vx * 5) * dt; st.vy += ((st.ty - st.y) * pull - st.vy * 5) * dt;
+      st.x += st.vx * dt; st.y += st.vy * dt; st.slow = Math.max(0, st.slow - dt);
+      st.trail.unshift({ x: st.x, y: st.y }); st.trail.length = Math.min(st.trail.length, 22);
+      st.next -= drift;
+      if (st.next <= 0) {
+        const shape = SHAPES[Math.floor(rand(0, SHAPES.length))];
+        const ox = W + 30, oy = rand(140, H - 180);
+        st.groups.push({ stars: shape.map(([dx, dy]) => ({ x: ox + dx, y: oy + dy, got: false })), done: false, glow: 0 });
+        if (Math.random() < 0.6) st.clouds.push({ x: W + 200, y: rand(120, H - 120), w: rand(70, 120) });
+        st.next = rand(220, 320);
+      }
+      for (const gr of st.groups) for (const s of gr.stars) s.x -= drift;
+      for (const cl of st.clouds) cl.x -= drift * 1.3;
+      for (const gr of st.groups) {
+        for (const s of gr.stars) if (!s.got && Math.hypot(s.x - st.x, s.y - st.y) < 18) { s.got = true; st.stars += 1; }
+        if (!gr.done && gr.stars.every((s) => s.got)) { gr.done = true; st.done += 1; const m = gr.stars[0]; st.rings.push({ x: m.x, y: m.y, r: 0 }); }
+        if (gr.done) gr.glow = Math.min(1, gr.glow + dt);
+      }
+      for (const cl of st.clouds) if (Math.abs(cl.x + cl.w / 2 - st.x) < cl.w / 2 && Math.abs(cl.y - st.y) < 18) st.slow = 1;
+      for (const rg of st.rings) rg.r += 40 * dt;
+      st.rings = st.rings.filter((rg) => rg.r < 90);
+      st.groups = st.groups.filter((gr) => gr.stars.some((s) => s.x > -40));
+      st.clouds = st.clouds.filter((cl) => cl.x + cl.w > -20);
+      return st.left <= 0 ? "Dawn" : null;
+    },
+    points() { return st.stars * 10 + st.done * 50; },
+    summary() { return `${st.stars} stars, ${st.done} constellations`; },
+    draw() {
+      const dawn = Math.max(0, Math.min(1, 1 - st.left / 12));
+      ctx.fillStyle = c.sky; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = c.sky2; ctx.fillRect(0, H * 0.55, W, H * 0.45);
+      // Wide, slow curtains of light, see-through on top of each other.
+      [["rgba(95,224,160,0.20)", 0.22, 0.25, 70], ["rgba(80,200,210,0.16)", 0.32, 0.18, 90], ["rgba(170,120,230,0.14)", 0.42, 0.14, 60]].forEach(([col, y, sp, amp], i) => {
+        ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(0, H * y - 60);
+        for (let x = 0; x <= W; x += 10) ctx.lineTo(x, H * y + Math.sin(x / 90 + st.time * sp + i * 2) * amp * 0.4 - 60);
+        for (let x = W; x >= 0; x -= 10) ctx.lineTo(x, H * y + Math.sin(x / 70 + st.time * sp * 1.3 + i) * amp + 90);
+        ctx.fill();
+      });
+      ctx.fillStyle = "#0b1122"; ctx.beginPath(); ctx.moveTo(0, H); for (let x = 0; x <= W; x += 20) ctx.lineTo(x, H - 60 - Math.abs(Math.sin(x / 90)) * 50); ctx.lineTo(W, H); ctx.fill();
+      for (const cl of st.clouds) { ctx.fillStyle = "rgba(11,17,34,0.85)"; ctx.fillRect(cl.x, cl.y - 12, cl.w, 24); ctx.fillRect(cl.x + 12, cl.y - 20, cl.w - 30, 10); }
+      for (const gr of st.groups) {
+        if (gr.done) { ctx.strokeStyle = `rgba(244,229,138,${0.6 * gr.glow})`; ctx.lineWidth = 2; ctx.beginPath(); gr.stars.forEach((s, i) => (i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y))); ctx.stroke(); }
+        for (const s of gr.stars) { if (s.got) { ctx.fillStyle = "#fffbe0"; ctx.fillRect(s.x - 2, s.y - 2, 4, 4); } else sprite(STAR, s.x - 7, s.y - 7, pal); }
+      }
+      for (const rg of st.rings) { ctx.strokeStyle = `rgba(95,224,160,${0.5 * (1 - rg.r / 90)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(rg.x, rg.y, rg.r, 0, Math.PI * 2); ctx.stroke(); }
+      st.trail.forEach((p, i) => { ctx.fillStyle = `rgba(95,224,160,${0.35 * (1 - i / 22)})`; const s = 8 - i * 0.25; ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s); });
+      ctx.fillStyle = "rgba(95,224,160,0.25)"; ctx.fillRect(st.x - 9, st.y - 9, 18, 18);
+      ctx.fillStyle = "#eafff4"; ctx.fillRect(st.x - 4, st.y - 4, 8, 8);
+      if (dawn > 0) { ctx.fillStyle = `rgba(244,200,170,${dawn * 0.35})`; ctx.fillRect(0, 0, W, H); }
+      chip(14, 14, { rows: STAR, pal }, st.stars, "stars", c);
+      chip(W - 14, 14, null, this.points(), "points", c, true);
+      chip(W - 14, 50, null, `${Math.ceil(st.left)}`, "s to dawn", c, true);
+    },
+  };
+})());
+
+// Blank Page: fold a paper plane and glide it through the gaps.
+GAMES.push((() => {
+  const c = theme({ paper: "#faf7f0", rule: "#e6e0d3", bar: "#d9d2c3", plane: "#4d6a8f", ink: "#33363b", soft: "#6a6d72", accent: "#4d6a8f", panel: "#fdfbf6", highlight: "#efe9dc" });
+  const PLANE = ["P.........", "PPP.......", ".PPPPP....", "..PPPPPPPP", ".PPPPPP...", "PPP......."];
+  const pal = { P: c.plane };
+  const pl = size(PLANE);
+  let st;
+  return {
+    id: "blank", title: "Paper plane", paper: "Blank Page", colors: c, swatch: "#faf7f0",
+    icon: { rows: PLANE, pal },
+    how: ["Space or a click lifts the plane.", "Glide through the gaps; each one is 10 points."],
+    init() { st = { x: 70, y: H * 0.4, vy: 0, speed: 130, time: 0, passed: 0, walls: [], next: 120 }; },
+    press() { st.vy = -300; },
+    update(dt) {
+      st.time += dt; st.speed = Math.min(240, 130 + st.time * 2.5);
+      const move = st.speed * dt;
+      st.vy = Math.min(320, st.vy + 820 * dt); st.y += st.vy * dt;
+      for (const w of st.walls) w.x -= move;
+      st.walls = st.walls.filter((w) => w.x > -40);
+      st.next -= move;
+      if (st.next <= 0) { const gap = Math.max(130, 180 - st.time * 1.2); st.walls.push({ x: W + 10, w: 26, top: rand(100, H - 110 - gap), gap }); st.next = rand(190, 240); }
+      const me = { x: st.x + 3, y: st.y + 3, w: pl.w - 6, h: pl.h - 6 };
+      if (st.y < 60 || st.y > H - 30) return "Crumpled!";
+      for (const w of st.walls) {
+        if (hit(me, { x: w.x, y: 0, w: w.w, h: w.top }) || hit(me, { x: w.x, y: w.top + w.gap, w: w.w, h: H })) return "Crumpled!";
+        if (!w.done && w.x + w.w < st.x) { w.done = true; st.passed += 1; }
+      }
+      return null;
+    },
+    points() { return st.passed * 10; },
+    summary() { return `${st.passed} gaps`; },
+    draw() {
+      ctx.fillStyle = c.paper; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = c.rule; for (let y = 60; y < H; y += 32) ctx.fillRect(0, y, W, 1);
+      for (const w of st.walls) { ctx.fillStyle = c.bar; ctx.fillRect(w.x, 0, w.w, w.top); ctx.fillRect(w.x, w.top + w.gap, w.w, H); }
+      sprite(PLANE, st.x, st.y, pal);
+      chip(14, 14, { rows: PLANE, pal }, st.passed, "gaps", c);
+      chip(W - 14, 14, null, this.points(), "points", c, true);
+    },
+  };
+})());
+
+// School Notebook: a doodle hops up the page from line to line.
+GAMES.push((() => {
+  const c = theme({ paper: "#ffffff", rule: "#bcd0ee", margin: "#e8a39d", ink: "#1f2f6b", soft: "#5a6690", accent: "#c8372d", panel: "#ffffff", highlight: "#eef3fb" });
+  const DOODLE = ["..KKKK..", ".K....K.", "K.K..K.K", "K......K", "K.KKKK.K", ".K....K.", "..KKKK..", ".K....K.", "K......K"];
+  const STAR = ["..R..", "RRRRR", ".RRR.", ".R.R."];
+  const SPRING = ["KKKK", ".K..", "..K.", ".K..", "KKKK"];
+  const pal = { K: c.ink, R: c.accent };
+  const d = size(DOODLE), sr = size(STAR);
+  let st;
+  return {
+    id: "school", title: "Doodle hop", paper: "School Notebook", colors: c, swatch: "#ffffff",
+    icon: { rows: DOODLE, pal },
+    how: ["← → or the mouse steer; the doodle hops by itself.", "Red lines move, dashed ones break, springs fly. Stars are 10."],
+    init() {
+      st = { x: W / 2 - d.w / 2, y: H - 120, vy: -520, cam: 0, height: 0, stars: 0, plats: [], items: [], top: H - 60, time: 0 };
+      st.plats.push({ x: 0, y: H - 60, w: W, kind: "floor" });
+      this.more();
+    },
+    more() {
+      while (st.top > st.cam - H) {
+        st.top -= rand(55, 85 + Math.min(40, st.height / 60));
+        const hard = Math.min(1, st.height / 1500);
+        const roll = Math.random();
+        const kind = roll < 0.12 + hard * 0.2 ? "move" : roll < 0.2 + hard * 0.25 ? "break" : "line";
+        const w = rand(56, 80);
+        const p = { x: rand(10, W - w - 10), y: st.top, w, kind, dir: Math.random() < 0.5 ? 1 : -1 };
+        st.plats.push(p);
+        if (kind === "line" && Math.random() < 0.1) st.items.push({ kind: "spring", x: p.x + w / 2 - 6, y: p.y - 15, plat: p });
+        else if (Math.random() < 0.25) st.items.push({ kind: "star", x: p.x + w / 2 - 7, y: p.y - 40 });
+      }
+    },
+    press() {},
+    update(dt) {
+      st.time += dt;
+      const sp = 300;
+      if (input.pointerX !== null) st.x += Math.max(-sp * 1.5 * dt, Math.min(sp * 1.5 * dt, input.pointerX - d.w / 2 - st.x));
+      if (input.left) st.x -= sp * dt; if (input.right) st.x += sp * dt;
+      if (st.x > W) st.x = -d.w; if (st.x < -d.w) st.x = W;
+      const prev = st.y + d.h;
+      st.vy += 1100 * dt; st.y += st.vy * dt;
+      for (const p of st.plats) if (p.kind === "move") { p.x += p.dir * 70 * dt; if (p.x < 6 || p.x + p.w > W - 6) p.dir *= -1; }
+      for (const it of st.items) if (it.plat) it.x = it.plat.x + it.plat.w / 2 - 6;
+      if (st.vy > 0) {
+        for (const p of st.plats) {
+          if (p.gone || st.x + d.w - 6 < p.x || st.x + 6 > p.x + p.w || prev > p.y + 1 || st.y + d.h < p.y) continue;
+          if (p.kind === "break") { p.gone = true; continue; }
+          st.y = p.y - d.h; st.vy = -520;
+          const spring = st.items.find((it) => it.kind === "spring" && it.plat === p && Math.abs(it.x + 6 - (st.x + d.w / 2)) < 18);
+          if (spring) st.vy = -950;
+          break;
+        }
+      }
+      for (const it of st.items) if (it.kind === "star" && !it.got && hit({ x: st.x, y: st.y, w: d.w, h: d.h }, { x: it.x, y: it.y, w: sr.w, h: sr.h })) { it.got = true; st.stars += 1; }
+      const target = Math.min(st.cam, st.y - H * 0.4);
+      st.cam = target;
+      st.height = Math.max(st.height, Math.floor((H - 120 - st.y) / 40));
+      this.more();
+      st.plats = st.plats.filter((p) => p.y < st.cam + H + 40);
+      st.items = st.items.filter((it) => it.y < st.cam + H + 40 && !it.got);
+      return st.y > st.cam + H ? "Fell off the page!" : null;
+    },
+    points() { return st.height + st.stars * 10; },
+    summary() { return `${st.height} m high and ${st.stars} stars`; },
+    draw() {
+      ctx.fillStyle = c.paper; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = c.rule; const off = ((-st.cam) % 28 + 28) % 28; for (let y = off; y < H; y += 28) ctx.fillRect(0, y, W, 1);
+      ctx.fillStyle = c.margin; ctx.fillRect(34, 0, 2, H);
+      ctx.save(); ctx.translate(0, -st.cam);
+      for (const p of st.plats) {
+        if (p.gone) continue;
+        if (p.kind === "floor") continue;
+        ctx.fillStyle = p.kind === "move" ? c.accent : c.ink;
+        if (p.kind === "break") for (let x = p.x; x < p.x + p.w; x += 12) ctx.fillRect(x, p.y, 7, 4);
+        else ctx.fillRect(p.x, p.y, p.w, 4);
+      }
+      for (const it of st.items) sprite(it.kind === "star" ? STAR : SPRING, it.x, it.y, pal);
+      sprite(DOODLE, st.x, st.y + Math.min(0, st.vy * 0.004), pal);
+      ctx.restore();
+      chip(14, 14, null, st.height, "m high", c);
+      chip(14, 50, { rows: STAR, pal }, st.stars, "", c);
+      chip(W - 14, 14, null, this.points(), "points", c, true);
+    },
+  };
+})());
+
+// Chalkboard: Snake made of chalk.
+GAMES.push((() => {
+  const c = theme({ board: "#3b4a44", grid: "#43534c", chalk: "#eceee6", dot: "#f1e3a0", ink: "#eceee6", soft: "#c2c8bf", accent: "#f1e3a0", rule: "#56665f",
+    chip: "rgba(52,66,60,0.9)", chipEdge: "#6a7a72", panel: "#34423c", panelEdge: "#6a7a72", highlight: "#45554e" });
+  const DOT = [".DD.", "DDDD", "DDDD", ".DD."];
+  const pal = { D: c.dot };
+  const CELL = 20;
+  let st;
+  return {
+    id: "chalkboard", title: "Chalk snake", paper: "Chalkboard", colors: c, swatch: "#3b4a44",
+    icon: { rows: DOT, pal },
+    how: ["Arrow keys or W A S D steer.", "Each chalk dot is 10 points. Don't run into yourself."],
+    init() {
+      const cols = Math.floor((W - 20) / CELL), rows = Math.floor((H - 100) / CELL);
+      st = { cols, rows, ox: (W - cols * CELL) / 2, oy: 80, body: [{ x: 5, y: 8 }, { x: 4, y: 8 }, { x: 3, y: 8 }], dir: { x: 1, y: 0 }, queue: [], step: 0.16, acc: 0, eaten: 0, dot: null };
+      this.place();
+    },
+    place() { do { st.dot = { x: Math.floor(rand(0, st.cols)), y: Math.floor(rand(0, st.rows)) }; } while (st.body.some((b) => b.x === st.dot.x && b.y === st.dot.y)); },
+    turn(name) {
+      const dd = { left: { x: -1, y: 0 }, right: { x: 1, y: 0 }, up: { x: 0, y: -1 }, down: { x: 0, y: 1 } }[name];
+      const last = st.queue[st.queue.length - 1] ?? st.dir;
+      if (dd && !(dd.x === -last.x && dd.y === -last.y) && st.queue.length < 2) st.queue.push(dd);
+    },
+    press() {},
+    update(dt) {
+      if (input.dir) { this.turn(input.dir); input.dir = null; }
+      st.acc += dt;
+      while (st.acc >= st.step) {
+        st.acc -= st.step;
+        if (st.queue.length) st.dir = st.queue.shift();
+        const head = { x: (st.body[0].x + st.dir.x + st.cols) % st.cols, y: (st.body[0].y + st.dir.y + st.rows) % st.rows };
+        if (st.body.some((b) => b.x === head.x && b.y === head.y)) return "Chalked in!";
+        st.body.unshift(head);
+        if (head.x === st.dot.x && head.y === st.dot.y) { st.eaten += 1; st.step = Math.max(0.08, st.step - 0.004); this.place(); } else st.body.pop();
+      }
+      return null;
+    },
+    points() { return st.eaten * 10; },
+    summary() { return `${st.eaten} chalk dots, ${st.body.length} long`; },
+    draw() {
+      ctx.fillStyle = c.board; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = c.grid;
+      for (let x = 0; x <= st.cols; x++) ctx.fillRect(st.ox + x * CELL, st.oy, 1, st.rows * CELL);
+      for (let y = 0; y <= st.rows; y++) ctx.fillRect(st.ox, st.oy + y * CELL, st.cols * CELL, 1);
+      st.body.forEach((b) => { ctx.fillStyle = c.chalk; ctx.fillRect(st.ox + b.x * CELL + 3, st.oy + b.y * CELL + 3, CELL - 6, CELL - 6); });
+      sprite(DOT, st.ox + st.dot.x * CELL + 4, st.oy + st.dot.y * CELL + 4, pal, 3);
+      chip(14, 14, { rows: DOT, pal }, st.body.length, "long", c);
+      chip(W - 14, 14, null, this.points(), "points", c, true);
+    },
+  };
+})());
+
+// Moleskine: stack the sliding blocks as straight as you can.
+GAMES.push((() => {
+  const c = theme({ paper: "#f6efdc", rule: "#ebe2c9", block: "#3a332c", block2: "#57493c", ink: "#1e1b18", soft: "#5e5548", accent: "#7a1f2b", panel: "#fbf6e8", highlight: "#efe5cc" });
+  const BLOCK = ["BBBBBB", "BLLLLB", "BBBBBB"];
+  const pal = { B: c.block, L: c.block2 };
+  const BH = 22;
+  let st;
+  return {
+    id: "moleskine", title: "Block stack", paper: "Moleskine", colors: c, swatch: "#f6efdc",
+    icon: { rows: BLOCK, pal },
+    how: ["Space or a click drops the block.", "What hangs over falls off. A perfect drop is 30 points."],
+    init() { st = { stack: [{ x: W / 2 - 80, w: 160 }], moving: { x: -150, w: 160, dir: 1 }, speed: 150, camera: 0, perfect: 0, falling: [], score: 0 }; },
+    press() {
+      const top = st.stack[st.stack.length - 1], m = st.moving;
+      const left = Math.max(top.x, m.x), right = Math.min(top.x + top.w, m.x + m.w);
+      if (right - left <= 0) { st.lost = true; return; }
+      const exact = Math.abs(m.x - top.x) < 4;
+      const placed = exact ? { x: top.x, w: top.w } : { x: left, w: right - left };
+      if (!exact) st.falling.push(m.x < top.x ? { x: m.x, w: top.x - m.x, y: 0, vy: 0, level: st.stack.length } : { x: right, w: m.x + m.w - right, y: 0, vy: 0, level: st.stack.length });
+      st.stack.push(placed);
+      st.score += exact ? 30 : 10; if (exact) st.perfect += 1;
+      st.speed = Math.min(330, st.speed + 8);
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      st.moving = { x: dir === 1 ? -placed.w + 10 : W - 10, w: placed.w, dir };
+    },
+    update(dt) {
+      if (st.lost) return "Toppled!";
+      const m = st.moving; m.x += m.dir * st.speed * dt;
+      if (m.x > W - m.w * 0.2) m.dir = -1; if (m.x < -m.w * 0.8) m.dir = 1;
+      const target = Math.max(0, (st.stack.length - 12) * BH);
+      st.camera += (target - st.camera) * Math.min(1, dt * 3);
+      for (const f of st.falling) { f.vy += 900 * dt; f.y += f.vy * dt; }
+      st.falling = st.falling.filter((f) => f.y < H);
+      return null;
+    },
+    points() { return st.score; },
+    summary() { return `${st.stack.length - 1} blocks, ${st.perfect} perfect`; },
+    draw() {
+      ctx.fillStyle = c.paper; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = c.rule; for (let y = 60; y < H; y += 24) ctx.fillRect(0, y, W, 1);
+      ctx.fillStyle = c.accent; ctx.fillRect(W - 26, 0, 6, H);
+      const base = H - 40 + st.camera;
+      st.stack.forEach((b, i) => { ctx.fillStyle = i % 2 ? c.block : c.block2; ctx.fillRect(b.x, base - (i + 1) * BH, b.w, BH - 2); });
+      for (const f of st.falling) { ctx.fillStyle = c.block2; ctx.fillRect(f.x, base - (f.level + 1) * BH + f.y, f.w, BH - 2); }
+      ctx.fillStyle = c.accent; ctx.fillRect(st.moving.x, base - (st.stack.length + 1) * BH, st.moving.w, BH - 2);
+      chip(14, 14, { rows: BLOCK, pal }, st.stack.length - 1, "blocks", c);
+      chip(W - 14, 14, null, this.points(), "points", c, true);
+    },
+  };
+})());
+
+// Engineer: brick breaker on graph paper.
+GAMES.push((() => {
+  const c = theme({ paper: "#eaf3e3", grid: "#d9e8cf", grid2: "#cfe2c4", brick: "#e0731f", brick2: "#5b6166", ink: "#3a3d40", soft: "#62666a", accent: "#e0731f", rule: "#cfe2c4", panel: "#f4f9f0", highlight: "#e1eed8" });
+  const BALL = [".BB.", "BBBB", "BBBB", ".BB."];
+  const HEART = [".R.R.", "RRRRR", ".RRR.", "..R.."];
+  const pal = { B: c.ink, R: c.accent };
+  const PW = 76, PH = 10, BW = 40, BHt = 16;
+  let st;
+  return {
+    id: "engineer", title: "Brick breaker", paper: "Engineer", colors: c, swatch: "#eaf3e3",
+    icon: { rows: BALL, pal },
+    how: ["← → or the mouse move the bar. Space or a click serves.", "Each brick is 10 points. Three balls."],
+    init() { st = { px: W / 2 - PW / 2, bx: 0, by: 0, vx: 0, vy: 0, held: true, lives: 3, bricks: [], score: 0, level: 0 }; this.level(); },
+    level() {
+      st.level += 1; st.bricks = [];
+      const cols = Math.floor((W - 20) / (BW + 4)), ox = (W - cols * (BW + 4) + 4) / 2;
+      for (let r = 0; r < 4 + Math.min(3, st.level); r++) for (let k = 0; k < cols; k++) if (Math.random() < 0.85) st.bricks.push({ x: ox + k * (BW + 4), y: 90 + r * (BHt + 4), hard: r < st.level - 1 ? 2 : 1 });
+      st.held = true;
+    },
+    press() { if (st.held) { st.held = false; const sp = 250 + st.level * 25; st.vx = sp * 0.5; st.vy = -sp; } },
+    update(dt) {
+      const sp = 360, py = H - 70;
+      if (input.pointerX !== null) st.px += Math.max(-sp * 1.6 * dt, Math.min(sp * 1.6 * dt, input.pointerX - PW / 2 - st.px));
+      if (input.left) st.px -= sp * dt; if (input.right) st.px += sp * dt;
+      st.px = Math.max(4, Math.min(W - PW - 4, st.px));
+      if (st.held) { st.bx = st.px + PW / 2 - 6; st.by = py - 13; return null; }
+      st.bx += st.vx * dt; st.by += st.vy * dt;
+      if (st.bx < 0) { st.bx = 0; st.vx *= -1; } if (st.bx > W - 12) { st.bx = W - 12; st.vx *= -1; }
+      if (st.by < 70) { st.by = 70; st.vy *= -1; }
+      if (st.vy > 0 && st.by + 12 >= py && st.by + 12 <= py + PH + 6 && st.bx + 12 > st.px && st.bx < st.px + PW) {
+        const t = (st.bx + 6 - (st.px + PW / 2)) / (PW / 2); const speed = Math.hypot(st.vx, st.vy);
+        st.vx = speed * t * 0.8; st.vy = -Math.sqrt(Math.max(1, speed * speed - st.vx * st.vx));
+      }
+      for (const b of st.bricks) {
+        if (b.gone || !hit({ x: st.bx, y: st.by, w: 12, h: 12 }, { x: b.x, y: b.y, w: BW, h: BHt })) continue;
+        b.hard -= 1; if (b.hard <= 0) { b.gone = true; st.score += 10; }
+        const fromSide = st.bx + 6 < b.x || st.bx + 6 > b.x + BW; if (fromSide) st.vx *= -1; else st.vy *= -1;
+        break;
+      }
+      st.bricks = st.bricks.filter((b) => !b.gone);
+      if (!st.bricks.length) this.level();
+      if (st.by > H) { st.lives -= 1; st.held = true; if (st.lives <= 0) return "Out of balls"; }
+      return null;
+    },
+    points() { return st.score; },
+    summary() { return `${st.score / 10} bricks, level ${st.level}`; },
+    draw() {
+      ctx.fillStyle = c.paper; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = c.grid; for (let x = 0; x < W; x += 12) ctx.fillRect(x, 0, 1, H); for (let y = 0; y < H; y += 12) ctx.fillRect(0, y, W, 1);
+      ctx.fillStyle = c.grid2; for (let x = 0; x < W; x += 60) ctx.fillRect(x, 0, 1, H); for (let y = 0; y < H; y += 60) ctx.fillRect(0, y, W, 1);
+      for (const b of st.bricks) { ctx.fillStyle = b.hard > 1 ? c.brick2 : c.brick; ctx.fillRect(b.x, b.y, BW, BHt); ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.fillRect(b.x + 3, b.y + 3, BW - 6, 3); }
+      ctx.fillStyle = c.ink; ctx.fillRect(st.px, H - 70, PW, PH);
+      sprite(BALL, st.bx, st.by, pal);
+      chip(14, 14, { rows: HEART, pal }, st.lives, "balls", c);
+      chip(W - 14, 14, null, this.points(), "points", c, true);
+      chip(W - 14, 50, null, st.level, "level", c, true);
+    },
+  };
+})());
+
+// ----- Running one game: ready, play, pause, over -----
+let current = GAMES[0], run = { mode: "ready" };
+function start(game) { current = game; resize(); game.init(); run = { mode: "ready" }; drawPicker(); }
+function press() {
+  if (run.mode === "ready") { run.mode = "play"; return; }
+  if (run.mode === "pause") { run.mode = "play"; return; }
+  if (run.mode === "over") { current.init(); run = { mode: "play" }; return; }
+  current.press();
+}
+function end(how) {
+  const s = current.points();
+  const before = readTop(current.id)[0]?.score ?? -1;
+  run = { mode: "over", how, final: s, top: keepScore(current.id, s), best: s > before };
+}
+let last = performance.now();
+function frame(t) {
+  const dt = Math.min(0.033, (t - last) / 1000);
+  last = t;
+  if (run.mode === "play") { const how = current.update(dt); if (how) end(how); }
+  current.draw();
+  if (run.mode === "ready") panel(current, current.title, [...current.how, "Space or a click to start."]);
+  if (run.mode === "pause") panel(current, "Paused", ["P or Space to go on."]);
+  if (run.mode === "over") panel(current, run.best ? "New best!" : run.how, [`${current.summary()}`, `${run.final} points`], run.top);
+  requestAnimationFrame(frame);
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { e.preventDefault(); current.init(); run = { mode: "ready" }; return; }
+  if (e.key === "p" || e.key === "P") { if (run.mode === "play") run.mode = "pause"; else if (run.mode === "pause") run.mode = "play"; return; }
+  const k = KEYS[e.key.toLowerCase()];
+  if (k) { e.preventDefault(); input[k] = true; input.dir = k; input.pointerX = null; input.pointerY = null; }
+  if (e.key === " " || e.key === "ArrowUp") {
+    e.preventDefault();
+    if (e.repeat) return;
+    input.hold = true;
+    if (!(e.key === "ArrowUp" && run.mode === "play" && ["chalkboard", "aurora"].includes(current.id))) press();
+  }
+});
+document.addEventListener("keyup", (e) => {
+  const k = KEYS[e.key.toLowerCase()];
+  if (k) input[k] = false;
+  if (e.key === " " || e.key === "ArrowUp") input.hold = false;
+});
+canvas.addEventListener("pointerdown", () => { canvas.focus(); input.hold = true; press(); });
+canvas.addEventListener("pointermove", (e) => { const r = canvas.getBoundingClientRect(); input.pointerX = e.clientX - r.left; input.pointerY = e.clientY - r.top; });
+window.addEventListener("pointerup", () => { input.hold = false; });
+canvas.addEventListener("pointerleave", () => { input.pointerX = null; input.pointerY = null; });
+document.addEventListener("visibilitychange", () => { if (document.hidden && run.mode === "play") run.mode = "pause"; });
+window.addEventListener("blur", () => { input.hold = false; if (run.mode === "play") run.mode = "pause"; });
+window.addEventListener("resize", () => resize());
+
+function drawPicker() {
+  const nature = ["Forest", "Ocean", "Desert", "Volcano", "Aurora"];
+  const row = (g) => `<button class="chip" type="button" data-game="${g.id}" aria-pressed="${g === current}"><i style="background:${g.swatch}"></i><span>${g.title}</span><small>${g.paper}</small></button>`;
+  document.getElementById("picker").innerHTML =
+    `<div class="picker-label">Nature</div>${GAMES.filter((g) => nature.includes(g.paper)).map(row).join("")}` +
+    `<div class="picker-label">Classics</div>${GAMES.filter((g) => !nature.includes(g.paper)).map(row).join("")}`;
+  document.getElementById("about").innerHTML = `<h2>${current.title} · ${current.paper}</h2><p>${current.how.join(" ")}</p>`;
+}
+document.getElementById("picker").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-game]");
+  if (!b) return;
+  start(GAMES.find((g) => g.id === b.dataset.game));
+  canvas.focus();
+});
+start(GAMES[0]);
+requestAnimationFrame(frame);
+</script>
