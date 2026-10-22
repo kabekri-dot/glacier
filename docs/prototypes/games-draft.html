@@ -372,70 +372,82 @@ GAMES.push((() => {
   };
 })());
 
-// Volcano: a rock rolls over the volcano's hills. Hold to press it into the
-// valleys, let go to fly off the next hill. Embers give time before night.
+// Volcano: a rock rolls over the volcano's hills. Hold to press it down the
+// slopes for speed, let go on the way up to fly off the hilltop. Embers give
+// time before night.
 GAMES.push((() => {
-  const c = theme({ sky: "#f2efed", sky2: "#efd9cc", far: "#dcd3cd", hill: "#8f8079", hill2: "#7a6c66", lava: "#e0662a", glow: "#f2b33d",
+  const c = theme({ sky: "#f2efed", far: "#dcd3cd", hill: "#8f8079", hill2: "#6f625d", lava: "#e0662a",
     ink: "#2f2c2b", soft: "#6b625c", accent: "#d9581b", rule: "#dcd3cd", panel: "#faf8f6", highlight: "#f1e4dc" });
   const ROCK = ["..RRRR..", ".RRRRDR.", "RRDRRRRR", "RRRRRRDR", "RDRRRRRR", "RRRRDRRR", ".RRRRRR.", "..RRRR.."];
   const EMBER = [".Y.", "YFY", ".F."];
-  const pal = { R: "#5f5955", D: "#7d7672", Y: "#f2b33d", F: "#e0662a" };
-  const r = size(ROCK).w / 2;
-  const ground = (x) => H * 0.62 + Math.sin(x / 160) * 70 + Math.sin(x / 67 + 1.3) * 26;
-  const slope = (x) => (Math.cos(x / 160) * 70) / 160 + (Math.cos(x / 67 + 1.3) * 26) / 67;
+  const pal = { R: "#5f5955", D: "#8d8682", Y: "#f2b33d", F: "#e0662a" };
+  const R = size(ROCK).w / 2, SX = 110, G = 1100;
+  const ground = (x) => H * 0.66 + Math.sin(x / 170) * 80 + Math.sin(x / 71 + 1.3) * 22;
+  const slope = (x) => (Math.cos(x / 170) * 80) / 170 + (Math.cos(x / 71 + 1.3) * 22) / 71;
   let st;
   return {
     id: "volcano", title: "Rolling rock", paper: "Volcano", colors: c, swatch: "#f2efed",
     icon: { rows: ROCK, pal },
-    how: ["Hold Space or the mouse to press down into a valley,", "let go on the way up to fly. Embers are 10 points and 2 seconds."],
-    init() { st = { wx: 0, y: 0, vx: 230, vy: 0, time: 0, left: 45, embers: 0, list: [], next: 300, air: false, cam: 0, spin: 0 }; st.y = ground(0) - r; this.more(); },
-    more() { while (st.next < st.wx + W * 2) { const x = st.next; st.list.push({ x, y: ground(x) - rand(40, 160) }); st.next += rand(120, 240); } },
+    how: ["Hold Space or the mouse on the way down for speed,", "let go on the way up to fly. Embers: 10 points and 2 seconds."],
+    init() { st = { x: 0, y: 0, vx: 240, vy: 0, air: false, time: 0, left: 45, embers: 0, list: [], next: 400, cam: 0, spin: 0 }; st.y = ground(0) - R; this.more(); },
+    more() { while (st.next < st.x + W * 2) { st.list.push({ x: st.next, y: ground(st.next) - R - rand(30, 140) }); st.next += rand(140, 260); } },
     press() {},
     update(dt) {
       st.time += dt; st.left -= dt;
-      const heavy = input.hold;
-      st.vy += (heavy ? 2600 : 900) * dt;
-      st.wx += st.vx * dt; st.y += st.vy * dt;
-      const gy = ground(st.wx) - r;
-      if (st.y >= gy) {
-        // On the ground: keep only the speed along the slope.
-        const s = slope(st.wx), len = Math.hypot(1, s), tx = 1 / len, ty = s / len;
-        let along = st.vx * tx + st.vy * ty;
-        along = Math.max(140, along * (1 - 0.06 * dt));
-        st.vx = along * tx; st.vy = along * ty; st.y = gy; st.air = false;
-      } else st.air = true;
-      st.vx = Math.max(120, Math.min(700, st.vx));
-      st.spin += st.vx * dt / r;
-      st.cam += (Math.min(0, st.y - H * 0.35) - st.cam) * Math.min(1, dt * 4);
-      for (const e of st.list) if (!e.got && Math.abs(e.x - st.wx) < 18 && Math.abs(e.y - st.y) < 22) { e.got = true; st.embers += 1; st.left += 2; }
-      st.list = st.list.filter((e) => e.x > st.wx - 200 && !e.got);
+      const hold = input.hold;
+      if (!st.air) {
+        // On the ground the rock follows the hill; its speed grows going down
+        // (more when held) and shrinks going up.
+        const s = slope(st.x);
+        st.vx += (G * s / (1 + s * s)) * (hold && s > 0 ? 2.2 : 1) * dt;
+        st.vx = Math.max(150, Math.min(650, st.vx));
+        const nx = st.x + st.vx * dt;
+        const vyFollow = (ground(nx) - ground(st.x)) / dt;
+        // Over a hilltop, not held: the hill falls away faster than the rock does, so it flies.
+        const vyBallistic = st.vy + G * dt;
+        if (!hold && vyFollow > vyBallistic && st.vy < 0) { st.air = true; }
+        else { st.vy = vyFollow; st.x = nx; st.y = ground(st.x) - R; }
+      }
+      if (st.air) {
+        st.vy += G * (hold ? 2.8 : 1) * dt;
+        st.x += st.vx * dt; st.y += st.vy * dt;
+        if (st.y >= ground(st.x) - R) {
+          // A landing along the slope keeps the speed; a hard one loses some.
+          const s = slope(st.x), along = st.vy / st.vx;
+          if (Math.abs(along - s) > 0.6) st.vx *= 0.8;
+          st.air = false; st.y = ground(st.x) - R; st.vy = st.vx * s;
+        }
+      }
+      st.spin += (st.vx * dt) / R;
+      const want = Math.min(0, st.y - H * 0.3);
+      st.cam += (want - st.cam) * Math.min(1, dt * 4);
+      for (const e of st.list) if (!e.got && Math.abs(e.x - st.x) < 20 && Math.abs(e.y - st.y) < 24) { e.got = true; st.embers += 1; st.left += 2; }
+      st.list = st.list.filter((e) => e.x > st.x - 200 && !e.got);
       this.more();
       return st.left <= 0 ? "Night falls" : null;
     },
-    points() { return Math.floor(st.wx / 40) + st.embers * 10; },
-    summary() { return `${Math.floor(st.wx / 40)} m and ${st.embers} embers`; },
+    points() { return Math.floor(st.x / 40) + st.embers * 10; },
+    summary() { return `${Math.floor(st.x / 40)} m and ${st.embers} embers`; },
     draw() {
-      const night = Math.max(0, Math.min(1, 1 - st.left / 15));
-      ctx.fillStyle = night > 0 ? c.sky2 : c.sky; ctx.fillRect(0, 0, W, H);
-      const sx = 110;
+      ctx.fillStyle = c.sky; ctx.fillRect(0, 0, W, H);
       ctx.save(); ctx.translate(0, -st.cam);
-      ctx.fillStyle = c.far; ctx.beginPath(); const fx = -(st.wx * 0.2) % 400;
-      for (let k = -1; k < 3; k++) { ctx.moveTo(fx + k * 400, H * 0.7); ctx.lineTo(fx + k * 400 + 160, H * 0.3); ctx.lineTo(fx + k * 400 + 220, H * 0.3); ctx.lineTo(fx + k * 400 + 380, H * 0.7); }
+      const fx = -((st.x * 0.2) % 400);
+      ctx.fillStyle = c.far; ctx.beginPath();
+      for (let k = -1; k < 3; k++) { const b = fx + k * 400; ctx.moveTo(b, H * 0.75); ctx.lineTo(b + 160, H * 0.32); ctx.lineTo(b + 220, H * 0.32); ctx.lineTo(b + 380, H * 0.75); }
       ctx.fill();
-      ctx.fillStyle = c.lava; for (let k = -1; k < 3; k++) ctx.fillRect(fx + k * 400 + 166, H * 0.3, 48, 5);
-      ctx.fillStyle = c.hill; ctx.beginPath(); ctx.moveTo(0, H + 400);
-      for (let x = 0; x <= W; x += 4) ctx.lineTo(x, ground(st.wx - sx + x));
-      ctx.lineTo(W, H + 400); ctx.fill();
-      ctx.fillStyle = c.hill2; for (let x = 0; x <= W; x += 4) ctx.fillRect(x, ground(st.wx - sx + x), 4, 4);
-      for (const e of st.list) sprite(EMBER, e.x - st.wx + sx - 4, e.y + Math.sin(st.time * 3 + e.x) * 3, pal);
-      // The rock turns as it rolls: four turned versions of the art.
-      const turns = Math.floor(st.spin / (Math.PI / 2)) % 4;
+      ctx.fillStyle = c.lava; for (let k = -1; k < 3; k++) ctx.fillRect(fx + k * 400 + 166, H * 0.32, 48, 5);
+      ctx.fillStyle = c.hill; ctx.beginPath(); ctx.moveTo(0, H * 3);
+      for (let x = 0; x <= W; x += 4) ctx.lineTo(x, ground(st.x - SX + x));
+      ctx.lineTo(W, H * 3); ctx.fill();
+      ctx.fillStyle = c.hill2; for (let x = 0; x <= W; x += 4) ctx.fillRect(x, ground(st.x - SX + x), 4, 4);
+      for (const e of st.list) sprite(EMBER, e.x - st.x + SX - 4, e.y + Math.sin(st.time * 3 + e.x) * 3, pal);
       let art = ROCK;
-      for (let i = 0; i < turns; i++) art = art[0].split("").map((_, k) => art.map((row) => row[k]).reverse().join(""));
-      sprite(art, sx - r, st.y - r, pal);
+      for (let i = 0; i < Math.floor(st.spin / (Math.PI / 2)) % 4; i++) art = art[0].split("").map((_, k) => art.map((row) => row[k]).reverse().join(""));
+      sprite(art, SX - R, st.y - R, pal);
       ctx.restore();
-      if (night > 0) { ctx.fillStyle = `rgba(47,44,43,${night * 0.35})`; ctx.fillRect(0, 0, W, H); }
-      chip(14, 14, null, `${Math.floor(st.wx / 40)}`, "m", c);
+      const night = Math.max(0, Math.min(1, 1 - st.left / 12));
+      if (night > 0) { ctx.fillStyle = `rgba(47,44,43,${night * 0.4})`; ctx.fillRect(0, 0, W, H); }
+      chip(14, 14, null, `${Math.floor(st.x / 40)}`, "m", c);
       chip(14, 50, { rows: EMBER, pal }, st.embers, "", c);
       chip(W - 14, 14, null, this.points(), "points", c, true);
       chip(W - 14, 50, null, `${Math.ceil(st.left)}`, "s left", c, true);
@@ -569,85 +581,99 @@ GAMES.push((() => {
   };
 })());
 
-// School Notebook: a doodle hops up the page from line to line.
+// School Notebook: a little ink bird hops up the page from line to line.
 GAMES.push((() => {
   const c = theme({ paper: "#ffffff", rule: "#bcd0ee", margin: "#e8a39d", ink: "#1f2f6b", soft: "#5a6690", accent: "#c8372d", panel: "#ffffff", highlight: "#eef3fb" });
-  const DOODLE = ["..KKKK..", ".K....K.", "K.K..K.K", "K......K", "K.KKKK.K", ".K....K.", "..KKKK..", ".K....K.", "K......K"];
+  const BIRD_UP = [
+    "...KKKK...", "..KWWWWK..", ".KWWKWWKK.", ".KWWWWWWKO", "KWWWWWWWK.", "KWKKWWWWK.", ".KWWWWWK..", "..KKKKK...", "..K...K...", ".KK..KK...",
+  ];
+  const BIRD_DOWN = [
+    "...KKKK...", "..KWWWWK..", ".KWWKWWKK.", ".KWWWWWWKO", "KWWWWWWWK.", "KWWWWWWWK.", ".KWKKWWK..", "..KKKKK...", "...K.K....", "...K.K....",
+  ];
   const STAR = ["..R..", "RRRRR", ".RRR.", ".R.R."];
-  const SPRING = ["KKKK", ".K..", "..K.", ".K..", "KKKK"];
-  const pal = { K: c.ink, R: c.accent };
-  const d = size(DOODLE), sr = size(STAR);
+  const SPRING = ["KKKKK", ".K...", "..K..", "...K.", "KKKKK"];
+  const pal = { K: c.ink, W: "#ffffff", O: c.accent, R: c.accent };
+  const BPX = 4; // the bird is drawn a bit bigger
+  const b = size(BIRD_UP, BPX), sr = size(STAR);
+  const JUMP = -620, SPRING_JUMP = -1000, GRAV = 1250, STEP = 78;
   let st;
   return {
     id: "school", title: "Doodle hop", paper: "School Notebook", colors: c, swatch: "#ffffff",
-    icon: { rows: DOODLE, pal },
-    how: ["← → or the mouse steer; the doodle hops by itself.", "Red lines move, dashed ones break, springs fly. Stars are 10."],
+    icon: { rows: BIRD_UP, pal },
+    how: ["← → or the mouse steer; the bird hops by itself.", "Red lines move, grey ones break, springs fly. Stars are 10."],
     init() {
-      st = { x: W / 2 - d.w / 2, y: H - 120, vy: -520, cam: 0, height: 0, stars: 0, plats: [], items: [], top: H - 60, time: 0 };
-      st.plats.push({ x: 0, y: H - 60, w: W, kind: "floor" });
+      st = { x: W / 2 - b.w / 2, y: 0, vy: JUMP, cam: 0, best: 0, stars: 0, plats: [], items: [], top: 0, face: 1 };
+      const first = { x: W / 2 - 40, y: H - 90, w: 80, kind: "line" };
+      st.plats.push(first); st.top = first.y; st.y = first.y - b.h;
       this.more();
     },
+    // Lines come at even steps up the page, each one reachable from the last.
     more() {
       while (st.top > st.cam - H) {
-        st.top -= rand(55, 85 + Math.min(40, st.height / 60));
-        const hard = Math.min(1, st.height / 1500);
+        const last = st.plats[st.plats.length - 1];
+        st.top -= STEP + rand(-12, 12);
+        const height = Math.max(0, (H - 90 - st.top) / 40);
         const roll = Math.random();
-        const kind = roll < 0.12 + hard * 0.2 ? "move" : roll < 0.2 + hard * 0.25 ? "break" : "line";
-        const w = rand(56, 80);
-        const p = { x: rand(10, W - w - 10), y: st.top, w, kind, dir: Math.random() < 0.5 ? 1 : -1 };
+        const kind = height > 40 && roll < 0.2 ? "move" : height > 80 && roll < 0.32 ? "break" : "line";
+        const w = 72;
+        let x = last.x + rand(-150, 150);
+        x = Math.max(12, Math.min(W - w - 12, x));
+        const p = { x, y: st.top, w, kind, dir: Math.random() < 0.5 ? 1 : -1 };
         st.plats.push(p);
-        if (kind === "line" && Math.random() < 0.1) st.items.push({ kind: "spring", x: p.x + w / 2 - 6, y: p.y - 15, plat: p });
-        else if (Math.random() < 0.25) st.items.push({ kind: "star", x: p.x + w / 2 - 7, y: p.y - 40 });
+        // A breaking line always gets a safe line next to it.
+        if (kind === "break") st.plats.push({ x: x > W / 2 ? 20 : W - w - 20, y: st.top - 30, w, kind: "line" });
+        if (kind === "line" && Math.random() < 0.08) st.items.push({ kind: "spring", plat: p });
+        else if (Math.random() < 0.22) st.items.push({ kind: "star", x: p.x + w / 2 - 7, y: p.y - 46 });
       }
     },
     press() {},
     update(dt) {
-      st.time += dt;
-      const sp = 300;
-      if (input.pointerX !== null) st.x += Math.max(-sp * 1.5 * dt, Math.min(sp * 1.5 * dt, input.pointerX - d.w / 2 - st.x));
-      if (input.left) st.x -= sp * dt; if (input.right) st.x += sp * dt;
-      if (st.x > W) st.x = -d.w; if (st.x < -d.w) st.x = W;
-      const prev = st.y + d.h;
-      st.vy += 1100 * dt; st.y += st.vy * dt;
-      for (const p of st.plats) if (p.kind === "move") { p.x += p.dir * 70 * dt; if (p.x < 6 || p.x + p.w > W - 6) p.dir *= -1; }
-      for (const it of st.items) if (it.plat) it.x = it.plat.x + it.plat.w / 2 - 6;
+      const sp = 320;
+      if (input.pointerX !== null) { const d = input.pointerX - b.w / 2 - st.x; st.x += Math.max(-sp * 1.4 * dt, Math.min(sp * 1.4 * dt, d)); if (Math.abs(d) > 2) st.face = d > 0 ? 1 : -1; }
+      if (input.left) { st.x -= sp * dt; st.face = -1; } if (input.right) { st.x += sp * dt; st.face = 1; }
+      if (st.x > W - b.w / 2) st.x = -b.w / 2; if (st.x < -b.w / 2) st.x = W - b.w / 2;
+      for (const p of st.plats) if (p.kind === "move") { p.x += p.dir * 80 * dt; if (p.x < 8 || p.x + p.w > W - 8) p.dir *= -1; }
+      const prev = st.y + b.h;
+      st.vy += GRAV * dt; st.y += st.vy * dt;
       if (st.vy > 0) {
         for (const p of st.plats) {
-          if (p.gone || st.x + d.w - 6 < p.x || st.x + 6 > p.x + p.w || prev > p.y + 1 || st.y + d.h < p.y) continue;
+          if (p.gone || st.x + b.w - 6 < p.x || st.x + 6 > p.x + p.w || prev > p.y + 2 || st.y + b.h < p.y) continue;
           if (p.kind === "break") { p.gone = true; continue; }
-          st.y = p.y - d.h; st.vy = -520;
-          const spring = st.items.find((it) => it.kind === "spring" && it.plat === p && Math.abs(it.x + 6 - (st.x + d.w / 2)) < 18);
-          if (spring) st.vy = -950;
+          st.y = p.y - b.h;
+          st.vy = st.items.some((it) => it.kind === "spring" && it.plat === p) ? SPRING_JUMP : JUMP;
           break;
         }
       }
-      for (const it of st.items) if (it.kind === "star" && !it.got && hit({ x: st.x, y: st.y, w: d.w, h: d.h }, { x: it.x, y: it.y, w: sr.w, h: sr.h })) { it.got = true; st.stars += 1; }
-      const target = Math.min(st.cam, st.y - H * 0.4);
-      st.cam = target;
-      st.height = Math.max(st.height, Math.floor((H - 120 - st.y) / 40));
+      for (const it of st.items) if (it.kind === "star" && !it.got && hit({ x: st.x, y: st.y, w: b.w, h: b.h }, { x: it.x, y: it.y, w: sr.w, h: sr.h })) { it.got = true; st.stars += 1; }
+      // The page scrolls up smoothly when the bird gets near the top third.
+      const want = Math.min(st.cam, st.y - H * 0.38);
+      st.cam += (want - st.cam) * Math.min(1, dt * 8);
+      st.best = Math.max(st.best, Math.floor((H - 90 - st.y) / 40));
       this.more();
-      st.plats = st.plats.filter((p) => p.y < st.cam + H + 40);
-      st.items = st.items.filter((it) => it.y < st.cam + H + 40 && !it.got);
+      st.plats = st.plats.filter((p) => p.y < st.cam + H + 60);
+      st.items = st.items.filter((it) => (it.plat ? st.plats.includes(it.plat) : it.y < st.cam + H + 60) && !it.got);
       return st.y > st.cam + H ? "Fell off the page!" : null;
     },
-    points() { return st.height + st.stars * 10; },
-    summary() { return `${st.height} m high and ${st.stars} stars`; },
+    points() { return st.best + st.stars * 10; },
+    summary() { return `${st.best} m high and ${st.stars} stars`; },
     draw() {
       ctx.fillStyle = c.paper; ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = c.rule; const off = ((-st.cam) % 28 + 28) % 28; for (let y = off; y < H; y += 28) ctx.fillRect(0, y, W, 1);
+      ctx.fillStyle = c.rule; const off = (((-st.cam) % 28) + 28) % 28; for (let y = off; y < H; y += 28) ctx.fillRect(0, y, W, 1);
       ctx.fillStyle = c.margin; ctx.fillRect(34, 0, 2, H);
       ctx.save(); ctx.translate(0, -st.cam);
       for (const p of st.plats) {
         if (p.gone) continue;
-        if (p.kind === "floor") continue;
-        ctx.fillStyle = p.kind === "move" ? c.accent : c.ink;
-        if (p.kind === "break") for (let x = p.x; x < p.x + p.w; x += 12) ctx.fillRect(x, p.y, 7, 4);
-        else ctx.fillRect(p.x, p.y, p.w, 4);
+        ctx.fillStyle = p.kind === "move" ? c.accent : p.kind === "break" ? "#9aa3b8" : c.ink;
+        if (p.kind === "break") for (let x = p.x; x < p.x + p.w; x += 12) ctx.fillRect(x, p.y, 8, 5);
+        else { ctx.fillRect(p.x, p.y, p.w, 5); ctx.fillRect(p.x + 2, p.y + 5, p.w - 4, 1); }
       }
-      for (const it of st.items) sprite(it.kind === "star" ? STAR : SPRING, it.x, it.y, pal);
-      sprite(DOODLE, st.x, st.y + Math.min(0, st.vy * 0.004), pal);
+      for (const it of st.items) {
+        if (it.kind === "spring") sprite(SPRING, it.plat.x + it.plat.w / 2 - 7, it.plat.y - 15, pal);
+        else sprite(STAR, it.x, it.y, pal);
+      }
+      sprite(st.vy < 0 ? BIRD_UP : BIRD_DOWN, st.x, st.y, pal, BPX, st.face < 0);
       ctx.restore();
-      chip(14, 14, null, st.height, "m high", c);
+      chip(14, 14, null, st.best, "m high", c);
       chip(14, 50, { rows: STAR, pal }, st.stars, "", c);
       chip(W - 14, 14, null, this.points(), "points", c, true);
     },
