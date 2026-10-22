@@ -185,6 +185,9 @@ this order.
      camel and cacti, Volcano catch the stones but not the glowing ones,
      Aurora a light collecting stars, Blank Page and School Notebook a paper
      plane, Chalkboard a chalk snake, Moleskine and Engineer stacking blocks.
+   - Play-tested: faster, mixed obstacles (cracks, pixel-art ice blocks,
+     both, double cracks), fish arcs and golden fish, hold to jump higher,
+     the sky turns to evening and night, metres with their unit (#128).
 5. **Support Glacier.** Pay once, weekly or monthly, like "buy me a coffee";
    maybe it unlocks two extra Themes, but it doesn't have to.
 6. **Codes for influencers.** A small creator gets a code that unlocks two

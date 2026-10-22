@@ -1,0 +1,362 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Playable prototype of Penguin break, the hidden /break game for Glacier paper
+     (grilled and play-tested with the user on 2026-10-22). Decisions: docs/scope.md, "Next" item 4. -->
+<title>Penguin Break</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Shantell+Sans:wght@400;700&display=swap">
+<style>
+/* Layout: notes beside one life-size Glacier sidebar; in the sidebar, the paper, and the game over it.
+   Single light look on purpose: Glacier's Glacier paper as it is in the extension. */
+:root {
+  color-scheme: light;
+  --desk: #dfe8f3;
+  --paper: #eef4fb;
+  --top: #dcebfb;
+  --rule: #c7dcf2;
+  --ink: #1b2a4a;
+  --soft: #5b6b88;
+  --accent: #3f78c4;
+  --card: #fbfdff;
+  --ui: "Montserrat", "Segoe UI", system-ui, sans-serif;
+  --hand: "Shantell Sans", "Comic Sans MS", cursive;
+}
+* { box-sizing: border-box; }
+body { background: var(--desk); color: var(--ink); font-family: var(--ui); padding-inline: 16px; padding-block: 24px; }
+.wrap { display: flex; gap: 32px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+.side { flex: 1 1 280px; max-width: 380px; min-width: 0; display: grid; gap: 14px; }
+h1 { font-size: 1.35rem; margin: 0; }
+.side p, .side li { line-height: 1.5; color: var(--soft); font-size: 0.92rem; }
+.side p { margin: 0; }
+.side ul { margin: 0; padding-left: 1.1em; }
+kbd { font-family: var(--ui); font-size: 0.8rem; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; background: var(--card); color: var(--ink); }
+.frame { position: relative; width: 380px; max-width: 100%; height: 680px; border-radius: 14px; overflow: hidden; background: var(--paper); box-shadow: 0 10px 30px rgba(27, 42, 74, 0.18); border: 1px solid var(--rule); }
+.bar { display: flex; gap: 6px; padding: 10px; background: linear-gradient(var(--top), var(--paper)); }
+.pill { height: 32px; padding: 0 12px; border: 1px solid var(--rule); border-radius: 999px; background: var(--card); display: inline-flex; align-items: center; font-size: 0.82rem; }
+.pill.title { flex: 1; font-weight: 600; }
+.paper { padding: 0 20px 0 28px; background-image: repeating-linear-gradient(transparent 0 31px, var(--rule) 31px 32px); font-family: var(--hand); line-height: 32px; height: calc(100% - 52px); }
+.paper h3 { margin: 0; font-size: 1.1rem; line-height: 32px; }
+.paper p { margin: 0; }
+.line { width: 100%; border: 0; background: transparent; font: inherit; line-height: 31px; padding: 0; color: var(--ink); outline: none; }
+.line::placeholder { color: #9aabc4; }
+#game { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: manipulation; cursor: pointer; }
+</style>
+
+<div class="wrap">
+  <div class="side">
+    <h1>Penguin break</h1>
+    <p>The first hidden game, for Glacier paper. Click the empty line in the note, type <kbd>/break</kbd> and press <kbd>Enter</kbd>.</p>
+    <ul>
+      <li><kbd>Space</kbd>, <kbd>↑</kbd> or a click: jump over cracks and ice blocks. Hold it to jump higher and wider.</li>
+      <li>Every metre is a point, a fish 10, a rare golden fish 50</li>
+      <li><kbd>P</kbd> pauses, <kbd>Esc</kbd> goes back to the note</li>
+      <li>Your top 5 shows after each round (in this sketch it's kept in this browser only)</li>
+    </ul>
+    <p>Smooth movement, flat colours, nothing that flashes. It gets faster and the sky turns to evening and night the further you slide.</p>
+  </div>
+  <div class="frame" id="frame">
+    <div class="bar"><span class="pill">☰ Notes</span><span class="pill title">Flexbox notes</span><span class="pill">+</span><span class="pill">⋯</span></div>
+    <div class="paper">
+      <h3># Flexbox basics</h3>
+      <p>justify-content moves items along the row.</p>
+      <p>align-items moves them across it.</p>
+      <p>Use gap instead of margins.</p>
+      <input class="line" id="line" placeholder="Type here…" aria-label="An empty line of the note" autocomplete="off" spellcheck="false">
+    </div>
+    <canvas id="game" hidden aria-label="Penguin break. Space to jump, P to pause, Escape to go back to the note."></canvas>
+  </div>
+</div>
+
+<script>
+// Colours: flat only, from the Glacier paper. The sky moves from day to
+// evening to night as you slide further; each step blends slowly.
+const C = {
+  ice: "#f7fbff", iceEdge: "#cfe1f6", iceSide: "#b9d3ef", block: "#dbeafa", blockEdge: "#a9c8ec",
+  water: "#3f78c4", waterDeep: "#2f5f9f", ink: "#1b2a4a", white: "#ffffff", beak: "#f0a33a",
+  fish: "#e8833a", gold: "#e9b93c", soft: "#5b6b88",
+};
+const SKIES = [
+  { at: 0, sky: "#eef4fb", far: "#d7e6f7", near: "#c3d9f2", text: "#1b2a4a" },
+  { at: 250, sky: "#f6e9e0", far: "#e8d6d6", near: "#d6c3cf", text: "#1b2a4a" },
+  { at: 600, sky: "#2b3557", far: "#3a466b", near: "#4a5880", text: "#eef4fb" },
+];
+// Pixel art, one string per row. K body, W white, E eye, O beak and feet, F fish, G golden fish.
+const PENGUIN = [
+  "....KKKK...", "...KKKKKK..", "...KWWEWKOO", "..KKWWWWK..", ".KKKWWWWKK.", "KKKKWWWWKK.",
+  ".KKKWWWWKK.", "..KKWWWWK..", "..KKWWWWK..", "...KWWWWK..", "....KKKK...", "...OO..OO..",
+];
+const FISH = [".FFFF.F", "FFKFFFF", ".FFFF.F"];
+const GOLD = [".GGGG.G", "GGKGGGG", ".GGGG.G"];
+// Ice blocks: B edge, L face, H highlight, D a small crack. Two sizes.
+const BLOCK_LOW = ["BBBBBBBB", "BHHLLLLB", "BHLLLLDB", "BLLLLDLB", "BLLLLLLB", "BLLDLLLB", "BBBBBBBB"];
+const BLOCK_TALL = ["BBBBBBBB", "BHHLLLLB", "BHLLLLLB", "BLLLLLDB", "BLLLLDLB", "BLLLLLLB", "BLLLLLLB", "BLDLLLLB", "BLLDLLLB", "BBBBBBBB"];
+const PAL = { K: C.ink, W: C.white, E: C.ink, O: C.beak, F: C.fish, G: C.gold, B: C.blockEdge, L: C.block, H: C.white, D: "#bcd5f0" };
+const PX = 3; // one art pixel is 3 by 3 screen pixels
+const PX_PER_M = 40; // screen pixels per metre
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+let W = 0, H = 0, ground = 0;
+function resize() {
+  const r = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(r.width * dpr);
+  canvas.height = Math.round(r.height * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  W = r.width; H = r.height; ground = Math.round(H * 0.68);
+}
+
+function sprite(rows, x, y) {
+  rows.forEach((row, j) => [...row].forEach((c, i) => {
+    if (c === ".") return;
+    ctx.fillStyle = PAL[c];
+    ctx.fillRect(x + i * PX, y + j * PX, PX, PX);
+  }));
+}
+
+// The top 5: in Glacier it syncs with the notes; here it stays in this browser.
+const KEY = "glacier-penguin-top5-v2";
+function readTop() { try { return JSON.parse(localStorage.getItem(KEY)) ?? []; } catch { return []; } }
+function keepScore(score) {
+  const list = [...readTop(), { score, date: new Date().toISOString().slice(0, 10) }].sort((a, b) => b.score - a.score).slice(0, 5);
+  try { localStorage.setItem(KEY, JSON.stringify(list)); } catch { /* the list just won't stay */ }
+  return list;
+}
+
+const PW = PENGUIN[0].length * PX, PH = PENGUIN.length * PX;
+let g, holding = false;
+function newGame() {
+  g = { mode: "ready", x: 70, y: 0, vy: 0, speed: 170, time: 0, dist: 0, fish: 0, bonus: 0, gaps: [], blocks: [], fishes: [], next: 380, far: 0, near: 0, top: null, best: false, how: "" };
+  g.y = ground - PH;
+}
+const floorY = () => ground - PH;
+const standing = () => g.y >= floorY() - 0.5 && g.vy === 0;
+function press() {
+  if (g.mode === "ready") g.mode = "play";
+  else if (g.mode === "over") { newGame(); g.mode = "play"; return; }
+  else if (g.mode === "pause") { g.mode = "play"; return; }
+  if (g.mode === "play" && standing()) g.vy = -390;
+}
+
+function onIce(x) {
+  return !g.gaps.some((gap) => x + PW * 0.35 > gap.x && x + PW * 0.65 < gap.x + gap.w);
+}
+
+// What comes next: a crack, an ice block, both, or two cracks, with fish to
+// catch along the way. It gets denser as the penguin gets faster.
+function spawn() {
+  const x0 = W + 20;
+  const hard = Math.min(1, g.time / 70);
+  const roll = Math.random();
+  const crack = (x, w) => g.gaps.push({ x, w });
+  const block = (x) => { const art = Math.random() < 0.5 ? BLOCK_LOW : BLOCK_TALL; g.blocks.push({ x, art, w: art[0].length * PX, h: art.length * PX }); };
+  const fish = (x, y, gold = false) => g.fishes.push({ x, y, gold, bob: Math.random() * 6 });
+  const arc = (x, w) => { for (let i = 0; i < 3; i += 1) fish(x + (w * (i + 1)) / 4 - 10, ground - PH - 40 - (i === 1 ? 40 : 18)); };
+  let length;
+  if (roll < 0.35) {
+    const w = 40 + Math.random() * (40 + hard * 50);
+    crack(x0, w);
+    if (Math.random() < 0.5) arc(x0, w); else fish(x0 + w + 70, ground - 16);
+    length = w;
+  } else if (roll < 0.6) {
+    block(x0);
+    fish(x0 + 2, ground - PH - 62, Math.random() < 0.06);
+    length = 24;
+  } else if (roll < 0.8) {
+    const w = 40 + Math.random() * 30;
+    crack(x0, w);
+    block(x0 + w + 150 - hard * 40);
+    length = w + 180;
+  } else {
+    const w1 = 34 + Math.random() * 20, w2 = 34 + Math.random() * 20, gapBetween = 70 - hard * 15;
+    crack(x0, w1);
+    crack(x0 + w1 + gapBetween, w2);
+    fish(x0 + w1 + gapBetween / 2 - 10, ground - PH - 75, Math.random() < 0.08);
+    length = w1 + gapBetween + w2;
+  }
+  g.next = length + 190 + Math.random() * (230 - hard * 90);
+}
+
+function update(dt) {
+  if (g.mode !== "play") return;
+  g.time += dt;
+  g.speed = Math.min(360, 170 + g.time * 4);
+  const move = g.speed * dt;
+  g.dist += move;
+  g.far += move * 0.15;
+  g.near += move * 0.4;
+  for (const list of [g.gaps, g.blocks, g.fishes]) for (const o of list) o.x -= move;
+  g.gaps = g.gaps.filter((o) => o.x + o.w > -10);
+  g.blocks = g.blocks.filter((o) => o.x + o.w > -10);
+  g.fishes = g.fishes.filter((f) => f.x > -30 && !f.caught);
+  g.next -= move;
+  if (g.next <= 0) spawn();
+
+  // The penguin: holding the key keeps the jump going higher and wider.
+  const floor = floorY();
+  const wasAbove = g.y <= floor + 1;
+  const gravity = holding && g.vy < 0 ? 650 : 1500;
+  g.vy += gravity * dt;
+  g.y += g.vy * dt;
+  // Lands only from above: once in a crack, the ice sliding past can't lift it out.
+  if (g.y >= floor && wasAbove && onIce(g.x)) { g.y = floor; g.vy = 0; }
+  if (g.y > H) { end("Splash!"); return; }
+  for (const b of g.blocks) {
+    if (g.x + PW - 6 > b.x && g.x + 6 < b.x + b.w && g.y + PH > ground - b.h + 3) { end("Bonk!"); return; }
+  }
+  for (const f of g.fishes) {
+    const fy = f.y + Math.sin(g.time * 3 + f.bob) * 3;
+    if (Math.abs(f.x + 10 - (g.x + PW / 2)) < 20 && Math.abs(fy + 4 - (g.y + PH / 2)) < 24) {
+      f.caught = true;
+      if (f.gold) g.bonus += 50; else g.fish += 1;
+    }
+  }
+}
+const metres = () => Math.floor(g.dist / PX_PER_M);
+const points = () => metres() + g.fish * 10 + g.bonus;
+function end(how) {
+  g.mode = "over";
+  g.how = how;
+  const s = points();
+  const before = readTop()[0]?.score ?? -1;
+  g.top = keepScore(s);
+  g.best = s > before;
+  g.final = s;
+}
+
+// The sky for this distance, blended between its steps.
+function mix(a, b, t) {
+  const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const [x, y] = [p(a), p(b)];
+  return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * t)).join(",")})`;
+}
+function skyNow() {
+  const m = metres();
+  let i = SKIES.length - 1;
+  while (i > 0 && m < SKIES[i].at) i -= 1;
+  const a = SKIES[i], b = SKIES[i + 1];
+  if (!b) return a;
+  const t = Math.max(0, Math.min(1, (m - (b.at - 120)) / 120));
+  return { sky: mix(a.sky, b.sky, t), far: mix(a.far, b.far, t), near: mix(a.near, b.near, t), text: t < 0.5 ? a.text : b.text };
+}
+
+// Hills repeat every `step` pixels, so the offset wraps at `step`, not at the
+// sidebar's width: that is what made them jump before.
+function hills(offset, color, height, step) {
+  ctx.fillStyle = color;
+  for (let x = -(offset % step); x < W + step; x += step) {
+    ctx.beginPath();
+    ctx.moveTo(x, ground);
+    ctx.lineTo(x + step / 2, ground - height);
+    ctx.lineTo(x + step, ground);
+    ctx.fill();
+  }
+}
+
+function text(str, x, y, size, color = C.ink, align = "center", weight = 700) {
+  ctx.fillStyle = color;
+  ctx.font = `${weight} ${size}px Montserrat, system-ui, sans-serif`;
+  ctx.textAlign = align;
+  ctx.fillText(str, x, y);
+}
+
+function draw() {
+  const sky = skyNow();
+  ctx.fillStyle = sky.sky; ctx.fillRect(0, 0, W, H);
+  hills(g.far, sky.far, 120, 200);
+  hills(g.near, sky.near, 60, 110);
+  // Ice with its cracks
+  ctx.fillStyle = C.water; ctx.fillRect(0, ground, W, H - ground);
+  let x = 0;
+  const gaps = [...g.gaps].sort((a, b) => a.x - b.x);
+  for (const gap of [...gaps, { x: W + 50, w: 0 }]) {
+    if (gap.x > x) {
+      ctx.fillStyle = C.ice; ctx.fillRect(x, ground, gap.x - x, H - ground);
+      ctx.fillStyle = C.iceEdge; ctx.fillRect(x, ground, gap.x - x, 4);
+      ctx.fillStyle = C.iceSide; ctx.fillRect(x, ground + 4, gap.x - x, 10);
+    }
+    ctx.fillStyle = C.waterDeep; ctx.fillRect(gap.x, ground + 30, gap.w, H - ground - 30);
+    x = Math.max(x, gap.x + gap.w);
+  }
+  for (const b of g.blocks) sprite(b.art, b.x, ground - b.h);
+  for (const f of g.fishes) sprite(f.gold ? GOLD : FISH, f.x, f.y + Math.sin(g.time * 3 + f.bob) * 3);
+  sprite(PENGUIN, g.x, g.y);
+  // Metres on the left, points on the right, each with its word.
+  text(`${metres()} m`, 16, 32, 18, sky.text, "left");
+  sprite(FISH, 16, 44);
+  text(`${g.fish}`, 42, 55, 13, sky.text, "left", 600);
+  text(`${points()}`, W - 16, 32, 18, sky.text, "right");
+  text("points", W - 16, 50, 11, sky.text, "right", 500);
+
+  if (g.mode === "ready") panel(["Penguin break", "Space or a click to jump.", "Hold it to jump higher and wider.", "P pauses, Esc goes back to your note."]);
+  if (g.mode === "pause") panel(["Paused", "P or Space to go on.", "Esc goes back to your note."]);
+  if (g.mode === "over") panel([g.best ? "New best!" : g.how, `${metres()} m, ${g.fish} fish${g.bonus ? `, ${g.bonus / 50} golden` : ""}: ${g.final} points`], g.top);
+}
+
+function panel(lines, top = null) {
+  const w = Math.min(300, W - 40), h = top ? 120 + top.length * 22 + 40 : 96 + lines.length * 22;
+  const x = (W - w) / 2, y = 90;
+  ctx.fillStyle = "rgba(251, 253, 255, 0.97)"; ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = C.iceEdge; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
+  text(lines[0], W / 2, y + 36, 20);
+  lines.slice(1).forEach((l, i) => text(l, W / 2, y + 64 + i * 22, 13, C.soft, "center", 600));
+  if (top) {
+    text("Your top 5", W / 2, y + 116, 13, C.ink);
+    let marked = false;
+    top.forEach((t, i) => {
+      const mine = !marked && t.score === g.final;
+      if (mine) marked = true;
+      text(`${i + 1}.  ${t.score} points`, x + 40, y + 142 + i * 22, 13, mine ? C.water : C.ink, "left", mine ? 700 : 500);
+      text(t.date, x + w - 40, y + 142 + i * 22, 12, C.soft, "right", 500);
+    });
+    text("Space: again · Esc: back to your note", W / 2, y + h - 14, 11, C.soft, "center", 500);
+  }
+}
+
+let last = 0, running = false;
+function frame(t) {
+  if (!running) return;
+  const dt = Math.min(0.033, (t - last) / 1000 || 0);
+  last = t;
+  update(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+
+function open() {
+  canvas.hidden = false;
+  resize();
+  newGame();
+  running = true;
+  last = performance.now();
+  requestAnimationFrame(frame);
+}
+function close() {
+  running = false;
+  canvas.hidden = true;
+  line.value = "";
+  line.focus();
+}
+
+const line = document.getElementById("line");
+line.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && line.value.trim() === "/break") { e.preventDefault(); line.value = ""; line.blur(); open(); }
+});
+document.addEventListener("keydown", (e) => {
+  if (canvas.hidden) return;
+  if (e.key === "Escape") { e.preventDefault(); close(); return; }
+  if (e.key === "p" || e.key === "P") { if (g.mode === "play") g.mode = "pause"; else if (g.mode === "pause") g.mode = "play"; return; }
+  if (e.key === " " || e.key === "ArrowUp") {
+    e.preventDefault();
+    if (e.repeat) return;
+    holding = true;
+    press();
+  }
+});
+document.addEventListener("keyup", (e) => { if (e.key === " " || e.key === "ArrowUp") holding = false; });
+canvas.addEventListener("pointerdown", () => { holding = true; press(); });
+window.addEventListener("pointerup", () => { holding = false; });
+document.addEventListener("visibilitychange", () => { if (document.hidden && g?.mode === "play") g.mode = "pause"; });
+window.addEventListener("blur", () => { holding = false; if (g?.mode === "play") g.mode = "pause"; });
+window.addEventListener("resize", () => { if (!canvas.hidden) resize(); });
+</script>
